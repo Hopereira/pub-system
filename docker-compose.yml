@@ -1,0 +1,56 @@
+# Versão do Docker Compose
+version: '3.8'
+
+services:
+  # Serviço do Back-end (nossa API NestJS)
+  backend:
+    build:
+      context: ./backend # O Dockerfile está na pasta ./backend
+      target: dependencies # Usamos o stage 'dependencies' para dev, para ter o hot-reload
+    container_name: pub_system_backend
+    command: npm run start:dev # Comando para rodar em modo de desenvolvimento
+    ports:
+      - "3000:3000" # Mapeia a porta 3000 do container para a porta 3000 da sua máquina
+    volumes:
+      # Monta o código fonte dentro do container para que o hot-reload funcione
+      - ./backend:/usr/src/app
+      # Evita que a pasta node_modules local sobrescreva a do container
+      - /usr/src/app/node_modules
+    depends_on:
+      - db # Garante que o container do banco de dados inicie antes do backend
+    environment:
+      # Variáveis de ambiente para a aplicação se conectar ao banco
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - DB_DATABASE=pub_system_db
+
+  # Serviço do Banco de Dados PostgreSQL
+  db:
+    image: postgres:15-alpine # Usa a imagem oficial do PostgreSQL
+    container_name: pub_system_db
+    ports:
+      - "5432:5432" # Expõe a porta do Postgres para podermos conectar com um cliente externo se quisermos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Garante que os dados do banco persistam
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=pub_system_db
+
+  # (Bônus) Serviço do PGAdmin
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pub_system_pgadmin
+    ports:
+      - "8080:80" # Acessível em http://localhost:8080
+    depends_on:
+      - db
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+
+# Define o volume nomeado para persistir os dados do banco
+volumes:
+  postgres_data:
