@@ -1,6 +1,7 @@
 # ---- Base Stage ----
 # Usa a imagem oficial do Node.js v18 como base.
-FROM node:18-alpine AS base
+# CORREÇÃO AQUI: Especificando a versão 18.17.0 para evitar o bug do 'crypto'.
+FROM node:18.17.0-alpine AS base
 WORKDIR /usr/src/app
 
 # ---- Dependencies Stage ----
