@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { MesaModule } from './modulos/mesa/mesa.module';
 import { ComandaModule } from './modulos/comanda/comanda.module';
 import { ClienteModule } from './modulos/cliente/cliente.module';
+import { PedidoModule } from './modulos/pedido/pedido.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ClienteModule } from './modulos/cliente/cliente.module';
     MesaModule,
     ComandaModule,
     ClienteModule,
+    PedidoModule,
   ],
   controllers: [],
   providers: [],
