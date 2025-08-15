@@ -7,6 +7,7 @@ import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
 import { AuthModule } from './auth/auth.module';
+import { MesaModule } from './modulos/mesa/mesa.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AuthModule } from './auth/auth.module';
     AmbienteModule,
     FuncionarioModule,
     AuthModule,
+    MesaModule,
   ],
   controllers: [],
   providers: [],
