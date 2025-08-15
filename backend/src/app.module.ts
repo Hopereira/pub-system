@@ -5,6 +5,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 // Importando os módulos de funcionalidades
 import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
+import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { AmbienteModule } from './modulos/ambiente/ambiente.module';
     // 3. Módulos de Funcionalidades (Features): Registra todos os nossos módulos
     EmpresaModule,
     AmbienteModule,
+    FuncionarioModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],

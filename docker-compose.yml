@@ -1,14 +1,10 @@
-version: '3.8'
-
 services:
-  # Serviço do Back-end (nossa API NestJS)
+  # --- Serviço do Back-end (nossa API NestJS) ---
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dependencies # Perfeito para desenvolvimento!
     container_name: pub_system_backend
-    command: npm run start:dev
     ports:
       - "3000:3000"
     volumes:
@@ -18,14 +14,11 @@ services:
       - db
     networks:
       - pub_network
-    environment:
-      - DB_HOST=db
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_DATABASE=${DB_DATABASE}
+    # Esta é a forma correta de carregar todas as variáveis do .env
+    env_file:
+      - ./.env
 
-  # Serviço do Banco de Dados PostgreSQL
+  # --- Serviço do Banco de Dados PostgreSQL ---
   db:
     image: postgres:15-alpine
     container_name: pub_system_db
@@ -35,12 +28,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - pub_network
-    environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_DATABASE}
+    # O container do Postgres também usará as variáveis do .env
+    env_file:
+      - ./.env
 
-  # (Bônus) Serviço do PGAdmin
+  # --- (Bônus) Serviço do PGAdmin ---
   pgadmin:
     image: dpage/pgadmin4
     container_name: pub_system_pgadmin
@@ -50,11 +42,11 @@ services:
       - db
     networks:
       - pub_network
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD}
+    # O pgAdmin também usará as variáveis do .env
+    env_file:
+      - ./.env
 
-# Define a rede e o volume nomeado para persistir os dados do banco
+# --- Declaração das redes e volumes ---
 networks:
   pub_network:
     driver: bridge
