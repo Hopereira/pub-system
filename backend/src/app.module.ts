@@ -8,6 +8,8 @@ import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
 import { AuthModule } from './auth/auth.module';
 import { MesaModule } from './modulos/mesa/mesa.module';
+import { ComandaModule } from './modulos/comanda/comanda.module';
+import { ClienteModule } from './modulos/cliente/cliente.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { MesaModule } from './modulos/mesa/mesa.module';
     FuncionarioModule,
     AuthModule,
     MesaModule,
+    ComandaModule,
+    ClienteModule,
   ],
   controllers: [],
   providers: [],
