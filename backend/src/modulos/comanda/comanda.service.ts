@@ -25,14 +25,12 @@ export class ComandaService {
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
     const { mesaId, clienteId } = createComandaDto;
 
-    // Regra 1: Não pode criar uma comanda sem mesa E sem cliente.
     if (!mesaId && !clienteId) {
       throw new BadRequestException(
         'A comanda precisa estar associada a uma mesa ou a um cliente.',
       );
     }
 
-    // Regra 2: Não pode criar uma comanda com mesa E com cliente ao mesmo tempo.
     if (mesaId && clienteId) {
       throw new BadRequestException(
         'A comanda não pode ser associada a uma mesa e a um cliente simultaneamente.',
@@ -81,6 +79,50 @@ export class ComandaService {
     }
     return comanda;
   }
+
+  // --- NOVO MÉTODO PÚBLICO ---
+  async findPublicOne(id: string) {
+    const comanda = await this.comandaRepository.findOne({
+      where: { id },
+      relations: [
+        'mesa',
+        'cliente',
+        'pedidos',
+        'pedidos.itens',
+        'pedidos.itens.produto',
+      ],
+    });
+
+    if (!comanda) {
+      throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
+    }
+
+    const totalComanda = comanda.pedidos.reduce((total, pedido) => {
+      return total + Number(pedido.total);
+    }, 0);
+
+    return {
+      id: comanda.id,
+      status: comanda.status,
+      mesa: comanda.mesa ? { numero: comanda.mesa.numero } : null,
+      cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
+      pedidos: comanda.pedidos.map((pedido) => ({
+        id: pedido.id,
+        status: pedido.status,
+        total: pedido.total,
+        itens: pedido.itens.map((item) => ({
+          quantidade: item.quantidade,
+          precoUnitario: item.precoUnitario,
+          produto: {
+            nome: item.produto.nome,
+            descricao: item.produto.descricao,
+          },
+        })),
+      })),
+      totalComanda,
+    };
+  }
+  // --- FIM DO NOVO MÉTODO ---
 
   async update(
     id: string,

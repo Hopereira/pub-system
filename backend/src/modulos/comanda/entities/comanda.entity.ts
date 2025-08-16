@@ -3,10 +3,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany, // Adicionado
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Mesa } from '../../mesa/entities/mesa.entity';
-import { Cliente } from '../../cliente/entities/cliente.entity'; // <-- Faremos este arquivo em seguida
+import { Cliente } from '../../cliente/entities/cliente.entity';
+import { Pedido } from '../../pedido/entities/pedido.entity'; // Adicionado
 
 export enum ComandaStatus {
   ABERTA = 'ABERTA',
@@ -33,4 +35,8 @@ export class Comanda {
   @ManyToOne(() => Cliente, { nullable: true })
   @JoinColumn({ name: 'clienteId' })
   cliente: Cliente;
+
+  // --- CORREÇÃO ADICIONADA AQUI ---
+  @OneToMany(() => Pedido, (pedido) => pedido.comanda)
+  pedidos: Pedido[];
 }
