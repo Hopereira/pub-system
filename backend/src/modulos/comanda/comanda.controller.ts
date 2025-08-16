@@ -16,11 +16,21 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('comandas')
 export class ComandaController {
   constructor(private readonly comandaService: ComandaService) {}
+
+  // Rota pública para o cliente (QR Code)
+  @Public()
+  @Get(':id/public')
+  findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.comandaService.findPublicOne(id);
+  }
+
+  // --- Rotas protegidas para funcionários ---
 
   @Post()
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
