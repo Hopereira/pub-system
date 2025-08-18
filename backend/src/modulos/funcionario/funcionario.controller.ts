@@ -18,7 +18,8 @@ import { Roles } from 'src/auth/decorators/roles.decorator'; // Importa a "placa
 import { Cargo } from './enums/cargo.enum'; // Importa os cargos
 
 // Usando os dois guardas para proteger TODAS as rotas deste controller
-@UseGuards(JwtAuthGuard, RolesGuard)
+
+@UseGuards(JwtAuthGuard, RolesGuard) 
 @Controller('funcionarios')
 export class FuncionarioController {
   constructor(private readonly funcionarioService: FuncionarioService) {}
