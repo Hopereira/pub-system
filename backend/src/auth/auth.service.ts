@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FuncionarioService } from 'src/modulos/funcionario/funcionario.service';
 import * as bcrypt from 'bcrypt';

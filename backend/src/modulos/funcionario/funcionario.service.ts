@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,9 +8,12 @@ import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
 import { UpdateFuncionarioDto } from './dto/update-funcionario.dto';
 import { Funcionario } from './entities/funcionario.entity';
 import { Cargo } from './enums/cargo.enum';
+import { NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class FuncionarioService implements OnModuleInit {
+  private readonly logger = new Logger(FuncionarioService.name);
+
   constructor(
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
@@ -21,7 +24,7 @@ export class FuncionarioService implements OnModuleInit {
     const contador = await this.funcionarioRepository.count();
 
     if (contador === 0) {
-      console.log('Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...');
+      this.logger.log('Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...');
 
       const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
       const senhaHash = await bcrypt.hash(senhaPlana, 10);
@@ -34,10 +37,10 @@ export class FuncionarioService implements OnModuleInit {
       });
 
       await this.funcionarioRepository.save(admin);
-      console.log('Usuário ADMIN padrão criado com sucesso!');
+      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
     }
   }
-
+  
   async create(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
@@ -56,7 +59,11 @@ export class FuncionarioService implements OnModuleInit {
   }
 
   findByEmail(email: string): Promise<Funcionario> {
-    return this.funcionarioRepository.findOne({ where: { email } });
+    return this.funcionarioRepository
+      .createQueryBuilder('funcionario')
+      .where('funcionario.email = :email', { email })
+      .addSelect('funcionario.senha')
+      .getOne();
   }
 
   async update(id: string, updateFuncionarioDto: UpdateFuncionarioDto): Promise<Funcionario> {
@@ -64,6 +71,11 @@ export class FuncionarioService implements OnModuleInit {
       id,
       ...updateFuncionarioDto,
     });
+
+    if (!funcionario) {
+      throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
+    }
+
     return this.funcionarioRepository.save(funcionario);
   }
 
