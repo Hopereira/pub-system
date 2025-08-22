@@ -23,8 +23,8 @@ export class Funcionario {
   })
   cargo: Cargo;
 
-  @BeforeInsert()
-  async hashPassword() {
-    this.senha = await bcrypt.hash(this.senha, 10);
-  }
+  //@BeforeInsert()
+  //async hashPassword() {
+   // this.senha = await bcrypt.hash(this.senha, 10);
+  //} --->>>>>  comentei para testes
 }
