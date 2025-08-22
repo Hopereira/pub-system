@@ -4,6 +4,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: build
     container_name: pub_system_backend
     ports:
       - "3000:3000"
@@ -17,6 +18,8 @@ services:
     # Esta é a forma correta de carregar todas as variáveis do .env
     env_file:
       - ./.env
+      # --- ADICIONE ESTA LINHA ---
+    command: npm run start:dev
 
   # --- Serviço do Banco de Dados PostgreSQL ---
   db:
