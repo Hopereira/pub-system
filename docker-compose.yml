@@ -4,7 +4,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: build
     container_name: pub_system_backend
     ports:
       - "3000:3000"
@@ -29,6 +28,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    shm_size: '1gb'
     networks:
       - pub_network
     # O container do Postgres também usará as variáveis do .env

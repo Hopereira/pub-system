@@ -9,5 +9,6 @@ import { AmbienteController } from './ambiente.controller';
   imports: [TypeOrmModule.forFeature([Ambiente])],
   controllers: [AmbienteController],
   providers: [AmbienteService],
+  exports: [TypeOrmModule],
 })
 export class AmbienteModule {}

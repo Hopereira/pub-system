@@ -8,9 +8,10 @@ import { ConfigModule } from '@nestjs/config'; // Importar
 @Module({
   imports: [
     TypeOrmModule.forFeature([Funcionario]),
-    ConfigModule, // Adicionar
-  ],
+    ConfigModule, 
+],
   controllers: [FuncionarioController],
   providers: [FuncionarioService],
+  exports: [FuncionarioService],
 })
 export class FuncionarioModule {}
