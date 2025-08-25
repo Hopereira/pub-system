@@ -6,38 +6,53 @@ import {
   Put,
   Param,
   ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { EmpresaService } from './empresa.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 
-// @Controller('empresa') define que a URL para este atendente começa com /empresa
+// --- IMPORTAÇÕES DE SEGURANÇA E SWAGGER ---
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+
+@ApiTags('Empresa')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('empresa')
 export class EmpresaController {
   constructor(private readonly empresaService: EmpresaService) {}
 
-  // @Post() diz: "Quando chegar um pedido POST para /empresa, execute este método"
   @Post()
+  @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Cria os dados da empresa (apenas um registro permitido)' })
+  @ApiResponse({ status: 201, description: 'Dados da empresa criados com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({ status: 409, description: 'Já existem dados de uma empresa cadastrados.' })
   create(@Body() createEmpresaDto: CreateEmpresaDto) {
-    // Pede ao Service para criar a empresa com os dados recebidos
     return this.empresaService.create(createEmpresaDto);
   }
 
-  // @Get() diz: "Quando chegar um pedido GET para /empresa, execute este método"
   @Get()
+  @ApiOperation({ summary: 'Busca os dados da empresa' })
+  @ApiResponse({ status: 200, description: 'Dados da empresa retornados com sucesso.' })
   find() {
-    // Pede ao Service para buscar a empresa
     return this.empresaService.find();
   }
 
-  // @Put(':id') diz: "Quando chegar um pedido PUT para /empresa/ALGUM_ID, execute este método"
   @Put(':id')
+  @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Atualiza os dados da empresa' })
+  @ApiResponse({ status: 200, description: 'Dados da empresa atualizados com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({ status: 404, description: 'Registro da empresa não encontrado.' })
   update(
-    // Pega o ID da URL e os dados do corpo da requisição
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateEmpresaDto: UpdateEmpresaDto,
   ) {
-    // Pede ao Service para atualizar a empresa
     return this.empresaService.update(id, updateEmpresaDto);
   }
 }
