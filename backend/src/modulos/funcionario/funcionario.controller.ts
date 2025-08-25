@@ -6,48 +6,66 @@ import {
   Patch,
   Param,
   Delete,
-  UseGuards, // Importa o UseGuards
+  UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { FuncionarioService } from './funcionario.service';
 import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
 import { UpdateFuncionarioDto } from './dto/update-funcionario.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard'; // Importa o guarda do JWT
-import { RolesGuard } from 'src/auth/guards/roles.guard'; // Importa o guarda de Cargos
-import { Roles } from 'src/auth/decorators/roles.decorator'; // Importa a "placa" de Cargos
-import { Cargo } from './enums/cargo.enum'; // Importa os cargos
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Cargo } from './enums/cargo.enum';
 
-// Usando os dois guardas para proteger TODAS as rotas deste controller
+// --- DECORADORES DO SWAGGER ---
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
-@UseGuards(JwtAuthGuard, RolesGuard) 
+@ApiTags('Funcionários') // Agrupa todos os endpoints sob a tag "Funcionários"
+@ApiBearerAuth() // Indica que todos os endpoints aqui precisam de um token de autenticação
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('funcionarios')
 export class FuncionarioController {
   constructor(private readonly funcionarioService: FuncionarioService) {}
 
-  // Apenas ADMINS podem criar novos funcionários
+  // --- CRIAR FUNCIONÁRIO ---
   @Post()
   @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Cria um novo funcionário no sistema' })
+  @ApiResponse({ status: 201, description: 'Funcionário criado com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({ status: 409, description: 'Conflito. O e-mail ou CPF já existe.'})
   create(@Body() createFuncionarioDto: CreateFuncionarioDto) {
     return this.funcionarioService.create(createFuncionarioDto);
   }
 
-  // Apenas ADMINS podem ver a lista de todos os funcionários
+  // --- LISTAR TODOS OS FUNCIONÁRIOS ---
   @Get()
   @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Lista todos os funcionários cadastrados' })
+  @ApiResponse({ status: 200, description: 'Lista de funcionários retornada com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
   findAll() {
     return this.funcionarioService.findAll();
   }
 
-  // Apenas ADMINS podem ver um funcionário específico
+  // --- BUSCAR UM FUNCIONÁRIO POR ID ---
   @Get(':id')
   @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Busca um único funcionário pelo seu ID' })
+  @ApiResponse({ status: 200, description: 'Dados do funcionário retornados com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.funcionarioService.findOne(id);
   }
 
-  // Apenas ADMINS podem atualizar um funcionário
-  @Patch(':id') // Usando PATCH para atualizações parciais
+  // --- ATUALIZAR UM FUNCIONÁRIO ---
+  @Patch(':id')
   @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Atualiza os dados de um funcionário específico' })
+  @ApiResponse({ status: 200, description: 'Funcionário atualizado com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateFuncionarioDto: UpdateFuncionarioDto,
@@ -55,9 +73,13 @@ export class FuncionarioController {
     return this.funcionarioService.update(id, updateFuncionarioDto);
   }
 
-  // Apenas ADMINS podem remover um funcionário
+  // --- REMOVER UM FUNCIONÁRIO ---
   @Delete(':id')
   @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Remove um funcionário do sistema' })
+  @ApiResponse({ status: 200, description: 'Funcionário removido com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.funcionarioService.remove(id);
   }
