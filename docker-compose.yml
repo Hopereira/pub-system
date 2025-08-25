@@ -17,6 +17,8 @@ services:
     # Esta é a forma correta de carregar todas as variáveis do .env
     env_file:
       - ./.env
+      # --- ADICIONE ESTA LINHA ---
+    command: npm run start:dev
 
   # --- Serviço do Banco de Dados PostgreSQL ---
   db:
@@ -26,6 +28,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    shm_size: '1gb'
     networks:
       - pub_network
     # O container do Postgres também usará as variáveis do .env

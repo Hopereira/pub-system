@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -6,54 +7,66 @@ import * as bcrypt from 'bcrypt';
 import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
 import { UpdateFuncionarioDto } from './dto/update-funcionario.dto';
 import { Funcionario } from './entities/funcionario.entity';
-
-// Criamos um tipo para representar o funcionário sem a senha, para ser mais fácil de usar
-export type FuncionarioSemSenha = Omit<Funcionario, 'senha' | 'hashPassword'>;
+import { Cargo } from './enums/cargo.enum';
+import { NotFoundException } from '@nestjs/common';
 
 @Injectable()
-export class FuncionarioService {
+export class FuncionarioService implements OnModuleInit {
+  private readonly logger = new Logger(FuncionarioService.name);
+
   constructor(
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
+    private readonly configService: ConfigService,
   ) {}
 
-  // Função auxiliar para remover a senha do objeto
-  private toResponseObject(funcionario: Funcionario): FuncionarioSemSenha {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { senha, hashPassword, ...result } = funcionario;
-    return result;
-  }
+  async onModuleInit() {
+    const contador = await this.funcionarioRepository.count();
 
-  async create(createFuncionarioDto: CreateFuncionarioDto): Promise<FuncionarioSemSenha> {
-    const funcionario = this.funcionarioRepository.create(createFuncionarioDto);
-    const savedFuncionario = await this.funcionarioRepository.save(funcionario);
-    return this.toResponseObject(savedFuncionario);
-  }
+    if (contador === 0) {
+      this.logger.log('Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...');
 
-  async findAll(): Promise<FuncionarioSemSenha[]> {
-    const funcionarios = await this.funcionarioRepository.find();
-    return funcionarios.map(f => this.toResponseObject(f));
-  }
+      const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
+      const senhaHash = await bcrypt.hash(senhaPlana, 10);
 
-  async findOne(id: string): Promise<FuncionarioSemSenha> {
-    const funcionario = await this.funcionarioRepository.findOne({ where: { id } });
+      const admin = this.funcionarioRepository.create({
+        nome: 'Administrador Padrão',
+        email: this.configService.get<string>('ADMIN_EMAIL'),
+        senha: senhaHash,
+        cargo: Cargo.ADMIN,
+      });
 
-    if (!funcionario) {
-      throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
+      await this.funcionarioRepository.save(admin);
+      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
     }
-    return this.toResponseObject(funcionario);
+  }
+  
+  async create(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
+    const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
+    const novoFuncionario = this.funcionarioRepository.create({
+      ...createFuncionarioDto,
+      senha: senhaHash,
+    });
+    return this.funcionarioRepository.save(novoFuncionario);
   }
 
-  // Este método continua o mesmo, pois precisa da senha para a validação do login
-  async findByEmail(email: string): Promise<Funcionario | undefined> {
-    return this.funcionarioRepository.findOne({ where: { email } });
+  findAll(): Promise<Funcionario[]> {
+    return this.funcionarioRepository.find();
   }
 
-  async update(id: string, updateFuncionarioDto: UpdateFuncionarioDto): Promise<FuncionarioSemSenha> {
-    if (updateFuncionarioDto.senha) {
-      updateFuncionarioDto.senha = await bcrypt.hash(updateFuncionarioDto.senha, 10);
-    }
+  findOne(id: string): Promise<Funcionario> {
+    return this.funcionarioRepository.findOne({ where: { id } });
+  }
 
+  findByEmail(email: string): Promise<Funcionario> {
+    return this.funcionarioRepository
+      .createQueryBuilder('funcionario')
+      .where('funcionario.email = :email', { email })
+      .addSelect('funcionario.senha')
+      .getOne();
+  }
+
+  async update(id: string, updateFuncionarioDto: UpdateFuncionarioDto): Promise<Funcionario> {
     const funcionario = await this.funcionarioRepository.preload({
       id,
       ...updateFuncionarioDto,
@@ -63,16 +76,11 @@ export class FuncionarioService {
       throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
     }
 
-    const updatedFuncionario = await this.funcionarioRepository.save(funcionario);
-    return this.toResponseObject(updatedFuncionario);
+    return this.funcionarioRepository.save(funcionario);
   }
 
   async remove(id: string): Promise<void> {
-    // CORREÇÃO: Buscamos o funcionário COMPLETO antes de remover.
-    const funcionario = await this.funcionarioRepository.findOne({ where: { id } });
-    if (!funcionario) {
-      throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
-    }
+    const funcionario = await this.findOne(id);
     await this.funcionarioRepository.remove(funcionario);
   }
 }

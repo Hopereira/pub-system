@@ -11,6 +11,7 @@ import { MesaModule } from './modulos/mesa/mesa.module';
 import { ComandaModule } from './modulos/comanda/comanda.module';
 import { ClienteModule } from './modulos/cliente/cliente.module';
 import { PedidoModule } from './modulos/pedido/pedido.module';
+import { ProdutoModule } from './modulos/produto/produto.module'; // <-- 1. ADICIONE A IMPORTAÇÃO AQUI
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { PedidoModule } from './modulos/pedido/pedido.module';
     ComandaModule,
     ClienteModule,
     PedidoModule,
+    ProdutoModule, // <-- 2. ADICIONE O MÓDULO NA LISTA AQUI
   ],
   controllers: [],
   providers: [],

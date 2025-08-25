@@ -1,28 +1,19 @@
-# ---- Base Stage ----
-# Usa a imagem oficial do Node.js v18 como base.
-# CORREÇÃO AQUI: Especificando a versão 18.17.0 para evitar o bug do 'crypto'.
-FROM node:18.17.0-alpine AS base
+# Dockerfile de Desenvolvimento
+
+# 1. Define a imagem base com a versão correta do Node.js
+FROM node:20-alpine
+
+# 2. Define o diretório de trabalho dentro do contêiner
 WORKDIR /usr/src/app
 
-# ---- Dependencies Stage ----
-# Instala apenas as dependências. Essa camada raramente muda.
-FROM base AS dependencies
+# 3. Copia os arquivos de definição de pacotes
 COPY package*.json ./
+
+# 4. Instala todas as dependências (incluindo as de desenvolvimento)
 RUN npm install
 
-# ---- Build Stage ----
-# Copia as dependências já instaladas e constrói a aplicação.
-FROM dependencies AS build
+# 5. Copia todo o resto do código-fonte
 COPY . .
-RUN npm run build
 
-# ---- Production Stage ----
-# Prepara a imagem final para produção, apenas com o necessário.
-FROM base AS production
-COPY --from=build /usr/src/app/dist ./dist
-COPY package*.json ./
-# Instala SOMENTE as dependências de produção.
-RUN npm ci --omit=dev
-
-# Comando para iniciar a aplicação.
-CMD ["node", "dist/main"]
+# 6. Comando para iniciar a aplicação em modo de desenvolvimento (com watch mode)
+CMD ["npm", "run", "start:dev"]
