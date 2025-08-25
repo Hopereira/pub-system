@@ -14,6 +14,7 @@ async function bootstrap() {
     .setTitle('Pub System API')
     .setDescription('Documentação completa da API para o sistema de gestão de pubs.')
     .setVersion('1.0')
+    .addBearerAuth()    
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
