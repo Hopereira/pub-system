@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: pub_system_backend
     ports:
-      - "3000:3000"
+      - "3333:3000" # <-- ATUALIZADO: Mudei para a porta 3333 para não conflitar com o front-end
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
@@ -14,10 +14,8 @@ services:
       - db
     networks:
       - pub_network
-    # Esta é a forma correta de carregar todas as variáveis do .env
     env_file:
       - ./.env
-      # --- ADICIONE ESTA LINHA ---
     command: npm run start:dev
 
   # --- Serviço do Banco de Dados PostgreSQL ---
@@ -31,7 +29,6 @@ services:
     shm_size: '1gb'
     networks:
       - pub_network
-    # O container do Postgres também usará as variáveis do .env
     env_file:
       - ./.env
 
@@ -45,9 +42,25 @@ services:
       - db
     networks:
       - pub_network
-    # O pgAdmin também usará as variáveis do .env
     env_file:
       - ./.env
+
+  # --- (NOVO) Serviço do Front-end (nossa aplicação Next.js) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pub_system_frontend
+    ports:
+      - "3000:3000" # <-- O front-end agora usa a porta 3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - pub_network
+    # Linhas necessárias para o hot-reload do Next.js funcionar corretamente
+    stdin_open: true
+    tty: true
 
 # --- Declaração das redes e volumes ---
 networks:
