@@ -1,20 +1,33 @@
-# Usar uma imagem base do Node.js na versão LTS (Long Term Support)
-FROM node:20-alpine
+# 1. Usar uma imagem baseada em Debian (Node 20) para máxima compatibilidade
+FROM node:20
 
-# Definir o diretório de trabalho dentro do contêiner
+# --- ADICIONE ESTA SEÇÃO ---
+# 2. Instala as dependências do sistema necessárias para o Cypress rodar no Debian
+RUN apt-get update && apt-get install -y \
+    libgtk2.0-0 \
+    libgtk-3-0 \
+    libgbm-dev \
+    libnotify-dev \
+    libgconf-2-4 \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    libxtst6 \
+    xauth \
+    xvfb
+# -------------------------
+
+# 3. Definir o diretório de trabalho
 WORKDIR /app
 
-# Copiar os arquivos de gerenciamento de pacotes
+# 4. Copiar os arquivos de definição de pacotes
 COPY package*.json ./
 
-# Instalar as dependências do projeto
+# 5. Instalar todas as dependências do projeto
 RUN npm install
 
-# Copiar o restante do código da aplicação para o diretório de trabalho
+# 6. Copiar todo o resto do código-fonte
 COPY . .
 
-# Expor a porta que o Next.js usa por padrão
-EXPOSE 3000
-
-# O comando para iniciar a aplicação em modo de desenvolvimento
+# 7. Comando para iniciar a aplicação em modo de desenvolvimento
 CMD ["npm", "run", "dev"]
