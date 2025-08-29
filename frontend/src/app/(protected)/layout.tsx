@@ -1,10 +1,17 @@
-import AuthGuard from "@/components/auth/AuthGuard";
-import { ReactNode } from "react";
+// src/app/(protected)/layout.tsx (Versão Final)
+import { AuthGuard } from '@/components/auth/AuthGuard';
+import { DashboardLayout } from '@/layouts/DashboardLayout';
 
-export default function ProtectedLayout({ children }: { children: ReactNode }) {
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <AuthGuard>
-      {children}
+      <DashboardLayout>
+        {children}
+      </DashboardLayout>
     </AuthGuard>
   );
 }
