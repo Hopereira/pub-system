@@ -1,26 +1,29 @@
+// src/services/authService.ts (Com depuração)
+
 import axios from 'axios';
 
-// A URL FINAL E CORRETA:
-const API_URL = 'http://localhost:3333';
+const API_URL = 'http://localhost:3000';
 
-/**
- * Função para autenticar um usuário.
- * @param credentials - Um objeto contendo o email e a senha do usuário.
- * @returns Os dados retornados pela API em caso de sucesso (incluindo o token).
- * @throws Lança um erro se a autenticação falhar.
- */
-export const login = async (credentials: any) => {
+export const login = async (email: string, senha: string) => {
   try {
-    // Faz uma requisição POST para o endpoint de login da API.
-    const response = await axios.post(`${API_URL}/auth/login`, credentials);
+    // A LINHA MÁGICA PARA DEPURAÇÃO:
+    console.log('Enviando para a API:', { email, senha });
 
-    // Retorna os dados da resposta (ex: { access_token: '...' }).
+    const response = await axios.post(`${API_URL}/auth/login`, {
+      email,
+      senha,
+    });
+
     return response.data;
-  } catch (error) {
-    // Se houver um erro na requisição, o axios lança uma exceção.
-    console.error('Falha na autenticação:', error);
-
-    // Lançamos o erro novamente para que o componente saiba que algo deu errado.
-    throw error;
+  } catch (error: any) {
+    console.error('Falha na autenticação:', error.response?.data || error.message);
+    if (error.response) {
+        // Converte a resposta de erro (que pode ser um array) para uma string
+        const errorMessage = Array.isArray(error.response.data.message)
+          ? error.response.data.message.join(',')
+          : error.response.data.message;
+        throw new Error(errorMessage || 'Credenciais inválidas');
+    }
+    throw new Error('Não foi possível conectar ao servidor.');
   }
 };

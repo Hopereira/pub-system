@@ -1,29 +1,25 @@
-"use client";
+'use client';
 
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, ReactNode } from "react";
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
-export default function AuthGuard({ children }: { children: ReactNode }) {
-  const { authData, isLoading } = useAuth();
+export function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) {
-      return;
+    // Se não estiver a carregar e não houver usuário, redireciona para o login
+    if (!isLoading && !user) {
+      router.push('/');
     }
-    if (!authData) {
-      router.push("/login");
-    }
-  }, [isLoading, authData, router]);
+  }, [user, isLoading, router]);
 
-  if (isLoading || !authData) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>A verificar autenticação...</p>
-      </div>
-    );
+  // Enquanto carrega os dados do usuário, não mostra nada para evitar "piscar" a tela
+  if (isLoading || !user) {
+    return null; // Ou um componente de "Loading..."
   }
 
+  // Se estiver tudo certo (carregado e com usuário), mostra o conteúdo da página
   return <>{children}</>;
 }

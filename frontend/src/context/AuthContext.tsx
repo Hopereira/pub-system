@@ -1,26 +1,14 @@
-"use client";
+'use client';
 
-import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { jwtDecode } from "jwt-decode"; // 1. Importar a nova biblioteca
-import { login as apiLogin } from "@/services/authService";
-
-// --- Tipagem para os dados do usuário dentro do token ---
-interface User {
-  email: string;
-  cargo: string; // O cargo do funcionário (ex: "ADMIN", "GARCOM")
-  // ... outras informações do token
-}
-
-// --- Tipagem para os dados do nosso contexto ---
-interface AuthData {
-  token: string;
-  user: User; // Agora guardamos o objeto do usuário
-}
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { login as apiLogin } from '@/services/authService';
+import { LoginCredentials, User } from '@/types/auth';
+import { jwtDecode } from 'jwt-decode';
 
 interface AuthContextType {
-  authData: AuthData | null;
-  login: (credentials: any) => Promise<void>; // A função login agora fará o redirect
+  user: User | null;
+  token: string | null;
+  login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -28,54 +16,43 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [authData, setAuthData] = useState<AuthData | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter(); // Usamos o router aqui dentro agora
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("authToken");
-    if (storedToken) {
-      try {
-        const user = jwtDecode<User>(storedToken); // 2. Decodificar o token ao carregar
-        setAuthData({ token: storedToken, user });
-      } catch (error) {
-        console.error("Token inválido no localStorage:", error);
-        localStorage.removeItem("authToken");
+    try {
+      const storedToken = localStorage.getItem('authToken');
+      if (storedToken) {
+        const decodedUser: User = jwtDecode(storedToken);
+        setUser(decodedUser);
+        setToken(storedToken);
       }
+    } catch (error) {
+      console.error("Failed to decode token from localStorage", error);
+      localStorage.removeItem('authToken');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  const login = async (credentials: any) => {
-    const data = await apiLogin(credentials);
-    const token = data.access_token;
-    const user = jwtDecode<User>(token); // 3. Decodificar o token após o login
+  const login = async ({ email, senha }: LoginCredentials) => {
+    const { access_token } = await apiLogin(email, senha);
+    const decodedUser: User = jwtDecode(access_token);
 
-    setAuthData({ token, user });
-    localStorage.setItem("authToken", token);
-
-    // 4. Lógica de redirecionamento baseada no cargo
-    switch (user.cargo) {
-      case "ADMIN":
-        router.push("/dashboard");
-        break;
-      case "GARCOM":
-        router.push("/mesas"); // Futura página de mesas
-        break;
-      default:
-        router.push("/"); // Página padrão para outros cargos
-        break;
-    }
+    localStorage.setItem('authToken', access_token);
+    setUser(decodedUser);
+    setToken(access_token);
   };
 
   const logout = () => {
-    setAuthData(null);
-    localStorage.removeItem("authToken");
-    router.push("/login"); // Garante que o usuário vá para o login ao sair
+    localStorage.removeItem('authToken');
+    setUser(null);
+    setToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ authData, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -84,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

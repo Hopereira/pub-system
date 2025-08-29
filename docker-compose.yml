@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: pub_system_backend
     ports:
-      - "3333:3000" # <-- ATUALIZADO: Mudei para a porta 3333 para não conflitar com o front-end
+      - "3000:3000" # <-- ATUALIZADO: Mudei para a porta 3333 para não conflitar com o front-end
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
