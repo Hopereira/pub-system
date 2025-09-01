@@ -30,3 +30,7 @@ export const updateAmbiente = async (id: string, data: UpdateAmbienteDto): Promi
   const response = await api.put<AmbienteData>(`/ambientes/${id}`, data);
   return response.data;
 };
+
+export const deleteAmbiente = async (id: string): Promise<void> => {
+  await api.delete(`/ambientes/${id}`);
+};
