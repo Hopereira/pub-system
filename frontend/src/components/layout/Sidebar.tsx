@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 // ALTERADO: Adicionamos o ícone 'Settings'
-import { Home, Users, UtensilsCrossed, Beer, ClipboardList, BarChart2, Settings } from 'lucide-react';
+import { Home, Users, UtensilsCrossed, Beer, ClipboardList, BarChart2, Settings, LayoutGrid } from 'lucide-react';
 import React from 'react';
 
 const navLinks = [
@@ -17,6 +17,7 @@ const navLinks = [
   { href: '/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
   // NOVO: Adicionamos o link para a página da Empresa
   { href: '/empresa', label: 'Empresa', icon: Settings, roles: ['ADMIN'] },
+  { href: '/ambientes', label: 'Ambientes', icon: LayoutGrid, roles: ['ADMIN'] },
   { href: '/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];
 
