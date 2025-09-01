@@ -40,7 +40,7 @@ export class EmpresaController {
   @ApiOperation({ summary: 'Busca os dados da empresa' })
   @ApiResponse({ status: 200, description: 'Dados da empresa retornados com sucesso.' })
   find() {
-    return this.empresaService.find();
+    return this.empresaService.findOne();
   }
 
   @Put(':id')
