@@ -12,11 +12,15 @@ import { Terminal } from 'lucide-react';
 import { Produto } from '@/types/produto';
 import { getProdutos } from '@/services/produtoService';
 import ProdutosTable from './ProdutosTable';
+import ProdutoFormDialog from './ProdutoFormDialog'; // NOVO: Importamos o formulário
 
 export default function ProdutoPageClient() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // NOVO: Estado para controlar a visibilidade do modal
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -33,6 +37,12 @@ export default function ProdutoPageClient() {
     fetchProdutos();
   }, []);
 
+  // NOVO: Handler para quando um produto é criado com sucesso
+  const handleCreateSuccess = (novoProduto: Produto) => {
+    setProdutos(currentProdutos => [novoProduto, ...currentProdutos]);
+    setIsDialogOpen(false); // Fecha o modal
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -42,7 +52,6 @@ export default function ProdutoPageClient() {
         </div>
       );
     }
-
     if (error) {
       return (
         <Alert variant="destructive">
@@ -52,7 +61,6 @@ export default function ProdutoPageClient() {
         </Alert>
       );
     }
-    
     return <ProdutosTable produtos={produtos} />;
   };
 
@@ -65,12 +73,20 @@ export default function ProdutoPageClient() {
             Adicione, edite e remova os produtos do seu estabelecimento.
           </p>
         </div>
-        <Button>
+        {/* NOVO: O botão agora abre o modal */}
+        <Button onClick={() => setIsDialogOpen(true)}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Adicionar Produto
         </Button>
       </div>
       {renderContent()}
+
+      {/* NOVO: Renderizamos nosso formulário */}
+      <ProdutoFormDialog 
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSuccess={handleCreateSuccess}
+      />
     </div>
   );
 }
