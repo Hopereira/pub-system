@@ -21,18 +21,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea'; // Usaremos um Textarea para a descrição
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { Produto } from '@/types/produto';
-import { CreateProdutoDto } from '@/types/produto.dto';
-import { createProduto } from '@/services/produtoService';
+import { CreateProdutoDto, UpdateProdutoDto } from '@/types/produto.dto';
+import { createProduto, updateProduto } from '@/services/produtoService';
 import { getAmbientes, AmbienteData } from '@/services/ambienteService';
 
 interface ProdutoFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (novoProduto: Produto) => void;
+  onSuccess: (produto: Produto) => void;
+  produtoToEdit?: Produto | null; // NOVO: Prop para receber o produto a ser editado
 }
 
 const initialFormData = {
@@ -43,14 +44,17 @@ const initialFormData = {
     ambienteId: ''
 };
 
-export default function ProdutoFormDialog({ open, onOpenChange, onSuccess }: ProdutoFormDialogProps) {
-  const [formData, setFormData] = useState(initialFormData);
+export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produtoToEdit }: ProdutoFormDialogProps) {
+  const [formData, setFormData] = useState<Partial<CreateProdutoDto>>(initialFormData);
   const [ambientes, setAmbientes] = useState<AmbienteData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isEditMode = !!produtoToEdit;
+
   useEffect(() => {
     if (open) {
+      setError(null);
       const fetchAmbientes = async () => {
         try {
           const data = await getAmbientes();
@@ -60,14 +64,24 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess }: Pro
         }
       };
       fetchAmbientes();
-      setFormData(initialFormData); // Limpa o formulário ao abrir
-      setError(null);
+
+      if (isEditMode && produtoToEdit) {
+        setFormData({
+            nome: produtoToEdit.nome,
+            descricao: produtoToEdit.descricao,
+            preco: produtoToEdit.preco,
+            categoria: produtoToEdit.categoria,
+            ambienteId: produtoToEdit.ambiente.id
+        });
+      } else {
+        setFormData(initialFormData);
+      }
     }
-  }, [open]);
+  }, [open, isEditMode, produtoToEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'preco' ? Number(value) : value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'preco' ? (value === '' ? '' : Number(value)) : value }));
   };
   
   const handleSelectChange = (value: string) => {
@@ -77,23 +91,31 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess }: Pro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nome || !formData.preco || !formData.categoria || !formData.ambienteId) {
-        setError("Todos os campos são obrigatórios.");
+        setError("Todos os campos, exceto descrição, são obrigatórios.");
         return;
     }
 
     setIsSubmitting(true);
     setError(null);
 
-    const produtoData: CreateProdutoDto = {
-        ...formData,
-        preco: Number(formData.preco)
-    };
-
     try {
-      const novoProduto = await createProduto(produtoData);
-      onSuccess(novoProduto);
+      let result: Produto;
+      if (isEditMode && produtoToEdit) {
+        const dataToUpdate: UpdateProdutoDto = {
+            ...formData,
+            preco: Number(formData.preco)
+        };
+        result = await updateProduto(produtoToEdit.id, dataToUpdate);
+      } else {
+        const dataToCreate: CreateProdutoDto = {
+            ...(formData as CreateProdutoDto),
+            preco: Number(formData.preco)
+        };
+        result = await createProduto(dataToCreate);
+      }
+      onSuccess(result);
     } catch (err: any) {
-      const apiError = err.response?.data?.message || 'Falha ao criar o produto.';
+      const apiError = err.response?.data?.message || `Falha ao ${isEditMode ? 'atualizar' : 'criar'} o produto.`;
       setError(Array.isArray(apiError) ? apiError.join(', ') : apiError);
     } finally {
       setIsSubmitting(false);
@@ -105,9 +127,9 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess }: Pro
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Produto</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Editar Produto' : 'Adicionar Novo Produto'}</DialogTitle>
             <DialogDescription>
-              Preencha os dados do item para adicioná-lo ao cardápio.
+              {isEditMode ? 'Altere os dados do item do cardápio.' : 'Preencha os dados do item para adicioná-lo ao cardápio.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -148,7 +170,7 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess }: Pro
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Salvando...' : 'Salvar Produto'}
+              {isSubmitting ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
         </form>

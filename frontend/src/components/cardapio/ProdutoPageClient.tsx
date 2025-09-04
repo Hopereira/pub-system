@@ -12,15 +12,16 @@ import { Terminal } from 'lucide-react';
 import { Produto } from '@/types/produto';
 import { getProdutos } from '@/services/produtoService';
 import ProdutosTable from './ProdutosTable';
-import ProdutoFormDialog from './ProdutoFormDialog'; // NOVO: Importamos o formulário
+import ProdutoFormDialog from './ProdutoFormDialog';
 
 export default function ProdutoPageClient() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // NOVO: Estado para controlar a visibilidade do modal
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // NOVO: Estado para guardar o produto que será editado
+  const [produtoToEdit, setProdutoToEdit] = useState<Produto | null>(null);
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -37,10 +38,29 @@ export default function ProdutoPageClient() {
     fetchProdutos();
   }, []);
 
-  // NOVO: Handler para quando um produto é criado com sucesso
-  const handleCreateSuccess = (novoProduto: Produto) => {
-    setProdutos(currentProdutos => [novoProduto, ...currentProdutos]);
-    setIsDialogOpen(false); // Fecha o modal
+  const handleOpenCreateDialog = () => {
+    setProdutoToEdit(null); // Garante que não há dados de edição
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (produto: Produto) => {
+    setProdutoToEdit(produto);
+    setIsDialogOpen(true);
+  };
+
+  // Handler de sucesso genérico que trata tanto criação quanto edição
+  const handleSuccess = (resultProduto: Produto) => {
+    if (produtoToEdit) {
+      // Se estávamos editando, atualizamos o item na lista
+      setProdutos(current => 
+        current.map(p => (p.id === resultProduto.id ? resultProduto : p))
+      );
+    } else {
+      // Se estávamos criando, adicionamos no topo da lista
+      setProdutos(current => [resultProduto, ...current]);
+    }
+    setIsDialogOpen(false);
+    setProdutoToEdit(null);
   };
 
   const renderContent = () => {
@@ -61,7 +81,8 @@ export default function ProdutoPageClient() {
         </Alert>
       );
     }
-    return <ProdutosTable produtos={produtos} />;
+    // Passamos a nova função onEdit para a tabela
+    return <ProdutosTable produtos={produtos} onEdit={handleOpenEditDialog} />;
   };
 
   return (
@@ -73,19 +94,19 @@ export default function ProdutoPageClient() {
             Adicione, edite e remova os produtos do seu estabelecimento.
           </p>
         </div>
-        {/* NOVO: O botão agora abre o modal */}
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={handleOpenCreateDialog}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Adicionar Produto
         </Button>
       </div>
+
       {renderContent()}
 
-      {/* NOVO: Renderizamos nosso formulário */}
       <ProdutoFormDialog 
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        onSuccess={handleCreateSuccess}
+        onSuccess={handleSuccess}
+        produtoToEdit={produtoToEdit}
       />
     </div>
   );

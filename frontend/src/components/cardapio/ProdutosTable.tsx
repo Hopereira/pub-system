@@ -18,9 +18,10 @@ import { Badge } from '@/components/ui/badge';
 
 interface ProdutosTableProps {
   produtos: Produto[];
+  onEdit: (produto: Produto) => void; // NOVO: Prop para edição
 }
 
-export default function ProdutosTable({ produtos }: ProdutosTableProps) {
+export default function ProdutosTable({ produtos, onEdit }: ProdutosTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -52,7 +53,8 @@ export default function ProdutosTable({ produtos }: ProdutosTableProps) {
                   <Badge variant="secondary">{produto.ambiente?.nome ?? 'N/A'}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    <Button variant="outline" size="icon" className="mr-2">
+                    {/* ATUALIZADO: Botão de editar agora funciona */}
+                    <Button variant="outline" size="icon" className="mr-2" onClick={() => onEdit(produto)}>
                         <Pencil className="h-4 w-4" />
                     </Button>
                     <Button variant="destructive" size="icon">
