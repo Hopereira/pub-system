@@ -8,9 +8,19 @@ import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 import { Produto } from '@/types/produto';
-import { getProdutos } from '@/services/produtoService';
+import { getProdutos, deleteProduto } from '@/services/produtoService';
 import ProdutosTable from './ProdutosTable';
 import ProdutoFormDialog from './ProdutoFormDialog';
 
@@ -19,9 +29,12 @@ export default function ProdutoPageClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // NOVO: Estado para guardar o produto que será editado
   const [produtoToEdit, setProdutoToEdit] = useState<Produto | null>(null);
+
+  // --- NOVO: Estados para o diálogo de confirmação de exclusão ---
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
+
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -39,7 +52,7 @@ export default function ProdutoPageClient() {
   }, []);
 
   const handleOpenCreateDialog = () => {
-    setProdutoToEdit(null); // Garante que não há dados de edição
+    setProdutoToEdit(null);
     setIsDialogOpen(true);
   };
 
@@ -48,15 +61,32 @@ export default function ProdutoPageClient() {
     setIsDialogOpen(true);
   };
 
-  // Handler de sucesso genérico que trata tanto criação quanto edição
+  // --- NOVO: Funções para controlar a exclusão ---
+  const handleOpenDeleteDialog = (produto: Produto) => {
+    setProdutoToDelete(produto);
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!produtoToDelete) return;
+
+    try {
+      await deleteProduto(produtoToDelete.id);
+      setProdutos(current => current.filter(p => p.id !== produtoToDelete.id));
+    } catch (err) {
+      setError(`Erro ao excluir o produto ${produtoToDelete.nome}.`);
+    } finally {
+      setIsConfirmOpen(false);
+      setProdutoToDelete(null);
+    }
+  };
+
   const handleSuccess = (resultProduto: Produto) => {
     if (produtoToEdit) {
-      // Se estávamos editando, atualizamos o item na lista
-      setProdutos(current => 
+      setProdutos(current =>
         current.map(p => (p.id === resultProduto.id ? resultProduto : p))
       );
     } else {
-      // Se estávamos criando, adicionamos no topo da lista
       setProdutos(current => [resultProduto, ...current]);
     }
     setIsDialogOpen(false);
@@ -81,8 +111,8 @@ export default function ProdutoPageClient() {
         </Alert>
       );
     }
-    // Passamos a nova função onEdit para a tabela
-    return <ProdutosTable produtos={produtos} onEdit={handleOpenEditDialog} />;
+    // Passamos a nova função onDelete para a tabela
+    return <ProdutosTable produtos={produtos} onEdit={handleOpenEditDialog} onDelete={handleOpenDeleteDialog} />;
   };
 
   return (
@@ -102,12 +132,30 @@ export default function ProdutoPageClient() {
 
       {renderContent()}
 
-      <ProdutoFormDialog 
+      <ProdutoFormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSuccess={handleSuccess}
         produtoToEdit={produtoToEdit}
       />
+
+      {/* --- NOVO: Diálogo de confirmação de exclusão --- */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto
+              <span className="font-bold"> {produtoToDelete?.nome}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProdutoToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Confirmar Exclusão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

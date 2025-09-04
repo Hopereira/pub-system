@@ -24,13 +24,22 @@ export const createProduto = async (produtoData: CreateProdutoDto): Promise<Prod
     }
 }
 
-// --- NOVO: Função para atualizar um produto existente ---
 export const updateProduto = async (id: string, produtoData: UpdateProdutoDto): Promise<Produto> => {
     try {
         const response = await api.patch<Produto>(`/produtos/${id}`, produtoData);
         return response.data;
     } catch (error) {
         console.error(`Erro ao atualizar produto ${id}:`, error);
+        throw error;
+    }
+}
+
+// --- NOVO: Função para deletar um produto ---
+export const deleteProduto = async (id: string): Promise<void> => {
+    try {
+        await api.delete(`/produtos/${id}`);
+    } catch (error) {
+        console.error(`Erro ao deletar produto ${id}:`, error);
         throw error;
     }
 }
