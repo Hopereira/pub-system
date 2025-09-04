@@ -1,4 +1,6 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+// Caminho: backend/src/modulos/funcionario/funcionario.service.ts
+
+import { Injectable, OnModuleInit, Logger, ConflictException } from '@nestjs/common'; // NOVO: Importamos a ConflictException
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -40,14 +42,25 @@ export class FuncionarioService implements OnModuleInit {
       this.logger.log('Usuário ADMIN padrão criado com sucesso!');
     }
   }
-  
+
   async create(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
       ...createFuncionarioDto,
       senha: senhaHash,
     });
-    return this.funcionarioRepository.save(novoFuncionario);
+
+    // --- REATORAÇÃO AQUI ---
+    try {
+      return await this.funcionarioRepository.save(novoFuncionario);
+    } catch (error) {
+      // Verificamos se o erro é de violação de constraint única (código do PostgreSQL: 23505)
+      if (error.code === '23505') {
+        throw new ConflictException('Este e-mail já está cadastrado.');
+      }
+      // Para qualquer outro erro de banco de dados, relançamos a exceção original
+      throw error;
+    }
   }
 
   findAll(): Promise<Funcionario[]> {
