@@ -1,16 +1,18 @@
 // Caminho: frontend/src/services/funcionarioService.ts
 
+import api from './api';
 import { Funcionario } from '@/types/funcionario';
-import  api  from './api';
 
-export const getAllFuncionarios = async (): Promise<Funcionario[]> => {
-  const response = await api.get<Funcionario[]>('/funcionarios');
-  return response.data;
-};
+// Por enquanto, teremos apenas a função para buscar todos os funcionários.
+// Adicionaremos as de criar, atualizar e deletar nos próximos passos.
 
-// NOVO: Adicione esta função
-// O tipo 'any' aqui é temporário, poderíamos criar um tipo específico para os dados de criação
-export const createFuncionario = async (data: any): Promise<Funcionario> => {
-  const response = await api.post<Funcionario>('/funcionarios', data);
-  return response.data;
+export const getFuncionarios = async (): Promise<Funcionario[]> => {
+  try {
+    const response = await api.get<Funcionario[]>('/funcionarios');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar funcionários:', error);
+    // Em uma aplicação real, poderíamos ter um sistema de notificação de erros mais robusto.
+    throw error;
+  }
 };
