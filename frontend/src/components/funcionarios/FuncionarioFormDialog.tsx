@@ -22,7 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Funcionario } from '@/types/funcionario';
-import { CreateFuncionarioDto } from '@/types/funcionario.dto';
+// ATUALIZADO: A importação agora vem do novo arquivo DTO
+import { CreateFuncionarioDto } from '@/types/funcionario.dto'; 
 import { createFuncionario } from '@/services/funcionarioService';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Terminal } from 'lucide-react';
@@ -71,12 +72,9 @@ export default function FuncionarioFormDialog({
       const newFuncionario = await createFuncionario(formData);
       onSuccess(newFuncionario); // Notifica o componente pai sobre o sucesso
     } catch (err: any) {
-      // --- REATORAÇÃO AQUI ---
-      // Primeiro, verificamos se o erro é de conflito (e-mail duplicado)
       if (err.response?.status === 409) {
         setError("Este e-mail já está cadastrado. Por favor, utilize outro.");
       } else {
-        // Se for outro tipo de erro, usamos a mensagem genérica da API como antes
         const apiError = err.response?.data?.message || 'Falha ao criar funcionário. Verifique os dados e tente novamente.';
         setError(Array.isArray(apiError) ? apiError.join(', ') : apiError);
       }

@@ -2,7 +2,8 @@
 
 import api from './api';
 import { Funcionario } from '@/types/funcionario';
-import { CreateFuncionarioDto } from '@/types/funcionario.dto'; // NOVO: Importamos o DTO
+// ATUALIZADO: A importação agora vem do novo arquivo DTO
+import { CreateFuncionarioDto } from '@/types/funcionario.dto'; 
 
 export const getFuncionarios = async (): Promise<Funcionario[]> => {
   try {
@@ -14,7 +15,6 @@ export const getFuncionarios = async (): Promise<Funcionario[]> => {
   }
 };
 
-// --- NOVO: Função para criar um novo funcionário ---
 export const createFuncionario = async (
   funcionarioData: CreateFuncionarioDto
 ): Promise<Funcionario> => {
@@ -23,7 +23,6 @@ export const createFuncionario = async (
     return response.data;
   } catch (error) {
     console.error('Erro ao criar funcionário:', error);
-    // Lançamos o erro para que o formulário possa capturá-lo e exibir uma mensagem
     throw error;
   }
 };

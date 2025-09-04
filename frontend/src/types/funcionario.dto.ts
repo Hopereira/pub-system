@@ -1,9 +1,19 @@
 // Caminho: frontend/src/types/funcionario.dto.ts
 
-// Este tipo define os dados que nosso formulário enviará para a API
+// Este tipo define os dados que nosso formulário enviará para a API ao CRIAR
 export interface CreateFuncionarioDto {
   nome: string;
   email: string;
-  senha?: string; // Senha é opcional na edição, mas obrigatória na criação
+  senha?: string; // Obrigatório na criação
   cargo: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHA';
+}
+
+// NOVO: Já vamos deixar pronto o DTO para ATUALIZAÇÃO.
+// Na atualização, todos os campos são opcionais.
+export interface UpdateFuncionarioDto {
+  nome?: string;
+  email?: string;
+  senha?: string;
+  cargo?: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHA';
+  ativo?: boolean;
 }
