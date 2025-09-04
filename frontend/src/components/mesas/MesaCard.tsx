@@ -1,38 +1,46 @@
-// src/components/mesas/MesaCard.tsx (versão atualizada)
+// Caminho: frontend/src/components/mesas/MesaCard.tsx
+
 'use client';
 
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import { Mesa } from '@/types/mesa';
-import { CheckCircle2, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mesa } from "@/types/mesa";
+import { UtensilsCrossed, CheckCircle2 } from "lucide-react";
+import clsx from 'clsx';
 
 interface MesaCardProps {
-  mesa: Mesa;
-  onClick: (mesa: Mesa) => void; // <-- Adicionar esta linha
+    mesa: Mesa;
+    onClick: (mesa: Mesa) => void;
 }
 
-export function MesaCard({ mesa, onClick }: MesaCardProps) {
-  const isLivre = mesa.status === 'Livre';
+export default function MesaCard({ mesa, onClick }: MesaCardProps) {
+    const isLivre = mesa.status === 'LIVRE';
 
-  return (
-    <Card
-      onClick={() => onClick(mesa)} // <-- Adicionar esta linha
-      className={cn(
-        'cursor-pointer transition-all hover:shadow-lg hover:scale-105',
-        isLivre
-          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-          : 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
-      )}
-    >
-      {/* ... o resto do código continua igual ... */}
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4">
-        <CardTitle className="text-2xl font-bold">{mesa.numero}</CardTitle>
-        {isLivre ? (
-          <CheckCircle2 className="h-8 w-8 text-green-500" />
-        ) : (
-          <Users className="h-8 w-8 text-amber-500" />
-        )}
-      </CardHeader>
-    </Card>
-  );
+    // Define as classes de estilo com base no status da mesa
+    const cardClasses = clsx(
+        "cursor-pointer transition-all hover:shadow-lg", {
+            "border-green-500 bg-green-50 hover:border-green-600": isLivre,
+            "border-orange-500 bg-orange-50": !isLivre,
+        }
+    );
+
+    const iconClasses = clsx({
+        "text-green-600": isLivre,
+        "text-orange-600": !isLivre,
+    });
+
+    return (
+        <Card className={cardClasses} onClick={() => onClick(mesa)}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                    Mesa {mesa.numero}
+                </CardTitle>
+                {isLivre ? <CheckCircle2 className={iconClasses} /> : <UtensilsCrossed className={iconClasses}/>}
+            </CardHeader>
+            <CardContent>
+                <div className="text-xs text-muted-foreground uppercase font-bold">
+                    {mesa.status.replace('_', ' ')}
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
