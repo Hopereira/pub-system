@@ -5,28 +5,28 @@
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-    Home, 
-    Users, 
-    UtensilsCrossed, 
-    Beer, 
-    ClipboardList, 
-    BarChart2, 
-    Settings, 
-    LayoutGrid, 
-    Building2, // Ícone para Empresa
-    DoorOpen // Ícone para Ambientes
+import {
+    Home,
+    Users,
+    UtensilsCrossed,
+    Beer,
+    ClipboardList,
+    BarChart2,
+    Settings, // Usaremos este para a nova página de gestão
+    Building2,
+    DoorOpen
 } from 'lucide-react';
 import React from 'react';
-import clsx from 'clsx'; // NOVO: Importamos a biblioteca clsx
+import clsx from 'clsx';
 
-// MELHORIA: Rotas padronizadas sob /dashboard/
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
   { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM'] },
   { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'COZINHA', 'CAIXA'] },
-  { href: '/dashboard/cardapio', label: 'Cardápio', icon: Beer, roles: ['ADMIN'] },
+  // --- SEÇÃO DE ADMINISTRAÇÃO ---
+  { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] }, // NOVO LINK
   { href: '/dashboard/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
+  { href: '/dashboard/cardapio', label: 'Cardápio', icon: Beer, roles: ['ADMIN'] },
   { href: '/dashboard/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
   { href: '/dashboard/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
@@ -36,8 +36,7 @@ export function Sidebar() {
   const { user } = useAuth();
   const pathname = usePathname();
 
-  // A sua lógica de filtro já está perfeita, não precisa de alterações.
-  const accessibleLinks = navLinks.filter(link => 
+  const accessibleLinks = navLinks.filter(link =>
     user?.cargo && link.roles.includes(user.cargo)
   );
 
@@ -48,7 +47,6 @@ export function Sidebar() {
           <Link
             key={link.href}
             href={link.href}
-            // MELHORIA: Usamos clsx para uma sintaxe mais limpa
             className={clsx(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-50',
               {
