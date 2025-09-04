@@ -16,12 +16,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
 
-// A tabela recebe a lista de funcionários como uma propriedade
 interface FuncionariosTableProps {
   funcionarios: Funcionario[];
+  onEdit: (funcionario: Funcionario) => void;
+  onDelete: (funcionario: Funcionario) => void; // NOVO: Prop para lidar com a exclusão
 }
 
-export default function FuncionariosTable({ funcionarios }: FuncionariosTableProps) {
+export default function FuncionariosTable({ funcionarios, onEdit, onDelete }: FuncionariosTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -35,7 +36,6 @@ export default function FuncionariosTable({ funcionarios }: FuncionariosTablePro
           </TableRow>
         </TableHeader>
         <TableBody>
-          {/* Se a lista estiver vazia, mostramos uma mensagem amigável */}
           {funcionarios.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="text-center text-muted-foreground">
@@ -43,7 +43,6 @@ export default function FuncionariosTable({ funcionarios }: FuncionariosTablePro
               </TableCell>
             </TableRow>
           ) : (
-            // Caso contrário, mapeamos e renderizamos cada funcionário
             funcionarios.map((funcionario) => (
               <TableRow key={funcionario.id}>
                 <TableCell className="font-medium">{funcionario.nome}</TableCell>
@@ -57,11 +56,11 @@ export default function FuncionariosTable({ funcionarios }: FuncionariosTablePro
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    {/* Botões de ação para os próximos commits */}
-                    <Button variant="outline" size="icon" className="mr-2">
+                    <Button variant="outline" size="icon" className="mr-2" onClick={() => onEdit(funcionario)}>
                         <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="icon">
+                    {/* NOVO: O botão de lixeira agora chama a função onDelete */}
+                    <Button variant="destructive" size="icon" onClick={() => onDelete(funcionario)}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </TableCell>

@@ -2,8 +2,7 @@
 
 import api from './api';
 import { Funcionario } from '@/types/funcionario';
-// ATUALIZADO: A importação agora vem do novo arquivo DTO
-import { CreateFuncionarioDto } from '@/types/funcionario.dto'; 
+import { CreateFuncionarioDto, UpdateFuncionarioDto } from '@/types/funcionario.dto';
 
 export const getFuncionarios = async (): Promise<Funcionario[]> => {
   try {
@@ -23,6 +22,29 @@ export const createFuncionario = async (
     return response.data;
   } catch (error) {
     console.error('Erro ao criar funcionário:', error);
+    throw error;
+  }
+};
+
+export const updateFuncionario = async (
+  id: string,
+  funcionarioData: UpdateFuncionarioDto
+): Promise<Funcionario> => {
+  try {
+    const response = await api.patch<Funcionario>(`/funcionarios/${id}`, funcionarioData);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao atualizar funcionário ${id}:`, error);
+    throw error;
+  }
+};
+
+// Adicionando a função de deletar que faltava
+export const deleteFuncionario = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`/funcionarios/${id}`);
+  } catch (error) {
+    console.error(`Erro ao deletar funcionário ${id}:`, error);
     throw error;
   }
 };

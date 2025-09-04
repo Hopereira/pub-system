@@ -8,19 +8,32 @@ import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'; // NOVO: Importamos o AlertDialog
 
 import { Funcionario } from '@/types/funcionario';
-import { getFuncionarios } from '@/services/funcionarioService';
+import { getFuncionarios, deleteFuncionario } from '@/services/funcionarioService';
 import FuncionariosTable from './FuncionariosTable';
-import FuncionarioFormDialog from './FuncionarioFormDialog'; // NOVO: Importamos o formulário
+import FuncionarioFormDialog from './FuncionarioFormDialog';
 
 export default function FuncionarioPageClient() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // --- NOVO: Estado para controlar a visibilidade do modal ---
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [funcionarioToEdit, setFuncionarioToEdit] = useState<Funcionario | null>(null);
+
+  // --- NOVO: Estados para o diálogo de confirmação de exclusão ---
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [funcionarioToDelete, setFuncionarioToDelete] = useState<Funcionario | null>(null);
 
   useEffect(() => {
     const fetchFuncionarios = async () => {
@@ -30,7 +43,7 @@ export default function FuncionarioPageClient() {
         setFuncionarios(data);
         setError(null);
       } catch (err) {
-        setError('Não foi possível carregar la lista de funcionários. Tente novamente mais tarde.');
+        setError('Não foi possível carregar a lista de funcionários. Tente novamente mais tarde.');
       } finally {
         setIsLoading(false);
       }
@@ -38,12 +51,48 @@ export default function FuncionarioPageClient() {
     fetchFuncionarios();
   }, []);
 
-  // --- NOVO: Handler para quando um funcionário é criado com sucesso ---
-  const handleCreateSuccess = (newFuncionario: Funcionario) => {
-    // Adiciona o novo funcionário no topo da lista para feedback imediato
-    setFuncionarios(currentFuncionarios => [newFuncionario, ...currentFuncionarios]);
-    setIsDialogOpen(false); // Fecha o modal
-    // Poderíamos adicionar um "Toast" de sucesso aqui também
+  const handleOpenCreateDialog = () => {
+    setFuncionarioToEdit(null);
+    setIsFormDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (funcionario: Funcionario) => {
+    setFuncionarioToEdit(funcionario);
+    setIsFormDialogOpen(true);
+  };
+  
+  // --- NOVO: Funções para controlar a exclusão ---
+  const handleOpenDeleteDialog = (funcionario: Funcionario) => {
+    setFuncionarioToDelete(funcionario);
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!funcionarioToDelete) return;
+
+    try {
+      await deleteFuncionario(funcionarioToDelete.id);
+      // Remove o funcionário da lista no estado para atualizar a UI
+      setFuncionarios(current => current.filter(f => f.id !== funcionarioToDelete.id));
+    } catch (err) {
+      setError(`Erro ao excluir o funcionário ${funcionarioToDelete.nome}.`);
+    } finally {
+      // Limpa o estado e fecha o modal
+      setIsConfirmOpen(false);
+      setFuncionarioToDelete(null);
+    }
+  };
+
+  const handleSuccess = (resultFuncionario: Funcionario) => {
+    if (funcionarioToEdit) {
+      setFuncionarios(current =>
+        current.map(f => (f.id === resultFuncionario.id ? resultFuncionario : f))
+      );
+    } else {
+      setFuncionarios(current => [resultFuncionario, ...current]);
+    }
+    setIsFormDialogOpen(false);
+    setFuncionarioToEdit(null);
   };
 
   const renderContent = () => {
@@ -65,7 +114,8 @@ export default function FuncionarioPageClient() {
         </Alert>
       );
     }
-    return <FuncionariosTable funcionarios={funcionarios} />;
+    // Passamos as duas funções para a tabela
+    return <FuncionariosTable funcionarios={funcionarios} onEdit={handleOpenEditDialog} onDelete={handleOpenDeleteDialog} />;
   };
 
   return (
@@ -77,8 +127,7 @@ export default function FuncionarioPageClient() {
             Adicione, edite e remova os funcionários do seu estabelecimento.
           </p>
         </div>
-        {/* NOVO: O botão agora abre o modal */}
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={handleOpenCreateDialog}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Adicionar Novo
         </Button>
@@ -86,12 +135,30 @@ export default function FuncionarioPageClient() {
 
       {renderContent()}
 
-      {/* NOVO: Renderizamos o nosso formulário em modo controlado */}
-      <FuncionarioFormDialog 
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onSuccess={handleCreateSuccess}
+      <FuncionarioFormDialog
+        open={isFormDialogOpen}
+        onOpenChange={setIsFormDialogOpen}
+        onSuccess={handleSuccess}
+        funcionarioToEdit={funcionarioToEdit}
       />
+
+      {/* --- NOVO: Diálogo de confirmação de exclusão --- */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário 
+              <span className="font-bold"> {funcionarioToDelete?.nome}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFuncionarioToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Confirmar Exclusão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
