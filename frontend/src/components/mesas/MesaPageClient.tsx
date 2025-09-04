@@ -8,9 +8,19 @@ import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 import { Mesa } from '@/types/mesa';
-import { getMesas } from '@/services/mesaService';
+import { getMesas, deleteMesa } from '@/services/mesaService';
 import MesasTable from './MesasTable';
 import MesaFormDialog from './MesaFormDialog';
 
@@ -18,10 +28,12 @@ export default function MesaPageClient() {
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // NOVO: Estado para guardar a mesa que será editada
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [mesaToEdit, setMesaToEdit] = useState<Mesa | null>(null);
+
+  // --- NOVO: Estados para o diálogo de confirmação de exclusão ---
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [mesaToDelete, setMesaToDelete] = useState<Mesa | null>(null);
 
   useEffect(() => {
     const fetchMesas = async () => {
@@ -29,6 +41,7 @@ export default function MesaPageClient() {
         setIsLoading(true);
         const data = await getMesas();
         setMesas(data);
+        setError(null);
       } catch (err) {
         setError('Não foi possível carregar a lista de mesas.');
       } finally {
@@ -39,28 +52,45 @@ export default function MesaPageClient() {
   }, []);
 
   const handleOpenCreateDialog = () => {
-    setMesaToEdit(null); // Garante que não há dados de edição
-    setIsDialogOpen(true);
+    setMesaToEdit(null);
+    setIsFormDialogOpen(true);
   };
 
   const handleOpenEditDialog = (mesa: Mesa) => {
     setMesaToEdit(mesa);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
 
-  // Handler de sucesso genérico que trata tanto criação quanto edição
+  // --- NOVO: Funções para controlar a exclusão ---
+  const handleOpenDeleteDialog = (mesa: Mesa) => {
+    setMesaToDelete(mesa);
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!mesaToDelete) return;
+
+    try {
+      await deleteMesa(mesaToDelete.id);
+      setMesas(current => current.filter(m => m.id !== mesaToDelete.id));
+    } catch (err) {
+      setError(`Erro ao excluir a mesa ${mesaToDelete.numero}.`);
+    } finally {
+      setIsConfirmOpen(false);
+      setMesaToDelete(null);
+    }
+  };
+
   const handleSuccess = (resultMesa: Mesa) => {
     if (mesaToEdit) {
-      // Se estávamos editando, atualizamos o item na lista
-      setMesas(current => 
+      setMesas(current =>
         current.map(m => (m.id === resultMesa.id ? resultMesa : m))
       );
     } else {
-      // Se estávamos criando, adicionamos no topo da lista
       setMesas(current => [resultMesa, ...current]);
     }
-    setIsDialogOpen(false);
-    setMesaToEdit(null); // Limpa o estado de edição
+    setIsFormDialogOpen(false);
+    setMesaToEdit(null);
   };
 
   const renderContent = () => {
@@ -81,8 +111,7 @@ export default function MesaPageClient() {
         </Alert>
       );
     }
-    // Passamos a nova função onEdit para a tabela
-    return <MesasTable mesas={mesas} onEdit={handleOpenEditDialog} />;
+    return <MesasTable mesas={mesas} onEdit={handleOpenEditDialog} onDelete={handleOpenDeleteDialog} />;
   };
 
   return (
@@ -102,13 +131,31 @@ export default function MesaPageClient() {
 
       {renderContent()}
 
-      {/* Passamos a mesa a ser editada para o formulário */}
       <MesaFormDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        open={isFormDialogOpen}
+        onOpenChange={setIsFormDialogOpen}
         onSuccess={handleSuccess}
         mesaToEdit={mesaToEdit}
       />
+
+      {/* --- NOVO: Diálogo de confirmação de exclusão --- */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. Isso excluirá permanentemente a mesa de número
+              <span className="font-bold"> {mesaToDelete?.numero}</span> do ambiente
+              <span className="font-bold"> {mesaToDelete?.ambiente?.nome}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMesaToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Confirmar Exclusão</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }

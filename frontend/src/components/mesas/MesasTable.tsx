@@ -18,10 +18,11 @@ import { Badge } from '../ui/badge';
 
 interface MesasTableProps {
   mesas: Mesa[];
-  onEdit: (mesa: Mesa) => void; // NOVO: Prop para lidar com a edição
+  onEdit: (mesa: Mesa) => void;
+  onDelete: (mesa: Mesa) => void; // NOVO: Prop para lidar com a exclusão
 }
 
-export default function MesasTable({ mesas, onEdit }: MesasTableProps) {
+export default function MesasTable({ mesas, onEdit, onDelete }: MesasTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -49,11 +50,11 @@ export default function MesasTable({ mesas, onEdit }: MesasTableProps) {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    {/* ATUALIZADO: O botão de editar agora chama a função onEdit */}
                     <Button variant="outline" size="icon" className="mr-2" onClick={() => onEdit(mesa)}>
                         <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="destructive" size="icon">
+                    {/* ATUALIZADO: O botão de lixeira agora chama a função onDelete */}
+                    <Button variant="destructive" size="icon" onClick={() => onDelete(mesa)}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
                 </TableCell>

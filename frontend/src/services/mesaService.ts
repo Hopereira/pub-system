@@ -24,7 +24,6 @@ export const createMesa = async (mesaData: CreateMesaDto): Promise<Mesa> => {
     }
 }
 
-// --- NOVO: Função para atualizar uma mesa existente ---
 export const updateMesa = async (id: string, mesaData: UpdateMesaDto): Promise<Mesa> => {
   try {
     const response = await api.patch<Mesa>(`/mesas/${id}`, mesaData);
@@ -34,3 +33,13 @@ export const updateMesa = async (id: string, mesaData: UpdateMesaDto): Promise<M
     throw error;
   }
 }
+
+// --- NOVO: Função para deletar uma mesa ---
+export const deleteMesa = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`/mesas/${id}`);
+  } catch (error) {
+    console.error(`Erro ao deletar mesa ${id}:`, error);
+    throw error;
+  }
+};
