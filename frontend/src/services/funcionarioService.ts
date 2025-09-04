@@ -1,16 +1,50 @@
 // Caminho: frontend/src/services/funcionarioService.ts
 
+import api from './api';
 import { Funcionario } from '@/types/funcionario';
-import  api  from './api';
+import { CreateFuncionarioDto, UpdateFuncionarioDto } from '@/types/funcionario.dto';
 
-export const getAllFuncionarios = async (): Promise<Funcionario[]> => {
-  const response = await api.get<Funcionario[]>('/funcionarios');
-  return response.data;
+export const getFuncionarios = async (): Promise<Funcionario[]> => {
+  try {
+    const response = await api.get<Funcionario[]>('/funcionarios');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar funcionários:', error);
+    throw error;
+  }
 };
 
-// NOVO: Adicione esta função
-// O tipo 'any' aqui é temporário, poderíamos criar um tipo específico para os dados de criação
-export const createFuncionario = async (data: any): Promise<Funcionario> => {
-  const response = await api.post<Funcionario>('/funcionarios', data);
-  return response.data;
+export const createFuncionario = async (
+  funcionarioData: CreateFuncionarioDto
+): Promise<Funcionario> => {
+  try {
+    const response = await api.post<Funcionario>('/funcionarios', funcionarioData);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar funcionário:', error);
+    throw error;
+  }
+};
+
+export const updateFuncionario = async (
+  id: string,
+  funcionarioData: UpdateFuncionarioDto
+): Promise<Funcionario> => {
+  try {
+    const response = await api.patch<Funcionario>(`/funcionarios/${id}`, funcionarioData);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao atualizar funcionário ${id}:`, error);
+    throw error;
+  }
+};
+
+// Adicionando a função de deletar que faltava
+export const deleteFuncionario = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`/funcionarios/${id}`);
+  } catch (error) {
+    console.error(`Erro ao deletar funcionário ${id}:`, error);
+    throw error;
+  }
 };
