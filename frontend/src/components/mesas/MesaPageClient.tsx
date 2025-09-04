@@ -11,8 +11,7 @@ import { Terminal } from 'lucide-react';
 
 import { Mesa } from '@/types/mesa';
 import { getMesas } from '@/services/mesaService';
-// Importaremos a tabela no próximo passo
-// import MesasTable from './MesasTable';
+import MesasTable from './MesasTable'; // NOVO: Importamos a nossa tabela
 
 export default function MesaPageClient() {
   const [mesas, setMesas] = useState<Mesa[]>([]);
@@ -41,6 +40,7 @@ export default function MesaPageClient() {
         <div className="space-y-2">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       );
     }
@@ -55,12 +55,8 @@ export default function MesaPageClient() {
       );
     }
 
-    // A tabela será inserida aqui
-    return (
-        <div className="rounded-lg border p-4 text-center">
-            <p className="text-muted-foreground">A tabela de mesas com os dados ({mesas.length} registros) será exibida aqui.</p>
-        </div>
-    );
+    // ATUALIZADO: Renderizamos o componente MesasTable com os dados buscados
+    return <MesasTable mesas={mesas} />;
   };
 
   return (
