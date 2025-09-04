@@ -18,9 +18,10 @@ import { Badge } from '../ui/badge';
 
 interface MesasTableProps {
   mesas: Mesa[];
+  onEdit: (mesa: Mesa) => void; // NOVO: Prop para lidar com a edição
 }
 
-export default function MesasTable({ mesas }: MesasTableProps) {
+export default function MesasTable({ mesas, onEdit }: MesasTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -43,12 +44,13 @@ export default function MesasTable({ mesas }: MesasTableProps) {
               <TableRow key={mesa.id}>
                 <TableCell className="font-medium">{mesa.numero}</TableCell>
                 <TableCell>
-                  {/* Usamos um Badge para destacar o ambiente */}
-                  <Badge variant="outline">{mesa.ambiente.nome}</Badge>
+                  <Badge variant="outline">
+                    {mesa.ambiente?.nome ?? 'N/A'}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    {/* Botões para os próximos passos */}
-                    <Button variant="outline" size="icon" className="mr-2">
+                    {/* ATUALIZADO: O botão de editar agora chama a função onEdit */}
+                    <Button variant="outline" size="icon" className="mr-2" onClick={() => onEdit(mesa)}>
                         <Pencil className="h-4 w-4" />
                     </Button>
                     <Button variant="destructive" size="icon">

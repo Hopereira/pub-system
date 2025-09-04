@@ -1,6 +1,15 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+// Caminho: backend/src/modulos/mesa/entities/mesa.entity.ts
 
-// Definimos os status possíveis para uma mesa
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Unique, // NOVO: Importamos o decorador Unique
+} from 'typeorm';
+import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+
 export enum MesaStatus {
   LIVRE = 'LIVRE',
   OCUPADA = 'OCUPADA',
@@ -9,11 +18,15 @@ export enum MesaStatus {
 }
 
 @Entity('mesas')
+// NOVO: Criamos uma constraint de unicidade composta.
+// Isso garante que a combinação de 'numero' e 'ambiente' seja única.
+@Unique(['numero', 'ambiente'])
 export class Mesa {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, type: 'int' })
+  // ATUALIZADO: Removemos o 'unique: true' daqui, pois a regra agora é composta
+  @Column({ type: 'int' })
   numero: number;
 
   @Column({
@@ -22,4 +35,8 @@ export class Mesa {
     default: MesaStatus.LIVRE,
   })
   status: MesaStatus;
+
+  @ManyToOne(() => Ambiente, (ambiente) => ambiente.mesas)
+  @JoinColumn({ name: 'ambiente_id' })
+  ambiente: Ambiente;
 }

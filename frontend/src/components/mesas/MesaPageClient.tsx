@@ -11,12 +11,17 @@ import { Terminal } from 'lucide-react';
 
 import { Mesa } from '@/types/mesa';
 import { getMesas } from '@/services/mesaService';
-import MesasTable from './MesasTable'; // NOVO: Importamos a nossa tabela
+import MesasTable from './MesasTable';
+import MesaFormDialog from './MesaFormDialog';
 
 export default function MesaPageClient() {
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // NOVO: Estado para guardar a mesa que será editada
+  const [mesaToEdit, setMesaToEdit] = useState<Mesa | null>(null);
 
   useEffect(() => {
     const fetchMesas = async () => {
@@ -30,9 +35,33 @@ export default function MesaPageClient() {
         setIsLoading(false);
       }
     };
-
     fetchMesas();
   }, []);
+
+  const handleOpenCreateDialog = () => {
+    setMesaToEdit(null); // Garante que não há dados de edição
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (mesa: Mesa) => {
+    setMesaToEdit(mesa);
+    setIsDialogOpen(true);
+  };
+
+  // Handler de sucesso genérico que trata tanto criação quanto edição
+  const handleSuccess = (resultMesa: Mesa) => {
+    if (mesaToEdit) {
+      // Se estávamos editando, atualizamos o item na lista
+      setMesas(current => 
+        current.map(m => (m.id === resultMesa.id ? resultMesa : m))
+      );
+    } else {
+      // Se estávamos criando, adicionamos no topo da lista
+      setMesas(current => [resultMesa, ...current]);
+    }
+    setIsDialogOpen(false);
+    setMesaToEdit(null); // Limpa o estado de edição
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -40,11 +69,9 @@ export default function MesaPageClient() {
         <div className="space-y-2">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
         </div>
       );
     }
-
     if (error) {
       return (
         <Alert variant="destructive">
@@ -54,9 +81,8 @@ export default function MesaPageClient() {
         </Alert>
       );
     }
-
-    // ATUALIZADO: Renderizamos o componente MesasTable com os dados buscados
-    return <MesasTable mesas={mesas} />;
+    // Passamos a nova função onEdit para a tabela
+    return <MesasTable mesas={mesas} onEdit={handleOpenEditDialog} />;
   };
 
   return (
@@ -68,12 +94,21 @@ export default function MesaPageClient() {
             Crie, edite e remova as mesas do seu estabelecimento.
           </p>
         </div>
-        <Button>
+        <Button onClick={handleOpenCreateDialog}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Adicionar Nova
         </Button>
       </div>
+
       {renderContent()}
+
+      {/* Passamos a mesa a ser editada para o formulário */}
+      <MesaFormDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSuccess={handleSuccess}
+        mesaToEdit={mesaToEdit}
+      />
     </div>
   );
 }
