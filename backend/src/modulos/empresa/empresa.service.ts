@@ -4,46 +4,61 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm'; // <--- ESTA É A LINHA QUE FALTAVA
+import { Repository } from 'typeorm';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { Empresa } from './entities/empresa.entity';
 
 @Injectable()
 export class EmpresaService {
-  // Aqui pedimos ao NestJS para nos dar a ferramenta para acessar a tabela 'Empresa'
   constructor(
     @InjectRepository(Empresa)
     private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
-  // Lógica para CRIAR uma empresa
+  /**
+   * Cria o registro da empresa no banco de dados.
+   * Apenas um registro com um CNPJ único é permitido.
+   * @param createEmpresaDto Os dados para criar a empresa.
+   * @returns A entidade Empresa criada.
+   * @throws {ConflictException} Se uma empresa com o mesmo CNPJ já estiver cadastrada.
+   */
   async create(createEmpresaDto: CreateEmpresaDto): Promise<Empresa> {
-    // Primeiro, contamos quantas empresas já existem
-    const count = await this.empresaRepository.count();
-    // Se já existir mais de 0 (ou seja, 1), nós lançamos um erro
-    if (count > 0) {
-      throw new ConflictException('Já existe uma empresa cadastrada no sistema.');
-    }
-    // Se não existir nenhuma, criamos e salvamos
     const empresa = this.empresaRepository.create(createEmpresaDto);
-    return this.empresaRepository.save(empresa);
+    try {
+      // Nós simplesmente tentamos salvar. A verificação fica por conta do banco de dados.
+      return await this.empresaRepository.save(empresa);
+    } catch (error) {
+      // O PostgreSQL retorna o código '23505' para violação de constraint UNIQUE.
+      if (error.code === '23505') {
+        throw new ConflictException('Uma empresa com este CNPJ já está cadastrada.');
+      }
+      // Se for outro tipo de erro, nós o relançamos para ser tratado genericamente.
+      throw error;
+    }
   }
 
-  // Lógica para BUSCAR a empresa
-  async find(): Promise<Empresa> {
-    // Buscamos todas as empresas (sabemos que só haverá uma)
-    const empresas = await this.empresaRepository.find();
-    if (empresas.length === 0) {
+  /**
+   * Busca o único registro da empresa no banco de dados.
+   * @returns A entidade Empresa.
+   * @throws {NotFoundException} Se nenhuma empresa for encontrada.
+   */
+  async findOne(): Promise<Empresa> {
+    const empresa = await this.empresaRepository.findOneBy({});
+    if (!empresa) {
       throw new NotFoundException('Nenhuma empresa encontrada.');
     }
-    // Retornamos a primeira (e única) da lista
-    return empresas[0];
+    return empresa;
   }
 
-  // Lógica para ATUALIZAR a empresa
+  /**
+   * Atualiza os dados da empresa.
+   * @param id O ID da empresa a ser atualizada.
+   * @param updateEmpresaDto Os dados para atualizar.
+   * @returns A entidade Empresa atualizada.
+   * @throws {NotFoundException} Se a empresa com o ID fornecido não for encontrada.
+   */
   async update(id: string, updateEmpresaDto: UpdateEmpresaDto): Promise<Empresa> {
-    // Carregamos a empresa existente e aplicamos as novas informações
     const empresa = await this.empresaRepository.preload({
       id: id,
       ...updateEmpresaDto,
@@ -51,7 +66,7 @@ export class EmpresaService {
     if (!empresa) {
       throw new NotFoundException(`Empresa com ID "${id}" não encontrada.`);
     }
-    // Salvamos as alterações
+
     return this.empresaRepository.save(empresa);
   }
 }
