@@ -19,5 +19,6 @@ export class CreateAmbienteDto {
   })
   @IsString()
   @IsOptional()
+  @MaxLength(500)
   descricao?: string;
 }

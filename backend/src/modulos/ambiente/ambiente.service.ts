@@ -1,5 +1,6 @@
 // Caminho: backend/src/modulos/ambiente/ambiente.service.ts
 
+// ... (imports continuam os mesmos)
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ import { Ambiente } from './entities/ambiente.entity';
 
 @Injectable()
 export class AmbienteService {
+  // ... (construtor continua igual)
   constructor(
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
@@ -19,21 +21,21 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
-  // --- MÉTODO 'findAll' ATUALIZADO PARA CONTAR PRODUTOS E MESAS ---
+  // --- MÉTODO 'findAll' ATUALIZADO PARA INCLUIR A DESCRIÇÃO ---
   async findAll(): Promise<any[]> {
     const ambientes = await this.ambienteRepository
       .createQueryBuilder('ambiente')
-      .leftJoin('ambiente.produtos', 'produto') // Faz a junção com produtos
-      .leftJoin('ambiente.mesas', 'mesa')       // Faz a junção com mesas
+      .leftJoin('ambiente.produtos', 'produto')
+      .leftJoin('ambiente.mesas', 'mesa')
       .select('ambiente.id', 'id')
       .addSelect('ambiente.nome', 'nome')
-      .addSelect('COUNT(DISTINCT produto.id)', 'productCount') // Conta produtos distintos
-      .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')       // Conta mesas distintas
+      .addSelect('ambiente.descricao', 'descricao') // <-- ADICIONADO
+      .addSelect('COUNT(DISTINCT produto.id)', 'productCount')
+      .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')
       .groupBy('ambiente.id')
       .orderBy('ambiente.nome', 'ASC')
       .getRawMany();
 
-    // Converte as contagens de string para número
     return ambientes.map(ambiente => ({
       ...ambiente,
       productCount: parseInt(ambiente.productCount, 10),
@@ -42,6 +44,7 @@ export class AmbienteService {
   }
   // --- FIM DA ATUALIZAÇÃO ---
 
+  // ... (findOne, update, e remove continuam os mesmos)
   async findOne(id: string): Promise<Ambiente> {
     const ambiente = await this.ambienteRepository.findOne({ where: { id } });
     if (!ambiente) {
