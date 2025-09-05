@@ -1,6 +1,6 @@
 // Caminho: backend/src/modulos/ambiente/ambiente.service.ts
 
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; // 1. Importamos ConflictException
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
@@ -19,9 +19,28 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
-  findAll(): Promise<Ambiente[]> {
-    return this.ambienteRepository.find();
+  // --- MÉTODO 'findAll' ATUALIZADO PARA CONTAR PRODUTOS E MESAS ---
+  async findAll(): Promise<any[]> {
+    const ambientes = await this.ambienteRepository
+      .createQueryBuilder('ambiente')
+      .leftJoin('ambiente.produtos', 'produto') // Faz a junção com produtos
+      .leftJoin('ambiente.mesas', 'mesa')       // Faz a junção com mesas
+      .select('ambiente.id', 'id')
+      .addSelect('ambiente.nome', 'nome')
+      .addSelect('COUNT(DISTINCT produto.id)', 'productCount') // Conta produtos distintos
+      .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')       // Conta mesas distintas
+      .groupBy('ambiente.id')
+      .orderBy('ambiente.nome', 'ASC')
+      .getRawMany();
+
+    // Converte as contagens de string para número
+    return ambientes.map(ambiente => ({
+      ...ambiente,
+      productCount: parseInt(ambiente.productCount, 10),
+      tableCount: parseInt(ambiente.tableCount, 10),
+    }));
   }
+  // --- FIM DA ATUALIZAÇÃO ---
 
   async findOne(id: string): Promise<Ambiente> {
     const ambiente = await this.ambienteRepository.findOne({ where: { id } });
@@ -42,21 +61,17 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
-  // --- MÉTODO 'remove' ATUALIZADO COM TRATAMENTO DE ERRO ---
   async remove(id: string): Promise<void> {
     const ambiente = await this.findOne(id);
     try {
       await this.ambienteRepository.remove(ambiente);
     } catch (error) {
-      // O código de erro '23503' é específico do PostgreSQL para violação de chave estrangeira
       if (error.code === '23503') {
         throw new ConflictException(
-          'Este ambiente não pode ser apagado pois está em uso por produtos ou funcionários.',
+          'Este ambiente não pode ser apagado pois está em uso por produtos ou mesas.',
         );
       }
-      // Se for um erro diferente, nós o relançamos para não esconder outros possíveis bugs
       throw error;
     }
   }
-  // --- FIM DA ATUALIZAÇÃO ---
 }
