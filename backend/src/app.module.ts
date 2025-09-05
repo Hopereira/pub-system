@@ -12,10 +12,12 @@ import { ComandaModule } from './modulos/comanda/comanda.module';
 import { ClienteModule } from './modulos/cliente/cliente.module';
 import { PedidoModule } from './modulos/pedido/pedido.module';
 import { ProdutoModule } from './modulos/produto/produto.module';
+import { SeederModule } from './database/seeder.module';
 
 @Module({
   imports: [
-    // 1. Módulo de Configuração: Lê as variáveis do arquivo .env
+    // --- CORREÇÃO AQUI ---
+    // 1. Módulo de Configuração: Lê as variáveis do arquivo .env (ESTAVA FALTANDO)
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -47,6 +49,7 @@ import { ProdutoModule } from './modulos/produto/produto.module';
     ClienteModule,
     PedidoModule,
     ProdutoModule,
+    SeederModule,
   ],
   controllers: [],
   providers: [],

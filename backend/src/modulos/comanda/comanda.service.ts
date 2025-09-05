@@ -6,10 +6,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cliente } from '../cliente/entities/cliente.entity';
-import { Mesa } from '../mesa/entities/mesa.entity';
+// NOVO: Importamos também o MesaStatus
+import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
-import { Comanda } from './entities/comanda.entity';
+import { Comanda, ComandaStatus } from './entities/comanda.entity';
 
 @Injectable()
 export class ComandaService {
@@ -44,10 +45,22 @@ export class ComandaService {
       if (!mesa) {
         throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
       }
+
+      // --- LÓGICA DE NEGÓCIO ADICIONADA AQUI ---
+      // 1. Verifica se a mesa já não está ocupada
+      if (mesa.status !== MesaStatus.LIVRE) {
+        throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
+      }
+
+      // 2. Atualiza o status da mesa para OCUPADA e salva a alteração
+      mesa.status = MesaStatus.OCUPADA;
+      await this.mesaRepository.save(mesa);
+
       comandaData.mesa = mesa;
     }
 
     if (clienteId) {
+      // ... (lógica de cliente permanece a mesma)
       const cliente = await this.clienteRepository.findOne({
         where: { id: clienteId },
       });
@@ -72,16 +85,38 @@ export class ComandaService {
   async findOne(id: string): Promise<Comanda> {
     const comanda = await this.comandaRepository.findOne({
       where: { id },
-      relations: ['mesa', 'cliente'],
+      relations: [
+        'mesa',
+        'cliente',
+        'pedidos',
+        'pedidos.itens',
+        'pedidos.itens.produto',
+      ],
     });
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
     return comanda;
   }
+  
+  async findAbertaByMesaId(mesaId: string): Promise<Comanda> {
+    const comanda = await this.comandaRepository.findOne({
+      where: {
+        mesa: { id: mesaId },
+        status: ComandaStatus.ABERTA,
+      },
+    });
 
-  // --- NOVO MÉTODO PÚBLICO ---
+    if (!comanda) {
+      throw new NotFoundException(
+        `Nenhuma comanda aberta encontrada para a mesa com ID "${mesaId}".`,
+      );
+    }
+    return comanda;
+  }
+
   async findPublicOne(id: string) {
+    // ... (este método permanece igual)
     const comanda = await this.comandaRepository.findOne({
       where: { id },
       relations: [
@@ -122,7 +157,6 @@ export class ComandaService {
       totalComanda,
     };
   }
-  // --- FIM DO NOVO MÉTODO ---
 
   async update(
     id: string,

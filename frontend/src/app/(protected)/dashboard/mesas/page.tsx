@@ -1,9 +1,9 @@
-// Caminho: frontend/src/app/(protected)/dashboard/admin/mesas/page.tsx
+// Caminho: frontend/src/app/(protected)/dashboard/mesas/page.tsx
 
 import React from 'react';
-import MesaPageClient from '@/components/mesas/MesaPageClient';
+// Atualizamos a importação para o novo nome do componente
+import MapaMesasClient from '@/components/mesas/MapaMesasClient';
 
-// Esta página renderiza o componente cliente que conterá toda a lógica
-export default function GestaoMesasPage() {
-  return <MesaPageClient />;
+export default function MesasPage() {
+  return <MapaMesasClient />;
 }

@@ -5,10 +5,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany, // NOVO: Importamos o OneToMany
   PrimaryGeneratedColumn,
-  Unique, // NOVO: Importamos o decorador Unique
+  Unique,
 } from 'typeorm';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { Comanda } from '../../comanda/entities/comanda.entity'; // NOVO: Importamos a Comanda
 
 export enum MesaStatus {
   LIVRE = 'LIVRE',
@@ -18,14 +20,11 @@ export enum MesaStatus {
 }
 
 @Entity('mesas')
-// NOVO: Criamos uma constraint de unicidade composta.
-// Isso garante que a combinação de 'numero' e 'ambiente' seja única.
 @Unique(['numero', 'ambiente'])
 export class Mesa {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // ATUALIZADO: Removemos o 'unique: true' daqui, pois a regra agora é composta
   @Column({ type: 'int' })
   numero: number;
 
@@ -39,4 +38,8 @@ export class Mesa {
   @ManyToOne(() => Ambiente, (ambiente) => ambiente.mesas)
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;
+
+  // --- NOVO: Definindo o lado inverso da relação com Comanda ---
+  @OneToMany(() => Comanda, (comanda) => comanda.mesa)
+  comandas: Comanda[];
 }
