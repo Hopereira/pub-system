@@ -1,7 +1,7 @@
 // Caminho: backend/src/modulos/pedido/dto/update-pedido-status.dto.ts
 
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { PedidoStatus } from '../entities/pedido.entity';
 
 export class UpdatePedidoStatusDto {
@@ -16,4 +16,16 @@ export class UpdatePedidoStatusDto {
     ).join(', ')}`,
   })
   status: PedidoStatus;
+
+  // --- NOVO CAMPO ADICIONADO ---
+  @ApiPropertyOptional({
+    description: 'O motivo pelo qual o pedido está a ser cancelado. Obrigatório se o status for "CANCELADO"',
+    example: 'Item em falta no estoque.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(5, { message: 'O motivo do cancelamento deve ter no mínimo 5 caracteres.'})
+  @MaxLength(255)
+  motivoCancelamento?: string;
+  // --- FIM DO NOVO CAMPO ---
 }

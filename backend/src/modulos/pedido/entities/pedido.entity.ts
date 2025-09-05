@@ -1,3 +1,5 @@
+// Caminho: backend/src/modulos/pedido/entities/pedido.entity.ts
+
 import {
   Column,
   CreateDateColumn,
@@ -8,7 +10,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Comanda } from '../../comanda/entities/comanda.entity';
-import { ItemPedido } from '../entities/item-pedido.entity'; 
+import { ItemPedido } from '../entities/item-pedido.entity';
 
 export enum PedidoStatus {
   FEITO = 'FEITO',
@@ -35,6 +37,11 @@ export class Pedido {
 
   @CreateDateColumn()
   data: Date;
+
+  // --- NOVO CAMPO ADICIONADO ---
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  motivoCancelamento: string | null;
+  // --- FIM DO NOVO CAMPO ---
 
   @ManyToOne(() => Comanda)
   @JoinColumn({ name: 'comandaId' })
