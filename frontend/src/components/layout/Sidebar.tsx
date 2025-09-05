@@ -9,12 +9,13 @@ import {
     Home,
     Users,
     UtensilsCrossed,
-    Book, // NOVO ÍCONE: para Cardápio
+    Book,
     ClipboardList,
     BarChart2,
     Settings,
     Building2,
-    DoorOpen
+    DoorOpen,
+    ChefHat, // NOVO ÍCONE: para Cozinha
 } from 'lucide-react';
 import React from 'react';
 import clsx from 'clsx';
@@ -23,10 +24,12 @@ const navLinks = [
   // --- SEÇÃO OPERACIONAL ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
   { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM'] },
-  { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'COZINHA', 'CAIXA'] },
+  // NOVO LINK PARA COZINHA/BAR
+  { href: '/dashboard/cozinha', label: 'Cozinha/Bar', icon: ChefHat, roles: ['ADMIN', 'COZINHA'] },
+  { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
   
   // --- SEÇÃO DE ADMINISTRAÇÃO ---
-  { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: Book, roles: ['ADMIN'] }, // NOVO LINK
+  { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: Book, roles: ['ADMIN'] },
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
   { href: '/dashboard/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },

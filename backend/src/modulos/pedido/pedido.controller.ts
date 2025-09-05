@@ -10,6 +10,7 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
+  Query, // 1. IMPORTAMOS O 'Query'
 } from '@nestjs/common';
 import { PedidoService } from './pedido.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
@@ -19,7 +20,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto'; // NOVO: Importamos o DTO de status
+import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
 
 @ApiTags('Pedidos')
 @ApiBearerAuth()
@@ -28,7 +29,6 @@ import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto'; // NOVO:
 export class PedidoController {
   constructor(private readonly pedidoService: PedidoService) {}
 
-  // ... (método 'create' continua igual)
   @Post()
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
   @ApiOperation({ summary: 'Cria um novo pedido (lança itens numa comanda)' })
@@ -39,9 +39,8 @@ export class PedidoController {
     return this.pedidoService.create(createPedidoDto);
   }
 
-  // --- NOVA ROTA PARA ATUALIZAR STATUS ---
   @Patch(':id/status')
-  @Roles(Cargo.ADMIN, Cargo.COZINHA) // Apenas Admin e Cozinha podem mudar o status
+  @Roles(Cargo.ADMIN, Cargo.COZINHA)
   @ApiOperation({ summary: 'Atualiza o status de um pedido' })
   @ApiResponse({ status: 200, description: 'Status do pedido atualizado com sucesso.' })
   @ApiResponse({ status: 403, description: 'Acesso negado.' })
@@ -52,18 +51,19 @@ export class PedidoController {
   ) {
     return this.pedidoService.updateStatus(id, updatePedidoStatusDto);
   }
-  // --- FIM DA NOVA ROTA ---
 
-
+  // --- MÉTODO 'findAll' ATUALIZADO ---
   @Get()
-  // ... (métodos 'findAll', 'findOne', 'update' e 'remove' continuam iguais)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
-  @ApiOperation({ summary: 'Lista todos os pedidos do sistema' })
+  @ApiOperation({ summary: 'Lista todos os pedidos, com filtro opcional por ambiente' })
   @ApiResponse({ status: 200, description: 'Lista de pedidos retornada com sucesso.' })
   @ApiResponse({ status: 403, description: 'Acesso negado.' })
-  findAll() {
-    return this.pedidoService.findAll();
+  // 2. ADICIONAMOS O PARÂMETRO 'ambienteId' VINDO DA QUERY STRING
+  findAll(@Query('ambienteId') ambienteId?: string) {
+    // 3. PASSAMOS O PARÂMETRO PARA O SERVIÇO
+    return this.pedidoService.findAll(ambienteId);
   }
+  // --- FIM DA ATUALIZAÇÃO ---
 
   @Get(':id')
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
@@ -77,7 +77,7 @@ export class PedidoController {
 
   @Patch(':id')
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA)
-  @ApiOperation({ summary: 'Atualiza um pedido (ex: alterar status para "Pronto")' })
+  @ApiOperation({ summary: 'Atualiza dados gerais de um pedido' })
   @ApiResponse({ status: 200, description: 'Pedido atualizado com sucesso.' })
   @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Admin, Garçom ou Cozinha.' })
   @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
