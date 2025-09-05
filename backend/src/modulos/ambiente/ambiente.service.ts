@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+// Caminho: backend/src/modulos/ambiente/ambiente.service.ts
+
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; // 1. Importamos ConflictException
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
@@ -40,8 +42,21 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
+  // --- MÉTODO 'remove' ATUALIZADO COM TRATAMENTO DE ERRO ---
   async remove(id: string): Promise<void> {
     const ambiente = await this.findOne(id);
-    await this.ambienteRepository.remove(ambiente);
+    try {
+      await this.ambienteRepository.remove(ambiente);
+    } catch (error) {
+      // O código de erro '23503' é específico do PostgreSQL para violação de chave estrangeira
+      if (error.code === '23503') {
+        throw new ConflictException(
+          'Este ambiente não pode ser apagado pois está em uso por produtos ou funcionários.',
+        );
+      }
+      // Se for um erro diferente, nós o relançamos para não esconder outros possíveis bugs
+      throw error;
+    }
   }
+  // --- FIM DA ATUALIZAÇÃO ---
 }
