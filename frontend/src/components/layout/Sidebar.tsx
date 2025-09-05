@@ -15,20 +15,16 @@ import {
     Settings,
     Building2,
     DoorOpen,
-    ChefHat, // NOVO ÍCONE: para Cozinha
+    ChefHat,
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 
-const navLinks = [
-  // --- SEÇÃO OPERACIONAL ---
+// ... (baseNavLinks continua igual)
+const baseNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
   { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM'] },
-  // NOVO LINK PARA COZINHA/BAR
-  { href: '/dashboard/cozinha', label: 'Cozinha/Bar', icon: ChefHat, roles: ['ADMIN', 'COZINHA'] },
   { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  
-  // --- SEÇÃO DE ADMINISTRAÇÃO ---
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: Book, roles: ['ADMIN'] },
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
@@ -37,11 +33,64 @@ const navLinks = [
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];
 
-export function Sidebar() {
-  const { user } = useAuth();
-  const pathname = usePathname();
+interface NavLink {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    roles: string[];
+}
 
-  const accessibleLinks = navLinks.filter(link =>
+interface Ambiente {
+    id: string;
+    nome: string;
+}
+
+export function Sidebar() {
+  const { user, token } = useAuth();
+  const pathname = usePathname();
+  const [operationalLinks, setOperationalLinks] = useState<NavLink[]>([]);
+
+  useEffect(() => {
+    const fetchOperationalLinks = async () => {
+      if (!token) return;
+
+      try {
+        const response = await fetch('http://localhost:3000/ambientes', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            console.error('Falha ao buscar ambientes.');
+            return;
+        }
+        const ambientes: Ambiente[] = await response.json();
+        
+        // CORREÇÃO: Removemos o .filter() que limitava os nomes
+        const dynamicLinks = ambientes.map(ambiente => ({
+            href: `/dashboard/operacional/${ambiente.id}`,
+            label: `Painel ${ambiente.nome}`,
+            icon: ChefHat,
+            roles: ['ADMIN', 'COZINHA'],
+        }));
+
+        setOperationalLinks(dynamicLinks);
+      } catch (error) {
+        console.error('Erro ao processar links operacionais:', error);
+      }
+    };
+
+    if (user?.cargo && ['ADMIN', 'COZINHA'].includes(user.cargo)) {
+        fetchOperationalLinks();
+    }
+  }, [user, token]);
+
+  const allLinks = useMemo(() => {
+    const insertIndex = baseNavLinks.findIndex(link => link.href === '/dashboard/mesas') + 1;
+    const newLinks = [...baseNavLinks];
+    newLinks.splice(insertIndex, 0, ...operationalLinks);
+    return newLinks;
+  }, [operationalLinks]);
+
+  const accessibleLinks = allLinks.filter(link =>
     user?.cargo && link.roles.includes(user.cargo)
   );
 

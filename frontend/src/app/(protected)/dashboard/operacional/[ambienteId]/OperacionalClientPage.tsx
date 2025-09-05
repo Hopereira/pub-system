@@ -4,20 +4,19 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard'; // Importamos PedidoStatus
+import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard';
 
-// ... (interface Pedido continua igual)
 interface Pedido {
   id: string;
-  status: PedidoStatus; // Usamos o tipo importado
+  status: PedidoStatus;
   itens: {
     quantidade: number;
     produto: {
       nome: string;
     };
   }[];
+  motivoCancelamento?: string | null;
 }
-
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -26,7 +25,6 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const { token } = useAuth();
 
   useEffect(() => {
-    // ... (useEffect para buscar os pedidos continua igual)
     const fetchPedidos = async () => {
       if (!token) return;
 
@@ -48,7 +46,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
         const data = await response.json();
         setPedidos(data);
-      } catch (err: any) {
+      } catch (err: any) { // AQUI ESTAVA O ERRO
         setError(err.message);
       } finally {
         setLoading(false);
@@ -58,8 +56,37 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     fetchPedidos();
   }, [ambienteId, token]);
 
-  // --- NOVA FUNÇÃO PARA ATUALIZAR O STATUS ---
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
+    if (!token) {
+        setError('Ação não permitida. Faça login novamente.');
+        return;
+      }
+  
+      try {
+        const response = await fetch(`http://localhost:3000/pedidos/${pedidoId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: novoStatus }),
+        });
+  
+        if (!response.ok) {
+          throw new Error('Falha ao atualizar o status do pedido.');
+        }
+  
+        setPedidos((pedidosAtuais) =>
+          pedidosAtuais.map((p) =>
+            p.id === pedidoId ? { ...p, status: novoStatus } : p
+          )
+        );
+      } catch (err: any) {
+        setError(err.message);
+      }
+  };
+
+  const handleCancelPedido = async (pedidoId: string, motivo: string) => {
     if (!token) {
       setError('Ação não permitida. Faça login novamente.');
       return;
@@ -72,30 +99,36 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: novoStatus }),
+        body: JSON.stringify({ 
+          status: 'CANCELADO',
+          motivoCancelamento: motivo,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Falha ao atualizar o status do pedido.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Falha ao cancelar o pedido.');
       }
+      
+      const pedidoCancelado = await response.json();
 
-      // Atualiza a lista de pedidos localmente para refletir a mudança na UI
+      console.log('Resposta da API após cancelamento:', pedidoCancelado);
+
       setPedidos((pedidosAtuais) =>
         pedidosAtuais.map((p) =>
-          p.id === pedidoId ? { ...p, status: novoStatus } : p
+          p.id === pedidoId ? pedidoCancelado : p
         )
       );
     } catch (err: any) {
       setError(err.message);
     }
   };
-  // --- FIM DA NOVA FUNÇÃO ---
 
 
   if (loading) {
     return <p className="mt-8">Carregando pedidos para o ambiente...</p>;
   }
-
+  
   if (error) {
     return <p className="mt-8 text-red-500">Erro: {error}</p>;
   }
@@ -110,7 +143,8 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
             <PedidoCard 
               key={pedido.id} 
               pedido={pedido} 
-              onUpdateStatus={handleUpdateStatus} // Passamos a função como prop
+              onUpdateStatus={handleUpdateStatus}
+              onCancel={handleCancelPedido}
             />
           ))}
         </div>

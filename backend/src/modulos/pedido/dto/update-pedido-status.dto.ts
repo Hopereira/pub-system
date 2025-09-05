@@ -17,7 +17,7 @@ export class UpdatePedidoStatusDto {
   })
   status: PedidoStatus;
 
-  // --- NOVO CAMPO ADICIONADO ---
+  // --- ESTA PARTE É A MAIS IMPORTANTE ---
   @ApiPropertyOptional({
     description: 'O motivo pelo qual o pedido está a ser cancelado. Obrigatório se o status for "CANCELADO"',
     example: 'Item em falta no estoque.',
@@ -27,5 +27,5 @@ export class UpdatePedidoStatusDto {
   @MinLength(5, { message: 'O motivo do cancelamento deve ter no mínimo 5 caracteres.'})
   @MaxLength(255)
   motivoCancelamento?: string;
-  // --- FIM DO NOVO CAMPO ---
+  // --- FIM DA PARTE IMPORTANTE ---
 }
