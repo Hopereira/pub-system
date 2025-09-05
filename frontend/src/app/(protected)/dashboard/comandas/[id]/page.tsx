@@ -24,6 +24,7 @@ export default function ComandaDetalhePage() {
         setComanda(data);
       } catch (err) {
         console.error(err);
+        setComanda(null);
       } finally {
         setIsLoading(false);
       }
@@ -35,29 +36,43 @@ export default function ComandaDetalhePage() {
   }, [fetchComanda]);
 
   const handleItensAdicionados = () => {
-    setIsDrawerOpen(false); // Fecha a gaveta
-    fetchComanda();       // Busca os dados atualizados da comanda
+    setIsDrawerOpen(false);
+    fetchComanda();
   };
 
-  const formatCurrency = (value: number) => { /* ... continua igual ... */ };
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
 
-  if (isLoading) { /* ... */ }
-  if (!comanda) { /* ... */ }
+  if (isLoading) {
+    return <div className="p-4">Carregando detalhes da comanda...</div>;
+  }
 
-  const total = comanda.itensPedido.reduce((acc, item) => acc + (item.produto.preco * item.quantidade), 0);
+  if (!comanda) {
+    return <div className="p-4 text-red-500">Comanda não encontrada ou erro ao carregar.</div>;
+  }
+
+  // --- CORREÇÃO AQUI ---
+  // A comanda tem múltiplos 'pedidos', e cada pedido tem 'itens'.
+  // Usamos flatMap para juntar todos os 'itens' de todos os 'pedidos' em uma única lista.
+  const todosOsItens = comanda.pedidos?.flatMap(pedido => pedido.itens) ?? [];
+
+  // O cálculo do total agora usa a lista corrigida 'todosOsItens'.
+  const total = todosOsItens.reduce((acc, item) => acc + (item.produto.preco * item.quantidade), 0);
 
   return (
     <div className="p-4 relative min-h-screen">
-      {/* ... O resto do JSX continua exatamente igual ao passo anterior ... */}
       <h1 className="text-3xl font-bold">Comanda da Mesa {comanda.mesa?.numero}</h1>
       <p className="text-lg">Status: <span className="font-semibold">{comanda.status}</span></p>
+      
       <div className="mt-6">
         <h2 className="text-2xl font-bold">Itens do Pedido</h2>
-        {comanda.itensPedido.length === 0 ? (
+        {/* A verificação e o map agora usam a lista corrigida 'todosOsItens' */}
+        {todosOsItens.length === 0 ? (
           <p className="text-gray-500 mt-4">Nenhum item adicionado ainda.</p>
         ) : (
           <ul className="mt-4 space-y-2">
-            {comanda.itensPedido.map(item => (
+            {todosOsItens.map(item => (
               <li key={item.id} className="flex justify-between items-center border-b pb-2">
                 <div>
                   <p className="font-semibold">{item.quantidade}x {item.produto.nome}</p>
@@ -73,9 +88,11 @@ export default function ComandaDetalhePage() {
             <span>{formatCurrency(total)}</span>
         </div>
       </div>
-      <Button onClick={() => setIsDrawerOpen(true)} className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg"><PlusCircle className="h-8 w-8" /></Button>
+      
+      <Button onClick={() => setIsDrawerOpen(true)} className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg">
+        <PlusCircle className="h-8 w-8" />
+      </Button>
 
-      {/* Passando as props necessárias para o Drawer */}
       <AddItemDrawer 
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
