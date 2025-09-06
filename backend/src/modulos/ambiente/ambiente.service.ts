@@ -1,6 +1,7 @@
 // Caminho: backend/src/modulos/ambiente/ambiente.service.ts
 
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; // 1. Importamos ConflictException
+// ... (imports continuam os mesmos)
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
@@ -9,6 +10,7 @@ import { Ambiente } from './entities/ambiente.entity';
 
 @Injectable()
 export class AmbienteService {
+  // ... (construtor continua igual)
   constructor(
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
@@ -19,10 +21,30 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
-  findAll(): Promise<Ambiente[]> {
-    return this.ambienteRepository.find();
-  }
+  // --- MÉTODO 'findAll' ATUALIZADO PARA INCLUIR A DESCRIÇÃO ---
+  async findAll(): Promise<any[]> {
+    const ambientes = await this.ambienteRepository
+      .createQueryBuilder('ambiente')
+      .leftJoin('ambiente.produtos', 'produto')
+      .leftJoin('ambiente.mesas', 'mesa')
+      .select('ambiente.id', 'id')
+      .addSelect('ambiente.nome', 'nome')
+      .addSelect('ambiente.descricao', 'descricao') // <-- ADICIONADO
+      .addSelect('COUNT(DISTINCT produto.id)', 'productCount')
+      .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')
+      .groupBy('ambiente.id')
+      .orderBy('ambiente.nome', 'ASC')
+      .getRawMany();
 
+    return ambientes.map(ambiente => ({
+      ...ambiente,
+      productCount: parseInt(ambiente.productCount, 10),
+      tableCount: parseInt(ambiente.tableCount, 10),
+    }));
+  }
+  // --- FIM DA ATUALIZAÇÃO ---
+
+  // ... (findOne, update, e remove continuam os mesmos)
   async findOne(id: string): Promise<Ambiente> {
     const ambiente = await this.ambienteRepository.findOne({ where: { id } });
     if (!ambiente) {
@@ -42,21 +64,17 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
-  // --- MÉTODO 'remove' ATUALIZADO COM TRATAMENTO DE ERRO ---
   async remove(id: string): Promise<void> {
     const ambiente = await this.findOne(id);
     try {
       await this.ambienteRepository.remove(ambiente);
     } catch (error) {
-      // O código de erro '23503' é específico do PostgreSQL para violação de chave estrangeira
       if (error.code === '23503') {
         throw new ConflictException(
-          'Este ambiente não pode ser apagado pois está em uso por produtos ou funcionários.',
+          'Este ambiente não pode ser apagado pois está em uso por produtos ou mesas.',
         );
       }
-      // Se for um erro diferente, nós o relançamos para não esconder outros possíveis bugs
       throw error;
     }
   }
-  // --- FIM DA ATUALIZAÇÃO ---
 }
