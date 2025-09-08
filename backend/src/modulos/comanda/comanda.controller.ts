@@ -92,4 +92,11 @@ export class ComandaController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.comandaService.remove(id);
   }
+  @Get('mesa/:mesaId/aberta')
+  @ApiOperation({ summary: 'Busca a comanda aberta de uma mesa específica' })
+  @ApiResponse({ status: 200, description: 'Comanda retornada com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Nenhuma comanda aberta encontrada para esta mesa.' })
+  findAbertaByMesaId(@Param('mesaId', ParseUUIDPipe) mesaId: string) {
+    return this.comandaService.findAbertaByMesaId(mesaId);
+  }
 }

@@ -1,6 +1,17 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+// Caminho: backend/src/modulos/mesa/entities/mesa.entity.ts
 
-// Definimos os status possíveis para uma mesa
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany, // NOVO: Importamos o OneToMany
+  PrimaryGeneratedColumn,
+  Unique,
+} from 'typeorm';
+import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { Comanda } from '../../comanda/entities/comanda.entity'; // NOVO: Importamos a Comanda
+
 export enum MesaStatus {
   LIVRE = 'LIVRE',
   OCUPADA = 'OCUPADA',
@@ -9,11 +20,12 @@ export enum MesaStatus {
 }
 
 @Entity('mesas')
+@Unique(['numero', 'ambiente'])
 export class Mesa {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, type: 'int' })
+  @Column({ type: 'int' })
   numero: number;
 
   @Column({
@@ -22,4 +34,12 @@ export class Mesa {
     default: MesaStatus.LIVRE,
   })
   status: MesaStatus;
+
+  @ManyToOne(() => Ambiente, (ambiente) => ambiente.mesas)
+  @JoinColumn({ name: 'ambiente_id' })
+  ambiente: Ambiente;
+
+  // --- NOVO: Definindo o lado inverso da relação com Comanda ---
+  @OneToMany(() => Comanda, (comanda) => comanda.mesa)
+  comandas: Comanda[];
 }

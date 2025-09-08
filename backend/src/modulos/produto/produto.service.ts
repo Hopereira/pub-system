@@ -1,5 +1,3 @@
-// backend/src/modulos/produto/produto.service.ts
-
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,7 +17,6 @@ export class ProdutoService {
   ) {}
 
   async create(createProdutoDto: CreateProdutoDto): Promise<Produto> {
-    // Passo 1: Verificar se o ambienteId fornecido existe
     const ambiente = await this.ambienteRepository.findOne({
       where: { id: createProdutoDto.ambienteId },
     });
@@ -30,13 +27,11 @@ export class ProdutoService {
       );
     }
 
-    // Passo 2: Criar a nova instância do produto
     const produto = this.produtoRepository.create({
       ...createProdutoDto,
-      ambiente: ambiente, // Associa a entidade ambiente encontrada
+      ambiente: ambiente,
     });
 
-    // Passo 3: Salvar o produto no banco de dados
     return this.produtoRepository.save(produto);
   }
 
@@ -55,9 +50,40 @@ export class ProdutoService {
     return produto;
   }
 
-  async update(id: string, updateProdutoDto: UpdateProdutoDto) {
-    // Lógica de atualização (pode ser implementada depois)
-    return `This action updates a #${id} produto`;
+  // --- MÉTODO UPDATE CORRIGIDO ---
+  async update(id: string, updateProdutoDto: UpdateProdutoDto): Promise<Produto> {
+    // Se um novo ambienteId for fornecido, verifica se ele existe
+    if (updateProdutoDto.ambienteId) {
+      const ambiente = await this.ambienteRepository.findOne({
+        where: { id: updateProdutoDto.ambienteId },
+      });
+      if (!ambiente) {
+        throw new NotFoundException(
+          `Ambiente com ID ${updateProdutoDto.ambienteId} não encontrado.`,
+        );
+      }
+    }
+
+    // O 'preload' carrega a entidade existente e mescla os novos dados do DTO.
+    const produto = await this.produtoRepository.preload({
+      id: id,
+      ...updateProdutoDto,
+      // Se um novo ambienteId foi passado, formatamos para o TypeORM entender a relação
+      ambiente: updateProdutoDto.ambienteId
+        ? { id: updateProdutoDto.ambienteId }
+        : undefined,
+    });
+
+    // Se o produto com o ID fornecido não existir, o preload retorna undefined.
+    if (!produto) {
+      throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
+    }
+
+    // Salva a entidade atualizada no banco de dados.
+    await this.produtoRepository.save(produto);
+
+    // Usa o método findOne para buscar e retornar a entidade COMPLETA com a relação carregada.
+    return this.findOne(id);
   }
 
   async remove(id: string) {

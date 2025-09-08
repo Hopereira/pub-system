@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import { Toaster } from "@/components/ui/sonner"; // <-- 1. IMPORTE O NOVO COMPONENTE
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,12 +18,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-br" suppressHydrationWarning>
-      <body className={inter.className}>
+    // A propriedade sai daqui...
+    <html lang="pt-br">
+      {/* ...e vem para a tag <body> */}
+      <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           {children}
         </AuthProvider>
-        <Toaster richColors /> {/* <-- 2. ADICIONE AQUI (com a prop 'richColors' fica mais bonito) */}
+        <Toaster richColors />
       </body>
     </html>
   );

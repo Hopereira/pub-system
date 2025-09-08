@@ -11,11 +11,13 @@ import { MesaModule } from './modulos/mesa/mesa.module';
 import { ComandaModule } from './modulos/comanda/comanda.module';
 import { ClienteModule } from './modulos/cliente/cliente.module';
 import { PedidoModule } from './modulos/pedido/pedido.module';
-import { ProdutoModule } from './modulos/produto/produto.module'; // <-- 1. ADICIONE A IMPORTAÇÃO AQUI
+import { ProdutoModule } from './modulos/produto/produto.module';
+import { SeederModule } from './database/seeder.module';
 
 @Module({
   imports: [
-    // 1. Módulo de Configuração: Lê as variáveis do arquivo .env
+    // --- CORREÇÃO AQUI ---
+    // 1. Módulo de Configuração: Lê as variáveis do arquivo .env (ESTAVA FALTANDO)
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -46,7 +48,8 @@ import { ProdutoModule } from './modulos/produto/produto.module'; // <-- 1. ADIC
     ComandaModule,
     ClienteModule,
     PedidoModule,
-    ProdutoModule, // <-- 2. ADICIONE O MÓDULO NA LISTA AQUI
+    ProdutoModule,
+    SeederModule,
   ],
   controllers: [],
   providers: [],
