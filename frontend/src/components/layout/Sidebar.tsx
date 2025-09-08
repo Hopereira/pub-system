@@ -16,6 +16,7 @@ import {
     Building2,
     DoorOpen,
     ChefHat,
+    BookOpen
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -25,8 +26,8 @@ const baseNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
   { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM'] },
   { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: Book, roles: ['ADMIN'] },
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
+  { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
   { href: '/dashboard/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
   { href: '/dashboard/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
   { href: '/dashboard/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
