@@ -3,27 +3,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+
 import { Produto } from '@/types/produto';
 import { CreateProdutoDto, UpdateProdutoDto } from '@/types/produto.dto';
 import { createProduto, updateProduto } from '@/services/produtoService';
@@ -33,24 +25,36 @@ interface ProdutoFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (produto: Produto) => void;
-  produtoToEdit?: Produto | null; // NOVO: Prop para receber o produto a ser editado
+  produtoToEdit?: Produto | null;
 }
 
-const initialFormData = {
-    nome: '',
-    descricao: '',
-    preco: '' as number | '',
-    categoria: '',
-    ambienteId: ''
-};
+// NOVO: Schema de validação com Zod
+const formSchema = z.object({
+  nome: z.string().min(2, { message: "O nome é obrigatório." }),
+  descricao: z.string().optional(),
+  categoria: z.string().min(2, { message: "A categoria é obrigatória." }),
+  preco: z.coerce.number().positive({ message: "O preço deve ser um número positivo." }),
+  ambienteId: z.string({ required_error: "Por favor, selecione um ambiente." }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produtoToEdit }: ProdutoFormDialogProps) {
-  const [formData, setFormData] = useState<Partial<CreateProdutoDto>>(initialFormData);
   const [ambientes, setAmbientes] = useState<AmbienteData[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
   const isEditMode = !!produtoToEdit;
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      nome: '',
+      descricao: '',
+      preco: '' as any,
+      categoria: '',
+      ambienteId: '',
+    },
+  });
 
   useEffect(() => {
     if (open) {
@@ -66,114 +70,80 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
       fetchAmbientes();
 
       if (isEditMode && produtoToEdit) {
-        setFormData({
+        form.reset({
             nome: produtoToEdit.nome,
-            descricao: produtoToEdit.descricao,
+            descricao: produtoToEdit.descricao || '',
             preco: produtoToEdit.preco,
             categoria: produtoToEdit.categoria,
             ambienteId: produtoToEdit.ambiente.id
         });
       } else {
-        setFormData(initialFormData);
+        form.reset({
+            nome: '',
+            descricao: '',
+            preco: '' as any,
+            categoria: '',
+            ambienteId: ''
+        });
       }
     }
-  }, [open, isEditMode, produtoToEdit]);
+  }, [open, isEditMode, produtoToEdit, form]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'preco' ? (value === '' ? '' : Number(value)) : value }));
-  };
-  
-  const handleSelectChange = (value: string) => {
-    setFormData(prev => ({ ...prev, ambienteId: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.nome || !formData.preco || !formData.categoria || !formData.ambienteId) {
-        setError("Todos os campos, exceto descrição, são obrigatórios.");
-        return;
-    }
-
-    setIsSubmitting(true);
+  const onSubmit = async (values: FormValues) => {
     setError(null);
-
     try {
       let result: Produto;
       if (isEditMode && produtoToEdit) {
-        const dataToUpdate: UpdateProdutoDto = {
-            ...formData,
-            preco: Number(formData.preco)
-        };
-        result = await updateProduto(produtoToEdit.id, dataToUpdate);
+        result = await updateProduto(produtoToEdit.id, values as UpdateProdutoDto);
       } else {
-        const dataToCreate: CreateProdutoDto = {
-            ...(formData as CreateProdutoDto),
-            preco: Number(formData.preco)
-        };
-        result = await createProduto(dataToCreate);
+        result = await createProduto(values as CreateProdutoDto);
       }
       onSuccess(result);
     } catch (err: any) {
       const apiError = err.response?.data?.message || `Falha ao ${isEditMode ? 'atualizar' : 'criar'} o produto.`;
       setError(Array.isArray(apiError) ? apiError.join(', ') : apiError);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Editar Produto' : 'Adicionar Novo Produto'}</DialogTitle>
-            <DialogDescription>
-              {isEditMode ? 'Altere os dados do item do cardápio.' : 'Preencha os dados do item para adicioná-lo ao cardápio.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {error && (
-                <Alert variant="destructive">
-                    <Terminal className="h-4 w-4" />
-                    <AlertTitle>Erro na Submissão</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="nome">Nome do Produto</Label>
-              <Input id="nome" name="nome" value={formData.nome} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="descricao">Descrição</Label>
-              <Textarea id="descricao" name="descricao" value={formData.descricao} onChange={handleChange} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="categoria">Categoria</Label>
-              <Input id="categoria" name="categoria" value={formData.categoria} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="preco">Preço (R$)</Label>
-              <Input id="preco" name="preco" type="number" value={formData.preco} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ambienteId">Ambiente de Preparo</Label>
-              <Select onValueChange={handleSelectChange} value={formData.ambienteId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um ambiente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ambientes.map(ambiente => <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </form>
+        <DialogHeader>
+          <DialogTitle>{isEditMode ? 'Editar Produto' : 'Adicionar Novo Produto'}</DialogTitle>
+          <DialogDescription>
+            {isEditMode ? 'Altere os dados do item do cardápio.' : 'Preencha os dados para adicioná-lo ao cardápio.'}
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
+                {error && (
+                    <Alert variant="destructive">
+                        <Terminal className="h-4 w-4" />
+                        <AlertTitle>Erro na Submissão</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+                <FormField control={form.control} name="nome" render={({ field }) => ( <FormItem><FormLabel>Nome do Produto</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="categoria" render={({ field }) => ( <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Bebidas, Petiscos" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="preco" render={({ field }) => ( <FormItem><FormLabel>Preço (R$)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="ambienteId" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Ambiente de Preparo</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione um ambiente" /></SelectTrigger></FormControl>
+                            <SelectContent>{ambientes.map(ambiente => <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}/>
+                <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}
+                    </Button>
+                </DialogFooter>
+            </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
