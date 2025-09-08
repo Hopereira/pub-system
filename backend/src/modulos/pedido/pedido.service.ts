@@ -3,14 +3,13 @@
 import {
   BadRequestException,
   Injectable,
-  Logger, // 1. IMPORTAMOS O LOGGER
+  Logger, // ALTERADO: Importamos o Logger
   NotFoundException,
 } from '@nestjs/common';
-// ... outros imports
-import { Pedido, PedidoStatus } from './entities/pedido.entity';
-import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Pedido, PedidoStatus } from './entities/pedido.entity';
+import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
 import { Comanda } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
@@ -19,11 +18,10 @@ import { ItemPedido } from './entities/item-pedido.entity';
 
 @Injectable()
 export class PedidoService {
-  // 2. INICIAMOS O LOGGER PARA ESTE SERVIÇO
+  // ALTERADO: Iniciamos o Logger para este serviço
   private readonly logger = new Logger(PedidoService.name);
 
   constructor(
-    // ... (construtor continua igual)
     @InjectRepository(Pedido)
     private readonly pedidoRepository: Repository<Pedido>,
     @InjectRepository(ItemPedido)
@@ -34,13 +32,10 @@ export class PedidoService {
     private readonly produtoRepository: Repository<Produto>,
   ) {}
 
-  // ... (outros métodos continuam iguais)
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
     const { comandaId, itens } = createPedidoDto;
 
-    const comanda = await this.comandaRepository.findOne({
-      where: { id: comandaId },
-    });
+    const comanda = await this.comandaRepository.findOne({ where: { id: comandaId } });
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${comandaId}" não encontrada.`);
     }
@@ -50,13 +45,9 @@ export class PedidoService {
     }
 
     const itensPedidoPromise = itens.map(async (itemDto) => {
-      const produto = await this.produtoRepository.findOne({
-        where: { id: itemDto.produtoId },
-      });
+      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
       if (!produto) {
-        throw new NotFoundException(
-          `Produto com ID "${itemDto.produtoId}" não encontrado.`,
-        );
+        throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
       }
       const itemPedido = this.itemPedidoRepository.create({
         produto: produto,
@@ -83,12 +74,11 @@ export class PedidoService {
 
   async findAll(ambienteId?: string): Promise<Pedido[]> {
     const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido');
-
     queryBuilder
       .leftJoinAndSelect('pedido.comanda', 'comanda')
       .leftJoinAndSelect('pedido.itens', 'itemPedido')
       .leftJoinAndSelect('itemPedido.produto', 'produto')
-      .leftJoinAndSelect('produto.ambiente', 'ambiente'); // Carregamos a relação com ambiente
+      .leftJoinAndSelect('produto.ambiente', 'ambiente');
 
     if (ambienteId) {
       queryBuilder.where('ambiente.id = :ambienteId', { ambienteId });
@@ -108,37 +98,37 @@ export class PedidoService {
     return pedido;
   }
 
+  // --- MÉTODO ATUALIZADO ---
   async updateStatus(
     id: string,
     updatePedidoStatusDto: UpdatePedidoStatusDto,
   ): Promise<Pedido> {
-    // 3. ADICIONAMOS O PONTO DE VERIFICAÇÃO AQUI
-    this.logger.debug(`Recebido DTO para atualizar status do pedido ${id}:`, updatePedidoStatusDto);
+    this.logger.debug(`Tentando atualizar status do pedido ID: ${id}`, updatePedidoStatusDto);
 
     const pedido = await this.findOne(id);
     const { status, motivoCancelamento } = updatePedidoStatusDto;
 
+    // Critério de Aceite #3: Validação da lógica de negócio
     if (status === PedidoStatus.CANCELADO && !motivoCancelamento) {
-      throw new BadRequestException('O motivo do cancelamento é obrigatório.');
+      throw new BadRequestException('O motivo do cancelamento é obrigatório ao cancelar um pedido.');
     }
 
+    // Boa prática: garantir que o motivo só seja enviado quando o status for CANCELADO
     if (status !== PedidoStatus.CANCELADO && motivoCancelamento) {
-      throw new BadRequestException(
-        'Motivo de cancelamento só pode ser fornecido ao cancelar um pedido.',
-      );
+      throw new BadRequestException('Motivo de cancelamento só pode ser fornecido ao cancelar um pedido.');
     }
 
     pedido.status = status;
+    // Se o status for CANCELADO, salva o motivo. Senão, garante que o campo fique nulo.
     pedido.motivoCancelamento = status === PedidoStatus.CANCELADO ? motivoCancelamento : null;
 
+    this.logger.debug(`Salvando pedido ID: ${id} com novos dados`, pedido);
     return this.pedidoRepository.save(pedido);
   }
+  // --- FIM DO MÉTODO ATUALIZADO ---
   
   async update(id: string, updatePedidoDto: UpdatePedidoDto): Promise<Pedido> {
-    const pedido = await this.pedidoRepository.preload({
-      id,
-      ...updatePedidoDto,
-    });
+    const pedido = await this.pedidoRepository.preload({ id, ...updatePedidoDto });
     if (!pedido) {
       throw new NotFoundException(`Pedido com ID "${id}" não encontrada.`);
     }
