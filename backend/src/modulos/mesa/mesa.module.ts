@@ -4,9 +4,10 @@ import { MesaService } from './mesa.service';
 import { MesaController } from './mesa.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Mesa } from './entities/mesa.entity';
+import { AmbienteModule } from '../ambiente/ambiente.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mesa])],
+  imports: [TypeOrmModule.forFeature([Mesa]), AmbienteModule],
   controllers: [MesaController],
   providers: [MesaService],
 })
