@@ -38,10 +38,10 @@ export class Pedido {
   @CreateDateColumn()
   data: Date;
 
-  // --- NOVO CAMPO ADICIONADO ---
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  // --- ALTERAÇÃO INSERIDA ---
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   motivoCancelamento: string | null;
-  // --- FIM DO NOVO CAMPO ---
+  // --- FIM DA ALTERAÇÃO ---
 
   @ManyToOne(() => Comanda)
   @JoinColumn({ name: 'comandaId' })
