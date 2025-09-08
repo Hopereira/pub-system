@@ -1,53 +1,55 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+// Caminho: backend/src/modulos/mesa/mesa.service.ts
+
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
-import { Mesa } from './entities/mesa.entity';
+import { Ambiente } from '../ambiente/entities/ambiente.entity'; // ALTERADO: Importamos a entidade Ambiente
 
 @Injectable()
 export class MesaService {
   constructor(
     @InjectRepository(Mesa)
     private readonly mesaRepository: Repository<Mesa>,
+    // --- ALTERAÇÃO INSERIDA: Injetamos o repositório de Ambiente ---
+    @InjectRepository(Ambiente)
+    private readonly ambienteRepository: Repository<Ambiente>,
   ) {}
 
+  // --- MÉTODO ATUALIZADO ---
   async create(createMesaDto: CreateMesaDto): Promise<Mesa> {
     const { numero, ambienteId } = createMesaDto;
 
-    const mesaExistente = await this.mesaRepository.findOne({
-      where: {
-        numero: numero,
-        ambiente: { id: ambienteId },
-      },
-    });
-
-    if (mesaExistente) {
-      throw new ConflictException(
-        `A mesa número ${numero} já está cadastrada neste ambiente.`,
-      );
+    // 1. Validamos se o ambiente fornecido existe
+    const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
+    if (!ambiente) {
+      throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
     }
 
+    // 2. Criamos a mesa e já associamos o objeto ambiente completo
     const mesa = this.mesaRepository.create({
-      numero: numero,
-      ambiente: { id: ambienteId },
+      numero,
+      ambiente, // Passamos o objeto, não o ID
     });
-    
-    const mesaSalva = await this.mesaRepository.save(mesa);
 
-    return this.findOne(mesaSalva.id);
+    // 3. Salvamos a mesa com a relação correta
+    return this.mesaRepository.save(mesa);
   }
 
-  findAll(): Promise<Mesa[]> {
-    return this.mesaRepository.find({
-      relations: ['ambiente'],
-      order: {
-        numero: 'ASC',
-      },
+  // --- MÉTODO CORRIGIDO ---
+  async findAll(): Promise<Mesa[]> {
+    const mesas = await this.mesaRepository.find({
+      relations: ['ambiente', 'comandas'],
+      order: { numero: 'ASC' },
+    });
+    return mesas.map(mesa => {
+      const temComandaAberta = mesa.comandas?.some(comanda => comanda.status === 'ABERTA');
+      return {
+        ...mesa,
+        status: temComandaAberta ? MesaStatus.OCUPADA : MesaStatus.LIVRE,
+      };
     });
   }
 
@@ -62,34 +64,29 @@ export class MesaService {
     return mesa;
   }
 
+  // --- MÉTODO ATUALIZADO ---
   async update(id: string, updateMesaDto: UpdateMesaDto): Promise<Mesa> {
-    // --- CORREÇÃO AQUI ---
-
-    // Prepara a entidade para atualização, garantindo que o ambiente seja tratado como relação
+    const { ambienteId, ...dadosUpdate } = updateMesaDto;
+    
+    // Primeiro, pré-carregamos a mesa com os dados simples (ex: numero)
     const mesa = await this.mesaRepository.preload({
       id: id,
-      numero: updateMesaDto.numero,
-      ambiente: updateMesaDto.ambienteId ? { id: updateMesaDto.ambienteId } : undefined,
+      ...dadosUpdate,
     });
-    
     if (!mesa) {
       throw new NotFoundException(`Mesa com ID "${id}" não encontrada.`);
     }
 
-    try {
-      // 1. Salva as alterações
-      await this.mesaRepository.save(mesa);
-      // 2. Retorna a entidade completa usando o findOne
-      return this.findOne(id);
-    } catch (error) {
-      // Adicionamos o mesmo tratamento de erro da função 'create'
-      if (error.code === '23505') {
-        throw new ConflictException(
-          `A mesa número ${mesa.numero} já está cadastrada neste ambiente.`,
-        );
+    // Se um novo ambienteId foi fornecido, validamos e atualizamos a relação
+    if (ambienteId) {
+      const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
+      if (!ambiente) {
+        throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
       }
-      throw error;
+      mesa.ambiente = ambiente;
     }
+    
+    return this.mesaRepository.save(mesa);
   }
 
   async remove(id: string): Promise<void> {

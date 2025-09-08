@@ -42,4 +42,4 @@ export const deleteMesa = async (id: string): Promise<void> => {
     console.error(`Erro ao deletar mesa ${id}:`, error);
     throw error;
   }
-};
+};  
