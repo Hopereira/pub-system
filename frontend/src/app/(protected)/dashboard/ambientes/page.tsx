@@ -1,50 +1,53 @@
 // Caminho: frontend/src/app/(protected)/dashboard/ambientes/page.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+
 import { createAmbiente, deleteAmbiente, getAmbientes, updateAmbiente } from '@/services/ambienteService';
-// ... (outros imports)
+import { AmbienteData } from '@/services/ambienteService'; // Importando tipo do serviço
+
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea'; // Importamos o Textarea
 
-// ATUALIZAMOS A DEFINIÇÃO DE TIPO
-export interface AmbienteData {
-  id: string;
-  nome: string;
-  descricao?: string | null; // Adicionamos a descrição
-  productCount: number; 
-  tableCount: number;
-}
+// NOVO: Schema de validação com Zod
+const formSchema = z.object({
+  nome: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
+  descricao: z.string().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 const AmbientesPage = () => {
   const [ambientes, setAmbientes] = useState<AmbienteData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  
-  // ATUALIZAMOS O ESTADO DO FORMULÁRIO
-  const [ambienteFormData, setAmbienteFormData] = useState({ 
-    id: null as string | null, 
-    nome: '', 
-    descricao: '' 
+  const [editingAmbiente, setEditingAmbiente] = useState<AmbienteData | null>(null);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      nome: '',
+      descricao: '',
+    },
   });
 
-  // ... (carregarAmbientes continua igual)
   const carregarAmbientes = async () => {
     try {
       setIsLoading(true);
       const data = await getAmbientes();
       setAmbientes(data || []);
     } catch (err) {
-      setError('Falha ao carregar os ambientes.');
+      toast.error('Falha ao carregar os ambientes.');
       setAmbientes([]);
     } finally {
       setIsLoading(false);
@@ -55,50 +58,37 @@ const AmbientesPage = () => {
     carregarAmbientes();
   }, []);
 
-
   const handleOpenNewDialog = () => {
-    // Limpa o formulário para um novo ambiente
-    setAmbienteFormData({ id: null, nome: '', descricao: '' });
+    setEditingAmbiente(null);
+    form.reset({ nome: '', descricao: '' });
     setIsFormDialogOpen(true);
   };
   
   const handleOpenEditDialog = (ambiente: AmbienteData) => {
-    // Preenche o formulário com os dados do ambiente a ser editado
-    setAmbienteFormData({ 
-      id: ambiente.id, 
+    setEditingAmbiente(ambiente);
+    form.reset({
       nome: ambiente.nome,
-      descricao: ambiente.descricao || '' // Garante que não seja null
+      descricao: ambiente.descricao || '',
     });
     setIsFormDialogOpen(true);
   };
 
-  const handleFormSubmit = async () => {
-    if (!ambienteFormData.nome) {
-      toast.error('O nome do ambiente não pode ser vazio.');
-      return;
-    }
+  const onSubmit = async (values: FormValues) => {
     try {
-      // Prepara os dados a serem enviados, incluindo a descrição
-      const payload = {
-        nome: ambienteFormData.nome,
-        descricao: ambienteFormData.descricao,
-      };
-
-      if (ambienteFormData.id) {
-        await updateAmbiente(ambienteFormData.id, payload);
+      if (editingAmbiente) {
+        await updateAmbiente(editingAmbiente.id, values);
         toast.success('Ambiente atualizado com sucesso!');
       } else {
-        await createAmbiente(payload);
+        await createAmbiente(values);
         toast.success('Ambiente criado com sucesso!');
       }
       setIsFormDialogOpen(false);
       await carregarAmbientes();
     } catch (err) {
-      toast.error(ambienteFormData.id ? 'Falha ao atualizar o ambiente.' : 'Falha ao criar o ambiente.');
+      toast.error(editingAmbiente ? 'Falha ao atualizar o ambiente.' : 'Falha ao criar o ambiente.');
     }
   };
   
-  // ... (handleDelete e a lógica de renderização inicial continuam iguais)
   const handleDelete = async (id: string) => {
     try {
       await deleteAmbiente(id);
@@ -111,42 +101,64 @@ const AmbientesPage = () => {
   };
 
   if (isLoading && ambientes.length === 0) return <p>A carregar ambientes...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Gestão de Ambientes</h1>
-        <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
-          <DialogTrigger asChild><Button onClick={handleOpenNewDialog}>Adicionar Novo Ambiente</Button></DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{ambienteFormData.id ? 'Editar Ambiente' : 'Adicionar Novo Ambiente'}</DialogTitle>
-              <DialogDescription>{ambienteFormData.id ? 'Altere os detalhes do ambiente.' : 'Preencha os detalhes do novo ambiente.'}</DialogDescription>
-            </DialogHeader>
-            {/* ATUALIZAMOS O FORMULÁRIO NO DIALOG */}
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Nome</Label>
-                <Input id="name" value={ambienteFormData.nome} onChange={(e) => setAmbienteFormData({ ...ambienteFormData, nome: e.target.value })} className="col-span-3"/>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="descricao" className="text-right">Descrição</Label>
-                <Textarea id="descricao" value={ambienteFormData.descricao} onChange={(e) => setAmbienteFormData({ ...ambienteFormData, descricao: e.target.value })} className="col-span-3" placeholder="Opcional: Descreva a finalidade deste ambiente."/>
-              </div>
-            </div>
-            <DialogFooter><Button type="submit" onClick={handleFormSubmit}>Salvar</Button></DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleOpenNewDialog}>Adicionar Novo Ambiente</Button>
       </div>
+      
+      <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{editingAmbiente ? 'Editar Ambiente' : 'Adicionar Novo Ambiente'}</DialogTitle>
+            <DialogDescription>{editingAmbiente ? 'Altere os detalhes do ambiente.' : 'Preencha os detalhes do novo ambiente.'}</DialogDescription>
+          </DialogHeader>
+
+          {/* FORMULÁRIO REFATORADO */}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              <FormField
+                control={form.control}
+                name="nome"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Cozinha, Bar da Piscina" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="descricao"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição (Opcional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Descreva a finalidade deste ambiente." className="resize-none" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit">Salvar</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+
+        </DialogContent>
+      </Dialog>
       
       <div className="border rounded-md">
         <Table>
           <TableCaption>Uma lista dos seus ambientes cadastrados.</TableCaption>
           <TableHeader>
             <TableRow>
-              {/* AJUSTAMOS A LARGURA DAS COLUNAS */}
               <TableHead className="w-[30%]">Nome</TableHead>
               <TableHead className="w-[40%]">Descrição</TableHead>
               <TableHead>Status</TableHead>
@@ -164,7 +176,6 @@ const AmbientesPage = () => {
               return (
                 <TableRow key={ambiente.id}>
                   <TableCell className="font-medium">{ambiente.nome}</TableCell>
-                  {/* ADICIONAMOS A CÉLULA DA DESCRIÇÃO */}
                   <TableCell className="text-sm text-muted-foreground">{ambiente.descricao || '-'}</TableCell>
                   <TableCell>
                     {emUso ? (
