@@ -19,7 +19,6 @@ import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@ne
 export class ComandaController {
   constructor(private readonly comandaService: ComandaService) {}
 
-  // --- NOVA ROTA DE BUSCA ---
   @Get('search')
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiOperation({ summary: 'Busca comandas abertas por número da mesa ou nome/CPF do cliente' })
@@ -29,7 +28,6 @@ export class ComandaController {
   search(@Query('term') term: string) {
     return this.comandaService.search(term);
   }
-  // --- FIM DA NOVA ROTA ---
 
   @Public()
   @Get(':id/public')
@@ -60,6 +58,19 @@ export class ComandaController {
   findAbertaByMesaId(@Param('mesaId', ParseUUIDPipe) mesaId: string) {
     return this.comandaService.findAbertaByMesaId(mesaId);
   }
+
+  // --- NOVA ROTA PARA FECHAR COMANDA ---
+  @Patch(':id/fechar')
+  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @ApiOperation({ summary: 'Fecha uma comanda e libera a mesa associada, se houver' })
+  @ApiResponse({ status: 200, description: 'Comanda fechada com sucesso.' })
+  @ApiResponse({ status: 400, description: 'A comanda não pode ser fechada (ex: já está fechada).' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Admin ou Caixa.' })
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
+  fecharComanda(@Param('id', ParseUUIDPipe) id: string) {
+    return this.comandaService.fecharComanda(id);
+  }
+  // --- FIM DA NOVA ROTA ---
 
   @Get(':id')
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
