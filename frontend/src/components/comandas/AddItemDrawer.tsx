@@ -1,3 +1,4 @@
+// Caminho: frontend/src/components/comandas/AddItemDrawer.tsx
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -59,22 +60,34 @@ export function AddItemDrawer({ isOpen, onClose, comandaId, onItensAdicionados }
     setCarrinho(novoCarrinho);
   };
 
+  // --- FUNÇÃO handleSubmit ATUALIZADA COM DIAGNÓSTICOS ---
   const handleSubmit = async () => {
     setIsLoading(true);
+    console.log("--- Iniciando handleSubmit ---"); // Ponto de escuta 1
     try {
       const itensParaAdicionar = Array.from(carrinho.values()).map(item => ({
         produtoId: item.produto.id,
         quantidade: item.quantidade,
       }));
 
-      await adicionarItensAoPedido({ comandaId, itens: itensParaAdicionar });
+      const dtoParaEnviar = { comandaId, itens: itensParaAdicionar };
+
+      // Ponto de escuta 2: Vamos ver o que está a ser preparado para envio
+      console.log("DTO que será enviado para a API:", JSON.stringify(dtoParaEnviar, null, 2));
+
+      // Ponto de escuta 3: Confirmar que estamos prestes a chamar a API
+      console.log("A chamar a API agora...");
+      await adicionarItensAoPedido(dtoParaEnviar);
+      console.log("Chamada da API bem-sucedida!");
 
       // Limpa tudo e notifica a página pai
       setCarrinho(new Map());
       setSearchTerm('');
       onItensAdicionados();
     } catch (error) {
-      alert('Falha ao adicionar itens. Tente novamente.');
+      // Ponto de escuta 4: Se algo falhar, vamos ver o erro exato
+      console.error("--- ERRO CAPTURADO no handleSubmit ---", error);
+      alert('Falha ao adicionar itens. Verifique o console para mais detalhes.');
     } finally {
       setIsLoading(false);
     }
