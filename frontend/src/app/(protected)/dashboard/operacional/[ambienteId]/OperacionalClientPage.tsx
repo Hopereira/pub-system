@@ -1,62 +1,62 @@
 // Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/OperacionalClientPage.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard';
-import { Pedido } from '@/types/pedido';
-// NOVO: Importamos as funções do nosso serviço centralizado
+import { useEffect, useState, useCallback } from 'react';
+// ALTERADO: Importamos de '/types/pedido' e não mais de 'PedidoCard'
+import { Pedido, PedidoStatus } from '@/types/pedido';
+import { PedidoCard } from '@/components/operacional/PedidoCard';
 import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchPedidos = async () => {
-      try {
-        setLoading(true);
-        // A chamada de API agora é uma simples função do serviço
-        const data = await getPedidos(ambienteId);
-        setPedidos(data);
-      } catch (err: any) {
+  const fetchPedidos = useCallback(async () => {
+    const controller = new AbortController();
+    try {
+      setLoading(true);
+      const data = await getPedidos(ambienteId);
+      setPedidos(data);
+      setError(null);
+    } catch (err: any) {
+      if (err.name !== 'CanceledError') {
         setError(err.message || 'Falha ao buscar os pedidos.');
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchPedidos();
-    
-    // Adicionamos um intervalo para buscar novos pedidos a cada 30 segundos
-    const intervalId = setInterval(fetchPedidos, 30000);
-
-    // Limpa o intervalo quando o componente é desmontado
-    return () => clearInterval(intervalId);
+    } finally {
+      setLoading(false);
+    }
+    return () => controller.abort();
   }, [ambienteId]);
 
+  useEffect(() => {
+    fetchPedidos();
+    const intervalId = setInterval(fetchPedidos, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchPedidos]);
+
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
-      try {
-        // Lógica de atualização simplificada
-        const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
-        setPedidos((pedidosAtuais) =>
-          pedidosAtuais.map((p) =>
-            p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
-          )
-        );
-      } catch (err: any) {
-        setError(err.message || 'Falha ao atualizar o status do pedido.');
-      }
+    try {
+      const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
+      setPedidos((pedidosAtuais) =>
+        pedidosAtuais.map((p) =>
+          p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
+        )
+      );
+    } catch (err: any) {
+      setError(err.message || 'Falha ao atualizar o status do pedido.');
+    }
   };
 
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
     try {
-      // Lógica de cancelamento simplificada
       const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
-        status: PedidoStatus.CANCELADO,
+        status: PedidoStatus.CANCELADO, // Agora isto funciona, pois PedidoStatus é um objeto (enum)
         motivoCancelamento: motivo,
       });
-
       setPedidos((pedidosAtuais) =>
         pedidosAtuais.map((p) =>
           p.id === pedidoId ? pedidoCancelado : p
@@ -67,13 +67,12 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     }
   };
 
-
   if (loading && pedidos.length === 0) {
-    return <p className="mt-8">Carregando pedidos para o ambiente...</p>;
+    return ( <div className="p-4 mt-8"> <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {Array.from({ length: 4 }).map((_, index) => ( <Skeleton key={index} className="h-48 w-full rounded-lg" /> ))} </div> </div> );
   }
   
   if (error) {
-    return <p className="mt-8 text-red-500">Erro: {error}</p>;
+    return ( <div className="p-4 mt-8"> <Alert variant="destructive"> <Terminal className="h-4 w-4" /> <AlertTitle>Ocorreu um Erro</AlertTitle> <AlertDescription>{error}</AlertDescription> </Alert> </div> );
   }
 
   return (
