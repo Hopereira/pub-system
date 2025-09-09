@@ -1,12 +1,17 @@
+// Caminho: frontend/src/app/(protected)/dashboard/comandas/[id]/page.tsx
 'use client';
 
 import { AddItemDrawer } from "@/components/comandas/AddItemDrawer";
 import { Button } from "@/components/ui/button";
 import { getComandaById } from "@/services/comandaService";
 import { Comanda } from "@/types/comanda";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, CheckCircle } from "lucide-react"; // ALTERADO: Adicionado ícone CheckCircle
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+// ALTERADO: Importamos as dependências necessárias
+import { updatePedidoStatus } from "@/services/pedidoService";
+import { PedidoStatus } from "@/types/pedido";
+import { Badge } from "@/components/ui/badge";
 
 export default function ComandaDetalhePage() {
   const params = useParams();
@@ -18,7 +23,7 @@ export default function ComandaDetalhePage() {
 
   const fetchComanda = useCallback(async () => {
     if (comandaId) {
-      setIsLoading(true);
+      // Não definimos isLoading aqui para permitir refresh silencioso
       try {
         const data = await getComandaById(comandaId);
         setComanda(data);
@@ -32,12 +37,25 @@ export default function ComandaDetalhePage() {
   }, [comandaId]);
 
   useEffect(() => {
+    setIsLoading(true); // Define o loading inicial apenas uma vez
     fetchComanda();
   }, [fetchComanda]);
 
   const handleItensAdicionados = () => {
     setIsDrawerOpen(false);
-    fetchComanda();
+    fetchComanda(); // Recarrega os dados da comanda
+  };
+  
+  // NOVO: Handler para marcar um pedido como entregue
+  const handleMarcarComoEntregue = async (pedidoId: string) => {
+    try {
+      await updatePedidoStatus(pedidoId, { status: PedidoStatus.ENTREGUE });
+      // Recarrega os dados da comanda para refletir a mudança de status
+      await fetchComanda();
+    } catch (error) {
+        alert("Falha ao marcar o item como entregue. Tente novamente.");
+        console.error("Erro ao entregar pedido:", error);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -52,33 +70,52 @@ export default function ComandaDetalhePage() {
     return <div className="p-4 text-red-500">Comanda não encontrada ou erro ao carregar.</div>;
   }
 
-  // --- CORREÇÃO AQUI ---
-  // A comanda tem múltiplos 'pedidos', e cada pedido tem 'itens'.
-  // Usamos flatMap para juntar todos os 'itens' de todos os 'pedidos' em uma única lista.
-  const todosOsItens = comanda.pedidos?.flatMap(pedido => pedido.itens) ?? [];
+  const todosOsItens = comanda.pedidos?.flatMap(pedido => 
+    // Mapeamos os itens para incluir o status e id do pedido pai
+    pedido.itens.map(item => ({...item, pedidoStatus: pedido.status, pedidoId: pedido.id }))
+  ) ?? [];
 
-  // O cálculo do total agora usa a lista corrigida 'todosOsItens'.
-  const total = todosOsItens.reduce((acc, item) => acc + (item.produto.preco * item.quantidade), 0);
+  const total = comanda.pedidos
+  ?.filter(pedido => pedido.status !== 'CANCELADO')
+  .reduce((acc, pedido) => acc + (Number(pedido.total) || 0), 0) ?? 0;
 
   return (
     <div className="p-4 relative min-h-screen">
-      <h1 className="text-3xl font-bold">Comanda da Mesa {comanda.mesa?.numero}</h1>
+      <h1 className="text-3xl font-bold">Comanda da Mesa {comanda.mesa?.numero ?? 'Avulsa'}</h1>
       <p className="text-lg">Status: <span className="font-semibold">{comanda.status}</span></p>
       
       <div className="mt-6">
         <h2 className="text-2xl font-bold">Itens do Pedido</h2>
-        {/* A verificação e o map agora usam a lista corrigida 'todosOsItens' */}
         {todosOsItens.length === 0 ? (
           <p className="text-gray-500 mt-4">Nenhum item adicionado ainda.</p>
         ) : (
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-4 space-y-4">
+            {/* ALTERADO: Lógica de renderização para incluir status e botão */}
             {todosOsItens.map(item => (
-              <li key={item.id} className="flex justify-between items-center border-b pb-2">
+              <li key={item.id} className="flex justify-between items-center border-b pb-4">
                 <div>
-                  <p className="font-semibold">{item.quantidade}x {item.produto.nome}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold">{item.quantidade}x {item.produto.nome}</p>
+                    <Badge variant={item.pedidoStatus === 'PRONTO' ? 'destructive' : 'secondary'}>
+                      {item.pedidoStatus.replace('_', ' ')}
+                    </Badge>
+                  </div>
                   {item.observacao && <p className="text-sm text-gray-500">Obs: {item.observacao}</p>}
                 </div>
-                <p>{formatCurrency(item.produto.preco * item.quantidade)}</p>
+                <div className="flex items-center gap-4">
+                    <p>{formatCurrency(item.produto.preco * item.quantidade)}</p>
+                    {/* Botão de entregar aparece condicionalmente */}
+                    {item.pedidoStatus === PedidoStatus.PRONTO && (
+                        <Button 
+                            size="sm" 
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleMarcarComoEntregue(item.pedidoId)}
+                        >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Entregar
+                        </Button>
+                    )}
+                </div>
               </li>
             ))}
           </ul>
