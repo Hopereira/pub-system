@@ -61,3 +61,18 @@ export const fecharComanda = async (id: string): Promise<Comanda> => {
     throw error;
   }
 };
+// Caminho: frontend/src/services/comandaService.ts
+
+// ... (resto do arquivo com as outras funções)
+
+// NOVO: Função para buscar os dados públicos de uma comanda
+export const getPublicComandaById = async (id: string): Promise<Comanda> => {
+  try {
+    // Note que usamos o mesmo 'api', pois a rota no backend está marcada como @Public
+    const response = await api.get<Comanda>(`/comandas/${id}/public`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar dados públicos da comanda ${id}:`, error);
+    throw error;
+  }
+};
