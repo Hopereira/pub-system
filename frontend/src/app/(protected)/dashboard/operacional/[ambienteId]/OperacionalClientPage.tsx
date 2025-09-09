@@ -1,136 +1,78 @@
 // Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/OperacionalClientPage.tsx
-
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard';
-
-interface Pedido {
-  id: string;
-  status: PedidoStatus;
-  itens: {
-    quantidade: number;
-    produto: {
-      nome: string;
-    };
-  }[];
-  motivoCancelamento?: string | null;
-}
+import { useEffect, useState, useCallback } from 'react';
+// ALTERADO: Importamos de '/types/pedido' e não mais de 'PedidoCard'
+import { Pedido, PedidoStatus } from '@/types/pedido';
+import { PedidoCard } from '@/components/operacional/PedidoCard';
+import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { token } = useAuth();
+
+  const fetchPedidos = useCallback(async () => {
+    const controller = new AbortController();
+    try {
+      setLoading(true);
+      const data = await getPedidos(ambienteId);
+      setPedidos(data);
+      setError(null);
+    } catch (err: any) {
+      if (err.name !== 'CanceledError') {
+        setError(err.message || 'Falha ao buscar os pedidos.');
+      }
+    } finally {
+      setLoading(false);
+    }
+    return () => controller.abort();
+  }, [ambienteId]);
 
   useEffect(() => {
-    const fetchPedidos = async () => {
-      if (!token) return;
-
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `http://localhost:3000/pedidos?ambienteId=${ambienteId}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error('Falha ao buscar os pedidos.');
-        }
-
-        const data = await response.json();
-        setPedidos(data);
-      } catch (err: any) { // AQUI ESTAVA O ERRO
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPedidos();
-  }, [ambienteId, token]);
+    const intervalId = setInterval(fetchPedidos, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchPedidos]);
 
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
-    if (!token) {
-        setError('Ação não permitida. Faça login novamente.');
-        return;
-      }
-  
-      try {
-        const response = await fetch(`http://localhost:3000/pedidos/${pedidoId}/status`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: novoStatus }),
-        });
-  
-        if (!response.ok) {
-          throw new Error('Falha ao atualizar o status do pedido.');
-        }
-  
-        setPedidos((pedidosAtuais) =>
-          pedidosAtuais.map((p) =>
-            p.id === pedidoId ? { ...p, status: novoStatus } : p
-          )
-        );
-      } catch (err: any) {
-        setError(err.message);
-      }
+    try {
+      const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
+      setPedidos((pedidosAtuais) =>
+        pedidosAtuais.map((p) =>
+          p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
+        )
+      );
+    } catch (err: any) {
+      setError(err.message || 'Falha ao atualizar o status do pedido.');
+    }
   };
 
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
-    if (!token) {
-      setError('Ação não permitida. Faça login novamente.');
-      return;
-    }
-
     try {
-      const response = await fetch(`http://localhost:3000/pedidos/${pedidoId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          status: 'CANCELADO',
-          motivoCancelamento: motivo,
-        }),
+      const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
+        status: PedidoStatus.CANCELADO, // Agora isto funciona, pois PedidoStatus é um objeto (enum)
+        motivoCancelamento: motivo,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao cancelar o pedido.');
-      }
-      
-      const pedidoCancelado = await response.json();
-
-      console.log('Resposta da API após cancelamento:', pedidoCancelado);
-
       setPedidos((pedidosAtuais) =>
         pedidosAtuais.map((p) =>
           p.id === pedidoId ? pedidoCancelado : p
         )
       );
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Falha ao cancelar o pedido.');
     }
   };
 
-
-  if (loading) {
-    return <p className="mt-8">Carregando pedidos para o ambiente...</p>;
+  if (loading && pedidos.length === 0) {
+    return ( <div className="p-4 mt-8"> <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {Array.from({ length: 4 }).map((_, index) => ( <Skeleton key={index} className="h-48 w-full rounded-lg" /> ))} </div> </div> );
   }
   
   if (error) {
-    return <p className="mt-8 text-red-500">Erro: {error}</p>;
+    return ( <div className="p-4 mt-8"> <Alert variant="destructive"> <Terminal className="h-4 w-4" /> <AlertTitle>Ocorreu um Erro</AlertTitle> <AlertDescription>{error}</AlertDescription> </Alert> </div> );
   }
 
   return (

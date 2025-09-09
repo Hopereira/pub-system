@@ -1,9 +1,10 @@
 // Caminho: frontend/src/app/(protected)/dashboard/mesas/page.tsx
+'use client';
 
-import React from 'react';
-// Atualizamos a importação para o novo nome do componente
+// Supondo que o seu código do Mapa de Mesas está num componente em /components
 import MapaMesasClient from '@/components/mesas/MapaMesasClient';
 
-export default function MesasPage() {
+// Esta página agora renderiza APENAS a visão do Garçom.
+export default function MesasGarcomPage() {
   return <MapaMesasClient />;
 }

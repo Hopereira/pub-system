@@ -1,5 +1,7 @@
 // Caminho: frontend/src/services/ambienteService.ts
 import api from './api';
+import { AmbienteData } from '@/types/ambiente'; // Supondo que você tenha um tipo definido
+
 
 export interface AmbienteData {
   id: string;
