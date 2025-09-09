@@ -35,12 +35,9 @@ const GestaoMesasPage = () => {
     const [editingMesa, setEditingMesa] = useState<Mesa | null>(null);
 
     const form = useForm<FormValues>({
-         resolver: zodResolver(formSchema),
-         defaultValues: {
-            numero: '' as any, // Começa como string vazia
-            ambienteId: '',
-  },
-});
+        resolver: zodResolver(formSchema),
+        defaultValues: { numero: undefined, ambienteId: undefined },
+    });
 
     const loadData = async () => {
         try {
@@ -95,12 +92,12 @@ const GestaoMesasPage = () => {
         }
     };
 
-    if (isLoading) return <p className="p-4">A carregar...</p>;
+    if (isLoading) return <p className="p-4">Carregando...</p>;
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
             <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold">Gestão de Mesas (Admin)</h1>
+                <h1 className="text-2xl font-bold">Gerenciamento de Mesas (Admin)</h1>
                 <Button onClick={handleOpenNewDialog}>Adicionar Nova Mesa</Button>
             </div>
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -122,13 +119,13 @@ const GestaoMesasPage = () => {
                         {mesas.map((mesa) => (
                             <TableRow key={mesa.id}>
                                 <TableCell className="font-medium">{mesa.numero}</TableCell>
-                                <TableCell>{mesa.ambiente?.nome || 'Sem Ambiente'}</TableCell>
+                                <TableCell>{mesa.ambiente.nome}</TableCell>
                                 <TableCell>{mesa.status}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(mesa)}><Pencil className="h-4 w-4" /></Button>
                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={mesa.status !== 'LIVRE'}><Trash2 className="h-4 w-4 text-red-500" /></Button></AlertDialogTrigger>
-                                        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Tem a certeza?</AlertDialogTitle><AlertDialogDescription>A ação de apagar a Mesa {mesa.numero} não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(mesa.id)}>Continuar</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" disabled={mesa.status !== 'Livre'}><Trash2 className="h-4 w-4 text-red-500" /></Button></AlertDialogTrigger>
+                                        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Você tem certeza?</AlertDialogTitle><AlertDialogDescription>A ação de apagar a Mesa {mesa.numero} não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(mesa.id)}>Continuar</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                                     </AlertDialog>
                                 </TableCell>
                             </TableRow>

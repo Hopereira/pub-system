@@ -1,118 +1,61 @@
 // Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/OperacionalClientPage.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard';
-
-interface Pedido {
-  id: string;
-  status: PedidoStatus;
-  itens: {
-    quantidade: number;
-    produto: {
-      nome: string;
-    };
-  }[];
-  motivoCancelamento?: string | null;
-}
+import { Pedido } from '@/types/pedido';
+// NOVO: Importamos as funções do nosso serviço centralizado
+import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { token } = useAuth();
 
   useEffect(() => {
     const fetchPedidos = async () => {
-      if (!token) return;
-
       try {
         setLoading(true);
-        const response = await fetch(
-          `http://localhost:3000/pedidos?ambienteId=${ambienteId}`,
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error('Falha ao buscar os pedidos.');
-        }
-
-        const data = await response.json();
+        // A chamada de API agora é uma simples função do serviço
+        const data = await getPedidos(ambienteId);
         setPedidos(data);
-      } catch (err: any) { // AQUI ESTAVA O ERRO
-        setError(err.message);
+      } catch (err: any) {
+        setError(err.message || 'Falha ao buscar os pedidos.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchPedidos();
-  }, [ambienteId, token]);
+    
+    // Adicionamos um intervalo para buscar novos pedidos a cada 30 segundos
+    const intervalId = setInterval(fetchPedidos, 30000);
+
+    // Limpa o intervalo quando o componente é desmontado
+    return () => clearInterval(intervalId);
+  }, [ambienteId]);
 
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
-    if (!token) {
-        setError('Ação não permitida. Faça login novamente.');
-        return;
-      }
-  
       try {
-        const response = await fetch(`http://localhost:3000/pedidos/${pedidoId}/status`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: novoStatus }),
-        });
-  
-        if (!response.ok) {
-          throw new Error('Falha ao atualizar o status do pedido.');
-        }
-  
+        // Lógica de atualização simplificada
+        const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
         setPedidos((pedidosAtuais) =>
           pedidosAtuais.map((p) =>
-            p.id === pedidoId ? { ...p, status: novoStatus } : p
+            p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
           )
         );
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message || 'Falha ao atualizar o status do pedido.');
       }
   };
 
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
-    if (!token) {
-      setError('Ação não permitida. Faça login novamente.');
-      return;
-    }
-
     try {
-      const response = await fetch(`http://localhost:3000/pedidos/${pedidoId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          status: 'CANCELADO',
-          motivoCancelamento: motivo,
-        }),
+      // Lógica de cancelamento simplificada
+      const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
+        status: PedidoStatus.CANCELADO,
+        motivoCancelamento: motivo,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao cancelar o pedido.');
-      }
-      
-      const pedidoCancelado = await response.json();
-
-      console.log('Resposta da API após cancelamento:', pedidoCancelado);
 
       setPedidos((pedidosAtuais) =>
         pedidosAtuais.map((p) =>
@@ -120,12 +63,12 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
         )
       );
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Falha ao cancelar o pedido.');
     }
   };
 
 
-  if (loading) {
+  if (loading && pedidos.length === 0) {
     return <p className="mt-8">Carregando pedidos para o ambiente...</p>;
   }
   

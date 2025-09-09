@@ -6,23 +6,17 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-    Home,
-    Users,
-    UtensilsCrossed,
-    Book,
-    ClipboardList,
-    BarChart2,
-    Settings,
-    Building2,
-    DoorOpen,
-    ChefHat,
-    BookOpen
+    Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
+    Settings, Building2, DoorOpen, ChefHat
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
+// NOVO: Importamos o nosso serviço
+import { getAmbientes } from '@/services/ambienteService';
+import { AmbienteData } from '@/types/ambiente'; // Supondo o tipo aqui
 
-// ... (baseNavLinks continua igual)
 const baseNavLinks = [
+  // ... (a sua lista de links base continua igual)
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
   { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM'] },
   { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
@@ -41,31 +35,18 @@ interface NavLink {
     roles: string[];
 }
 
-interface Ambiente {
-    id: string;
-    nome: string;
-}
-
 export function Sidebar() {
-  const { user, token } = useAuth();
+  const { user } = useAuth(); // ATUALIZADO: Não precisamos mais do token aqui
   const pathname = usePathname();
   const [operationalLinks, setOperationalLinks] = useState<NavLink[]>([]);
 
   useEffect(() => {
     const fetchOperationalLinks = async () => {
-      if (!token) return;
-
+      // O token já é injetado automaticamente pelo nosso serviço
       try {
-        const response = await fetch('http://localhost:3000/ambientes', {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) {
-            console.error('Falha ao buscar ambientes.');
-            return;
-        }
-        const ambientes: Ambiente[] = await response.json();
+        // ATUALIZADO: Usamos a função do serviço, muito mais limpa
+        const ambientes = await getAmbientes();
         
-        // CORREÇÃO: Removemos o .filter() que limitava os nomes
         const dynamicLinks = ambientes.map(ambiente => ({
             href: `/dashboard/operacional/${ambiente.id}`,
             label: `Painel ${ambiente.nome}`,
@@ -75,21 +56,24 @@ export function Sidebar() {
 
         setOperationalLinks(dynamicLinks);
       } catch (error) {
-        console.error('Erro ao processar links operacionais:', error);
+        console.error('Erro ao buscar links operacionais:', error);
       }
     };
 
     if (user?.cargo && ['ADMIN', 'COZINHA'].includes(user.cargo)) {
         fetchOperationalLinks();
+    } else {
+        setOperationalLinks([]); // Garante que os links são limpos se o perfil não for o correto
     }
-  }, [user, token]);
+  }, [user]);
 
   const allLinks = useMemo(() => {
+    // A sua lógica de 'merge' das listas de links já está ótima
     const insertIndex = baseNavLinks.findIndex(link => link.href === '/dashboard/mesas') + 1;
     const newLinks = [...baseNavLinks];
     newLinks.splice(insertIndex, 0, ...operationalLinks);
     return newLinks;
-  }, [operationalLinks]);
+  }, [baseNavLinks, operationalLinks]);
 
   const accessibleLinks = allLinks.filter(link =>
     user?.cargo && link.roles.includes(user.cargo)
@@ -102,12 +86,7 @@ export function Sidebar() {
           <Link
             key={link.href}
             href={link.href}
-            className={clsx(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-50',
-              {
-                'bg-gray-200 dark:bg-gray-700 font-bold': pathname === link.href,
-              }
-            )}
+            className={clsx( /* ... */ )}
           >
             <link.icon className="h-5 w-5" />
             {link.label}

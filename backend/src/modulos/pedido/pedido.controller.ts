@@ -10,7 +10,7 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
-  Query, // 1. IMPORTAMOS O 'Query'
+  Query, // ALTERADO: Garantimos que o 'Query' está importado
 } from '@nestjs/common';
 import { PedidoService } from './pedido.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
@@ -58,9 +58,8 @@ export class PedidoController {
   @ApiOperation({ summary: 'Lista todos os pedidos, com filtro opcional por ambiente' })
   @ApiResponse({ status: 200, description: 'Lista de pedidos retornada com sucesso.' })
   @ApiResponse({ status: 403, description: 'Acesso negado.' })
-  // 2. ADICIONAMOS O PARÂMETRO 'ambienteId' VINDO DA QUERY STRING
-  findAll(@Query('ambienteId') ambienteId?: string) {
-    // 3. PASSAMOS O PARÂMETRO PARA O SERVIÇO
+  findAll(@Query('ambienteId') ambienteId?: string) { // ALTERADO: Adicionamos o decorador @Query para receber o parâmetro
+    // ALTERADO: Passamos o parâmetro recebido para o serviço
     return this.pedidoService.findAll(ambienteId);
   }
   // --- FIM DA ATUALIZAÇÃO ---
