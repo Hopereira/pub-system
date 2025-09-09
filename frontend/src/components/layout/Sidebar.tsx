@@ -7,19 +7,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
-    Settings, Building2, DoorOpen, ChefHat
+    Settings, Building2, DoorOpen, ChefHat, Landmark // NOVO: Importamos o ícone Landmark
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-// NOVO: Importamos o nosso serviço
 import { getAmbientes } from '@/services/ambienteService';
-import { AmbienteData } from '@/types/ambiente'; // Supondo o tipo aqui
+import { AmbienteData } from '@/types/ambiente';
 
 const baseNavLinks = [
-  // ... (a sua lista de links base continua igual)
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
   { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM'] },
   { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
+  // ... (links de admin)
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
   { href: '/dashboard/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
@@ -36,24 +35,20 @@ interface NavLink {
 }
 
 export function Sidebar() {
-  const { user } = useAuth(); // ATUALIZADO: Não precisamos mais do token aqui
+  const { user } = useAuth();
   const pathname = usePathname();
   const [operationalLinks, setOperationalLinks] = useState<NavLink[]>([]);
 
   useEffect(() => {
     const fetchOperationalLinks = async () => {
-      // O token já é injetado automaticamente pelo nosso serviço
       try {
-        // ATUALIZADO: Usamos a função do serviço, muito mais limpa
         const ambientes = await getAmbientes();
-        
         const dynamicLinks = ambientes.map(ambiente => ({
             href: `/dashboard/operacional/${ambiente.id}`,
             label: `Painel ${ambiente.nome}`,
             icon: ChefHat,
             roles: ['ADMIN', 'COZINHA'],
         }));
-
         setOperationalLinks(dynamicLinks);
       } catch (error) {
         console.error('Erro ao buscar links operacionais:', error);
@@ -63,17 +58,31 @@ export function Sidebar() {
     if (user?.cargo && ['ADMIN', 'COZINHA'].includes(user.cargo)) {
         fetchOperationalLinks();
     } else {
-        setOperationalLinks([]); // Garante que os links são limpos se o perfil não for o correto
+        setOperationalLinks([]);
     }
   }, [user]);
+  
+  // NOVO: Link para o Terminal de Caixa
+  const caixaLink = { 
+    href: '/dashboard/caixa', 
+    label: 'Terminal de Caixa', 
+    icon: Landmark, 
+    roles: ['ADMIN', 'CAIXA'] 
+  };
 
   const allLinks = useMemo(() => {
-    // A sua lógica de 'merge' das listas de links já está ótima
-    const insertIndex = baseNavLinks.findIndex(link => link.href === '/dashboard/mesas') + 1;
-    const newLinks = [...baseNavLinks];
-    newLinks.splice(insertIndex, 0, ...operationalLinks);
-    return newLinks;
-  }, [baseNavLinks, operationalLinks]);
+    let combinedLinks = [...baseNavLinks];
+    
+    // Adiciona os links operacionais dinâmicos
+    const insertIndexOp = combinedLinks.findIndex(link => link.href === '/dashboard/pedidos') + 1;
+    combinedLinks.splice(insertIndexOp, 0, ...operationalLinks);
+    
+    // Adiciona o link do caixa
+    const insertIndexCaixa = combinedLinks.findIndex(link => link.href === '/dashboard/pedidos') + 1;
+    combinedLinks.splice(insertIndexCaixa, 0, caixaLink);
+
+    return combinedLinks;
+  }, [operationalLinks]);
 
   const accessibleLinks = allLinks.filter(link =>
     user?.cargo && link.roles.includes(user.cargo)
@@ -86,7 +95,12 @@ export function Sidebar() {
           <Link
             key={link.href}
             href={link.href}
-            className={clsx( /* ... */ )}
+            className={clsx(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-50',
+              {
+                'bg-gray-200 dark:bg-gray-700 font-bold': pathname === link.href,
+              }
+            )}
           >
             <link.icon className="h-5 w-5" />
             {link.label}
