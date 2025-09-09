@@ -1,12 +1,13 @@
+// Caminho: backend/src/modulos/comanda/comanda.service.ts
+
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Cliente } from '../cliente/entities/cliente.entity';
-// NOVO: Importamos também o MesaStatus
 import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
@@ -46,13 +47,10 @@ export class ComandaService {
         throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
       }
 
-      // --- LÓGICA DE NEGÓCIO ADICIONADA AQUI ---
-      // 1. Verifica se a mesa já não está ocupada
       if (mesa.status !== MesaStatus.LIVRE) {
         throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
       }
 
-      // 2. Atualiza o status da mesa para OCUPADA e salva a alteração
       mesa.status = MesaStatus.OCUPADA;
       await this.mesaRepository.save(mesa);
 
@@ -60,7 +58,6 @@ export class ComandaService {
     }
 
     if (clienteId) {
-      // ... (lógica de cliente permanece a mesma)
       const cliente = await this.clienteRepository.findOne({
         where: { id: clienteId },
       });
@@ -80,6 +77,28 @@ export class ComandaService {
     return this.comandaRepository.find({
       relations: ['mesa', 'cliente'],
     });
+  }
+  
+  async search(term: string): Promise<Comanda[]> {
+    const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
+
+    queryBuilder
+      .leftJoinAndSelect('comanda.mesa', 'mesa')
+      .leftJoinAndSelect('comanda.cliente', 'cliente')
+      .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
+
+    if (term) {
+      queryBuilder.andWhere(new Brackets(qb => {
+        if (!isNaN(parseInt(term, 10))) {
+          qb.where('mesa.numero = :numero', { numero: parseInt(term, 10) });
+        } else {
+          qb.where('cliente.nome ILIKE :term', { term: `%${term}%` })
+            .orWhere('cliente.cpf = :term', { term });
+        }
+      }));
+    }
+
+    return queryBuilder.getMany();
   }
 
   async findOne(id: string): Promise<Comanda> {
@@ -116,7 +135,6 @@ export class ComandaService {
   }
 
   async findPublicOne(id: string) {
-    // ... (este método permanece igual)
     const comanda = await this.comandaRepository.findOne({
       where: { id },
       relations: [
