@@ -10,9 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
+import { PedidoStatus } from '@/types/pedido'; // ALTERAÇÃO 1: Importando o Enum centralizado
 
-
-export type PedidoStatus = 'FEITO' | 'EM_PREPARO' | 'PRONTO' | 'ENTREGUE' | 'CANCELADO';
+// A definição local de 'PedidoStatus' foi removida.
 
 interface ItemPedido {
   quantidade: number;
@@ -44,27 +44,27 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
       return;
     }
     onCancel(pedido.id, motivo);
-    setIsDialogOpen(false); // Fecha o dialog
-    setMotivo(''); // Limpa o campo
+    setIsDialogOpen(false);
+    setMotivo('');
   };
 
   const getStatusVariant = (status: PedidoStatus) => {
     switch (status) {
-      case 'FEITO': return 'default';
-      case 'EM_PREPARO': return 'secondary';
-      case 'PRONTO': return 'destructive';
-      case 'ENTREGUE': return 'outline'; // Verde (sucesso)
-      case 'CANCELADO': return 'outline';
+      case PedidoStatus.FEITO: return 'default';
+      case PedidoStatus.EM_PREPARO: return 'secondary';
+      case PedidoStatus.PRONTO: return 'destructive'; // Mantido como destructive (vermelho) para chamar atenção
+      case PedidoStatus.ENTREGUE: return 'outline';
+      case PedidoStatus.CANCELADO: return 'outline';
       default: return 'outline';
     }
   };
 
-  const isTerminal = pedido.status === 'ENTREGUE' || pedido.status === 'CANCELADO';
+  const isTerminal = pedido.status === PedidoStatus.ENTREGUE || pedido.status === PedidoStatus.CANCELADO;
 
   return (
     <Card className={cn(
       "flex flex-col",
-      isTerminal && "opacity-60 bg-muted/50" // Estilo para estados terminais
+      isTerminal && "opacity-60 bg-muted/50"
     )}>
       <CardHeader>
         <div className="flex justify-between items-start">
@@ -73,14 +73,14 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
             <p className="text-xs text-muted-foreground truncate">ID: {pedido.id}</p>
           </div>
           <Badge variant={getStatusVariant(pedido.status)}
-            className={cn(pedido.status === 'ENTREGUE' && 'bg-green-600 text-white')}
+            className={cn(pedido.status === PedidoStatus.ENTREGUE && 'bg-green-600 text-white')}
           >
-            {pedido.status}
+            {pedido.status.replace('_', ' ')}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="flex-grow">
-        {pedido.status === 'CANCELADO' && (
+        {pedido.status === PedidoStatus.CANCELADO && (
           <p className="text-xs text-destructive mb-2">
             <strong>Motivo:</strong> {pedido.motivoCancelamento}
           </p>
@@ -97,23 +97,23 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
       <CardFooter className="flex justify-end space-x-2">
         {!isTerminal && (
           <>
-            {pedido.status === 'FEITO' && (
-              <Button variant="outline" size="sm" onClick={() => onUpdateStatus(pedido.id, 'EM_PREPARO')}>
+            {pedido.status === PedidoStatus.FEITO && (
+              // ALTERAÇÃO 2: Usando o Enum para garantir a consistência
+              <Button variant="outline" size="sm" onClick={() => onUpdateStatus(pedido.id, PedidoStatus.EM_PREPARO)}>
                 Em Preparo
               </Button>
             )}
-            {pedido.status === 'EM_PREPARO' && (
-              <Button size="sm" onClick={() => onUpdateStatus(pedido.id, 'PRONTO')}>
+            {pedido.status === PedidoStatus.EM_PREPARO && (
+              <Button size="sm" onClick={() => onUpdateStatus(pedido.id, PedidoStatus.PRONTO)}>
                 Pronto
               </Button>
             )}
-            {pedido.status === 'PRONTO' && (
-              <Button size="sm" className='bg-green-600 hover:bg-green-700' onClick={() => onUpdateStatus(pedido.id, 'ENTREGUE')}>
+            {pedido.status === PedidoStatus.PRONTO && (
+              <Button size="sm" className='bg-green-600 hover:bg-green-700' onClick={() => onUpdateStatus(pedido.id, PedidoStatus.ENTREGUE)}>
                 Entregar
               </Button>
             )}
 
-            {/* --- LÓGICA DO DIALOG DE CANCELAMENTO --- */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="destructive" size="sm">Cancelar</Button>
@@ -124,10 +124,10 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <Label htmlFor="motivo">Motivo do Cancelamento</Label>
-                  <Input 
-                    id="motivo" 
-                    value={motivo} 
-                    onChange={(e) => setMotivo(e.target.value)} 
+                  <Input
+                    id="motivo"
+                    value={motivo}
+                    onChange={(e) => setMotivo(e.target.value)}
                     placeholder="Ex: Item em falta no estoque"
                   />
                 </div>

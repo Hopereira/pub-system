@@ -2,90 +2,94 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard';
-import { Pedido } from '@/types/pedido';
-// NOVO: Importamos as funções do nosso serviço centralizado
+import { toast } from 'sonner';
+import { PedidoCard } from '@/components/operacional/PedidoCard';
+import { Pedido, PedidoStatus } from '@/types/pedido';
+// --- ALTERAÇÃO 1: Importando os nomes corretos do serviço ---
 import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
 
-export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
+interface OperacionalClientPageProps {
+    ambienteId: string;
+}
+
+export function OperacionalClientPage({ ambienteId }: OperacionalClientPageProps) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        setLoading(true);
-        // A chamada de API agora é uma simples função do serviço
+        // --- ALTERAÇÃO 2: Usando a função correta 'getPedidos' ---
         const data = await getPedidos(ambienteId);
-        setPedidos(data);
+        setPedidos(Array.isArray(data) ? data : []);
       } catch (err: any) {
-        setError(err.message || 'Falha ao buscar os pedidos.');
+        toast.error(err.message || 'Falha ao buscar os pedidos.');
+        setPedidos([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchPedidos();
-    
-    // Adicionamos um intervalo para buscar novos pedidos a cada 30 segundos
-    const intervalId = setInterval(fetchPedidos, 30000);
-
-    // Limpa o intervalo quando o componente é desmontado
+    const intervalId = setInterval(fetchPedidos, 15000);
     return () => clearInterval(intervalId);
   }, [ambienteId]);
 
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
       try {
-        // Lógica de atualização simplificada
+        // Esta função já estava correta
         const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
         setPedidos((pedidosAtuais) =>
-          pedidosAtuais.map((p) =>
-            p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
-          )
+          pedidosAtuais.map((p) => (p.id === pedidoId ? pedidoAtualizado : p))
         );
+        toast.success(`Pedido atualizado para ${novoStatus.replace('_', ' ')}!`);
       } catch (err: any) {
-        setError(err.message || 'Falha ao atualizar o status do pedido.');
+        toast.error(err.message || 'Falha ao atualizar o status do pedido.');
       }
   };
 
+  // --- ALTERAÇÃO 3: Ajustando o cancelamento para usar 'updatePedidoStatus' ---
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
     try {
-      // Lógica de cancelamento simplificada
-      const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
+      const payload = {
         status: PedidoStatus.CANCELADO,
-        motivoCancelamento: motivo,
-      });
-
+        motivoCancelamento: motivo
+      };
+      const pedidoCancelado = await updatePedidoStatus(pedidoId, payload);
       setPedidos((pedidosAtuais) =>
-        pedidosAtuais.map((p) =>
-          p.id === pedidoId ? pedidoCancelado : p
-        )
+        pedidosAtuais.map((p) => (p.id === pedidoId ? pedidoCancelado : p))
       );
-    } catch (err: any) {
-      setError(err.message || 'Falha ao cancelar o pedido.');
+      toast.success("Pedido cancelado com sucesso!");
+    } catch (err: any)      {
+      toast.error(err.message || 'Falha ao cancelar o pedido.');
     }
   };
 
+  const pedidosOrdenados = [...pedidos].sort((a, b) => {
+    const statusOrder: Record<PedidoStatus, number> = {
+      'PRONTO': 1,
+      'EM_PREPARO': 2,
+      'FEITO': 3,
+      'ENTREGUE': 4,
+      'CANCELADO': 5,
+    };
+    return statusOrder[a.status] - statusOrder[b.status];
+  });
 
-  if (loading && pedidos.length === 0) {
-    return <p className="mt-8">Carregando pedidos para o ambiente...</p>;
-  }
-  
-  if (error) {
-    return <p className="mt-8 text-red-500">Erro: {error}</p>;
+  if (loading) {
+    return <p className="mt-8 text-center">Carregando pedidos...</p>;
   }
 
   return (
     <div className="mt-8 flow-root">
-      {pedidos.length === 0 ? (
-        <p>Nenhum pedido encontrado para este ambiente.</p>
+      {pedidosOrdenados.length === 0 ? (
+        <p className="text-center text-muted-foreground">Nenhum pedido encontrado para este ambiente.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pedidos.map((pedido) => (
-            <PedidoCard 
-              key={pedido.id} 
-              pedido={pedido} 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {pedidosOrdenados.map((pedido) => (
+            <PedidoCard
+              key={pedido.id}
+              pedido={pedido}
               onUpdateStatus={handleUpdateStatus}
               onCancel={handleCancelPedido}
             />
