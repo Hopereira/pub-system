@@ -24,7 +24,6 @@ export class ComandaService {
     private readonly clienteRepository: Repository<Cliente>,
   ) {}
 
-  // ... (os métodos create, findAll, search, findOne, etc. continuam iguais)
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
     const { mesaId, clienteId } = createComandaDto;
     if (!mesaId && !clienteId) { throw new BadRequestException('A comanda precisa estar associada a uma mesa ou a um cliente.'); }
@@ -50,7 +49,7 @@ export class ComandaService {
   findAll(): Promise<Comanda[]> {
     return this.comandaRepository.find({ relations: ['mesa', 'cliente'], });
   }
-  
+
   async search(term: string): Promise<Comanda[]> {
     const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
     queryBuilder.leftJoinAndSelect('comanda.mesa', 'mesa').leftJoinAndSelect('comanda.cliente', 'cliente').where('comanda.status = :status', { status: ComandaStatus.ABERTA });
@@ -71,7 +70,7 @@ export class ComandaService {
     if (!comanda) { throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`); }
     return comanda;
   }
-  
+
   async findAbertaByMesaId(mesaId: string): Promise<Comanda> {
     const comanda = await this.comandaRepository.findOne({ where: { mesa: { id: mesaId }, status: ComandaStatus.ABERTA, }, });
     if (!comanda) { throw new NotFoundException( `Nenhuma comanda aberta encontrada para a mesa com ID "${mesaId}".`, ); }
@@ -82,39 +81,41 @@ export class ComandaService {
     const comanda = await this.comandaRepository.findOne({ where: { id }, relations: [ 'mesa', 'cliente', 'pedidos', 'pedidos.itens', 'pedidos.itens.produto', ], });
     if (!comanda) { throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`); }
     const totalComanda = comanda.pedidos.reduce((total, pedido) => { return total + Number(pedido.total); }, 0);
-    return { id: comanda.id, status: comanda.status, mesa: comanda.mesa ? { numero: comanda.mesa.numero } : null, cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null, pedidos: comanda.pedidos.map((pedido) => ({ id: pedido.id, status: pedido.status, total: pedido.total, itens: pedido.itens.map((item) => ({ quantidade: item.quantidade, precoUnitario: item.precoUnitario, produto: { nome: item.produto.nome, descricao: item.produto.descricao, }, })), })), totalComanda, };
+    return {
+      id: comanda.id,
+      status: comanda.status,
+      mesa: comanda.mesa ? { numero: comanda.mesa.numero } : null,
+      cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
+      pedidos: comanda.pedidos.map((pedido) => ({
+        id: pedido.id,
+        status: pedido.status,
+        total: pedido.total,
+        itens: pedido.itens.map((item) => ({
+          quantidade: item.quantidade,
+          precoUnitario: item.precoUnitario,
+          produto: {
+            nome: item.produto.nome,
+            descricao: item.produto.descricao,
+            // --- CORREÇÃO APLICADA AQUI ---
+            preco: item.produto.preco, 
+          },
+        })),
+      })),
+      totalComanda,
+    };
   }
-  
-  // --- NOVO MÉTODO PARA FECHAR A COMANDA ---
+
   async fecharComanda(id: string): Promise<Comanda> {
-    // 1. Busca a comanda e a mesa associada
-    const comanda = await this.comandaRepository.findOne({
-      where: { id },
-      relations: ['mesa'],
-    });
-
-    if (!comanda) {
-      throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
-    }
-
-    // 2. Valida a regra de negócio
-    if (comanda.status !== ComandaStatus.ABERTA) {
-      throw new BadRequestException('Apenas comandas com status ABERTA podem ser fechadas.');
-    }
-
-    // 3. Altera o status da comanda
+    const comanda = await this.comandaRepository.findOne({ where: { id }, relations: ['mesa'], });
+    if (!comanda) { throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`); }
+    if (comanda.status !== ComandaStatus.ABERTA) { throw new BadRequestException('Apenas comandas com status ABERTA podem ser fechadas.'); }
     comanda.status = ComandaStatus.FECHADA;
-
-    // 4. Se houver uma mesa, altera o status dela
     if (comanda.mesa) {
       comanda.mesa.status = MesaStatus.LIVRE;
       await this.mesaRepository.save(comanda.mesa);
     }
-
-    // 5. Salva e retorna a comanda atualizada
     return this.comandaRepository.save(comanda);
   }
-  // --- FIM DO NOVO MÉTODO ---
 
   async update(id: string, updateComandaDto: UpdateComandaDto): Promise<Comanda> {
     const comanda = await this.comandaRepository.preload({ id, ...updateComandaDto, });
