@@ -9,16 +9,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { cn } from '@/lib/utils';
-// ALTERADO: Importamos o enum e o tipo do nosso arquivo central
+// --- ALTERAÇÃO 1: Importando os tipos corretos da nossa fonte da verdade ---
 import { Pedido, PedidoStatus } from '@/types/pedido';
+
+// --- ALTERAÇÃO 2: A definição de tipo local foi REMOVIDA daqui ---
+// export type PedidoStatus = 'FEITO' | ...;
 
 interface PedidoCardProps {
   pedido: Pedido;
   onUpdateStatus: (pedidoId: string, novoStatus: PedidoStatus) => void;
   onCancel: (pedidoId: string, motivo: string) => void;
 }
-
-// REMOVIDO: A definição local de 'type PedidoStatus' e das interfaces foi removida daqui
 
 export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps) {
   const [motivo, setMotivo] = useState('');
@@ -35,10 +36,11 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
   };
 
   const getStatusVariant = (status: PedidoStatus) => {
+    // Agora usando o Enum importado
     switch (status) {
       case PedidoStatus.FEITO: return 'default';
       case PedidoStatus.EM_PREPARO: return 'secondary';
-      case PedidoStatus.PRONTO: return 'destructive'; // Vermelho para chamar atenção
+      case PedidoStatus.PRONTO: return 'destructive';
       case PedidoStatus.ENTREGUE: return 'outline';
       case PedidoStatus.CANCELADO: return 'outline';
       default: return 'outline';
@@ -53,11 +55,10 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
         <div className="flex justify-between items-start">
           <div>
             <CardTitle className="text-lg">Pedido</CardTitle>
-            <p className="text-xs text-muted-foreground truncate">ID: {pedido.id.split('-')[0]}</p>
+            <p className="text-xs text-muted-foreground truncate">ID: {pedido.id}</p>
           </div>
           <Badge variant={getStatusVariant(pedido.status)}
-            className={cn(pedido.status === PedidoStatus.ENTREGUE && 'bg-green-600 text-white')}
-          >
+            className={cn(pedido.status === PedidoStatus.ENTREGUE && 'bg-green-600 text-white')}>
             {pedido.status.replace('_', ' ')}
           </Badge>
         </div>
@@ -82,7 +83,7 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
           <>
             {pedido.status === PedidoStatus.FEITO && (
               <Button variant="outline" size="sm" onClick={() => onUpdateStatus(pedido.id, PedidoStatus.EM_PREPARO)}>
-                Iniciar Preparo
+                Em Preparo
               </Button>
             )}
             {pedido.status === PedidoStatus.EM_PREPARO && (
@@ -101,7 +102,7 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps
                 <DialogHeader><DialogTitle>Cancelar Pedido</DialogTitle></DialogHeader>
                 <div className="grid gap-4 py-4">
                   <Label htmlFor="motivo">Motivo do Cancelamento</Label>
-                  <Input id="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex: Item em falta no estoque" />
+                  <Input id="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex: Item em falta no estoque"/>
                 </div>
                 <DialogFooter>
                   <DialogClose asChild><Button variant="outline">Voltar</Button></DialogClose>

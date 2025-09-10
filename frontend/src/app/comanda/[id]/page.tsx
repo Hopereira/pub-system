@@ -1,4 +1,4 @@
-// Caminho: frontend/src/app/(protected)/dashboard/comandas/[id]/page.tsx
+// Caminho: frontend/src/app/comanda/[id]/page.tsx
 'use client';
 
 import { AddItemDrawer } from "@/components/comandas/AddItemDrawer";

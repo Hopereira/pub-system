@@ -2,7 +2,8 @@
 
 import { Produto } from "./produto";
 
-// AQUI ESTÁ A NOSSA FONTE DA VERDADE
+// AQUI ESTÁ A NOSSA "FONTE DA VERDADE" PARA OS STATUS
+// A palavra "export" é crucial aqui.
 export enum PedidoStatus {
   FEITO = 'FEITO',
   EM_PREPARO = 'EM_PREPARO',
@@ -17,6 +18,9 @@ export interface ItemPedido {
   precoUnitario: number;
   observacao: string | null;
   produto: Produto;
+  // Adicionamos estas propriedades para facilitar o uso no frontend
+  pedidoId: string;
+  pedidoStatus: PedidoStatus;
 }
 
 export interface Pedido {

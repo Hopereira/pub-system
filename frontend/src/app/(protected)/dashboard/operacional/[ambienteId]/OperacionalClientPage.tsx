@@ -1,62 +1,57 @@
 // Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/OperacionalClientPage.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-// ALTERADO: Importamos de '/types/pedido' e não mais de 'PedidoCard'
+import { useEffect, useState } from 'react';
+// --- ALTERAÇÃO: A importação de 'PedidoStatus' foi removida daqui ---
+import { PedidoCard } from '@/components/operacional/PedidoCard'; 
+// --- E adicionamos as importações corretas de tipos ---
 import { Pedido, PedidoStatus } from '@/types/pedido';
-import { PedidoCard } from '@/components/operacional/PedidoCard';
 import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPedidos = useCallback(async () => {
-    const controller = new AbortController();
-    try {
-      setLoading(true);
-      const data = await getPedidos(ambienteId);
-      setPedidos(data);
-      setError(null);
-    } catch (err: any) {
-      if (err.name !== 'CanceledError') {
+  useEffect(() => {
+    const fetchPedidos = async () => {
+      try {
+        // Não resetamos mais o loading a cada poll para evitar piscar a tela
+        const data = await getPedidos(ambienteId);
+        // Garantimos que a resposta é sempre um array
+        setPedidos(Array.isArray(data) ? data : []); 
+      } catch (err: any) {
         setError(err.message || 'Falha ao buscar os pedidos.');
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-    return () => controller.abort();
+    };
+
+    fetchPedidos();
+    const intervalId = setInterval(fetchPedidos, 15000); // Polling a cada 15s
+    return () => clearInterval(intervalId);
   }, [ambienteId]);
 
-  useEffect(() => {
-    fetchPedidos();
-    const intervalId = setInterval(fetchPedidos, 30000);
-    return () => clearInterval(intervalId);
-  }, [fetchPedidos]);
-
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
-    try {
-      const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
-      setPedidos((pedidosAtuais) =>
-        pedidosAtuais.map((p) =>
-          p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
-        )
-      );
-    } catch (err: any) {
-      setError(err.message || 'Falha ao atualizar o status do pedido.');
-    }
+      try {
+        const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
+        setPedidos((pedidosAtuais) =>
+          pedidosAtuais.map((p) =>
+            p.id === pedidoId ? pedidoAtualizado : p
+          )
+        );
+      } catch (err: any) {
+        setError(err.message || 'Falha ao atualizar o status do pedido.');
+      }
   };
 
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
     try {
       const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
-        status: PedidoStatus.CANCELADO, // Agora isto funciona, pois PedidoStatus é um objeto (enum)
+        status: PedidoStatus.CANCELADO, // Agora usa o Enum correto
         motivoCancelamento: motivo,
       });
+
       setPedidos((pedidosAtuais) =>
         pedidosAtuais.map((p) =>
           p.id === pedidoId ? pedidoCancelado : p
@@ -67,21 +62,29 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     }
   };
 
-  if (loading && pedidos.length === 0) {
-    return ( <div className="p-4 mt-8"> <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {Array.from({ length: 4 }).map((_, index) => ( <Skeleton key={index} className="h-48 w-full rounded-lg" /> ))} </div> </div> );
+  if (loading) {
+    return <p className="mt-8 text-center">Carregando pedidos...</p>;
   }
   
   if (error) {
-    return ( <div className="p-4 mt-8"> <Alert variant="destructive"> <Terminal className="h-4 w-4" /> <AlertTitle>Ocorreu um Erro</AlertTitle> <AlertDescription>{error}</AlertDescription> </Alert> </div> );
+    return <p className="mt-8 text-center text-red-500">Erro: {error}</p>;
   }
+
+  // Lógica de ordenação para uma melhor UX
+  const pedidosOrdenados = [...pedidos].sort((a, b) => {
+    const statusOrder: Record<PedidoStatus, number> = {
+      'PRONTO': 1, 'EM_PREPARO': 2, 'FEITO': 3, 'ENTREGUE': 4, 'CANCELADO': 5,
+    };
+    return statusOrder[a.status] - statusOrder[b.status];
+  });
 
   return (
     <div className="mt-8 flow-root">
-      {pedidos.length === 0 ? (
-        <p>Nenhum pedido encontrado para este ambiente.</p>
+      {pedidosOrdenados.length === 0 ? (
+        <p className="text-center text-muted-foreground">Nenhum pedido encontrado para este ambiente.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pedidos.map((pedido) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {pedidosOrdenados.map((pedido) => (
             <PedidoCard 
               key={pedido.id} 
               pedido={pedido} 

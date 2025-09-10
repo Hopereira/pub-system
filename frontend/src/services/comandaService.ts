@@ -1,37 +1,74 @@
+// Caminho: frontend/src/services/comandaService.ts
 
-// src/services/comandaService.ts (versão atualizada)
-import { AbrirComandaDto, Comanda } from "@/types/comanda";
+import { Comanda } from "@/types/comanda";
 import api from "./api";
 
-export const abrirComanda = async (data: AbrirComandaDto): Promise<Comanda> => {
-  // ... função existente ...
-  try {
-    const response = await api.post('/comandas', data);
-    return response.data;
-  } catch (error) {
-    console.error('Erro ao abrir comanda:', error);
-    throw error;
-  }
-};
+export interface AbrirComandaDto {
+  mesaId?: string;
+  clienteId?: string;
+}
 
-// NOVA FUNÇÃO 1: Encontrar a comanda aberta de uma mesa específica
+export const getComandaById = async (id: string): Promise<Comanda> => {
+    try {
+        const response = await api.get<Comanda>(`/comandas/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Erro ao buscar comanda ${id}:`, error);
+        throw error;
+    }
+}
+
 export const getComandaAbertaPorMesa = async (mesaId: string): Promise<Comanda> => {
+    try {
+        const response = await api.get<Comanda>(`/comandas/mesa/${mesaId}/aberta`);
+        return response.data;
+    } catch (error) {
+        console.error(`Erro ao buscar comanda aberta para a mesa ${mesaId}:`, error);
+        throw error;
+    }
+}
+
+export const abrirComanda = async (data: AbrirComandaDto): Promise<Comanda> => {
+    try {
+        const response = await api.post<Comanda>('/comandas', data);
+        return response.data;
+    } catch (error) {
+        console.error('Erro ao abrir comanda:', error);
+        throw error;
+    }
+}
+
+export const searchComandas = async (term: string): Promise<Comanda[]> => {
+  if (!term) return [];
   try {
-    const response = await api.get(`/comandas/mesa/${mesaId}/aberta`);
+    const response = await api.get('/comandas/search', {
+      params: { term },
+    });
     return response.data;
   } catch (error) {
-    console.error(`Erro ao buscar comanda para a mesa ${mesaId}:`, error);
+    console.error('Erro ao buscar comandas:', error);
     throw error;
   }
 };
 
-// NOVA FUNÇÃO 2: Obter todos os detalhes de uma comanda pelo seu ID
-export const getComandaById = async (comandaId: string): Promise<Comanda> => {
+export const fecharComanda = async (id: string): Promise<Comanda> => {
   try {
-    const response = await api.get(`/comandas/${comandaId}`);
+    const response = await api.patch<Comanda>(`/comandas/${id}/fechar`);
     return response.data;
   } catch (error) {
-    console.error(`Erro ao buscar detalhes da comanda ${comandaId}:`, error);
+    console.error(`Erro ao fechar comanda ${id}:`, error);
+    throw error;
+  }
+};
+
+// --- FUNÇÃO ADICIONADA ---
+// Busca os dados públicos de uma comanda, sem necessidade de autenticação.
+export const getPublicComandaById = async (id: string): Promise<Comanda> => {
+  try {
+    const response = await api.get<Comanda>(`/comandas/${id}/public`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar comanda pública ${id}:`, error);
     throw error;
   }
 };
