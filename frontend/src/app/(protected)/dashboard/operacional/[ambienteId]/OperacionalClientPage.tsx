@@ -2,9 +2,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PedidoCard, PedidoStatus } from '@/components/operacional/PedidoCard';
-import { Pedido } from '@/types/pedido';
-// NOVO: Importamos as funções do nosso serviço centralizado
+// --- ALTERAÇÃO: A importação de 'PedidoStatus' foi removida daqui ---
+import { PedidoCard } from '@/components/operacional/PedidoCard'; 
+// --- E adicionamos as importações corretas de tipos ---
+import { Pedido, PedidoStatus } from '@/types/pedido';
 import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
@@ -15,10 +16,10 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        setLoading(true);
-        // A chamada de API agora é uma simples função do serviço
+        // Não resetamos mais o loading a cada poll para evitar piscar a tela
         const data = await getPedidos(ambienteId);
-        setPedidos(data);
+        // Garantimos que a resposta é sempre um array
+        setPedidos(Array.isArray(data) ? data : []); 
       } catch (err: any) {
         setError(err.message || 'Falha ao buscar os pedidos.');
       } finally {
@@ -27,21 +28,16 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     };
 
     fetchPedidos();
-    
-    // Adicionamos um intervalo para buscar novos pedidos a cada 30 segundos
-    const intervalId = setInterval(fetchPedidos, 30000);
-
-    // Limpa o intervalo quando o componente é desmontado
+    const intervalId = setInterval(fetchPedidos, 15000); // Polling a cada 15s
     return () => clearInterval(intervalId);
   }, [ambienteId]);
 
   const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
       try {
-        // Lógica de atualização simplificada
         const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
         setPedidos((pedidosAtuais) =>
           pedidosAtuais.map((p) =>
-            p.id === pedidoId ? { ...p, status: pedidoAtualizado.status } : p
+            p.id === pedidoId ? pedidoAtualizado : p
           )
         );
       } catch (err: any) {
@@ -51,9 +47,8 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
     try {
-      // Lógica de cancelamento simplificada
       const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
-        status: PedidoStatus.CANCELADO,
+        status: PedidoStatus.CANCELADO, // Agora usa o Enum correto
         motivoCancelamento: motivo,
       });
 
@@ -67,22 +62,29 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     }
   };
 
-
-  if (loading && pedidos.length === 0) {
-    return <p className="mt-8">Carregando pedidos para o ambiente...</p>;
+  if (loading) {
+    return <p className="mt-8 text-center">Carregando pedidos...</p>;
   }
   
   if (error) {
-    return <p className="mt-8 text-red-500">Erro: {error}</p>;
+    return <p className="mt-8 text-center text-red-500">Erro: {error}</p>;
   }
+
+  // Lógica de ordenação para uma melhor UX
+  const pedidosOrdenados = [...pedidos].sort((a, b) => {
+    const statusOrder: Record<PedidoStatus, number> = {
+      'PRONTO': 1, 'EM_PREPARO': 2, 'FEITO': 3, 'ENTREGUE': 4, 'CANCELADO': 5,
+    };
+    return statusOrder[a.status] - statusOrder[b.status];
+  });
 
   return (
     <div className="mt-8 flow-root">
-      {pedidos.length === 0 ? (
-        <p>Nenhum pedido encontrado para este ambiente.</p>
+      {pedidosOrdenados.length === 0 ? (
+        <p className="text-center text-muted-foreground">Nenhum pedido encontrado para este ambiente.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pedidos.map((pedido) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {pedidosOrdenados.map((pedido) => (
             <PedidoCard 
               key={pedido.id} 
               pedido={pedido} 

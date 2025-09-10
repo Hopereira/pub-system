@@ -51,13 +51,24 @@ export const searchComandas = async (term: string): Promise<Comanda[]> => {
   }
 };
 
-// --- NOVO: Função para fechar uma comanda ---
 export const fecharComanda = async (id: string): Promise<Comanda> => {
   try {
     const response = await api.patch<Comanda>(`/comandas/${id}/fechar`);
     return response.data;
   } catch (error) {
     console.error(`Erro ao fechar comanda ${id}:`, error);
+    throw error;
+  }
+};
+
+// --- FUNÇÃO ADICIONADA ---
+// Busca os dados públicos de uma comanda, sem necessidade de autenticação.
+export const getPublicComandaById = async (id: string): Promise<Comanda> => {
+  try {
+    const response = await api.get<Comanda>(`/comandas/${id}/public`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar comanda pública ${id}:`, error);
     throw error;
   }
 };
