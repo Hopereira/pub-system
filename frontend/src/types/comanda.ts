@@ -1,10 +1,17 @@
 // Caminho: frontend/src/types/comanda.ts
 
 import { Mesa } from "./mesa";
-import { PedidoStatus } from "./pedido"; // ALTERAÇÃO 1: Importando o enum de status do pedido
+import { PedidoStatus } from "./pedido";
 import { Produto } from "./produto";
 
-export type ComandaStatus = 'ABERTA' | 'FECHADA' | 'PAGA';
+// --- CORREÇÃO APLICADA AQUI ---
+// Transformado de 'type' para 'enum' para que possa ser usado no código em execução.
+export enum ComandaStatus {
+  ABERTA = 'ABERTA',
+  FECHADA = 'FECHADA',
+  PAGA = 'PAGA',
+}
+// --- FIM DA CORREÇÃO ---
 
 // Define a estrutura de um item dentro de um pedido
 export interface ItemPedido {
@@ -13,13 +20,13 @@ export interface ItemPedido {
   observacao?: string | null;
   produto: Produto;
   precoUnitario: number;
-  pedidoId: string; // ALTERAÇÃO 2: Adicionando a referência ao pedido pai
+  pedidoId: string;
 }
 
 // Define a estrutura de um Pedido
 export interface Pedido {
     id: string;
-    status: PedidoStatus; // ALTERAÇÃO 3: Usando o enum para mais segurança
+    status: PedidoStatus;
     itens: ItemPedido[];
     total: number;
 }
@@ -27,7 +34,7 @@ export interface Pedido {
 // A comanda agora tem uma lista de Pedidos, e não de Itens
 export interface Comanda {
   id: string;
-  status: ComandaStatus;
+  status: ComandaStatus; // Esta linha já estava correta e agora funcionará
   mesa?: Mesa;
   pedidos: Pedido[];
   // Futuramente adicionaremos cliente
