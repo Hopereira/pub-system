@@ -120,3 +120,12 @@
     @apply bg-background text-foreground;
   }
 }
+/* Animação para destacar a linha da tabela que foi atualizada */
+@keyframes highlight-fade {
+  from { background-color: #e0e7ff; } /* Um azul claro */
+  to { background-color: transparent; }
+}
+
+.highlight-row {
+  animation: highlight-fade 2s ease-out;
+}

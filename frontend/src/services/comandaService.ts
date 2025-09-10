@@ -51,7 +51,6 @@ export const searchComandas = async (term: string): Promise<Comanda[]> => {
   }
 };
 
-// --- NOVO: Função para fechar uma comanda ---
 export const fecharComanda = async (id: string): Promise<Comanda> => {
   try {
     const response = await api.patch<Comanda>(`/comandas/${id}/fechar`);
@@ -61,18 +60,15 @@ export const fecharComanda = async (id: string): Promise<Comanda> => {
     throw error;
   }
 };
-// Caminho: frontend/src/services/comandaService.ts
 
-// ... (resto do arquivo com as outras funções)
-
-// NOVO: Função para buscar os dados públicos de uma comanda
+// --- FUNÇÃO ADICIONADA ---
+// Busca os dados públicos de uma comanda, sem necessidade de autenticação.
 export const getPublicComandaById = async (id: string): Promise<Comanda> => {
   try {
-    // Note que usamos o mesmo 'api', pois a rota no backend está marcada como @Public
     const response = await api.get<Comanda>(`/comandas/${id}/public`);
     return response.data;
   } catch (error) {
-    console.error(`Erro ao buscar dados públicos da comanda ${id}:`, error);
+    console.error(`Erro ao buscar comanda pública ${id}:`, error);
     throw error;
   }
 };
