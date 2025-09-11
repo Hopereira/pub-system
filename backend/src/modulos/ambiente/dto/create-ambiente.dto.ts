@@ -1,3 +1,4 @@
+// Caminho: backend/src/modulos/ambiente/dto/create-ambiente.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
@@ -7,7 +8,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { TipoAmbiente } from '../entities/ambiente.entity'; // 1. IMPORTAMOS O ENUM
+import { TipoAmbiente } from '../entities/ambiente.entity';
 
 export class CreateAmbienteDto {
   @ApiProperty({
@@ -30,7 +31,7 @@ export class CreateAmbienteDto {
   @MaxLength(500)
   descricao?: string;
 
-  // --- 2. ADIÇÃO DOS NOVOS CAMPOS E VALIDADORES ---
+  // --- ADICIONADO ---
   @ApiProperty({
     description: 'Define o tipo do ambiente.',
     enum: TipoAmbiente,
@@ -38,10 +39,11 @@ export class CreateAmbienteDto {
     default: TipoAmbiente.ATENDIMENTO,
     required: false,
   })
-  @IsEnum(TipoAmbiente) // Garante que o valor seja um dos definidos no enum
-  @IsOptional() // O campo é opcional na requisição, pois a entidade tem um valor padrão
+  @IsEnum(TipoAmbiente)
+  @IsOptional()
   tipo?: TipoAmbiente;
 
+  // --- ADICIONADO ---
   @ApiProperty({
     description:
       'Indica se um ambiente de ATENDIMENTO pode ser usado como ponto de retirada de pedidos.',
@@ -49,8 +51,7 @@ export class CreateAmbienteDto {
     default: false,
     required: false,
   })
-  @IsBoolean() // Garante que o valor seja um booleano (true/false)
+  @IsBoolean()
   @IsOptional()
   isPontoDeRetirada?: boolean;
-  // --- FIM DA ADIÇÃO ---
 }

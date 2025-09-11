@@ -15,16 +15,14 @@ services:
         condition: service_healthy
     networks:
       - pub_network
-    env_file:
-      - ./.env
-    # --- AJUSTE FINAL: Injeção explícita das variáveis ---
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
-      DB_USERNAME: ${DB_USER} # Mapeia a variável do .env para a que o código espera
+      DB_USERNAME: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
-    # --- FIM DO AJUSTE ---
+    env_file:
+      - ./.env
     command: npm run start:dev
 
   # --- Serviço do Banco de Dados PostgreSQL ---
@@ -69,7 +67,7 @@ services:
       - "3001:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - node_modules_frontend:/app/node_modules # <-- ALTERAÇÃO AQUI
     networks:
       - pub_network
     stdin_open: true
@@ -82,3 +80,4 @@ networks:
 
 volumes:
   postgres_data:
+  node_modules_frontend: {} # <-- ADIÇÃO AQUI

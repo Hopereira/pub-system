@@ -8,21 +8,28 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 
 import { createAmbiente, deleteAmbiente, getAmbientes, updateAmbiente } from '@/services/ambienteService';
-import { AmbienteData } from '@/services/ambienteService'; // Importando tipo do serviço
+import { AmbienteData } from '@/services/ambienteService';
 
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
-// NOVO: Schema de validação com Zod
+// Enum para o Tipo de Ambiente, para garantir consistência
+const TipoAmbienteEnum = z.enum(['PREPARO', 'ATENDIMENTO']);
+
+// Schema de validação com os novos campos
 const formSchema = z.object({
   nome: z.string().min(2, { message: 'O nome deve ter pelo menos 2 caracteres.' }),
   descricao: z.string().optional(),
+  tipo: TipoAmbienteEnum,
+  isPontoDeRetirada: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -38,8 +45,13 @@ const AmbientesPage = () => {
     defaultValues: {
       nome: '',
       descricao: '',
+      tipo: 'ATENDIMENTO',
+      isPontoDeRetirada: false,
     },
   });
+
+  // Observa o campo 'tipo' para a lógica condicional
+  const tipoValue = form.watch('tipo');
 
   const carregarAmbientes = async () => {
     try {
@@ -60,7 +72,7 @@ const AmbientesPage = () => {
 
   const handleOpenNewDialog = () => {
     setEditingAmbiente(null);
-    form.reset({ nome: '', descricao: '' });
+    form.reset({ nome: '', descricao: '', tipo: 'ATENDIMENTO', isPontoDeRetirada: false });
     setIsFormDialogOpen(true);
   };
   
@@ -69,17 +81,24 @@ const AmbientesPage = () => {
     form.reset({
       nome: ambiente.nome,
       descricao: ambiente.descricao || '',
+      tipo: ambiente.tipo,
+      isPontoDeRetirada: ambiente.isPontoDeRetirada,
     });
     setIsFormDialogOpen(true);
   };
 
   const onSubmit = async (values: FormValues) => {
     try {
+      const dataToSend = {
+        ...values,
+        isPontoDeRetirada: values.tipo === 'ATENDIMENTO' ? values.isPontoDeRetirada : false,
+      };
+
       if (editingAmbiente) {
-        await updateAmbiente(editingAmbiente.id, values);
+        await updateAmbiente(editingAmbiente.id, dataToSend);
         toast.success('Ambiente atualizado com sucesso!');
       } else {
-        await createAmbiente(values);
+        await createAmbiente(dataToSend);
         toast.success('Ambiente criado com sucesso!');
       }
       setIsFormDialogOpen(false);
@@ -116,7 +135,6 @@ const AmbientesPage = () => {
             <DialogDescription>{editingAmbiente ? 'Altere os detalhes do ambiente.' : 'Preencha os detalhes do novo ambiente.'}</DialogDescription>
           </DialogHeader>
 
-          {/* FORMULÁRIO REFATORADO */}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
               <FormField
@@ -145,6 +163,53 @@ const AmbientesPage = () => {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="tipo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Ambiente</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ATENDIMENTO">Atendimento (Salão, Varanda)</SelectItem>
+                        <SelectItem value="PREPARO">Preparo (Cozinha, Bar)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {tipoValue === 'ATENDIMENTO' && (
+                <FormField
+                  control={form.control}
+                  name="isPontoDeRetirada"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Ponto de Retirada</FormLabel>
+                        <DialogDescription className="text-xs">
+                          Marque se os clientes podem retirar pedidos neste ambiente.
+                        </DialogDescription>
+                      </div>
+                      <FormControl>
+                        {/* CORREÇÃO para o aviso do console */}
+                        <Switch
+                          checked={!!field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <DialogFooter>
                 <Button type="submit">Salvar</Button>
               </DialogFooter>
@@ -159,24 +224,36 @@ const AmbientesPage = () => {
           <TableCaption>Uma lista dos seus ambientes cadastrados.</TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[30%]">Nome</TableHead>
-              <TableHead className="w-[40%]">Descrição</TableHead>
+              <TableHead>Nome</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Ponto de Retirada</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {ambientes.map((ambiente) => {
-              const emUso = ambiente.productCount > 0 || ambiente.tableCount > 0;
+              const emUso = (ambiente.productCount ?? 0) > 0 || (ambiente.tableCount ?? 0) > 0;
               const usoDetalhes = [
-                ambiente.productCount > 0 ? `${ambiente.productCount} produto(s)` : '',
-                ambiente.tableCount > 0 ? `${ambiente.tableCount} mesa(s)` : ''
+                (ambiente.productCount ?? 0) > 0 ? `${ambiente.productCount} produto(s)` : '',
+                (ambiente.tableCount ?? 0) > 0 ? `${ambiente.tableCount} mesa(s)` : ''
               ].filter(Boolean).join(', ');
 
               return (
                 <TableRow key={ambiente.id}>
                   <TableCell className="font-medium">{ambiente.nome}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{ambiente.descricao || '-'}</TableCell>
+                  <TableCell>
+                    <Badge variant={ambiente.tipo === 'PREPARO' ? 'secondary' : 'default'}>
+                      {ambiente.tipo === 'PREPARO' ? 'Preparo' : 'Atendimento'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {ambiente.isPontoDeRetirada ? (
+                      <Badge className="bg-blue-600 hover:bg-blue-700">Sim</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {emUso ? (
                       <Badge variant="destructive" title={usoDetalhes}>Em Uso</Badge>
