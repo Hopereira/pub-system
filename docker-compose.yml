@@ -6,16 +6,25 @@ services:
       dockerfile: Dockerfile
     container_name: pub_system_backend
     ports:
-      - "3000:3000" # <-- ATUALIZADO
+      - "3000:3000"
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - pub_network
     env_file:
       - ./.env
+    # --- AJUSTE FINAL: Injeção explícita das variáveis ---
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USERNAME: ${DB_USER} # Mapeia a variável do .env para a que o código espera
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+    # --- FIM DO AJUSTE ---
     command: npm run start:dev
 
   # --- Serviço do Banco de Dados PostgreSQL ---
@@ -31,6 +40,11 @@ services:
       - pub_network
     env_file:
       - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # --- (Bônus) Serviço do PGAdmin ---
   pgadmin:
@@ -45,20 +59,19 @@ services:
     env_file:
       - ./.env
 
-  # --- (NOVO) Serviço do Front-end (nossa aplicação Next.js) ---
+  # --- Serviço do Front-end (nossa aplicação Next.js) ---
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: pub_system_frontend
     ports:
-      - "3001:3000" # <-- O front-end agora usa a porta 3001
+      - "3001:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
       - pub_network
-    # Linhas necessárias para o hot-reload do Next.js funcionar corretamente
     stdin_open: true
     tty: true
 
