@@ -2,12 +2,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-// --- ALTERAÇÃO: A importação de 'PedidoStatus' foi removida daqui ---
-import { PedidoCard } from '@/components/operacional/PedidoCard'; 
-// --- E adicionamos as importações corretas de tipos ---
+import { PedidoCard } from '@/components/operacional/PedidoCard';
 import { Pedido, PedidoStatus } from '@/types/pedido';
 import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
 
+// CORREÇÃO: A função é exportada sem 'default'
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,9 +15,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        // Não resetamos mais o loading a cada poll para evitar piscar a tela
         const data = await getPedidos(ambienteId);
-        // Garantimos que a resposta é sempre um array
         setPedidos(Array.isArray(data) ? data : []); 
       } catch (err: any) {
         setError(err.message || 'Falha ao buscar os pedidos.');
@@ -48,7 +45,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const handleCancelPedido = async (pedidoId: string, motivo: string) => {
     try {
       const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
-        status: PedidoStatus.CANCELADO, // Agora usa o Enum correto
+        status: PedidoStatus.CANCELADO,
         motivoCancelamento: motivo,
       });
 
@@ -70,7 +67,6 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     return <p className="mt-8 text-center text-red-500">Erro: {error}</p>;
   }
 
-  // Lógica de ordenação para uma melhor UX
   const pedidosOrdenados = [...pedidos].sort((a, b) => {
     const statusOrder: Record<PedidoStatus, number> = {
       'PRONTO': 1, 'EM_PREPARO': 2, 'FEITO': 3, 'ENTREGUE': 4, 'CANCELADO': 5,
