@@ -13,17 +13,16 @@ import { ClienteModule } from './modulos/cliente/cliente.module';
 import { PedidoModule } from './modulos/pedido/pedido.module';
 import { ProdutoModule } from './modulos/produto/produto.module';
 import { SeederModule } from './database/seeder.module';
+import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module'; // <-- 1. IMPORTAR O NOVO MÓDULO
 
 @Module({
   imports: [
-    // --- CORREÇÃO AQUI ---
-    // 1. Módulo de Configuração: Lê as variáveis do arquivo .env (ESTAVA FALTANDO)
+    
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
 
-    // 2. Conexão com o Banco de Dados: Usa as variáveis para conectar ao PostgreSQL
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -35,11 +34,11 @@ import { SeederModule } from './database/seeder.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: true, // Ótimo para desenvolvimento, cria tabelas automaticamente.
+        synchronize: true,
       }),
     }),
 
-    // 3. Módulos de Funcionalidades (Features): Registra todos os nossos módulos
+    // Módulos de Funcionalidades (Features): Registra todos os nossos módulos
     EmpresaModule,
     AmbienteModule,
     FuncionarioModule,
@@ -50,6 +49,7 @@ import { SeederModule } from './database/seeder.module';
     PedidoModule,
     ProdutoModule,
     SeederModule,
+    PaginaEventoModule, // <-- 2. ADICIONAR À LISTA DE IMPORTS
   ],
   controllers: [],
   providers: [],

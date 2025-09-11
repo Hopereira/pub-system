@@ -116,7 +116,6 @@ export default function ComandaDetalhePage() {
                     </li>
                   ))}
                 </ul>
-                {/* O botão de Entregar agora pertence ao Pedido, não ao Item */}
                 {pedido.status === PedidoStatus.PRONTO && isGarcom && (
                   <div className="flex justify-end mt-4">
                     <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleMarcarComoEntregue(pedido.id)}>
