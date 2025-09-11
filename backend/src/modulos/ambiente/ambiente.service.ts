@@ -1,6 +1,5 @@
 // Caminho: backend/src/modulos/ambiente/ambiente.service.ts
 
-// ... (imports continuam os mesmos)
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,7 +9,6 @@ import { Ambiente } from './entities/ambiente.entity';
 
 @Injectable()
 export class AmbienteService {
-  // ... (construtor continua igual)
   constructor(
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
@@ -21,7 +19,7 @@ export class AmbienteService {
     return this.ambienteRepository.save(ambiente);
   }
 
-  // --- MÉTODO 'findAll' ATUALIZADO PARA INCLUIR A DESCRIÇÃO ---
+  // --- MÉTODO 'findAll' CORRIGIDO ---
   async findAll(): Promise<any[]> {
     const ambientes = await this.ambienteRepository
       .createQueryBuilder('ambiente')
@@ -29,22 +27,27 @@ export class AmbienteService {
       .leftJoin('ambiente.mesas', 'mesa')
       .select('ambiente.id', 'id')
       .addSelect('ambiente.nome', 'nome')
-      .addSelect('ambiente.descricao', 'descricao') // <-- ADICIONADO
+      .addSelect('ambiente.descricao', 'descricao')
+      // --- ADICIONADO PARA CORRIGIR O BUG ---
+      .addSelect('ambiente.tipo', 'tipo')
+      .addSelect('ambiente.isPontoDeRetirada', 'isPontoDeRetirada')
+      // --- FIM DA ADIÇÃO ---
       .addSelect('COUNT(DISTINCT produto.id)', 'productCount')
       .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')
       .groupBy('ambiente.id')
       .orderBy('ambiente.nome', 'ASC')
       .getRawMany();
 
+    // A conversão de `isPontoDeRetirada` para booleano é feita automaticamente pelo driver.
+    // O resto da lógica permanece a mesma.
     return ambientes.map(ambiente => ({
       ...ambiente,
       productCount: parseInt(ambiente.productCount, 10),
       tableCount: parseInt(ambiente.tableCount, 10),
     }));
   }
-  // --- FIM DA ATUALIZAÇÃO ---
+  // --- FIM DA CORREÇÃO ---
 
-  // ... (findOne, update, e remove continuam os mesmos)
   async findOne(id: string): Promise<Ambiente> {
     const ambiente = await this.ambienteRepository.findOne({ where: { id } });
     if (!ambiente) {
