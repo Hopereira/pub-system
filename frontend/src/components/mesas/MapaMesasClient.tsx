@@ -99,7 +99,6 @@ export default function MapaMesasClient() {
       );
     }
     
-    // Passo 1: Agrupar as mesas pelo nome do ambiente
     const mesasAgrupadas = mesas.reduce((acc, mesa) => {
       const ambienteNome = mesa.ambiente?.nome ?? 'Sem Ambiente';
       if (!acc[ambienteNome]) {
@@ -109,7 +108,6 @@ export default function MapaMesasClient() {
       return acc;
     }, {} as Record<string, Mesa[]>);
 
-    // Passo 2: Renderizar cada grupo
     return (
         <div className="space-y-8">
             {Object.keys(mesasAgrupadas).map(ambienteNome => (
@@ -148,7 +146,9 @@ export default function MapaMesasClient() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setMesaParaAbrir(null)}>Cancelar</AlertDialogCancel>
+            {/* --- CORREÇÃO AQUI --- */}
             <AlertDialogAction onClick={handleConfirmarAbertura}>Confirmar</AlertDialogAction>
+            {/* --- FIM DA CORREÇÃO --- */}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
