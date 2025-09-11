@@ -1,14 +1,11 @@
 // Caminho: backend/src/modulos/comanda/comanda.service.ts
 
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Cliente } from '../cliente/entities/cliente.entity';
 import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
+import { Pedido, PedidoStatus } from '../pedido/entities/pedido.entity';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
@@ -22,6 +19,8 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
+    @InjectRepository(Pedido)
+    private readonly pedidoRepository: Repository<Pedido>,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -45,6 +44,27 @@ export class ComandaService {
     const comanda = this.comandaRepository.create(comandaData);
     return this.comandaRepository.save(comanda);
   }
+
+  async finalizarPedido(id: string): Promise<{ message: string }> {
+    const comanda = await this.comandaRepository.findOne({ where: { id }, relations: ['pedidos'], });
+    if (!comanda) { throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`); }
+    const pedidosNoCarrinho = comanda.pedidos.filter((p) => p.status === PedidoStatus.CARRINHO,);
+    if (pedidosNoCarrinho.length === 0) { throw new BadRequestException('Não há novos itens no carrinho para finalizar.'); }
+    for (const pedido of pedidosNoCarrinho) {
+      pedido.status = PedidoStatus.FEITO;
+      await this.pedidoRepository.save(pedido);
+    }
+    return { message: 'Pedido finalizado e enviado para preparo com sucesso!' };
+  }
+
+  // --- NOVA FUNÇÃO PARA INSTRUÇÃO DE ENTREGA ---
+  async definirInstrucaoEntrega(id: string, updateComandaDto: UpdateComandaDto): Promise<Comanda> {
+    // Apenas os campos `tipoEntrega` e `localizacaoEntrega` serão permitidos no DTO
+    // para esta rota, o que será validado no futuro no frontend.
+    // Aqui, simplesmente reutilizamos a lógica de atualização genérica.
+    return this.update(id, updateComandaDto);
+  }
+  // --- FIM DA NOVA FUNÇÃO ---
 
   findAll(): Promise<Comanda[]> {
     return this.comandaRepository.find({ relations: ['mesa', 'cliente'], });
@@ -96,7 +116,6 @@ export class ComandaService {
           produto: {
             nome: item.produto.nome,
             descricao: item.produto.descricao,
-            // --- CORREÇÃO APLICADA AQUI ---
             preco: item.produto.preco, 
           },
         })),

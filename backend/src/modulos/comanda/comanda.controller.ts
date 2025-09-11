@@ -13,18 +13,16 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Comandas')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('comandas')
 export class ComandaController {
   constructor(private readonly comandaService: ComandaService) {}
 
   @Get('search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiOperation({ summary: 'Busca comandas abertas por número da mesa ou nome/CPF do cliente' })
   @ApiQuery({ name: 'term', required: true, description: 'Termo de busca (número da mesa ou texto para cliente)'})
-  @ApiResponse({ status: 200, description: 'Lista de comandas correspondentes retornada com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado.' })
   search(@Query('term') term: string) {
     return this.comandaService.search(term);
   }
@@ -32,21 +30,22 @@ export class ComandaController {
   @Public()
   @Get(':id/public')
   @ApiOperation({ summary: 'Busca dados públicos de uma comanda (para cliente via QR Code)' })
-  @ApiResponse({ status: 200, description: 'Dados públicos da comanda retornados com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
   findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.comandaService.findPublicOne(id);
   }
   
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiOperation({ summary: 'Cria uma nova comanda (associada a uma mesa ou cliente)' })
-  @ApiResponse({ status: 201, description: 'Comanda criada com sucesso.' })
   create(@Body() createComandaDto: CreateComandaDto) {
     return this.comandaService.create(createComandaDto);
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiOperation({ summary: 'Lista todas as comandas do sistema' })
   findAll() {
@@ -54,25 +53,46 @@ export class ComandaController {
   }
 
   @Get('mesa/:mesaId/aberta')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Busca a comanda aberta de uma mesa específica' })
   findAbertaByMesaId(@Param('mesaId', ParseUUIDPipe) mesaId: string) {
     return this.comandaService.findAbertaByMesaId(mesaId);
   }
 
-  // --- NOVA ROTA PARA FECHAR COMANDA ---
+  @Public()
+  @Post(':id/finalizar-pedido')
+  @ApiOperation({ summary: 'Cliente finaliza o pedido do seu carrinho (autoatendimento)' })
+  @ApiResponse({ status: 200, description: 'Pedido enviado para preparo com sucesso.'})
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
+  finalizarPedido(@Param('id', ParseUUIDPipe) id: string) {
+    return this.comandaService.finalizarPedido(id);
+  }
+
+  @Public()
+  @Patch(':id/instrucao-entrega')
+  @ApiOperation({ summary: 'Cliente define a instrução de entrega para a sua comanda' })
+  @ApiResponse({ status: 200, description: 'Instrução de entrega atualizada com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
+  definirInstrucaoEntrega(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateComandaDto: UpdateComandaDto,
+  ) {
+    return this.comandaService.definirInstrucaoEntrega(id, updateComandaDto);
+  }
+
   @Patch(':id/fechar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiOperation({ summary: 'Fecha uma comanda e libera a mesa associada, se houver' })
-  @ApiResponse({ status: 200, description: 'Comanda fechada com sucesso.' })
-  @ApiResponse({ status: 400, description: 'A comanda não pode ser fechada (ex: já está fechada).' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Admin ou Caixa.' })
-  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
   fecharComanda(@Param('id', ParseUUIDPipe) id: string) {
     return this.comandaService.fecharComanda(id);
   }
-  // --- FIM DA NOVA ROTA ---
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiOperation({ summary: 'Busca uma comanda específica por ID (visão do funcionário)' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -80,6 +100,8 @@ export class ComandaController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiOperation({ summary: 'Atualiza os dados de uma comanda' })
   update(
@@ -90,6 +112,8 @@ export class ComandaController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Remove uma comanda (Apenas Administradores)' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
