@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // NOVO: para redirecionamento
+import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
@@ -16,20 +16,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'; // NOVO: para confirmação
+} from '@/components/ui/alert-dialog';
 
 import { Mesa } from '@/types/mesa';
 import { getMesas } from '@/services/mesaService';
-import { abrirComanda, getComandaAbertaPorMesa } from '@/services/comandaService'; // NOVO: serviço de comanda
+import { abrirComanda, getComandaAbertaPorMesa } from '@/services/comandaService';
 import MesaCard from './MesaCard';
 
 export default function MapaMesasClient() {
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter(); // NOVO: hook de roteamento
+  const router = useRouter();
 
-  // --- NOVO: Estados para o diálogo de confirmação ---
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [mesaParaAbrir, setMesaParaAbrir] = useState<Mesa | null>(null);
 
@@ -48,14 +47,11 @@ export default function MapaMesasClient() {
     fetchMesas();
   }, []);
 
-  // --- ATUALIZADO: Lógica de clique na mesa ---
   const handleMesaClick = async (mesa: Mesa) => {
     if (mesa.status === 'LIVRE') {
-      // Se a mesa está livre, preparamos para abrir
       setMesaParaAbrir(mesa);
       setIsConfirmOpen(true);
     } else {
-      // Se está ocupada, buscamos a comanda e redirecionamos
       try {
         const comanda = await getComandaAbertaPorMesa(mesa.id);
         router.push(`/dashboard/comandas/${comanda.id}`);
@@ -65,14 +61,11 @@ export default function MapaMesasClient() {
     }
   };
 
-  // --- NOVO: Handler para confirmar a abertura da mesa ---
   const handleConfirmarAbertura = async () => {
     if (!mesaParaAbrir) return;
 
     try {
       await abrirComanda({ mesaId: mesaParaAbrir.id });
-
-      // Atualiza o estado da mesa na UI para 'OCUPADA' em tempo real
       setMesas(currentMesas =>
         currentMesas.map(m =>
           m.id === mesaParaAbrir.id ? { ...m, status: 'OCUPADA' } : m,
@@ -106,10 +99,26 @@ export default function MapaMesasClient() {
       );
     }
     
+    const mesasAgrupadas = mesas.reduce((acc, mesa) => {
+      const ambienteNome = mesa.ambiente?.nome ?? 'Sem Ambiente';
+      if (!acc[ambienteNome]) {
+        acc[ambienteNome] = [];
+      }
+      acc[ambienteNome].push(mesa);
+      return acc;
+    }, {} as Record<string, Mesa[]>);
+
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-            {mesas.map((mesa) => (
-                <MesaCard key={mesa.id} mesa={mesa} onClick={handleMesaClick} />
+        <div className="space-y-8">
+            {Object.keys(mesasAgrupadas).map(ambienteNome => (
+                <div key={ambienteNome}>
+                    <h2 className="text-2xl font-semibold tracking-tight mb-4 border-b pb-2">{ambienteNome}</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                        {mesasAgrupadas[ambienteNome].map((mesa) => (
+                            <MesaCard key={mesa.id} mesa={mesa} onClick={handleMesaClick} />
+                        ))}
+                    </div>
+                </div>
             ))}
         </div>
     );
@@ -125,7 +134,6 @@ export default function MapaMesasClient() {
       </div>
       {renderContent()}
 
-      {/* --- NOVO: Diálogo de confirmação de abertura de mesa --- */}
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -138,7 +146,9 @@ export default function MapaMesasClient() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setMesaParaAbrir(null)}>Cancelar</AlertDialogCancel>
+            {/* --- CORREÇÃO AQUI --- */}
             <AlertDialogAction onClick={handleConfirmarAbertura}>Confirmar</AlertDialogAction>
+            {/* --- FIM DA CORREÇÃO --- */}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
