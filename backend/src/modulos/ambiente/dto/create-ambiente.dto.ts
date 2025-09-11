@@ -1,5 +1,14 @@
+// Caminho: backend/src/modulos/ambiente/dto/create-ambiente.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+import { TipoAmbiente } from '../entities/ambiente.entity';
 
 export class CreateAmbienteDto {
   @ApiProperty({
@@ -21,4 +30,28 @@ export class CreateAmbienteDto {
   @IsOptional()
   @MaxLength(500)
   descricao?: string;
+
+  // --- ADICIONADO ---
+  @ApiProperty({
+    description: 'Define o tipo do ambiente.',
+    enum: TipoAmbiente,
+    example: TipoAmbiente.PREPARO,
+    default: TipoAmbiente.ATENDIMENTO,
+    required: false,
+  })
+  @IsEnum(TipoAmbiente)
+  @IsOptional()
+  tipo?: TipoAmbiente;
+
+  // --- ADICIONADO ---
+  @ApiProperty({
+    description:
+      'Indica se um ambiente de ATENDIMENTO pode ser usado como ponto de retirada de pedidos.',
+    example: true,
+    default: false,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPontoDeRetirada?: boolean;
 }
