@@ -1,14 +1,16 @@
 // Caminho: backend/src/main.ts
 
-import { ValidationPipe, Logger } from '@nestjs/common'; // <-- Importe o Logger
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { SeederService } from './database/seeder.service'; // <-- Importe o SeederService
+import { SeederService } from './database/seeder.service';
+// A importação do PaginaEventoModule já não é necessária aqui
+// import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const logger = new Logger('Bootstrap'); // <-- Crie uma instância do Logger
+  const logger = new Logger('Bootstrap');
 
   app.enableCors({
     origin: 'http://localhost:3001',
@@ -18,13 +20,9 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe());
 
-  // --- NOVO: LÓGICA DO SEEDER ---
-  // Pegamos uma instância do SeederService que criamos
   const seeder = app.get(SeederService);
-  // Chamamos o método para popular o banco de dados
   await seeder.seed();
   logger.log('Verificação de seeding concluída.');
-  // --- FIM DA LÓGICA DO SEEDER ---
 
   const config = new DocumentBuilder()
     .setTitle('Pub System API')
@@ -33,7 +31,11 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
+  // --- ALTERAÇÃO AQUI ---
+  // Voltamos à forma padrão. O 'app' já conhece todos os módulos importados no AppModule.
   const document = SwaggerModule.createDocument(app, config);
+  // --- FIM DA ALTERAÇÃO ---
+  
   SwaggerModule.setup('api', app, document);
 
   await app.listen(3000);
