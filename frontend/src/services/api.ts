@@ -1,17 +1,22 @@
-// Caminho: frontend/src/services/api.ts
 import axios from 'axios';
 
+// Determinamos a URL base dinamicamente
+const baseURL = typeof window === 'undefined' 
+  ? process.env.API_URL_SERVER // Se estiver no servidor, use a URL interna do Docker
+  : process.env.NEXT_PUBLIC_API_URL; // Se estiver no navegador, use a URL pública
+
 const api = axios.create({
-  // CORRETO: A porta do seu backend é 3000, conforme o docker-compose.yml
-  baseURL: 'http://localhost:3000', 
+  baseURL: baseURL,
 });
 
-// Interceptor para adicionar o token de autenticação em todas as requisições
+// O resto do ficheiro continua exatamente igual...
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },

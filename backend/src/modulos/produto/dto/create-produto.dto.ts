@@ -1,3 +1,5 @@
+// backend/src/modulos/produto/dto/create-produto.dto.ts
+
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
@@ -20,7 +22,7 @@ export class CreateProdutoDto {
   @ApiProperty({
     description: 'Uma descrição opcional do produto, com mais detalhes.',
     example: 'Cremoso e refrescante, servido na caneca congelada.',
-    required: false, // Indica ao Swagger que este campo não é obrigatório
+    required: false,
   })
   @IsString()
   @IsOptional()
@@ -49,4 +51,13 @@ export class CreateProdutoDto {
   @IsUUID()
   @IsNotEmpty()
   ambienteId: string;
+
+  @ApiProperty({
+    description: 'A URL da imagem do produto.',
+    example: 'http://localhost:3000/imagens/chopp.jpg',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  urlImagem?: string;
 }
