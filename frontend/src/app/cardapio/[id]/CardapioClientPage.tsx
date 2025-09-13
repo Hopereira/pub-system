@@ -2,15 +2,15 @@
 'use client';
 
 import { useState } from 'react';
+// --- ADIÇÃO ---
+import { useRouter } from 'next/navigation';
 import { Comanda } from '@/types/comanda';
 import { Produto } from '@/types/produto';
 import ProdutoCard from '@/components/cardapio/ProdutoCard';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-// --- ADIÇÃO: Ícones e novos componentes de UI ---
 import { ShoppingCart, Pencil, Check } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-// --- FIM DA ADIÇÃO ---
 import {
   Sheet,
   SheetContent,
@@ -18,8 +18,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { toast } from 'sonner';
 
-// Tipagem para os itens do carrinho (já continha o campo opcional)
 interface CarrinhoItem {
   produtoId: string;
   nome: string;
@@ -28,6 +28,7 @@ interface CarrinhoItem {
   observacao?: string;
 }
 
+// (Função groupProdutosByCategoria não foi alterada)
 const groupProdutosByCategoria = (produtos: Produto[]) => {
   return produtos.reduce<Record<string, Produto[]>>((acc, produto) => {
     const categoria = produto.categoria || 'Outros';
@@ -47,12 +48,13 @@ interface CardapioClientPageProps {
 export default function CardapioClientPage({ comanda, produtos }: CardapioClientPageProps) {
   const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
   const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
-
-  // --- ADIÇÃO: ESTADOS PARA EDIÇÃO DE OBSERVAÇÃO ---
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [observacaoText, setObservacaoText] = useState('');
-  // --- FIM DA ADIÇÃO ---
+  
+  // --- ADIÇÃO ---
+  const router = useRouter();
 
+  // (Funções de manipulação do carrinho não foram alteradas)
   const handleAddItemToCart = (produto: Produto, quantidade = 1) => {
     setCarrinho(prevCarrinho => {
       const existingItem = prevCarrinho.find(item => item.produtoId === produto.id);
@@ -70,7 +72,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
             nome: produto.nome,
             preco: produto.preco,
             quantidade,
-            observacao: '', // Inicia com observação vazia
+            observacao: '',
           },
         ];
       }
@@ -93,7 +95,6 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
     });
   };
 
-  // --- ADIÇÃO: FUNÇÃO PARA ATUALIZAR OBSERVAÇÃO ---
   const handleUpdateObservacao = (produtoId: string) => {
     setCarrinho(prevCarrinho =>
       prevCarrinho.map(item =>
@@ -102,7 +103,6 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
           : item
       )
     );
-    // Limpa os estados de edição
     setEditingItemId(null);
     setObservacaoText('');
   };
@@ -111,14 +111,31 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
     setEditingItemId(item.produtoId);
     setObservacaoText(item.observacao || '');
   };
-  // --- FIM DA ADIÇÃO ---
 
   const calcularTotalCarrinho = () => {
     return carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
   };
+  // --- FIM DAS FUNÇÕES NÃO ALTERADAS ---
+
+  // --- NOVA FUNÇÃO PARA NAVEGAÇÃO ---
+  const handleNavigateToResumo = () => {
+    try {
+      // Salva o carrinho atual no sessionStorage para ser lido pela próxima página
+      sessionStorage.setItem('carrinho', JSON.stringify(carrinho));
+      // Navega para a página de resumo
+      router.push(`/acesso-cliente/${comanda.id}/resumo`);
+    } catch (error) {
+      console.error("Falha ao salvar carrinho no sessionStorage:", error);
+      toast.error("Ocorreu um erro ao tentar prosseguir. Tente novamente.");
+    }
+  };
+
+  const produtosAgrupados = groupProdutosByCategoria(produtos);
+  const categorias = Object.keys(produtosAgrupados);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+      {/* (Cabeçalho da página não foi alterado) */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Cardápio</h1>
@@ -128,6 +145,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
         </div>
         
         <Sheet open={isCarrinhoOpen} onOpenChange={setIsCarrinhoOpen}>
+          {/* (Conteúdo do Sheet/Carrinho não foi alterado, exceto o botão final) */}
           <SheetTrigger asChild>
             <Button className="relative">
               <ShoppingCart className="h-5 w-5" />
@@ -150,6 +168,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
                 <>
                   {carrinho.map(item => (
                     <div key={item.produtoId} className="border-b pb-4">
+                      {/* ... (renderização de cada item do carrinho) ... */}
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">{item.nome}</p>
@@ -163,7 +182,6 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
                           <Button variant="outline" size="sm" onClick={() => handleAddItemToCart(produtos.find(p => p.id === item.produtoId)!, 1)}>+</Button>
                         </div>
                       </div>
-                      {/* --- ADIÇÃO DA UI DE OBSERVAÇÃO --- */}
                       <div className="mt-2">
                         {editingItemId === item.produtoId ? (
                           <div className="space-y-2">
@@ -192,7 +210,6 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
                           </div>
                         )}
                       </div>
-                      {/* --- FIM DA ADIÇÃO --- */}
                     </div>
                   ))}
                   <Separator />
@@ -204,14 +221,20 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
               )}
             </div>
             <div className="mt-4">
-              <Button disabled={carrinho.length === 0} className="w-full">
-                Confirmar Pedido
+              {/* --- BOTÃO ATUALIZADO --- */}
+              <Button 
+                disabled={carrinho.length === 0} 
+                className="w-full"
+                onClick={handleNavigateToResumo}
+              >
+                Ir para o Resumo
               </Button>
             </div>
           </SheetContent>
         </Sheet>
       </div>
 
+      {/* (Renderização dos produtos por categoria não foi alterada) */}
       {categorias.map(categoria => (
         <div key={categoria} className="my-8">
           <h2 className="text-2xl font-semibold mb-4">{categoria}</h2>
