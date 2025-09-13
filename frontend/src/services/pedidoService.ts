@@ -42,11 +42,9 @@ export const updatePedidoStatus = async (id: string, data: Partial<UpdatePedidoS
     }
 }
 
-// --- FUNÇÃO QUE ESTAVA EM FALTA ---
-// Cria um novo pedido (adiciona itens a uma comanda)
+// Cria um novo pedido (usado internamente por funcionários)
 export const adicionarItensAoPedido = async (data: AddItemPedidoDto): Promise<Pedido> => {
   try {
-    // A API retorna o novo pedido criado, então podemos tipar a resposta
     const response = await api.post<Pedido>('/pedidos', data);
     return response.data;
   } catch (error) {
@@ -54,3 +52,16 @@ export const adicionarItensAoPedido = async (data: AddItemPedidoDto): Promise<Pe
     throw error;
   }
 };
+
+// --- NOVA FUNÇÃO PARA O FLUXO DO CLIENTE ---
+export const createPedidoFromCliente = async (data: AddItemPedidoDto): Promise<Pedido> => {
+  try {
+    // Chama o novo endpoint público que criamos
+    const response = await api.post<Pedido>('/pedidos/cliente', data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar pedido pelo cliente:', error);
+    throw error;
+  }
+};
+// --- FIM DA NOVA FUNÇÃO ---
