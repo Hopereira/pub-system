@@ -11,6 +11,11 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
+  // --- ADICIONADO: Validadores e o Pipe do NestJS ---
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  BadRequestException,
 } from '@nestjs/common';
 import { ProdutoService } from './produto.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
@@ -22,13 +27,12 @@ import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/auth/decorators/public.decorator';
 
-// --- NOVAS IMPORTAÇÕES PARA UPLOAD ---
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-// --- CORREÇÃO AQUI: Importamos 'File' diretamente do 'multer' ---
-import { File } from 'multer';
-// --- FIM DAS NOVAS IMPORTAÇÕES ---
+// --- ALTERADO: Usamos o tipo específico do NestJS para compatibilidade com os Pipes ---
+import { Express } from 'express';
+// --- FIM DAS ALTERAÇÕES ---
 
 @ApiTags('Produtos / Cardápio')
 @ApiBearerAuth()
@@ -53,15 +57,36 @@ export class ProdutoController {
       storage: diskStorage({
         destination: './public',
         filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          // Validação básica de tipo de arquivo aqui também é uma boa prática
+          if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+            return callback(
+              new BadRequestException('Apenas arquivos de imagem são permitidos!'),
+              null,
+            );
+          }
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           const filename = `${uniqueSuffix}${ext}`;
           callback(null, filename);
         },
       }),
+      // Adicionando o limite de tamanho diretamente no multer também
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
     }),
   )
-  uploadImage(@UploadedFile() file: File): { url: string } {
+  uploadImage(
+    // --- ALTERADO: Adicionamos o ParseFilePipe com os validadores ---
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|gif)' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ): { url: string } {
     return { url: `${file.filename}` };
   }
 
