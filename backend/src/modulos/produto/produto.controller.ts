@@ -1,4 +1,7 @@
 // Caminho: backend/src/modulos/produto/produto.controller.ts
+
+/// <reference types="multer" /> // <-- ADIÇÃO CRÍTICA AQUI
+
 import {
   Controller,
   Get,
@@ -7,15 +10,14 @@ import {
   Patch,
   Param,
   Delete,
-  ParseUUIDPipe,
   UseGuards,
   UploadedFile,
   UseInterceptors,
-  // --- ADICIONADO: Validadores e o Pipe do NestJS ---
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
   BadRequestException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ProdutoService } from './produto.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
@@ -30,18 +32,15 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-// --- ALTERADO: Usamos o tipo específico do NestJS para compatibilidade com os Pipes ---
 import { Express } from 'express';
-// --- FIM DAS ALTERAÇÕES ---
 
 @ApiTags('Produtos / Cardápio')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('produtos')
 export class ProdutoController {
   constructor(private readonly produtoService: ProdutoService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Cria um novo produto no cardápio' })
   create(@Body() createProdutoDto: CreateProdutoDto) {
@@ -49,6 +48,7 @@ export class ProdutoController {
   }
 
   @Post('upload-imagem')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Faz upload da imagem de um produto' })
   @ApiResponse({ status: 201, description: 'URL da imagem retornada com sucesso.' })
@@ -57,7 +57,6 @@ export class ProdutoController {
       storage: diskStorage({
         destination: './public',
         filename: (req, file, callback) => {
-          // Validação básica de tipo de arquivo aqui também é uma boa prática
           if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
             return callback(
               new BadRequestException('Apenas arquivos de imagem são permitidos!'),
@@ -71,40 +70,41 @@ export class ProdutoController {
           callback(null, filename);
         },
       }),
-      // Adicionando o limite de tamanho diretamente no multer também
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+      limits: { fileSize: 5 * 1024 * 1024 }, 
     }),
   )
   uploadImage(
-    // --- ALTERADO: Adicionamos o ParseFilePipe com os validadores ---
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg|gif)' }),
         ],
       }),
     )
-    file: Express.Multer.File,
+    file: Express.Multer.File, // Esta linha agora deve funcionar com a diretiva acima
   ): { url: string } {
     return { url: `${file.filename}` };
   }
 
+  // ... resto do controller sem alterações ...
+
   @Public()
   @Get()
   @ApiOperation({ summary: 'Lista todos os produtos do cardápio (Rota Pública)' })
-  @ApiResponse({ status: 200, description: 'Lista de produtos retornada com sucesso.' })
   findAll() {
     return this.produtoService.findAll();
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Busca um produto específico por ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.produtoService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Atualiza os dados de um produto' })
   update(
@@ -115,6 +115,7 @@ export class ProdutoController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Remove um produto do cardápio' })
   remove(@Param('id', ParseUUIDPipe) id: string) {

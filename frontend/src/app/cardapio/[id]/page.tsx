@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { getPublicComandaById } from '@/services/comandaService';
 import { getProdutos } from '@/services/produtoService';
-import CardapioClientPage from './CardapioClientPage'; // Nosso novo componente de cliente
+import CardapioClientPage from './CardapioClientPage';
 
 type CardapioPageProps = {
   params: {
@@ -12,8 +12,8 @@ type CardapioPageProps = {
 };
 
 // Tornamos a função assíncrona para buscar dados no servidor
-export default async function CardapioPage({ params }: CardapioPageProps) {
-  const comandaId = params.id;
+export default async function CardapioPage({ params: { id } }: CardapioPageProps) { // <-- MUDANÇA AQUI
+  const comandaId = id; // Agora isso é seguro
 
   try {
     // Usamos Promise.all para buscar os dados em paralelo, otimizando o carregamento
