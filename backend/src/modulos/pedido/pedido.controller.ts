@@ -10,7 +10,7 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
-  Query, // ALTERADO: Garantimos que o 'Query' está importado
+  Query,
 } from '@nestjs/common';
 import { PedidoService } from './pedido.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
@@ -21,30 +21,39 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
+// --- ADIÇÃO ---
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @ApiTags('Pedidos')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('pedidos')
 export class PedidoController {
   constructor(private readonly pedidoService: PedidoService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard) // <-- Guarda mantida para a rota interna
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
-  @ApiOperation({ summary: 'Cria um novo pedido (lança itens numa comanda)' })
-  @ApiResponse({ status: 201, description: 'Pedido criado e itens lançados com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores ou Garçons.' })
-  @ApiResponse({ status: 404, description: 'Comanda ou um dos Produtos não encontrado.' })
+  @ApiOperation({ summary: 'Cria um novo pedido (Rota interna para funcionários)' })
+  @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
   create(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidoService.create(createPedidoDto);
   }
 
+  // --- NOVO ENDPOINT PÚBLICO PARA O CLIENTE ---
+  @Public()
+  @Post('cliente')
+  @ApiOperation({ summary: 'Cria um novo pedido (Fluxo do cliente público)' })
+  @ApiResponse({ status: 201, description: 'Pedido enviado com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Comanda ou um dos Produtos não encontrado.' })
+  createFromCliente(@Body() createPedidoDto: CreatePedidoDto) {
+    // Reutiliza a mesma lógica de serviço, que é o ideal
+    return this.pedidoService.create(createPedidoDto);
+  }
+  // --- FIM DO NOVO ENDPOINT ---
+
   @Patch(':id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.COZINHA)
   @ApiOperation({ summary: 'Atualiza o status de um pedido' })
-  @ApiResponse({ status: 200, description: 'Status do pedido atualizado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado.' })
-  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePedidoStatusDto: UpdatePedidoStatusDto,
@@ -52,34 +61,26 @@ export class PedidoController {
     return this.pedidoService.updateStatus(id, updatePedidoStatusDto);
   }
 
-  // --- MÉTODO 'findAll' ATUALIZADO ---
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
   @ApiOperation({ summary: 'Lista todos os pedidos, com filtro opcional por ambiente' })
-  @ApiResponse({ status: 200, description: 'Lista de pedidos retornada com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado.' })
-  findAll(@Query('ambienteId') ambienteId?: string) { // ALTERADO: Adicionamos o decorador @Query para receber o parâmetro
-    // ALTERADO: Passamos o parâmetro recebido para o serviço
+  findAll(@Query('ambienteId') ambienteId?: string) {
     return this.pedidoService.findAll(ambienteId);
   }
-  // --- FIM DA ATUALIZAÇÃO ---
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
   @ApiOperation({ summary: 'Busca um pedido específico por ID' })
-  @ApiResponse({ status: 200, description: 'Dados do pedido retornados com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado.' })
-  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.pedidoService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA)
   @ApiOperation({ summary: 'Atualiza dados gerais de um pedido' })
-  @ApiResponse({ status: 200, description: 'Pedido atualizado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Admin, Garçom ou Cozinha.' })
-  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePedidoDto: UpdatePedidoDto,
@@ -88,11 +89,9 @@ export class PedidoController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Remove/cancela um pedido (Apenas Administradores)' })
-  @ApiResponse({ status: 200, description: 'Pedido removido com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
-  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.pedidoService.remove(id);
   }

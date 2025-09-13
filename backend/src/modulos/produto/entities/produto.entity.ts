@@ -1,6 +1,8 @@
-// Lembre-se de importar o Ambiente e os novos decoradores
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+// Caminho: backend/src/modulos/produto/entities/produto.entity.ts
+
+// --- CORREÇÃO AQUI: Voltamos a usar 'Ambiente' e o caminho original ---
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 
 @Entity('produtos')
 export class Produto {
@@ -19,7 +21,11 @@ export class Produto {
   @Column()
   categoria: string;
 
-  @ManyToOne(() => Ambiente)
-  @JoinColumn({ name: 'ambienteId' }) // Especifica o nome da coluna no banco
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  urlImagem: string;
+
+  // --- CORREÇÃO AQUI: Voltamos a usar 'Ambiente' ---
+  @ManyToOne(() => Ambiente, (ambiente) => ambiente.produtos) // Assumindo que a entidade Ambiente tem uma propriedade 'produtos'
+  @JoinColumn({ name: 'ambienteId' })
   ambiente: Ambiente;
 }

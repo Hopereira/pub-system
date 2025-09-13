@@ -67,9 +67,12 @@ services:
       - "3001:3000"
     volumes:
       - ./frontend:/app
-      - node_modules_frontend:/app/node_modules # <-- ALTERAÇÃO AQUI
+      - node_modules_frontend:/app/node_modules
     networks:
       - pub_network
+    environment: # <-- BLOCO ADICIONADO
+      - API_URL_SERVER=http://backend:3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
     stdin_open: true
     tty: true
 
@@ -80,4 +83,4 @@ networks:
 
 volumes:
   postgres_data:
-  node_modules_frontend: {} # <-- ADIÇÃO AQUI
+  node_modules_frontend: {}

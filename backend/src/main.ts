@@ -4,13 +4,25 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { SeederService } from './database/seeder.service';
-// A importação do PaginaEventoModule já não é necessária aqui
-// import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
+
+// --- NOVAS IMPORTAÇÕES ---
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+// --- FIM DAS NOVAS IMPORTAÇÕES ---
+
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // --- ALTERAÇÃO NA CRIAÇÃO DO APP ---
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // --- FIM DA ALTERAÇÃO ---
+
   const logger = new Logger('Bootstrap');
+
+  // --- NOVA LINHA PARA SERVIR FICHEIROS ESTÁTICOS ---
+  // Isto cria uma pasta 'public' na raiz do backend que é acessível publicamente.
+  // É aqui que guardaremos as nossas imagens.
+  app.useStaticAssets(join(__dirname, '..', 'public'));
+  // --- FIM DA NOVA LINHA ---
 
   app.enableCors({
     origin: 'http://localhost:3001',
@@ -20,9 +32,9 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe());
 
-  const seeder = app.get(SeederService);
-  await seeder.seed();
-  logger.log('Verificação de seeding concluída.');
+  //const seeder = app.get(SeederService);
+  //await seeder.seed();
+  //logger.log('Verificação de seeding concluída.');
 
   const config = new DocumentBuilder()
     .setTitle('Pub System API')
@@ -31,10 +43,7 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
-  // --- ALTERAÇÃO AQUI ---
-  // Voltamos à forma padrão. O 'app' já conhece todos os módulos importados no AppModule.
   const document = SwaggerModule.createDocument(app, config);
-  // --- FIM DA ALTERAÇÃO ---
   
   SwaggerModule.setup('api', app, document);
 
