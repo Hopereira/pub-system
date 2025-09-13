@@ -1,3 +1,4 @@
+// Caminho: backend/src/modulos/produto/produto.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -5,6 +6,11 @@ import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+
+// --- ADIÇÃO: Módulos nativos do Node.js para manipular arquivos ---
+import { promises as fs } from 'fs';
+import { join } from 'path';
+// --- FIM DA ADIÇÃO ---
 
 @Injectable()
 export class ProdutoService {
@@ -50,9 +56,10 @@ export class ProdutoService {
     return produto;
   }
 
-  // --- MÉTODO UPDATE CORRIGIDO ---
-  async update(id: string, updateProdutoDto: UpdateProdutoDto): Promise<Produto> {
-    // Se um novo ambienteId for fornecido, verifica se ele existe
+  async update(
+    id: string,
+    updateProdutoDto: UpdateProdutoDto,
+  ): Promise<Produto> {
     if (updateProdutoDto.ambienteId) {
       const ambiente = await this.ambienteRepository.findOne({
         where: { id: updateProdutoDto.ambienteId },
@@ -64,30 +71,40 @@ export class ProdutoService {
       }
     }
 
-    // O 'preload' carrega a entidade existente e mescla os novos dados do DTO.
     const produto = await this.produtoRepository.preload({
       id: id,
       ...updateProdutoDto,
-      // Se um novo ambienteId foi passado, formatamos para o TypeORM entender a relação
       ambiente: updateProdutoDto.ambienteId
         ? { id: updateProdutoDto.ambienteId }
         : undefined,
     });
 
-    // Se o produto com o ID fornecido não existir, o preload retorna undefined.
     if (!produto) {
       throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
     }
 
-    // Salva a entidade atualizada no banco de dados.
     await this.produtoRepository.save(produto);
-
-    // Usa o método findOne para buscar e retornar a entidade COMPLETA com a relação carregada.
     return this.findOne(id);
   }
 
+  // --- MÉTODO REMOVE ATUALIZADO ---
   async remove(id: string) {
     const produto = await this.findOne(id);
+
+    // --- ADIÇÃO: Lógica para deletar o arquivo de imagem ---
+    if (produto.urlImagem) {
+      const imagePath = join(process.cwd(), 'public', produto.urlImagem);
+      try {
+        await fs.unlink(imagePath);
+      } catch (error) {
+        // Se o arquivo não existir, apenas loga um aviso mas não impede a remoção do DB
+        console.warn(
+          `Não foi possível remover o arquivo de imagem: ${imagePath}. O arquivo pode já ter sido removido.`,
+        );
+      }
+    }
+    // --- FIM DA ADIÇÃO ---
+
     await this.produtoRepository.remove(produto);
     return { message: `Produto com ID ${id} removido com sucesso.` };
   }
