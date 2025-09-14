@@ -3,6 +3,7 @@
 import { Mesa } from '@/types/mesa';
 import { CreateMesaDto, UpdateMesaDto } from '@/types/mesa.dto';
 import api from './api';
+import { AxiosError } from 'axios'; // ALTERAÇÃO 1: Importamos o tipo AxiosError
 
 export const getMesas = async (): Promise<Mesa[]> => {
   try {
@@ -14,17 +15,27 @@ export const getMesas = async (): Promise<Mesa[]> => {
   }
 };
 
+// --- MÉTODO ATUALIZADO ---
 export const createMesa = async (mesaData: CreateMesaDto): Promise<Mesa> => {
     try {
         const response = await api.post<Mesa>('/mesas', mesaData);
         return response.data;
     } catch (error) {
+        // ALTERAÇÃO 2: Verificamos se o erro é uma instância do AxiosError
+        if (error instanceof AxiosError && error.response) {
+            // ALTERAÇÃO 3: Se o status for 409 (Conflict), lançamos um novo erro apenas com a mensagem do backend
+            if (error.response.status === 409) {
+                // A mensagem 'error.response.data.message' vem diretamente do nosso backend
+                throw new Error(error.response.data.message || 'Esta mesa já existe.');
+            }
+        }
+        // Se for qualquer outro erro, nós o relançamos
         console.error('Erro ao criar mesa:', error);
         throw error;
     }
 }
 
-export const updateMesa = async (id: string, mesaData: UpdateMesaDto): Promise<Mesa> => {
+export const updateMesa = async (id: string, mesaData: UpdateMetaDto): Promise<Mesa> => {
   try {
     const response = await api.patch<Mesa>(`/mesas/${id}`, mesaData);
     return response.data;
@@ -34,7 +45,6 @@ export const updateMesa = async (id: string, mesaData: UpdateMesaDto): Promise<M
   }
 }
 
-// --- NOVO: Função para deletar uma mesa ---
 export const deleteMesa = async (id: string): Promise<void> => {
   try {
     await api.delete(`/mesas/${id}`);
@@ -42,4 +52,4 @@ export const deleteMesa = async (id: string): Promise<void> => {
     console.error(`Erro ao deletar mesa ${id}:`, error);
     throw error;
   }
-};  
+};

@@ -1,44 +1,51 @@
 // Caminho: backend/src/modulos/mesa/mesa.service.ts
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'; // ALTERAÇÃO 1: Importamos o ConflictException
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
-import { Ambiente } from '../ambiente/entities/ambiente.entity'; // ALTERADO: Importamos a entidade Ambiente
+import { Ambiente } from '../ambiente/entities/ambiente.entity';
 
 @Injectable()
 export class MesaService {
   constructor(
     @InjectRepository(Mesa)
     private readonly mesaRepository: Repository<Mesa>,
-    // --- ALTERAÇÃO INSERIDA: Injetamos o repositório de Ambiente ---
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
   ) {}
 
-  // --- MÉTODO ATUALIZADO ---
+  // --- MÉTODO ATUALIZADO COM TRATAMENTO DE ERRO ---
   async create(createMesaDto: CreateMesaDto): Promise<Mesa> {
     const { numero, ambienteId } = createMesaDto;
 
-    // 1. Validamos se o ambiente fornecido existe
     const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
     if (!ambiente) {
       throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
     }
 
-    // 2. Criamos a mesa e já associamos o objeto ambiente completo
     const mesa = this.mesaRepository.create({
       numero,
-      ambiente, // Passamos o objeto, não o ID
+      ambiente,
     });
 
-    // 3. Salvamos a mesa com a relação correta
-    return this.mesaRepository.save(mesa);
+    // ALTERAÇÃO 2: Envolvemos a operação de salvar em um bloco try...catch
+    try {
+      return await this.mesaRepository.save(mesa);
+    } catch (error) {
+      // ALTERAÇÃO 3: Verificamos se o código do erro é de duplicidade ('23505')
+      if (error.code === '23505') {
+        throw new ConflictException(
+          'Já existe uma mesa com este número neste ambiente.',
+        );
+      }
+      // Se for qualquer outro tipo de erro, nós o relançamos para ser tratado por outra camada
+      throw error;
+    }
   }
 
-  // --- MÉTODO CORRIGIDO ---
   async findAll(): Promise<Mesa[]> {
     const mesas = await this.mesaRepository.find({
       relations: ['ambiente', 'comandas'],
@@ -64,11 +71,9 @@ export class MesaService {
     return mesa;
   }
 
-  // --- MÉTODO ATUALIZADO ---
   async update(id: string, updateMesaDto: UpdateMesaDto): Promise<Mesa> {
     const { ambienteId, ...dadosUpdate } = updateMesaDto;
     
-    // Primeiro, pré-carregamos a mesa com os dados simples (ex: numero)
     const mesa = await this.mesaRepository.preload({
       id: id,
       ...dadosUpdate,
@@ -77,7 +82,6 @@ export class MesaService {
       throw new NotFoundException(`Mesa com ID "${id}" não encontrada.`);
     }
 
-    // Se um novo ambienteId foi fornecido, validamos e atualizamos a relação
     if (ambienteId) {
       const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
       if (!ambiente) {
@@ -86,6 +90,8 @@ export class MesaService {
       mesa.ambiente = ambiente;
     }
     
+    // NOTA: O update também poderia ter o mesmo tratamento de erro de duplicidade.
+    // Vamos focar no create primeiro, mas saiba que seria bom adicionar aqui também.
     return this.mesaRepository.save(mesa);
   }
 
