@@ -17,8 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Badge } from '@/components/ui/badge'; // Import do Badge
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
   numero: z.coerce.number().min(1, { message: 'O número da mesa é obrigatório.' }),
@@ -33,7 +33,6 @@ const GestaoMesasPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMesa, setEditingMesa] = useState<Mesa | null>(null);
   
-  // NOVO: Estados para controlar o diálogo de exclusão
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [mesaToDelete, setMesaToDelete] = useState<Mesa | null>(null);
 
@@ -69,12 +68,12 @@ const GestaoMesasPage = () => {
     setIsModalOpen(true);
   };
 
-  // NOVO: Função para abrir o diálogo de confirmação
   const handleOpenDeleteDialog = (mesa: Mesa) => {
     setMesaToDelete(mesa);
     setIsConfirmOpen(true);
   };
 
+  // --- FUNÇÃO onSubmit ATUALIZADA ---
   const onSubmit = async (values: FormValues) => {
     try {
       if (editingMesa) {
@@ -86,12 +85,14 @@ const GestaoMesasPage = () => {
       }
       setIsModalOpen(false);
       await loadData();
-    } catch (err) {
-      toast.error(editingMesa ? 'Falha ao atualizar a mesa.' : 'Falha ao criar a mesa.');
+    } catch (err: any) { // ALTERAÇÃO 1: Definimos 'err' como 'any' para acessar 'err.message'
+      // ALTERAÇÃO 2: Usamos 'err.message' para exibir o erro específico do backend.
+      // Se não houver, exibe uma mensagem genérica.
+      const errorMessage = err.message || (editingMesa ? 'Falha ao atualizar a mesa.' : 'Falha ao criar a mesa.');
+      toast.error(errorMessage);
     }
   };
   
-  // ALTERADO: A chamada ao handleDelete agora usa o estado
   const handleConfirmDelete = async () => {
     if (!mesaToDelete) return;
     try {
@@ -146,7 +147,6 @@ const GestaoMesasPage = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(mesa)}><Pencil className="h-4 w-4" /></Button>
-                  {/* ALTERADO: O botão de apagar agora só prepara o diálogo */}
                   <Button variant="ghost" size="icon" disabled={mesa.status !== 'LIVRE'} onClick={() => handleOpenDeleteDialog(mesa)}>
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
@@ -157,7 +157,6 @@ const GestaoMesasPage = () => {
         </Table>
       </div>
 
-      {/* NOVO: Um único diálogo de confirmação para toda a página */}
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
