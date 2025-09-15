@@ -1,8 +1,9 @@
 // Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/page.tsx
 
 import { getAmbienteById } from '@/services/ambienteService';
-// CORREÇÃO: Importamos o componente com chaves {}
 import { OperacionalClientPage } from './OperacionalClientPage';
+// ADIÇÃO: Importamos a função 'cookies' do Next.js para ler o token no servidor
+import { cookies } from 'next/headers';
 
 type PaginaOperacionalProps = {
   params: {
@@ -10,9 +11,15 @@ type PaginaOperacionalProps = {
   };
 };
 
-export default async function PaginaOperacional({ params }: PaginaOperacionalProps) {
-  // É uma boa prática buscar o nome do ambiente no servidor
-  const ambiente = await getAmbienteById(params.ambienteId).catch(() => null);
+// CORREÇÃO: Desestruturamos { ambienteId } diretamente dos params
+export default async function PaginaOperacional({ params: { ambienteId } }: PaginaOperacionalProps) {
+  
+  // ADIÇÃO: Lógica para fazer a chamada autenticada no servidor
+  const cookieStore = cookies();
+  const token = cookieStore.get('authToken')?.value;
+
+  // Agora chamamos a função passando o ID e o token
+  const ambiente = await getAmbienteById(ambienteId, token);
   const nomeDoAmbiente = ambiente?.nome ?? 'Painel Operacional';
 
   return (
@@ -24,8 +31,8 @@ export default async function PaginaOperacional({ params }: PaginaOperacionalPro
         </p>
       </div>
       
-      {/* Renderizamos o componente de cliente, passando o ambienteId para ele */}
-      <OperacionalClientPage ambienteId={params.ambienteId} />
+      {/* O componente do cliente continua a funcionar da mesma forma */}
+      <OperacionalClientPage ambienteId={ambienteId} />
     </div>
   );
 }
