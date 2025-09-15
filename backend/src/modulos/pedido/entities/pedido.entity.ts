@@ -1,5 +1,3 @@
-// Caminho: backend/src/modulos/pedido/entities/pedido.entity.ts
-
 import {
   Column,
   CreateDateColumn,
@@ -11,9 +9,9 @@ import {
 } from 'typeorm';
 import { Comanda } from '../../comanda/entities/comanda.entity';
 import { ItemPedido } from '../entities/item-pedido.entity';
-import { PedidoStatus } from '../enums/pedido-status.enum'; // <-- 1. IMPORTAR DO NOVO FICHEIRO
-
-// 2. A DEFINIÇÃO DO ENUM FOI REMOVIDA DAQUI
+// Correcção: Importa e re-exporta o enum do seu ficheiro central
+import { PedidoStatus } from '../enums/pedido-status.enum';
+export { PedidoStatus };
 
 @Entity('pedidos')
 export class Pedido {
@@ -27,13 +25,12 @@ export class Pedido {
   })
   status: PedidoStatus;
 
-  // ... (resto do ficheiro igual)
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   total: number;
 
   @CreateDateColumn()
   data: Date;
-  
+
   @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   motivoCancelamento: string | null;
 

@@ -1,5 +1,3 @@
-// Caminho: backend/src/modulos/pedido/pedido.controller.ts
-
 import {
   Controller,
   Get,
@@ -20,9 +18,11 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
 import { Public } from 'src/auth/decorators/public.decorator';
+// --- CORRECÇÃO DOS IMPORTS ---
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
+import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
+
 
 @ApiTags('Pedidos')
 @Controller('pedidos')
@@ -33,7 +33,6 @@ export class PedidoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
   @ApiOperation({ summary: 'Cria um novo pedido (Rota interna para funcionários)' })
-  @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
   create(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidoService.create(createPedidoDto);
   }
@@ -41,16 +40,13 @@ export class PedidoController {
   @Public()
   @Post('cliente')
   @ApiOperation({ summary: 'Cria um novo pedido (Fluxo do cliente público)' })
-  @ApiResponse({ status: 201, description: 'Pedido enviado com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Comanda ou um dos Produtos não encontrado.' })
   createFromCliente(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidoService.create(createPedidoDto);
   }
 
-  // --- NOVO ENDPOINT PARA ATUALIZAR STATUS DO ITEM ---
   @Patch('/item/:itemPedidoId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.COZINHA) // Adicione outros cargos se necessário (ex: BAR)
+  @Roles(Cargo.ADMIN, Cargo.COZINHA, Cargo.GARCOM)
   @ApiOperation({ summary: 'Atualiza o status de um item de pedido específico' })
   updateItemStatus(
     @Param('itemPedidoId', ParseUUIDPipe) itemPedidoId: string,
