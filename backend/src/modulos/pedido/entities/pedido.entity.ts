@@ -1,5 +1,3 @@
-// Caminho: backend/src/modulos/pedido/entities/pedido.entity.ts
-
 import {
   Column,
   CreateDateColumn,
@@ -11,14 +9,9 @@ import {
 } from 'typeorm';
 import { Comanda } from '../../comanda/entities/comanda.entity';
 import { ItemPedido } from '../entities/item-pedido.entity';
-
-export enum PedidoStatus {
-  FEITO = 'FEITO',
-  EM_PREPARO = 'EM_PREPARO',
-  PRONTO = 'PRONTO',
-  ENTREGUE = 'ENTREGUE',
-  CANCELADO = 'CANCELADO',
-}
+// Correcção: Importa e re-exporta o enum do seu ficheiro central
+import { PedidoStatus } from '../enums/pedido-status.enum';
+export { PedidoStatus };
 
 @Entity('pedidos')
 export class Pedido {
@@ -38,10 +31,8 @@ export class Pedido {
   @CreateDateColumn()
   data: Date;
 
-  // --- ALTERAÇÃO INSERIDA ---
   @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   motivoCancelamento: string | null;
-  // --- FIM DA ALTERAÇÃO ---
 
   @ManyToOne(() => Comanda)
   @JoinColumn({ name: 'comandaId' })
