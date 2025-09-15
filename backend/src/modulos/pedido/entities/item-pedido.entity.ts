@@ -1,3 +1,5 @@
+// Caminho: backend/src/modulos/pedido/entities/item-pedido.entity.ts
+
 import {
   Column,
   Entity,
@@ -18,6 +20,11 @@ export class ItemPedido {
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   precoUnitario: number;
+
+  // --- ADIÇÃO DA NOVA COLUNA ---
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  observacao: string;
+  // --- FIM DA ADIÇÃO ---
 
   @ManyToOne(() => Pedido, (pedido) => pedido.itens)
   @JoinColumn({ name: 'pedidoId' })

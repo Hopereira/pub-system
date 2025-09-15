@@ -5,24 +5,23 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
-// --- NOVAS IMPORTAÇÕES ---
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
-// --- FIM DAS NOVAS IMPORTAÇÕES ---
+// --- ADIÇÃO: Importar o adaptador de WebSocket ---
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 
 async function bootstrap() {
-  // --- ALTERAÇÃO NA CRIAÇÃO DO APP ---
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // --- FIM DA ALTERAÇÃO ---
+  
+  // --- ADIÇÃO: Dizer ao NestJS para usar o adaptador de WebSocket ---
+  // Esta linha deve vir idealmente após a criação do 'app'.
+  app.useWebSocketAdapter(new IoAdapter(app));
+  // --- FIM DA ADIÇÃO ---
 
   const logger = new Logger('Bootstrap');
 
-  // --- NOVA LINHA PARA SERVIR FICHEIROS ESTÁTICOS ---
-  // Isto cria uma pasta 'public' na raiz do backend que é acessível publicamente.
-  // É aqui que guardaremos as nossas imagens.
   app.useStaticAssets(join(__dirname, '..', 'public'));
-  // --- FIM DA NOVA LINHA ---
 
   app.enableCors({
     origin: 'http://localhost:3001',
@@ -31,10 +30,6 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(new ValidationPipe());
-
-  //const seeder = app.get(SeederService);
-  //await seeder.seed();
-  //logger.log('Verificação de seeding concluída.');
 
   const config = new DocumentBuilder()
     .setTitle('Pub System API')
