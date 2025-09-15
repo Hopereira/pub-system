@@ -11,14 +11,9 @@ import {
 } from 'typeorm';
 import { Comanda } from '../../comanda/entities/comanda.entity';
 import { ItemPedido } from '../entities/item-pedido.entity';
+import { PedidoStatus } from '../enums/pedido-status.enum'; // <-- 1. IMPORTAR DO NOVO FICHEIRO
 
-export enum PedidoStatus {
-  FEITO = 'FEITO',
-  EM_PREPARO = 'EM_PREPARO',
-  PRONTO = 'PRONTO',
-  ENTREGUE = 'ENTREGUE',
-  CANCELADO = 'CANCELADO',
-}
+// 2. A DEFINIÇÃO DO ENUM FOI REMOVIDA DAQUI
 
 @Entity('pedidos')
 export class Pedido {
@@ -32,16 +27,15 @@ export class Pedido {
   })
   status: PedidoStatus;
 
+  // ... (resto do ficheiro igual)
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   total: number;
 
   @CreateDateColumn()
   data: Date;
-
-  // --- ALTERAÇÃO INSERIDA ---
+  
   @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   motivoCancelamento: string | null;
-  // --- FIM DA ALTERAÇÃO ---
 
   @ManyToOne(() => Comanda)
   @JoinColumn({ name: 'comandaId' })

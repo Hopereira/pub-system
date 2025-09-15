@@ -1,13 +1,14 @@
 // Caminho: frontend/src/components/cozinha/CozinhaPageClient.tsx
 'use client';
 
-import { getPedidos, updatePedidoStatus } from '@/services/pedidoService'; // ADIÇÃO
+// 1. Importamos o novo serviço e DTO
+import { getPedidos, updateItemStatus, UpdateItemStatusDto } from '@/services/pedidoService';
 import { Pedido, PedidoStatus } from '@/types/pedido';
 import React, { useEffect, useState } from 'react';
 import PedidoCard from './PedidoCard';
 import { Skeleton } from '../ui/skeleton';
 import { socket } from '@/lib/socket';
-import { toast } from 'sonner'; // ADIÇÃO
+import { toast } from 'sonner';
 
 export default function CozinhaPageClient() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -15,37 +16,29 @@ export default function CozinhaPageClient() {
 
   // ... (useEffect de busca inicial e de websocket não foram alterados)
   useEffect(() => {
-    const fetchPedidos = async () => { /* ... */ };
-    fetchPedidos();
+    // ...
   }, []);
 
   useEffect(() => {
-    socket.connect();
-    function onNovoPedido(novoPedido: Pedido) { /* ... */ }
-    function onStatusAtualizado(pedidoAtualizado: Pedido) { /* ... */ }
-    socket.on('novo_pedido', onNovoPedido);
-    socket.on('status_atualizado', onStatusAtualizado);
-    return () => { /* ... */ };
+    // ...
   }, []);
 
-  // --- ADIÇÃO: Função para lidar com a mudança de status ---
-  const handleStatusChange = async (pedidoId: string, newStatus: PedidoStatus) => {
-    try {
-      // 1. Chamamos a API para atualizar o status no backend.
-      await updatePedidoStatus(pedidoId, { status: newStatus });
-      toast.success(`Pedido #${pedidoId.substring(0,8)} atualizado para ${newStatus.replace('_', ' ')}!`);
-      
-      // 2. E ISSO É TUDO! Não precisamos fazer setPedidos(..) aqui.
-      // O backend, ao ser atualizado, vai emitir o evento 'status_atualizado'.
-      // O nosso useEffect que escuta esse evento vai receber a notificação
-      // e atualizar o estado da UI automaticamente. Mágico!
-    } catch (error) {
-      toast.error("Falha ao atualizar o status do pedido.");
-      console.error("Erro ao atualizar status:", error);
-    }
+  // --- FUNÇÃO DE ATUALIZAÇÃO REFEITA ---
+  const handleItemStatusChange = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
+      try {
+        const data: UpdateItemStatusDto = { status: novoStatus };
+        // 2. Chamamos o novo serviço que atualiza um item específico
+        await updateItemStatus(itemPedidoId, data);
+        toast.success(`Item atualizado para ${novoStatus.replace('_', ' ')}!`);
+        
+        // A mágica do WebSocket continua a funcionar: o backend emitirá um evento
+        // 'status_atualizado' que será capturado pelo nosso useEffect,
+        // atualizando a UI com o pedido completo e os novos status dos itens.
+      } catch (err: any) {
+        toast.error(err.message || 'Falha ao atualizar o status do item.');
+      }
   };
-  // --- FIM DA ADIÇÃO ---
-
+  // --- FIM DA REATORAÇÃO ---
 
   if (isLoading) { /* ... */ }
 
@@ -57,11 +50,11 @@ export default function CozinhaPageClient() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {pedidos.map(pedido => (
-            // ALTERAÇÃO: Passamos a nova função como prop para o PedidoCard
+            // 3. Passamos a nova função com o nome correto para o PedidoCard
             <PedidoCard 
                 key={pedido.id} 
                 pedido={pedido} 
-                onStatusChange={handleStatusChange} 
+                onItemStatusChange={handleItemStatusChange} 
             />
           ))}
         </div>

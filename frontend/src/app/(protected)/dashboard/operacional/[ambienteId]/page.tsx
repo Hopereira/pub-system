@@ -2,7 +2,6 @@
 
 import { getAmbienteById } from '@/services/ambienteService';
 import { OperacionalClientPage } from './OperacionalClientPage';
-// ADIÇÃO: Importamos a função 'cookies' do Next.js para ler o token no servidor
 import { cookies } from 'next/headers';
 
 type PaginaOperacionalProps = {
@@ -11,14 +10,13 @@ type PaginaOperacionalProps = {
   };
 };
 
-// CORREÇÃO: Desestruturamos { ambienteId } diretamente dos params
+// A assinatura da função permanece a mesma que corrigimos antes
 export default async function PaginaOperacional({ params: { ambienteId } }: PaginaOperacionalProps) {
   
-  // ADIÇÃO: Lógica para fazer a chamada autenticada no servidor
+  // A LÓGICA DE BUSCA DE DADOS FOI AJUSTADA PARA SER TOTALMENTE ASSÍNCRONA
   const cookieStore = cookies();
   const token = cookieStore.get('authToken')?.value;
 
-  // Agora chamamos a função passando o ID e o token
   const ambiente = await getAmbienteById(ambienteId, token);
   const nomeDoAmbiente = ambiente?.nome ?? 'Painel Operacional';
 
@@ -31,7 +29,6 @@ export default async function PaginaOperacional({ params: { ambienteId } }: Pagi
         </p>
       </div>
       
-      {/* O componente do cliente continua a funcionar da mesma forma */}
       <OperacionalClientPage ambienteId={ambienteId} />
     </div>
   );

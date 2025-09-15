@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Pedido } from './pedido.entity';
 import { Produto } from '../../produto/entities/produto.entity';
+import { PedidoStatus } from '../enums/pedido-status.enum'; // <-- ALTERAÇÃO AQUI
 
 @Entity('itens_pedido')
 export class ItemPedido {
@@ -21,10 +22,15 @@ export class ItemPedido {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   precoUnitario: number;
 
-  // --- ADIÇÃO DA NOVA COLUNA ---
   @Column({ type: 'varchar', length: 255, nullable: true })
   observacao: string;
-  // --- FIM DA ADIÇÃO ---
+
+  @Column({
+    type: 'enum',
+    enum: PedidoStatus,
+    default: PedidoStatus.FEITO,
+  })
+  status: PedidoStatus;
 
   @ManyToOne(() => Pedido, (pedido) => pedido.itens)
   @JoinColumn({ name: 'pedidoId' })

@@ -7,10 +7,10 @@ export const getAmbientes = async (): Promise<AmbienteData[]> => {
   return response.data;
 };
 
-// --- MÉTODO ATUALIZADO ---
+// --- MÉTODO CORRIGIDO ---
 export const getAmbienteById = async (id: string, token?: string): Promise<AmbienteData | null> => {
   try {
-    // Se um token for fornecido (do servidor), nós o usamos.
+    // Se um token for fornecido (do servidor), nós o usamos no cabeçalho.
     // Senão, o interceptor do Axios (para o navegador) fará o trabalho.
     const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     
@@ -18,11 +18,10 @@ export const getAmbienteById = async (id: string, token?: string): Promise<Ambie
     return response.data;
   } catch (error) {
     console.error(`Erro ao buscar ambiente com ID ${id}:`, error);
-    // Retornamos null para que a página possa lidar com o erro graciosamente
     return null;
   }
 };
-// --- FIM DA ATUALIZAÇÃO ---
+// --- FIM DA CORRECÇÃO ---
 
 
 export const createAmbiente = async (data: CreateAmbienteDto): Promise<AmbienteData> => {

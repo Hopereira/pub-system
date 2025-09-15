@@ -21,8 +21,8 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
-// --- ADIÇÃO ---
 import { Public } from 'src/auth/decorators/public.decorator';
+import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 
 @ApiTags('Pedidos')
 @Controller('pedidos')
@@ -30,7 +30,7 @@ export class PedidoController {
   constructor(private readonly pedidoService: PedidoService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard) // <-- Guarda mantida para a rota interna
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
   @ApiOperation({ summary: 'Cria um novo pedido (Rota interna para funcionários)' })
   @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
@@ -38,22 +38,37 @@ export class PedidoController {
     return this.pedidoService.create(createPedidoDto);
   }
 
-  // --- NOVO ENDPOINT PÚBLICO PARA O CLIENTE ---
   @Public()
   @Post('cliente')
   @ApiOperation({ summary: 'Cria um novo pedido (Fluxo do cliente público)' })
   @ApiResponse({ status: 201, description: 'Pedido enviado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Comanda ou um dos Produtos não encontrado.' })
   createFromCliente(@Body() createPedidoDto: CreatePedidoDto) {
-    // Reutiliza a mesma lógica de serviço, que é o ideal
     return this.pedidoService.create(createPedidoDto);
   }
-  // --- FIM DO NOVO ENDPOINT ---
+
+  // --- NOVO ENDPOINT PARA ATUALIZAR STATUS DO ITEM ---
+  @Patch('/item/:itemPedidoId/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.COZINHA) // Adicione outros cargos se necessário (ex: BAR)
+  @ApiOperation({ summary: 'Atualiza o status de um item de pedido específico' })
+  updateItemStatus(
+    @Param('itemPedidoId', ParseUUIDPipe) itemPedidoId: string,
+    @Body() updateItemPedidoStatusDto: UpdateItemPedidoStatusDto,
+  ) {
+    return this.pedidoService.updateItemStatus(
+      itemPedidoId,
+      updateItemPedidoStatusDto,
+    );
+  }
 
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.COZINHA)
-  @ApiOperation({ summary: 'Atualiza o status de um pedido' })
+  @ApiOperation({
+    summary: 'Atualiza o status de um pedido inteiro (Obsoleto)',
+    deprecated: true,
+  })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePedidoStatusDto: UpdatePedidoStatusDto,
