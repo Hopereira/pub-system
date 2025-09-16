@@ -1,24 +1,11 @@
 // Caminho: backend/src/modulos/produto/produto.controller.ts
-
-/// <reference types="multer" /> // <-- ADIÇÃO CRÍTICA AQUI
-
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UseGuards,
-  UploadedFile,
-  UseInterceptors,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
-  BadRequestException,
-  ParseUUIDPipe,
+  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards,
+  UploadedFile, UseInterceptors, ParseFilePipe, MaxFileSizeValidator,
+  FileTypeValidator, ParseUUIDPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express'; // Import direto do express
 import { ProdutoService } from './produto.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
@@ -26,68 +13,38 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/auth/decorators/public.decorator';
-
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { Express } from 'express';
 
 @ApiTags('Produtos / Cardápio')
 @Controller('produtos')
 export class ProdutoController {
   constructor(private readonly produtoService: ProdutoService) {}
 
+  // --- ROTA UNIFICADA E CORRIGIDA ---
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: 'Cria um novo produto no cardápio' })
-  create(@Body() createProdutoDto: CreateProdutoDto) {
-    return this.produtoService.create(createProdutoDto);
-  }
-
-  @Post('upload-imagem')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: 'Faz upload da imagem de um produto' })
-  @ApiResponse({ status: 201, description: 'URL da imagem retornada com sucesso.' })
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './public',
-        filename: (req, file, callback) => {
-          if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
-            return callback(
-              new BadRequestException('Apenas arquivos de imagem são permitidos!'),
-              null,
-            );
-          }
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          const filename = `${uniqueSuffix}${ext}`;
-          callback(null, filename);
-        },
-      }),
-      limits: { fileSize: 5 * 1024 * 1024 }, 
-    }),
-  )
-  uploadImage(
+  @ApiOperation({ summary: 'Cria um novo produto com upload de imagem opcional' })
+  @UseInterceptors(FileInterceptor('imagemFile')) // 'imagemFile' deve ser o nome do campo no FormData
+  create(
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|gif)' }),
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
         ],
+        fileIsRequired: false, // Torna o arquivo opcional
       }),
     )
-    file: Express.Multer.File, // Esta linha agora deve funcionar com a diretiva acima
-  ): { url: string } {
-    return { url: `${file.filename}` };
+    file: Express.Multer.File,
+    @Body() createProdutoDto: CreateProdutoDto,
+  ) {
+    // Passamos tanto os dados do DTO quanto o arquivo para o serviço
+    return this.produtoService.create(createProdutoDto, file);
   }
 
-  // ... resto do controller sem alterações ...
+  // A rota /upload-imagem foi REMOVIDA por ser redundante.
 
   @Public()
   @Get()
@@ -103,6 +60,7 @@ export class ProdutoController {
     return this.produtoService.findOne(id);
   }
 
+  // A rota PATCH (update) também precisará de uma lógica similar no futuro, mas vamos focar no create primeiro.
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)

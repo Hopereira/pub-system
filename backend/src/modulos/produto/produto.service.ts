@@ -7,10 +7,12 @@ import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
 
-// --- ADIÇÃO: Módulos nativos do Node.js para manipular arquivos ---
 import { promises as fs } from 'fs';
 import { join } from 'path';
-// --- FIM DA ADIÇÃO ---
+
+// --- ADIÇÃO ---
+// Importamos o tipo do Multer para que o TypeScript entenda o que é 'file'
+import { Express } from 'express';
 
 @Injectable()
 export class ProdutoService {
@@ -22,7 +24,12 @@ export class ProdutoService {
     private readonly ambienteRepository: Repository<Ambiente>,
   ) {}
 
-  async create(createProdutoDto: CreateProdutoDto): Promise<Produto> {
+  // --- MÉTODO CREATE ATUALIZADO ---
+  // Agora ele recebe o 'file' opcionalmente vindo do controller
+  async create(
+    createProdutoDto: CreateProdutoDto,
+    file?: Express.Multer.File, // <-- MUDANÇA NA ASSINATURA
+  ): Promise<Produto> {
     const ambiente = await this.ambienteRepository.findOne({
       where: { id: createProdutoDto.ambienteId },
     });
@@ -31,6 +38,13 @@ export class ProdutoService {
       throw new NotFoundException(
         `Ambiente com ID ${createProdutoDto.ambienteId} não encontrado.`,
       );
+    }
+
+    // --- LÓGICA ADICIONADA ---
+    // Se um arquivo foi enviado, associamos o nome dele ao DTO
+    if (file) {
+      // O nome do arquivo salvo pelo Multer é 'file.filename'
+      createProdutoDto.urlImagem = file.filename;
     }
 
     const produto = this.produtoRepository.create({
@@ -60,6 +74,7 @@ export class ProdutoService {
     id: string,
     updateProdutoDto: UpdateProdutoDto,
   ): Promise<Produto> {
+    // Nota: A lógica de update de imagem pode ser adicionada aqui no futuro
     if (updateProdutoDto.ambienteId) {
       const ambiente = await this.ambienteRepository.findOne({
         where: { id: updateProdutoDto.ambienteId },
@@ -87,23 +102,20 @@ export class ProdutoService {
     return this.findOne(id);
   }
 
-  // --- MÉTODO REMOVE ATUALIZADO ---
   async remove(id: string) {
     const produto = await this.findOne(id);
 
-    // --- ADIÇÃO: Lógica para deletar o arquivo de imagem ---
     if (produto.urlImagem) {
+      // Usamos process.cwd() para obter a raiz do projeto
       const imagePath = join(process.cwd(), 'public', produto.urlImagem);
       try {
         await fs.unlink(imagePath);
       } catch (error) {
-        // Se o arquivo não existir, apenas loga um aviso mas não impede a remoção do DB
         console.warn(
           `Não foi possível remover o arquivo de imagem: ${imagePath}. O arquivo pode já ter sido removido.`,
         );
       }
     }
-    // --- FIM DA ADIÇÃO ---
 
     await this.produtoRepository.remove(produto);
     return { message: `Produto com ID ${id} removido com sucesso.` };

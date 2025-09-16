@@ -7,17 +7,13 @@ import { AppModule } from './app.module';
 
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
-// --- ADIÇÃO: Importar o adaptador de WebSocket ---
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   
-  // --- ADIÇÃO: Dizer ao NestJS para usar o adaptador de WebSocket ---
-  // Esta linha deve vir idealmente após a criação do 'app'.
   app.useWebSocketAdapter(new IoAdapter(app));
-  // --- FIM DA ADIÇÃO ---
 
   const logger = new Logger('Bootstrap');
 
@@ -29,7 +25,19 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalPipes(new ValidationPipe());
+  // --- BLOCO ATUALIZADO ---
+  // Substituímos a linha única pela configuração completa, ativando a transformação de tipos.
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true, // A chave: diz ao NestJS para converter os tipos
+      transformOptions: {
+        enableImplicitConversion: true, // Ajuda na conversão de string para número
+      },
+    }),
+  );
+  // --- FIM DO BLOCO ATUALIZADO ---
 
   const config = new DocumentBuilder()
     .setTitle('Pub System API')
