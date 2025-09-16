@@ -1,4 +1,3 @@
-// Caminho: frontend/src/components/cardapio/ProdutoFormDialog.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -6,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
-// ... (outros imports)
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,19 +13,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Produto } from '@/types/produto';
-import { CreateProdutoDto, UpdateProdutoDto } from '@/types/produto.dto';
+import { UpdateProdutoDto } from '@/types/produto.dto';
 import { createProduto, updateProduto } from '@/services/produtoService';
 import { AmbienteData } from '@/services/ambienteService';
 
-// ALTERADO: A interface de props agora recebe a lista de ambientes
 interface ProdutoFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (produto: Produto) => void;
   produtoToEdit?: Produto | null;
-  ambientesDePreparo: AmbienteData[]; // <-- NOVO PROP
+  ambientesDePreparo: AmbienteData[];
 }
 
 const formSchema = z.object({
@@ -40,9 +38,9 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// ALTERADO: A função agora recebe a prop 'ambientesDePreparo'
 export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produtoToEdit, ambientesDePreparo }: ProdutoFormDialogProps) {
   const [error, setError] = useState<string | null>(null);
+  const [imagemFile, setImagemFile] = useState<File | null>(null);
   const isEditMode = !!produtoToEdit;
 
   const form = useForm<FormValues>({
@@ -51,16 +49,16 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
   });
 
   useEffect(() => {
-    // REMOVIDO: A lógica de buscar ambientes foi removida daqui
     if (open) {
       setError(null);
+      setImagemFile(null);
       if (isEditMode && produtoToEdit) {
         form.reset({
             nome: produtoToEdit.nome,
             descricao: produtoToEdit.descricao || '',
             preco: produtoToEdit.preco,
             categoria: produtoToEdit.categoria,
-            ambienteId: produtoToEdit.ambiente.id
+            ambienteId: produtoToEdit.ambiente.id,
         });
       } else {
         form.reset({
@@ -73,16 +71,35 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
   const onSubmit = async (values: FormValues) => {
     setError(null);
     try {
+      const formData = new FormData();
+      const precoFormatado = String(values.preco).replace(',', '.');
+
+      formData.append('nome', values.nome);
+      formData.append('descricao', values.descricao || '');
+      formData.append('categoria', values.categoria);
+      formData.append('preco', precoFormatado);
+      formData.append('ambienteId', values.ambienteId);
+      
+      if (imagemFile) {
+        formData.append('imagemFile', imagemFile);
+      }
+
       let result: Produto;
       if (isEditMode && produtoToEdit) {
+        // A lógica de update ainda não suporta upload, focando no 'create'
         result = await updateProduto(produtoToEdit.id, values as UpdateProdutoDto);
+        toast.success(`Produto atualizado com sucesso!`);
       } else {
-        result = await createProduto(values as CreateProdutoDto);
+        result = await createProduto(formData);
+        toast.success(`Produto criado com sucesso!`);
       }
       onSuccess(result);
     } catch (err: any) {
-      const apiError = err.response?.data?.message || `Falha ao ${isEditMode ? 'atualizar' : 'criar'} o produto.`;
-      setError(Array.isArray(apiError) ? apiError.join(', ') : apiError);
+      const apiErrorMessages = err.response?.data?.message;
+      const displayError = Array.isArray(apiErrorMessages) 
+        ? apiErrorMessages.join('. ') 
+        : apiErrorMessages || `Falha ao ${isEditMode ? 'atualizar' : 'criar'} o produto.`;
+      setError(displayError);
     }
   };
 
@@ -95,30 +112,26 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
         </DialogHeader>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-2">
-                {error && (
-                    <Alert variant="destructive">
-                        <Terminal className="h-4 w-4" />
-                        <AlertTitle>Erro na Submissão</AlertTitle>
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
+                {error && ( <Alert variant="destructive"><Terminal className="h-4 w-4" /><AlertTitle>Erro na Submissão</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> )}
                 <FormField control={form.control} name="nome" render={({ field }) => ( <FormItem><FormLabel>Nome do Produto</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormItem>
+                  <FormLabel>Imagem do Produto</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="file"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setImagemFile(file);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
                 <FormField control={form.control} name="categoria" render={({ field }) => ( <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Bebidas, Petiscos" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="preco" render={({ field }) => ( <FormItem><FormLabel>Preço (R$)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                
-                {/* ALTERADO: O Select agora usa a prop 'ambientesDePreparo' */}
-                <FormField control={form.control} name="ambienteId" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Ambiente de Preparo</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione um ambiente" /></SelectTrigger></FormControl>
-                            <SelectContent>{ambientesDePreparo.map(ambiente => <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}/>
-
+                <FormField control={form.control} name="preco" render={({ field }) => ( <FormItem><FormLabel>Preço (R$)</FormLabel><FormControl><Input type="text" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="ambienteId" render={({ field }) => ( <FormItem><FormLabel>Ambiente de Preparo</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione um ambiente" /></SelectTrigger></FormControl><SelectContent>{ambientesDePreparo.map(ambiente => <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
                 <DialogFooter>
                     <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}</Button>
                 </DialogFooter>

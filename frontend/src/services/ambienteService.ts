@@ -1,44 +1,28 @@
 // Caminho: frontend/src/services/ambienteService.ts
 import api from './api';
-
-// A sua interface AmbienteData que já deve existir
-export interface AmbienteData {
-  id: string;
-  nome: string;
-  descricao?: string;
-  tipo: 'PREPARO' | 'ATENDIMENTO';
-  isPontoDeRetirada: boolean;
-  productCount?: number;
-  tableCount?: number;
-}
-
-export interface CreateAmbienteDto {
-  nome: string;
-  descricao?: string;
-  tipo: 'PREPARO' | 'ATENDIMENTO';
-  isPontoDeRetirada: boolean;
-}
-
-export type UpdateAmbienteDto = Partial<CreateAmbienteDto>;
-
+import { AmbienteData, CreateAmbienteDto, UpdateAmbienteDto } from '@/types/ambiente'; // Assumindo que os tipos estão aqui
 
 export const getAmbientes = async (): Promise<AmbienteData[]> => {
   const response = await api.get<AmbienteData[]>('/ambientes');
   return response.data;
 };
 
-// --- ADICIONE ESTA NOVA FUNÇÃO ---
-export const getAmbienteById = async (id: string): Promise<AmbienteData | null> => {
+// --- MÉTODO CORRIGIDO ---
+export const getAmbienteById = async (id: string, token?: string): Promise<AmbienteData | null> => {
   try {
-    const response = await api.get<AmbienteData>(`/ambientes/${id}`);
+    // Se um token for fornecido (do servidor), nós o usamos no cabeçalho.
+    // Senão, o interceptor do Axios (para o navegador) fará o trabalho.
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    
+    const response = await api.get<AmbienteData>(`/ambientes/${id}`, config);
     return response.data;
   } catch (error) {
-    // Se a API retornar 404, por exemplo, o erro será capturado aqui.
     console.error(`Erro ao buscar ambiente com ID ${id}:`, error);
     return null;
   }
 };
-// --- FIM DA ADIÇÃO ---
+// --- FIM DA CORRECÇÃO ---
+
 
 export const createAmbiente = async (data: CreateAmbienteDto): Promise<AmbienteData> => {
   const response = await api.post<AmbienteData>('/ambientes', data);

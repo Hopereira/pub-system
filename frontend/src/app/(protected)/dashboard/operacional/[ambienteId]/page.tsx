@@ -1,8 +1,8 @@
 // Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/page.tsx
 
 import { getAmbienteById } from '@/services/ambienteService';
-// CORREÇÃO: Importamos o componente com chaves {}
 import { OperacionalClientPage } from './OperacionalClientPage';
+import { cookies } from 'next/headers';
 
 type PaginaOperacionalProps = {
   params: {
@@ -10,9 +10,14 @@ type PaginaOperacionalProps = {
   };
 };
 
-export default async function PaginaOperacional({ params }: PaginaOperacionalProps) {
-  // É uma boa prática buscar o nome do ambiente no servidor
-  const ambiente = await getAmbienteById(params.ambienteId).catch(() => null);
+// A assinatura da função permanece a mesma que corrigimos antes
+export default async function PaginaOperacional({ params: { ambienteId } }: PaginaOperacionalProps) {
+  
+  // A LÓGICA DE BUSCA DE DADOS FOI AJUSTADA PARA SER TOTALMENTE ASSÍNCRONA
+  const cookieStore = cookies();
+  const token = cookieStore.get('authToken')?.value;
+
+  const ambiente = await getAmbienteById(ambienteId, token);
   const nomeDoAmbiente = ambiente?.nome ?? 'Painel Operacional';
 
   return (
@@ -24,8 +29,7 @@ export default async function PaginaOperacional({ params }: PaginaOperacionalPro
         </p>
       </div>
       
-      {/* Renderizamos o componente de cliente, passando o ambienteId para ele */}
-      <OperacionalClientPage ambienteId={params.ambienteId} />
+      <OperacionalClientPage ambienteId={ambienteId} />
     </div>
   );
 }

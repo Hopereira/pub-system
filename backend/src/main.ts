@@ -5,24 +5,19 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
-// --- NOVAS IMPORTAÇÕES ---
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
-// --- FIM DAS NOVAS IMPORTAÇÕES ---
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 
 async function bootstrap() {
-  // --- ALTERAÇÃO NA CRIAÇÃO DO APP ---
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // --- FIM DA ALTERAÇÃO ---
+  
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   const logger = new Logger('Bootstrap');
 
-  // --- NOVA LINHA PARA SERVIR FICHEIROS ESTÁTICOS ---
-  // Isto cria uma pasta 'public' na raiz do backend que é acessível publicamente.
-  // É aqui que guardaremos as nossas imagens.
   app.useStaticAssets(join(__dirname, '..', 'public'));
-  // --- FIM DA NOVA LINHA ---
 
   app.enableCors({
     origin: 'http://localhost:3001',
@@ -30,11 +25,19 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalPipes(new ValidationPipe());
-
-  //const seeder = app.get(SeederService);
-  //await seeder.seed();
-  //logger.log('Verificação de seeding concluída.');
+  // --- BLOCO ATUALIZADO ---
+  // Substituímos a linha única pela configuração completa, ativando a transformação de tipos.
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true, // A chave: diz ao NestJS para converter os tipos
+      transformOptions: {
+        enableImplicitConversion: true, // Ajuda na conversão de string para número
+      },
+    }),
+  );
+  // --- FIM DO BLOCO ATUALIZADO ---
 
   const config = new DocumentBuilder()
     .setTitle('Pub System API')
