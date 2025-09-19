@@ -7,14 +7,10 @@ import { AppModule } from './app.module';
 
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
-import { IoAdapter } from '@nestjs/platform-socket.io';
-
+import { json } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  
-  app.useWebSocketAdapter(new IoAdapter(app));
-
   const logger = new Logger('Bootstrap');
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
@@ -25,19 +21,13 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // --- BLOCO ATUALIZADO ---
-  // Substituímos a linha única pela configuração completa, ativando a transformação de tipos.
+  app.use(json({ limit: '50mb' }));
+
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true, // A chave: diz ao NestJS para converter os tipos
-      transformOptions: {
-        enableImplicitConversion: true, // Ajuda na conversão de string para número
-      },
+      transform: true,
     }),
   );
-  // --- FIM DO BLOCO ATUALIZADO ---
 
   const config = new DocumentBuilder()
     .setTitle('Pub System API')
