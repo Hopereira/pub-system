@@ -92,7 +92,7 @@ export default function ResumoPedidoClientPage() {
             <Card className="max-w-lg w-full animate-fade-in">
                 <CardHeader>
                     <CardTitle className="text-2xl">Revise seu Pedido</CardTitle>
-                    <CardDescription>Confira os itens abaixo antes de enviar para a cozinha.</CardDescription>
+                    <CardDescription>Confira os itens abaixo antes de ir para o preparo</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -130,7 +130,7 @@ export default function ResumoPedidoClientPage() {
                     </Button>
                     <Button onClick={handleSendPedido} disabled={isSubmitting} className="w-full sm:flex-1">
                         <ChefHat className="h-4 w-4 mr-2" />
-                        {isSubmitting ? 'Enviando...' : 'Enviar para a Cozinha'}
+                        {isSubmitting ? 'Enviando...' : 'Enviar para o Preparo'}
                     </Button>
                 </CardFooter>
             </Card>
