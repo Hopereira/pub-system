@@ -68,7 +68,7 @@ export default function ResumoPedidoClientPage() {
 
             await createPedidoFromCliente(pedidoData);
 
-            toast.success("Pedido enviado para a cozinha!");
+            toast.success("Pedido enviado para o preparo");
             sessionStorage.removeItem('carrinho'); // Limpa o carrinho após o sucesso
             
             // Redireciona para a página de acompanhamento
