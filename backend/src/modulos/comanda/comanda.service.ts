@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger, // Importe o Logger
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
@@ -15,6 +16,9 @@ import { Comanda, ComandaStatus } from './entities/comanda.entity';
 
 @Injectable()
 export class ComandaService {
+  // Adicionamos um logger para o diagnóstico
+  private readonly logger = new Logger(ComandaService.name);
+
   constructor(
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
@@ -92,16 +96,24 @@ export class ComandaService {
   }
 
   async findOne(id: string): Promise<Comanda> {
-    const comanda = await this.comandaRepository.findOne({
-      where: { id },
-      relations: [
-        'mesa',
-        'cliente',
-        'pedidos',
-        'pedidos.itens',
-        'pedidos.itens.produto',
-      ],
-    });
+    const comanda = await this.comandaRepository
+      .createQueryBuilder('comanda')
+      .leftJoinAndSelect('comanda.mesa', 'mesa')
+      .leftJoinAndSelect('comanda.cliente', 'cliente')
+      .leftJoinAndSelect('comanda.pedidos', 'pedido')
+      .leftJoinAndSelect('pedido.itens', 'itemPedido')
+      .leftJoinAndSelect('itemPedido.produto', 'produto')
+      .where('comanda.id = :id', { id })
+      .orderBy('pedido.data', 'ASC')
+      .getOne();
+    
+    // ================== LOG DE DIAGNÓSTICO ADICIONADO ==================
+    this.logger.debug(
+      `[DIAGNÓSTICO findOne] Dados da Comanda ID ${id} antes de enviar:`,
+      JSON.stringify(comanda, null, 2),
+    );
+    // =================================================================
+
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
@@ -121,16 +133,7 @@ export class ComandaService {
   }
 
   async findPublicOne(id: string) {
-    const comanda = await this.comandaRepository.findOne({
-      where: { id },
-      relations: [
-        'mesa',
-        'cliente',
-        'pedidos',
-        'pedidos.itens',
-        'pedidos.itens.produto',
-      ],
-    });
+    const comanda = await this.findOne(id);
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
