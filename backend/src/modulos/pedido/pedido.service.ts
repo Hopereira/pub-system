@@ -20,6 +20,7 @@ import { PedidosGateway } from './pedidos.gateway';
 export class PedidoService {
   private readonly logger = new Logger(PedidoService.name);
 
+  // ... (construtor e outros métodos permanecem os mesmos)
   constructor(
     @InjectRepository(Pedido)
     private readonly pedidoRepository: Repository<Pedido>,
@@ -32,7 +33,12 @@ export class PedidoService {
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
+  // ==================================================================
+  // ## MÉTODO CREATE COM DIAGNÓSTICO ##
+  // ==================================================================
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
+    this.logger.debug('[DIAGNÓSTICO] - 1. Método Create Iniciado', { createPedidoDto });
+
     const { comandaId, itens } = createPedidoDto;
     const comanda = await this.comandaRepository.findOne({ where: { id: comandaId } });
     if (!comanda) {
@@ -50,7 +56,7 @@ export class PedidoService {
       return this.itemPedidoRepository.create({
         produto,
         quantidade: itemDto.quantidade,
-        precoUnitario: String(produto.preco),
+        precoUnitario: produto.preco,
         observacao: itemDto.observacao,
         status: PedidoStatus.FEITO,
       });
@@ -58,22 +64,27 @@ export class PedidoService {
 
     const itensPedido = await Promise.all(itensPedidoPromise);
     const total = itensPedido.reduce((sum, item) => sum + item.quantidade * Number(item.precoUnitario), 0);
-
+    
     const pedido = this.pedidoRepository.create({
       comanda,
       itens: itensPedido,
       total,
       status: PedidoStatus.FEITO,
     });
+    this.logger.debug('[DIAGNÓSTICO] - 2. Objeto Pedido criado em memória (antes de salvar)', JSON.stringify(pedido, null, 2));
 
     const novoPedido = await this.pedidoRepository.save(pedido);
-
+    this.logger.debug('[DIAGNÓSTICO] - 3. Objeto Pedido retornado pelo .save()', JSON.stringify(novoPedido, null, 2));
+    
     const pedidoCompleto = await this.findOne(novoPedido.id);
+    this.logger.debug('[DIAGNÓSTICO] - 4. Objeto Pedido recarregado do DB com findOne()', JSON.stringify(pedidoCompleto, null, 2));
+
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
     
     return pedidoCompleto;
   }
-
+  
+  // ... (o resto do ficheiro (findAll, findOne, etc.) permanece o mesmo)
   async findAll(ambienteId?: string): Promise<Pedido[]> {
     const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
       .leftJoinAndSelect('pedido.comanda', 'comanda')
@@ -81,7 +92,7 @@ export class PedidoService {
       .leftJoinAndSelect('pedido.itens', 'itemPedido')
       .leftJoinAndSelect('itemPedido.produto', 'produto')
       .leftJoinAndSelect('produto.ambiente', 'ambiente')
-      .where('pedido.status IN (:...statuses)', { statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO] })
+      .where('itemPedido.status IN (:...statuses)', { statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO] })
       .orderBy('pedido.data', 'ASC');
 
     if (ambienteId) {
@@ -91,23 +102,23 @@ export class PedidoService {
     const pedidos = await queryBuilder.getMany();
 
     if (ambienteId) {
-      return pedidos.map(pedido => ({
-        ...pedido,
-        itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
-      })).filter(pedido => pedido.itens.length > 0);
+        return pedidos.map(pedido => ({
+            ...pedido,
+            itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
+        })).filter(pedido => pedido.itens.length > 0);
     }
     return pedidos;
   }
 
   async findOne(id: string): Promise<Pedido> {
-    const pedido = await this.pedidoRepository.findOne({
-      where: { id },
-      relations: ['comanda', 'comanda.mesa', 'itens', 'itens.produto', 'itens.produto.ambiente'],
-    });
-    if (!pedido) {
-      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
-    }
-    return pedido;
+      const pedido = await this.pedidoRepository.findOne({
+        where: { id },
+        relations: ['comanda', 'comanda.mesa', 'itens', 'itens.produto', 'itens.produto.ambiente'],
+      });
+      if (!pedido) {
+        throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
+      }
+      return pedido;
   }
 
   async updateItemStatus(itemPedidoId: string, updateDto: UpdateItemPedidoStatusDto): Promise<ItemPedido> {
@@ -115,31 +126,34 @@ export class PedidoService {
       where: { id: itemPedidoId },
       relations: ['pedido'],
     });
+
     if (!itemPedido) {
       throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
     }
+
     itemPedido.status = updateDto.status;
-    if (updateDto.status === PedidoStatus.CANCELADO && updateDto.motivoCancelamento) {
+    if (updateDto.status === PedidoStatus.CANCELADO) {
       itemPedido.motivoCancelamento = updateDto.motivoCancelamento;
     }
-    const itemAtualizado = await this.itemPedidoRepository.save(itemPedido);
 
+    const itemAtualizado = await this.itemPedidoRepository.save(itemPedido);
+    
     const pedidoPaiCompleto = await this.findOne(itemAtualizado.pedido.id);
     this.pedidosGateway.emitStatusAtualizado(pedidoPaiCompleto);
 
     return itemAtualizado;
   }
-
+  
   async update(id: string, updatePedidoDto: UpdatePedidoDto): Promise<Pedido> {
-    const pedido = await this.pedidoRepository.preload({ id, ...updatePedidoDto });
-    if (!pedido) {
-      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
-    }
-    return this.pedidoRepository.save(pedido);
+      const pedido = await this.pedidoRepository.preload({ id, ...updatePedidoDto });
+      if (!pedido) {
+        throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
+      }
+      return this.pedidoRepository.save(pedido);
   }
-
+  
   async remove(id: string): Promise<void> {
-    const pedido = await this.findOne(id);
-    await this.pedidoRepository.remove(pedido);
+      const pedido = await this.findOne(id);
+      await this.pedidoRepository.remove(pedido);
   }
 }

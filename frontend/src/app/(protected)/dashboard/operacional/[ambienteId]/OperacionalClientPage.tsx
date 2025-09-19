@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getPedidosPorAmbiente, updateItemStatus } from '@/services/pedidoService';
 import { PedidoCard } from '@/components/operacional/PedidoCard';
 import { Pedido } from '@/types/pedido';
-import { Ambiente } from '@/types/ambiente';
 import { PedidoStatus } from '@/types/pedido-status.enum';
+import { getPedidosPorAmbiente, updateItemStatus } from '@/services/pedidoService';
 import { getAmbienteById } from '@/services/ambienteService';
+import { Ambiente } from '@/types/ambiente';
 import { toast } from 'sonner';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
@@ -35,14 +35,14 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     fetchDados();
     // Adicionamos um polling para atualizar os pedidos a cada 30 segundos
     const intervalId = setInterval(fetchDados, 30000);
-    return () => clearInterval(intervalId);
+    return () => clearInterval(intervalId); // Limpa o intervalo ao desmontar o componente
   }, [ambienteId]);
 
   const handleUpdateStatus = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
     try {
       await updateItemStatus(itemPedidoId, { status: novoStatus });
       toast.success('Status do item atualizado!');
-      await fetchDados();
+      await fetchDados(); // Atualiza a tela imediatamente
     } catch (err: any) {
       toast.error(err.message || 'Falha ao atualizar o status do item.');
     }
@@ -81,6 +81,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
           <div key={status} className="bg-card rounded-lg p-4 flex flex-col shadow">
             <h2 className="text-xl font-semibold mb-4 text-center">{titulo}</h2>
             <div className="space-y-4 flex-grow overflow-y-auto p-1">
+              {/* Otimização: Filtramos os pedidos que pertencem a esta coluna ANTES de mapeá-los */}
               {pedidos
                 .filter(p => p.itens.some(item => item.status === status))
                 .map(pedido => (
