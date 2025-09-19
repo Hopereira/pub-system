@@ -6,15 +6,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Pedido, PedidoStatus } from './entities/pedido.entity';
-import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
+import { Pedido } from './entities/pedido.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
-import { PedidosGateway } from './pedidos.gateway';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
+import { PedidoStatus } from './enums/pedido-status.enum';
+import { PedidosGateway } from './pedidos.gateway';
 
 @Injectable()
 export class PedidoService {
@@ -38,28 +38,39 @@ export class PedidoService {
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${comandaId}" não encontrada.`);
     }
-    if (itens.length === 0) {
+    if (!itens || itens.length === 0) {
       throw new BadRequestException('Um pedido não pode ser criado sem itens.');
     }
+
     const itensPedidoPromise = itens.map(async (itemDto) => {
-      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId }, relations: ['ambiente'] });
+      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
       if (!produto) {
         throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
       }
-      const itemPedido = this.itemPedidoRepository.create({
-        produto: produto,
+      return this.itemPedidoRepository.create({
+        produto,
         quantidade: itemDto.quantidade,
-        precoUnitario: produto.preco,
+        precoUnitario: String(produto.preco),
         observacao: itemDto.observacao,
+        status: PedidoStatus.FEITO,
       });
-      return itemPedido;
     });
+
     const itensPedido = await Promise.all(itensPedidoPromise);
     const total = itensPedido.reduce((sum, item) => sum + item.quantidade * Number(item.precoUnitario), 0);
-    const pedido = this.pedidoRepository.create({ comanda, itens: itensPedido, total });
+
+    const pedido = this.pedidoRepository.create({
+      comanda,
+      itens: itensPedido,
+      total,
+      status: PedidoStatus.FEITO,
+    });
+
     const novoPedido = await this.pedidoRepository.save(pedido);
+
     const pedidoCompleto = await this.findOne(novoPedido.id);
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
+    
     return pedidoCompleto;
   }
 
@@ -70,24 +81,22 @@ export class PedidoService {
       .leftJoinAndSelect('pedido.itens', 'itemPedido')
       .leftJoinAndSelect('itemPedido.produto', 'produto')
       .leftJoinAndSelect('produto.ambiente', 'ambiente')
-      .where('itemPedido.status IN (:...statuses)', { statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO] })
+      .where('pedido.status IN (:...statuses)', { statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO] })
       .orderBy('pedido.data', 'ASC');
 
     if (ambienteId) {
       queryBuilder.andWhere('ambiente.id = :ambienteId', { ambienteId });
-      const pedidosComItensMisturados = await queryBuilder.getMany();
-      const pedidosFiltrados = pedidosComItensMisturados
-        .map(pedido => {
-          const itensDoAmbiente = pedido.itens.filter(
-            item => item.produto.ambiente && item.produto.ambiente.id === ambienteId
-          );
-          return { ...pedido, itens: itensDoAmbiente };
-        })
-        .filter(pedido => pedido.itens.length > 0);
-      return pedidosFiltrados;
     }
 
-    return queryBuilder.getMany();
+    const pedidos = await queryBuilder.getMany();
+
+    if (ambienteId) {
+      return pedidos.map(pedido => ({
+        ...pedido,
+        itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
+      })).filter(pedido => pedido.itens.length > 0);
+    }
+    return pedidos;
   }
 
   async findOne(id: string): Promise<Pedido> {
@@ -101,45 +110,30 @@ export class PedidoService {
     return pedido;
   }
 
-  async updateItemStatus(
-    itemPedidoId: string,
-    updateDto: UpdateItemPedidoStatusDto,
-  ): Promise<ItemPedido> {
+  async updateItemStatus(itemPedidoId: string, updateDto: UpdateItemPedidoStatusDto): Promise<ItemPedido> {
     const itemPedido = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido'],
     });
-
     if (!itemPedido) {
       throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
     }
-
     itemPedido.status = updateDto.status;
+    if (updateDto.status === PedidoStatus.CANCELADO && updateDto.motivoCancelamento) {
+      itemPedido.motivoCancelamento = updateDto.motivoCancelamento;
+    }
     const itemAtualizado = await this.itemPedidoRepository.save(itemPedido);
 
-    const pedidoPaiCompleto = await this.findOne(itemPedido.pedido.id);
+    const pedidoPaiCompleto = await this.findOne(itemAtualizado.pedido.id);
     this.pedidosGateway.emitStatusAtualizado(pedidoPaiCompleto);
 
     return itemAtualizado;
   }
 
-  /**
-   * @deprecated O status agora é controlado por item. Use updateItemStatus.
-   */
-  async updateStatus(
-    id: string,
-    updatePedidoStatusDto: UpdatePedidoStatusDto,
-  ): Promise<Pedido> {
-    this.logger.warn('O método obsoleto "updateStatus" foi chamado.');
-    const pedido = await this.findOne(id);
-    // ... (This logic is now incorrect but kept to avoid breaking changes)
-    return pedido;
-  }
-
   async update(id: string, updatePedidoDto: UpdatePedidoDto): Promise<Pedido> {
     const pedido = await this.pedidoRepository.preload({ id, ...updatePedidoDto });
     if (!pedido) {
-      throw new NotFoundException(`Pedido com ID "${id}" não encontrada.`);
+      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
     }
     return this.pedidoRepository.save(pedido);
   }

@@ -1,29 +1,28 @@
-// Caminho: backend/src/modulos/pedido/entities/item-pedido.entity.ts
-
 import {
   Column,
+  CreateDateColumn,
   Entity,
-  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+
 import { Pedido } from './pedido.entity';
 import { Produto } from '../../produto/entities/produto.entity';
-import { PedidoStatus } from '../enums/pedido-status.enum'; // <-- ALTERAÇÃO AQUI
+import { PedidoStatus } from '../enums/pedido-status.enum';
 
-@Entity('itens_pedido')
+@Entity('item_pedido')
 export class ItemPedido {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'int' })
+  @Column()
   quantidade: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  precoUnitario: number;
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  precoUnitario: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  observacao: string;
+  @Column({ nullable: true })
+  observacao?: string;
 
   @Column({
     type: 'enum',
@@ -32,11 +31,16 @@ export class ItemPedido {
   })
   status: PedidoStatus;
 
+  // --- NOVA COLUNA ADICIONADA ---
+  @Column({ nullable: true })
+  motivoCancelamento?: string;
+
   @ManyToOne(() => Pedido, (pedido) => pedido.itens)
-  @JoinColumn({ name: 'pedidoId' })
   pedido: Pedido;
 
-  @ManyToOne(() => Produto, { eager: true })
-  @JoinColumn({ name: 'produtoId' })
+  @ManyToOne(() => Produto)
   produto: Produto;
+  
+  @CreateDateColumn({ type: 'timestamp' })
+  dataCriacao: Date;
 }

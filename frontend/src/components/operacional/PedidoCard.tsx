@@ -1,118 +1,86 @@
-// Caminho: frontend/src/components/operacional/PedidoCard.tsx
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
+import { Pedido, ItemPedido } from '@/types/pedido';
+import { PedidoStatus } from '@/types/pedido-status.enum';
+import { Separator } from '../ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { cn } from '@/lib/utils';
-// --- ALTERAÇÃO 1: Importando os tipos corretos da nossa fonte da verdade ---
-import { Pedido, PedidoStatus } from '@/types/pedido';
-
-// --- ALTERAÇÃO 2: A definição de tipo local foi REMOVIDA daqui ---
-// export type PedidoStatus = 'FEITO' | ...;
 
 interface PedidoCardProps {
   pedido: Pedido;
-  onUpdateStatus: (pedidoId: string, novoStatus: PedidoStatus) => void;
-  onCancel: (pedidoId: string, motivo: string) => void;
+  onUpdateStatus: (itemPedidoId: string, novoStatus: PedidoStatus) => void;
+  onCancel: (itemPedidoId: string, motivo: string) => void;
+  filtroStatus: PedidoStatus;
 }
 
-export function PedidoCard({ pedido, onUpdateStatus, onCancel }: PedidoCardProps) {
+export function PedidoCard({ pedido, onUpdateStatus, onCancel, filtroStatus }: PedidoCardProps) {
   const [motivo, setMotivo] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [currentItemId, setCurrentItemId] = useState<string | null>(null);
 
   const handleConfirmarCancelamento = () => {
-    if (motivo.trim().length < 5) {
-      alert('Por favor, insira um motivo com pelo menos 5 caracteres.');
-      return;
-    }
-    onCancel(pedido.id, motivo);
-    setIsDialogOpen(false);
-    setMotivo('');
-  };
-
-  const getStatusVariant = (status: PedidoStatus) => {
-    // Agora usando o Enum importado
-    switch (status) {
-      case PedidoStatus.FEITO: return 'default';
-      case PedidoStatus.EM_PREPARO: return 'secondary';
-      case PedidoStatus.PRONTO: return 'destructive';
-      case PedidoStatus.ENTREGUE: return 'outline';
-      case PedidoStatus.CANCELADO: return 'outline';
-      default: return 'outline';
+    if (currentItemId && motivo.trim().length >= 5) {
+      onCancel(currentItemId, motivo);
+      setIsDialogOpen(false);
+      setMotivo('');
+      setCurrentItemId(null);
+    } else {
+      alert('O motivo deve ter pelo menos 5 caracteres.');
     }
   };
+  
+  const handleOpenCancelDialog = (itemId: string) => {
+    setCurrentItemId(itemId);
+    setIsDialogOpen(true);
+  };
 
-  const isTerminal = pedido.status === PedidoStatus.ENTREGUE || pedido.status === PedidoStatus.CANCELADO;
+  const itensFiltrados = pedido.itens.filter(item => item.status === filtroStatus);
 
   return (
-    <Card className={cn("flex flex-col", isTerminal && "opacity-60 bg-muted/50")}>
+    <Card>
       <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-lg">Pedido</CardTitle>
-            <p className="text-xs text-muted-foreground truncate">ID: {pedido.id}</p>
-          </div>
-          <Badge variant={getStatusVariant(pedido.status)}
-            className={cn(pedido.status === PedidoStatus.ENTREGUE && 'bg-green-600 text-white')}>
-            {pedido.status.replace('_', ' ')}
-          </Badge>
-        </div>
+        <CardTitle className="text-base">Mesa {pedido.comanda?.mesa?.numero || 'Balcão'}</CardTitle>
+        <p className="text-xs text-muted-foreground truncate">Pedido ID: {pedido.id}</p>
       </CardHeader>
-      <CardContent className="flex-grow">
-        {pedido.status === PedidoStatus.CANCELADO && (
-          <p className="text-xs text-destructive mb-2">
-            <strong>Motivo:</strong> {pedido.motivoCancelamento}
-          </p>
-        )}
-        <ul className="space-y-2">
-          {pedido.itens.map((item, index) => (
-            <li key={index} className="flex justify-between items-center text-sm">
+      <CardContent className="space-y-3">
+        {itensFiltrados.map((item) => (
+          <div key={item.id}>
+            <div className="flex justify-between items-center text-sm">
               <span className="font-semibold">{item.quantidade}x</span>
               <span>{item.produto.nome}</span>
-            </li>
-          ))}
-        </ul>
+            </div>
+            {item.observacao && <p className="text-xs text-gray-500 italic ml-4">Obs: {item.observacao}</p>}
+            
+            <div className="flex justify-end space-x-2 mt-2">
+              {item.status === PedidoStatus.FEITO && (
+                <Button variant="outline" size="sm" onClick={() => onUpdateStatus(item.id, PedidoStatus.EM_PREPARO)}>Em Preparo</Button>
+              )}
+              {item.status === PedidoStatus.EM_PREPARO && (
+                <Button size="sm" onClick={() => onUpdateStatus(item.id, PedidoStatus.PRONTO)}>Pronto</Button>
+              )}
+              <Button variant="destructive" size="sm" onClick={() => handleOpenCancelDialog(item.id)}>Cancelar</Button>
+            </div>
+            <Separator className="mt-3"/>
+          </div>
+        ))}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Cancelar Item</DialogTitle></DialogHeader>
+            <div className="grid gap-4 py-4">
+              <Label htmlFor="motivo">Motivo do Cancelamento</Label>
+              <Input id="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex: Item em falta"/>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild><Button variant="outline">Voltar</Button></DialogClose>
+              <Button variant="destructive" onClick={handleConfirmarCancelamento}>Confirmar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
-      <CardFooter className="flex justify-end space-x-2">
-        {!isTerminal && (
-          <>
-            {pedido.status === PedidoStatus.FEITO && (
-              <Button variant="outline" size="sm" onClick={() => onUpdateStatus(pedido.id, PedidoStatus.EM_PREPARO)}>
-                Em Preparo
-              </Button>
-            )}
-            {pedido.status === PedidoStatus.EM_PREPARO && (
-              <Button size="sm" onClick={() => onUpdateStatus(pedido.id, PedidoStatus.PRONTO)}>
-                Pronto
-              </Button>
-            )}
-            {pedido.status === PedidoStatus.PRONTO && (
-              <Button size="sm" className='bg-green-600 hover:bg-green-700' onClick={() => onUpdateStatus(pedido.id, PedidoStatus.ENTREGUE)}>
-                Entregar
-              </Button>
-            )}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild><Button variant="destructive" size="sm">Cancelar</Button></DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Cancelar Pedido</DialogTitle></DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <Label htmlFor="motivo">Motivo do Cancelamento</Label>
-                  <Input id="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex: Item em falta no estoque"/>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild><Button variant="outline">Voltar</Button></DialogClose>
-                  <Button variant="destructive" onClick={handleConfirmarCancelamento}>Confirmar Cancelamento</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </>
-        )}
-      </CardFooter>
     </Card>
   );
 }

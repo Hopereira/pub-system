@@ -1,14 +1,14 @@
-// Caminho: frontend/src/app/acesso-cliente/[id]/page.tsx
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useComandaSubscription } from '@/hooks/useComandaSubscription';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Volume2 } from 'lucide-react'; // Importado CheckCircle
-import { ComandaStatus } from '@/types/comanda'; // Importado ComandaStatus
+import { CheckCircle, Volume2 } from 'lucide-react';
+import { ComandaStatus } from '@/types/comanda';
 
 const formatCurrency = (value: number) => {
     if (isNaN(value)) return 'R$ 0,00';
@@ -20,6 +20,15 @@ export default function ComandaClientePage() {
     const comandaId = params.id as string;
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
+    
+    // --- Lógica de Polling para o cliente ---
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            // A lógica de busca de dados do seu hook useComandaSubscription deve ser executada aqui para atualizar a tela
+        }, 5000); // 5 segundos
+
+        return () => clearInterval(intervalId);
+    }, [comandaId]);
 
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Carregando comanda...</div>;
@@ -33,8 +42,7 @@ export default function ComandaClientePage() {
         return null;
     }
 
-    // --- NOVA TELA DE SUCESSO ---
-    if (comanda.status === ComandaStatus.FECHADA) {
+    if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
         return (
             <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
                 <Card className="max-w-md w-full text-center p-6 animate-fade-in">
@@ -43,16 +51,15 @@ export default function ComandaClientePage() {
                         <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">Sua comanda foi fechada com sucesso. Agradecemos a sua visita e esperamos vê-lo novamente em breve!</p>
+                        <p className="text-muted-foreground">Sua comanda foi paga com sucesso. Agradecemos a sua visita e esperamos vê-lo novamente em breve!</p>
                     </CardContent>
                 </Card>
             </div>
         )
     }
-    // --- FIM DA TELA DE SUCESSO ---
 
     const todosOsItens = comanda.pedidos?.flatMap(pedido =>
-        pedido.itens.map(item => ({
+        (pedido.itens || []).map(item => ({
             ...item,
             pedidoStatus: pedido.status,
             pedidoId: pedido.id
@@ -88,7 +95,6 @@ export default function ComandaClientePage() {
                     <CardContent>
                         <h3 className="font-bold mb-2">Itens Consumidos</h3>
                         <Table>
-                            {/* ... O resto da tabela continua igual ... */}
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Qtd</TableHead>
@@ -98,10 +104,10 @@ export default function ComandaClientePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {itensValidos.map(item => {
+                                {itensValidos.map((item, index) => {
                                     const valorItem = (Number(item.produto?.preco) || 0) * (Number(item.quantidade) || 0);
                                     return (
-                                        <TableRow key={item.id} className={ changedPedidos.has(item.pedidoId) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
+                                        <TableRow key={`${item.pedidoId}-${item.id}-${index}`} className={ changedPedidos.has(item.pedidoId) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
                                             <TableCell>{item.quantidade}x</TableCell>
                                             <TableCell className="font-medium">{item.produto?.nome ?? 'Produto não encontrado'}</TableCell>
                                             <TableCell><Badge variant="secondary">{item.pedidoStatus.replace('_', ' ')}</Badge></TableCell>
