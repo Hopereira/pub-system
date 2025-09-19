@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '../ui/button';
-import { Pedido, ItemPedido } from '@/types/pedido';
+import { Pedido } from '@/types/pedido';
 import { PedidoStatus } from '@/types/pedido-status.enum';
 import { Separator } from '../ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 
@@ -62,11 +62,16 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel, filtroStatus }: P
               {item.status === PedidoStatus.EM_PREPARO && (
                 <Button size="sm" onClick={() => onUpdateStatus(item.id, PedidoStatus.PRONTO)}>Pronto</Button>
               )}
+              {item.status === PedidoStatus.PRONTO && (
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onUpdateStatus(item.id, PedidoStatus.ENTREGUE)}>Entregar</Button>
+              )}
               <Button variant="destructive" size="sm" onClick={() => handleOpenCancelDialog(item.id)}>Cancelar</Button>
             </div>
             <Separator className="mt-3"/>
           </div>
         ))}
+
+        {/* ================== INÍCIO DA CORREÇÃO ================== */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>Cancelar Item</DialogTitle></DialogHeader>
@@ -82,5 +87,6 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel, filtroStatus }: P
         </Dialog>
       </CardContent>
     </Card>
+    // =================== FIM DA CORREÇÃO ====================
   );
 }
