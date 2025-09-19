@@ -103,7 +103,7 @@ export default function ComandaClientePage() {
                                 {itensValidos.map((item, index) => {
                                     const valorItem = (Number(item.precoUnitario) || 0) * (item.quantidade || 0);
                                     return (
-                                        <TableRow key={`${item.pedido.id}-${item.id}-${index}`} className={ changedPedidos.has(item.pedido.id) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
+                                            <TableRow key={`${item.pedido?.id || 'no-pedido'}-${item.id || `item-${index}-${Math.random().toString(36).substr(2, 5)}`}`} className={ changedPedidos.has(item.pedido?.id || '') ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}> 
                                             <TableCell>{item.quantidade}x</TableCell>
                                             <TableCell className="font-medium">{item.produto?.nome ?? 'Produto não encontrado'}</TableCell>
                                             <TableCell><Badge variant="secondary">{(item.status || 'INDEFINIDO').replace('_', ' ')}</Badge></TableCell>

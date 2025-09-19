@@ -32,7 +32,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
       if(audioRef.current) audioRef.current.currentTime = 0;
     }).catch(e => {});
   }, []);
-
+  
   const fetchComanda = useCallback(async () => {
     if (!comandaId) return;
     try {
@@ -42,12 +42,13 @@ export const useComandaSubscription = (comandaId: string | null) => {
         const novosPedidosAlterados = new Set<string>();
         data.pedidos?.forEach(pedidoNovo => {
           const pedidoAntigo = comandaAnteriorRef.current?.pedidos?.find(p => p.id === pedidoNovo.id);
-          pedidoNovo.itens.forEach(itemNovo => {
-            const itemAntigo = pedidoAntigo?.itens.find(i => i.id === itemNovo.id);
+          edidoNovo.itens.forEach((itemNovo, index) => {
+  // Usamos índice como fallback já que os itens não têm ID
+            const itemAntigo = pedidoAntigo?.itens[index];
             if (itemAntigo && itemAntigo.status !== itemNovo.status) {
               novosPedidosAlterados.add(pedidoNovo.id);
-            }
-          });
+               }
+            });
         });
 
         if (novosPedidosAlterados.size > 0) {

@@ -84,32 +84,49 @@ export class PedidoService {
     return pedidoCompleto;
   }
   
-  // ... (o resto do ficheiro (findAll, findOne, etc.) permanece o mesmo)
-  async findAll(ambienteId?: string): Promise<Pedido[]> {
-    const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
-      .leftJoinAndSelect('pedido.comanda', 'comanda')
-      .leftJoinAndSelect('comanda.mesa', 'mesa')
-      .leftJoinAndSelect('pedido.itens', 'itemPedido')
-      .leftJoinAndSelect('itemPedido.produto', 'produto')
-      .leftJoinAndSelect('produto.ambiente', 'ambiente')
-      .where('itemPedido.status IN (:...statuses)', { statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO] })
-      .orderBy('pedido.data', 'ASC');
+ async findAll(ambienteId?: string): Promise<Pedido[]> {
+  const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
+    .leftJoinAndSelect('pedido.comanda', 'comanda')
+    .leftJoinAndSelect('comanda.mesa', 'mesa')
+    .leftJoinAndSelect('pedido.itens', 'itemPedido')
+    .leftJoinAndSelect('itemPedido.produto', 'produto')
+    .leftJoinAndSelect('produto.ambiente', 'ambiente')
+    .select([ // ✅ A CORREÇÃO ESTÁ AQUI
+      'pedido',
+      'comanda',
+      'mesa',
+      'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
+      'produto',
+      'ambiente'
+    ])
+    .where('itemPedido.status IN (:...statuses)', {
+      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO]
+    })
+    .orderBy('pedido.data', 'ASC');
 
-    if (ambienteId) {
-      queryBuilder.andWhere('ambiente.id = :ambienteId', { ambienteId });
-    }
-
-    const pedidos = await queryBuilder.getMany();
-
-    if (ambienteId) {
-        return pedidos.map(pedido => ({
-            ...pedido,
-            itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
-        })).filter(pedido => pedido.itens.length > 0);
-    }
-    return pedidos;
+  if (ambienteId) {
+    queryBuilder.andWhere('ambiente.id = :ambienteId', { ambienteId });
   }
 
+  const pedidos = await queryBuilder.getMany();
+  let pedidosFiltrados = pedidos;
+
+  if (ambienteId) {
+    pedidosFiltrados = pedidos.map(pedido => ({
+      ...pedido,
+      itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
+    })).filter(pedido => pedido.itens.length > 0);
+  }
+
+  // DIAGNÓSTICO DEFINITIVO NO BACKEND
+  console.log(
+    '[BACKEND DIAGNOSTIC] Dados que serão enviados para o frontend:',
+    JSON.stringify(pedidosFiltrados, null, 2)
+  );
+
+  return pedidosFiltrados;
+}
+//----------------------------------------------------------
   async findOne(id: string): Promise<Pedido> {
       const pedido = await this.pedidoRepository.findOne({
         where: { id },
