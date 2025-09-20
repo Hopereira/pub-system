@@ -10,7 +10,16 @@ export interface AbrirComandaDto {
 
 export const getComandaById = async (id: string): Promise<Comanda> => {
     try {
-        const response = await api.get<Comanda>(`/comandas/${id}`);
+        // ================== INÍCIO DA CORREÇÃO ==================
+        const response = await api.get<Comanda>(`/comandas/${id}`, {
+            // Adicionamos estes cabeçalhos para impedir o cache do navegador
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
+        // =================== FIM DA CORREÇÃO ====================
         return response.data;
     } catch (error) {
         console.error(`Erro ao buscar comanda ${id}:`, error);

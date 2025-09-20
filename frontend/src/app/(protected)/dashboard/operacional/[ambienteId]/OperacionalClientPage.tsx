@@ -1,95 +1,102 @@
-// Caminho: frontend/src/app/(protected)/dashboard/operacional/[ambienteId]/OperacionalClientPage.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { PedidoCard } from '@/components/operacional/PedidoCard';
-import { Pedido, PedidoStatus } from '@/types/pedido';
-import { getPedidos, updatePedidoStatus } from '@/services/pedidoService';
+import { Pedido } from '@/types/pedido';
+import { PedidoStatus } from '@/types/pedido-status.enum';
+import { getPedidosPorAmbiente, updateItemStatus } from '@/services/pedidoService';
+import { getAmbienteById } from '@/services/ambienteService';
+import { Ambiente } from '@/types/ambiente';
+import { toast } from 'sonner';
 
-// CORREÇÃO: A função é exportada sem 'default'
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [ambiente, setAmbiente] = useState<Ambiente | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchPedidos = async () => {
-      try {
-        const data = await getPedidos(ambienteId);
-        setPedidos(Array.isArray(data) ? data : []); 
-      } catch (err: any) {
-        setError(err.message || 'Falha ao buscar os pedidos.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPedidos();
-    const intervalId = setInterval(fetchPedidos, 15000); // Polling a cada 15s
-    return () => clearInterval(intervalId);
-  }, [ambienteId]);
-
-  const handleUpdateStatus = async (pedidoId: string, novoStatus: PedidoStatus) => {
-      try {
-        const pedidoAtualizado = await updatePedidoStatus(pedidoId, { status: novoStatus });
-        setPedidos((pedidosAtuais) =>
-          pedidosAtuais.map((p) =>
-            p.id === pedidoId ? pedidoAtualizado : p
-          )
-        );
-      } catch (err: any) {
-        setError(err.message || 'Falha ao atualizar o status do pedido.');
-      }
-  };
-
-  const handleCancelPedido = async (pedidoId: string, motivo: string) => {
+  const fetchDados = async () => {
     try {
-      const pedidoCancelado = await updatePedidoStatus(pedidoId, { 
-        status: PedidoStatus.CANCELADO,
-        motivoCancelamento: motivo,
-      });
-
-      setPedidos((pedidosAtuais) =>
-        pedidosAtuais.map((p) =>
-          p.id === pedidoId ? pedidoCancelado : p
-        )
-      );
+      const [pedidosData, ambienteData] = await Promise.all([
+        getPedidosPorAmbiente(ambienteId),
+        getAmbienteById(ambienteId),
+      ]);
+      setPedidos(Array.isArray(pedidosData) ? pedidosData : []);
+      setAmbiente(ambienteData);
     } catch (err: any) {
-      setError(err.message || 'Falha ao cancelar o pedido.');
+      setError(err.message || 'Falha ao buscar os dados.');
+      toast.error('Falha ao carregar dados do painel.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return <p className="mt-8 text-center">Carregando pedidos...</p>;
-  }
-  
-  if (error) {
-    return <p className="mt-8 text-center text-red-500">Erro: {error}</p>;
-  }
+  useEffect(() => {
+    fetchDados();
+    // Adicionamos um polling para atualizar os pedidos a cada 30 segundos
+    const intervalId = setInterval(fetchDados, 30000);
+    return () => clearInterval(intervalId); // Limpa o intervalo ao desmontar o componente
+  }, [ambienteId]);
 
-  const pedidosOrdenados = [...pedidos].sort((a, b) => {
-    const statusOrder: Record<PedidoStatus, number> = {
-      'PRONTO': 1, 'EM_PREPARO': 2, 'FEITO': 3, 'ENTREGUE': 4, 'CANCELADO': 5,
-    };
-    return statusOrder[a.status] - statusOrder[b.status];
-  });
+  const handleUpdateStatus = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
+    try {
+      await updateItemStatus(itemPedidoId, { status: novoStatus });
+      toast.success('Status do item atualizado!');
+      await fetchDados(); // Atualiza a tela imediatamente
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao atualizar o status do item.');
+    }
+  };
+
+  const handleCancelItem = async (itemPedidoId: string, motivo: string) => {
+    try {
+      await updateItemStatus(itemPedidoId, {
+        status: PedidoStatus.CANCELADO,
+        motivoCancelamento: motivo,
+      });
+      toast.success('Item cancelado com sucesso!');
+      await fetchDados();
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao cancelar o item.');
+    }
+  };
+
+  if (loading) return <p className="mt-8 text-center">Carregando painel...</p>;
+  if (error) return <p className="mt-8 text-center text-red-500">Erro: {error}</p>;
+
+  const colunas: Record<string, PedidoStatus> = {
+    'A Fazer': PedidoStatus.FEITO,
+    'Em Preparo': PedidoStatus.EM_PREPARO,
+    'Pronto': PedidoStatus.PRONTO,
+  };
 
   return (
-    <div className="mt-8 flow-root">
-      {pedidosOrdenados.length === 0 ? (
-        <p className="text-center text-muted-foreground">Nenhum pedido encontrado para este ambiente.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {pedidosOrdenados.map((pedido) => (
-            <PedidoCard 
-              key={pedido.id} 
-              pedido={pedido} 
-              onUpdateStatus={handleUpdateStatus}
-              onCancel={handleCancelPedido}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      <div className="mb-6 flex-shrink-0">
+        <h1 className="text-3xl font-bold tracking-tight">{ambiente?.nome || 'Painel Operacional'}</h1>
+        <p className="text-muted-foreground">Acompanhe e gerencie os pedidos em tempo real.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow h-full">
+        {Object.entries(colunas).map(([titulo, status]) => (
+          <div key={status} className="bg-card rounded-lg p-4 flex flex-col shadow">
+            <h2 className="text-xl font-semibold mb-4 text-center">{titulo}</h2>
+            <div className="space-y-4 flex-grow overflow-y-auto p-1">
+              {/* Otimização: Filtramos os pedidos que pertencem a esta coluna ANTES de mapeá-los */}
+              {pedidos
+                .filter(p => p.itens.some(item => item.status === status))
+                .map(pedido => (
+                  <PedidoCard
+                    key={pedido.id}
+                    pedido={pedido}
+                    onUpdateStatus={handleUpdateStatus}
+                    onCancel={handleCancelItem}
+                    filtroStatus={status}
+                  />
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

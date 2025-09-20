@@ -10,7 +10,8 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # 4. Instala todas as dependências (incluindo as de desenvolvimento)
-RUN npm install
+# A flag --force é necessária devido a conflitos de versão entre as dependências
+RUN npm install --force
 
 # 5. Copia todo o resto do código-fonte
 COPY . .

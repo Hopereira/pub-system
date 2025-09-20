@@ -7,11 +7,27 @@ import { Comanda } from "@/types/comanda";
 import { PlusCircle, CheckCircle, Banknote } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { updatePedidoStatus } from "@/services/pedidoService";
-import { PedidoStatus } from "@/types/pedido";
+import { PedidoStatus } from "@/types/pedido-status.enum"; // Importamos o Enum
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+
+// Função para dar cor aos status
+const getStatusVariant = (status: PedidoStatus) => {
+  switch (status) {
+    case PedidoStatus.FEITO:
+      return 'secondary';
+    case PedidoStatus.EM_PREPARO:
+      return 'default'; // Azul/Padrão
+    case PedidoStatus.PRONTO:
+      return 'success'; // Verde
+    case PedidoStatus.ENTREGUE:
+      return 'outline'; // Cinza
+    default:
+      return 'destructive'; // Vermelho para cancelado
+  }
+};
+
 
 export default function ComandaDetalhePage() {
   const params = useParams();
@@ -33,8 +49,7 @@ export default function ComandaDetalhePage() {
         setComanda(data);
       } catch (err) {
         console.error(err);
-        setComanda(null);
-        toast.error("Falha ao carregar dados da comanda.");
+        toast.error("Falha ao atualizar dados da comanda.");
       } finally {
         setIsLoading(false);
       }
@@ -42,24 +57,14 @@ export default function ComandaDetalhePage() {
   }, [comandaId]);
 
   useEffect(() => {
-    setIsLoading(true);
     fetchComanda();
+    const intervalId = setInterval(fetchComanda, 10000);
+    return () => clearInterval(intervalId);
   }, [fetchComanda]);
 
   const handleItensAdicionados = () => {
     setIsDrawerOpen(false);
     fetchComanda();
-  };
-
-  const handleMarcarComoEntregue = async (pedidoId: string) => {
-    try {
-      await updatePedidoStatus(pedidoId, { status: PedidoStatus.ENTREGUE });
-      toast.success("Pedido marcado como entregue!");
-      await fetchComanda();
-    } catch (error) {
-      toast.error("Falha ao marcar o pedido como entregue.");
-      console.error("Erro ao entregar pedido:", error);
-    }
   };
 
   const handleFecharComanda = async () => {
@@ -68,7 +73,7 @@ export default function ComandaDetalhePage() {
         const comandaFechada = await fecharComanda(comandaId);
         setComanda(comandaFechada);
         toast.success('Comanda fechada com sucesso!');
-        setTimeout(() => router.push('/dashboard/caixa'), 2000);
+        setTimeout(() => router.push('/dashboard/mesas'), 2000);
       } catch (error) {
         toast.error('Não foi possível fechar a comanda.');
       }
@@ -82,7 +87,7 @@ export default function ComandaDetalhePage() {
   if (isLoading) return <div className="p-4">Carregando detalhes da comanda...</div>;
   if (!comanda) return <div className="p-4 text-red-500">Comanda não encontrada ou erro ao carregar.</div>;
 
-  const total = comanda.pedidos?.filter(pedido => pedido.status !== 'CANCELADO').reduce((acc, pedido) => acc + (Number(pedido.total) || 0), 0) ?? 0;
+  const total = comanda.pedidos?.filter(pedido => !pedido.itens.some(item => item.status === PedidoStatus.CANCELADO)).reduce((acc, pedido) => acc + (Number(pedido.total) || 0), 0) ?? 0;
 
   return (
     <div className="p-4 relative min-h-screen pb-40">
@@ -92,7 +97,6 @@ export default function ComandaDetalhePage() {
       <div className="mt-6">
         <h2 className="text-2xl font-bold border-b pb-2 mb-4">Pedidos</h2>
         
-        {/* --- LÓGICA DE RENDERIZAÇÃO CORRIGIDA --- */}
         {!comanda.pedidos || comanda.pedidos.length === 0 ? (
           <p className="text-gray-500 mt-4">Nenhum pedido realizado ainda.</p>
         ) : (
@@ -101,34 +105,32 @@ export default function ComandaDetalhePage() {
               <div key={pedido.id} className="border rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-bold">Pedido #{pedido.id.substring(0, 8)}</h3>
-                  <Badge variant={pedido.status === 'PRONTO' ? 'default' : 'secondary'} className={pedido.status === 'PRONTO' ? 'bg-green-600' : ''}>
-                    {pedido.status.replace('_', ' ')}
-                  </Badge>
+                  {/* Removemos o status GERAL do pedido daqui */}
                 </div>
-                <ul className="space-y-2">
+
+                {/* ================== INÍCIO DA CORREÇÃO ================== */}
+                {/* Agora mapeamos os itens e mostramos o status de CADA UM */}
+                <ul className="space-y-3">
                   {pedido.itens.map(item => (
-                    <li key={item.id} className="flex justify-between items-center text-sm">
+                    <li key={item.id} className="flex justify-between items-center text-sm border-t pt-3 first:border-t-0 first:pt-0">
                       <div>
                         <p><span className="font-semibold">{item.quantidade}x</span> {item.produto.nome}</p>
                         {item.observacao && <p className="text-xs text-gray-500">Obs: {item.observacao}</p>}
                       </div>
-                      <p>{formatCurrency(item.produto.preco * item.quantidade)}</p>
+                      <div className="flex items-center gap-4">
+                        <p>{formatCurrency(item.produto.preco * item.quantidade)}</p>
+                        <Badge variant={getStatusVariant(item.status)}>
+                          {item.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
                     </li>
                   ))}
                 </ul>
-                {pedido.status === PedidoStatus.PRONTO && isGarcom && (
-                  <div className="flex justify-end mt-4">
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleMarcarComoEntregue(pedido.id)}>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Marcar Pedido como Entregue
-                    </Button>
-                  </div>
-                )}
+                {/* =================== FIM DA CORREÇÃO ==================== */}
               </div>
             ))}
           </div>
         )}
-        {/* --- FIM DA CORREÇÃO --- */}
         
         <div className="mt-4 pt-4 border-t-2 font-bold text-xl flex justify-between">
           <span>Total</span>
