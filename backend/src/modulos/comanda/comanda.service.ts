@@ -13,10 +13,8 @@ import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
-// ==================================================================
-// ## CORREÇÃO (1/2): Importamos o nosso Gateway de notificações ##
-// ==================================================================
 import { PedidosGateway } from '../pedido/pedidos.gateway';
+import { PedidoStatus } from '../pedido/enums/pedido-status.enum'; // Importamos o enum
 
 @Injectable()
 export class ComandaService {
@@ -29,13 +27,10 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
-    // ==================================================================
-    // ## CORREÇÃO (2/2): Injetamos o Gateway para podermos usá-lo ##
-    // ==================================================================
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
-  // ... (métodos create, findAll, search, findOne, etc., continuam iguais)
+  // ... (métodos create, findAll, search continuam iguais)
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
     const { mesaId, clienteId } = createComandaDto;
     if (!mesaId && !clienteId) {
@@ -103,6 +98,10 @@ export class ComandaService {
     return queryBuilder.getMany();
   }
 
+
+  // ==================================================================
+  // ## CORREÇÃO PRINCIPAL ESTÁ AQUI ##
+  // ==================================================================
   async findOne(id: string): Promise<Comanda> {
     const comanda = await this.comandaRepository
       .createQueryBuilder('comanda')
@@ -114,18 +113,40 @@ export class ComandaService {
       .where('comanda.id = :id', { id })
       .orderBy('pedido.data', 'ASC')
       .getOne();
-    
-    this.logger.debug(
-      `[DIAGNÓSTICO findOne] Dados da Comanda ID ${id} antes de enviar:`,
-      JSON.stringify(comanda, null, 2),
-    );
 
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
+
+    // Recalcula dinamicamente os totais para garantir que estão sempre corretos
+    let totalComandaCalculado = 0;
+    if (comanda.pedidos) {
+      comanda.pedidos.forEach(pedido => {
+        const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
+          if (item.status !== PedidoStatus.CANCELADO) {
+            return sum + (Number(item.precoUnitario) * item.quantidade);
+          }
+          return sum;
+        }, 0);
+        
+        pedido.total = totalPedidoCalculado; // Sobrescrevemos o total antigo do pedido
+        totalComandaCalculado += totalPedidoCalculado;
+      });
+    }
+
+    // Adicionamos uma propriedade 'total' à comanda para uso no frontend.
+    // O 'as any' é um truque para adicionar uma propriedade que não está na entidade.
+    (comanda as any).total = totalComandaCalculado;
+    
+    this.logger.debug(
+      `[DIAGNÓSTICO findOne] Comanda ID ${id} com totais RECALCULADOS:`,
+      JSON.stringify(comanda, null, 2),
+    );
+
     return comanda;
   }
 
+  // ... (método findAbertaByMesaId continua igual)
   async findAbertaByMesaId(mesaId: string): Promise<Comanda> {
     const comanda = await this.comandaRepository.findOne({
       where: { mesa: { id: mesaId }, status: ComandaStatus.ABERTA },
@@ -138,36 +159,17 @@ export class ComandaService {
     return comanda;
   }
 
+  // O findPublicOne também vai beneficiar do findOne recalculado
   async findPublicOne(id: string) {
-    const comanda = await this.findOne(id);
-    if (!comanda) {
-      throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
-    }
-    const totalComanda = comanda.pedidos.reduce((total, pedido) => {
-      return total + Number(pedido.total);
-    }, 0);
+    const comanda = await this.findOne(id); // Este agora já vem com os totais corretos!
+    
     return {
       id: comanda.id,
       status: comanda.status,
       mesa: comanda.mesa ? { numero: comanda.mesa.numero } : null,
       cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
-      pedidos: comanda.pedidos.map((pedido) => ({
-        id: pedido.id,
-        status: pedido.status,
-        total: pedido.total,
-        itens: pedido.itens.map((item) => ({
-          id: item.id,
-          status: item.status,
-          quantidade: item.quantidade,
-          precoUnitario: item.precoUnitario,
-          produto: {
-            nome: item.produto.nome,
-            descricao: item.produto.descricao,
-            preco: item.produto.preco,
-          },
-        })),
-      })),
-      totalComanda,
+      pedidos: comanda.pedidos, // Podemos enviar os pedidos completos
+      totalComanda: (comanda as any).total,
     };
   }
 
@@ -191,10 +193,6 @@ export class ComandaService {
     }
 
     const comandaFechada = await this.comandaRepository.save(comanda);
-
-    // ==================================================================
-    // ## CORREÇÃO: Notificamos todos os clientes sobre a mudança de status da comanda ##
-    // ==================================================================
     this.pedidosGateway.emitComandaAtualizada(comandaFechada);
     
     return comandaFechada;
@@ -212,8 +210,7 @@ export class ComandaService {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
     const comandaAtualizada = await this.comandaRepository.save(comanda);
-
-    // Também notificamos em qualquer outra atualização da comanda
+    
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
     
     return comandaAtualizada;
