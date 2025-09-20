@@ -1,4 +1,3 @@
-// Caminho: frontend/src/app/acesso-cliente/[id]/page.tsx
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -7,8 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useComandaSubscription } from '@/hooks/useComandaSubscription';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Volume2 } from 'lucide-react'; // Importado CheckCircle
-import { ComandaStatus } from '@/types/comanda'; // Importado ComandaStatus
+import { CheckCircle, Volume2 } from 'lucide-react';
+import { ComandaStatus } from '@/types/comanda';
+import { ItemPedido, Pedido } from '@/types/pedido';
+
+// Interface para garantir que nosso item processado tem a referência ao pedido pai
+interface EnrichedItemPedido extends ItemPedido {
+    pedido: Pedido;
+}
 
 const formatCurrency = (value: number) => {
     if (isNaN(value)) return 'R$ 0,00';
@@ -17,10 +22,11 @@ const formatCurrency = (value: number) => {
 
 export default function ComandaClientePage() {
     const params = useParams();
-    const comandaId = params.id as string;
+    // Garantimos que comandaId nunca será um array, pegando apenas o primeiro elemento se for o caso
+    const comandaId = Array.isArray(params.id) ? params.id[0] : params.id;
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
-
+    
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Carregando comanda...</div>;
     }
@@ -30,11 +36,11 @@ export default function ComandaClientePage() {
     }
 
     if (!comanda) {
-        return null;
+        return <div className="flex justify-center items-center h-screen bg-slate-50">Comanda não encontrada.</div>;
     }
 
-    // --- NOVA TELA DE SUCESSO ---
-    if (comanda.status === ComandaStatus.FECHADA) {
+    // Lógica para tela de comanda PAGA ou FECHADA
+    if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
         return (
             <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
                 <Card className="max-w-md w-full text-center p-6 animate-fade-in">
@@ -43,27 +49,21 @@ export default function ComandaClientePage() {
                         <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">Sua comanda foi fechada com sucesso. Agradecemos a sua visita e esperamos vê-lo novamente em breve!</p>
+                        <p className="text-muted-foreground">Sua comanda foi paga com sucesso. Agradecemos a sua visita!</p>
                     </CardContent>
                 </Card>
             </div>
         )
     }
-    // --- FIM DA TELA DE SUCESSO ---
 
-    const todosOsItens = comanda.pedidos?.flatMap(pedido =>
-        pedido.itens.map(item => ({
-            ...item,
-            pedidoStatus: pedido.status,
-            pedidoId: pedido.id
-        }))
-    ) ?? [];
+    // Lógica correta para achatar a lista de itens, mantendo a referência ao pedido pai
+    const todosOsItens: EnrichedItemPedido[] = 
+        comanda.pedidos?.flatMap(pedido => 
+            (pedido.itens || []).map(item => ({ ...item, pedido }))
+        ) ?? [];
 
-    const itensValidos = todosOsItens.filter(item => item.pedidoStatus !== 'CANCELADO');
-
-    const total = comanda.pedidos
-        ?.filter(pedido => pedido.status !== 'CANCELADO')
-        .reduce((acc, pedido) => acc + (Number(pedido.total) || 0), 0) ?? 0;
+    const itensValidos = todosOsItens.filter(item => item.status !== 'CANCELADO');
+    const total = itensValidos.reduce((acc, item) => acc + (Number(item.precoUnitario) * item.quantidade), 0);
 
     return (
         <div className="bg-slate-50 min-h-screen p-4 sm:p-6 pt-24">
@@ -88,7 +88,6 @@ export default function ComandaClientePage() {
                     <CardContent>
                         <h3 className="font-bold mb-2">Itens Consumidos</h3>
                         <Table>
-                            {/* ... O resto da tabela continua igual ... */}
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Qtd</TableHead>
@@ -98,13 +97,13 @@ export default function ComandaClientePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {itensValidos.map(item => {
-                                    const valorItem = (Number(item.produto?.preco) || 0) * (Number(item.quantidade) || 0);
+                                {itensValidos.map((item, index) => {
+                                    const valorItem = (Number(item.precoUnitario) || 0) * (item.quantidade || 0);
                                     return (
-                                        <TableRow key={item.id} className={ changedPedidos.has(item.pedidoId) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
+                                        <TableRow key={`${item.pedido.id}-${item.id}-${index}`} className={ changedPedidos.has(item.pedido.id) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
                                             <TableCell>{item.quantidade}x</TableCell>
                                             <TableCell className="font-medium">{item.produto?.nome ?? 'Produto não encontrado'}</TableCell>
-                                            <TableCell><Badge variant="secondary">{item.pedidoStatus.replace('_', ' ')}</Badge></TableCell>
+                                            <TableCell><Badge variant="secondary">{(item.status || 'INDEFINIDO').replace('_', ' ')}</Badge></TableCell>
                                             <TableCell className="text-right">{formatCurrency(valorItem)}</TableCell>
                                         </TableRow>
                                     )
