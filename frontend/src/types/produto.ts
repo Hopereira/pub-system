@@ -1,6 +1,6 @@
 // Caminho: frontend/src/types/produto.ts
 
-import { Ambiente } from "@/types/ambiente"; // Supondo que você tenha um types/ambiente.ts
+import { Ambiente } from "@/types/ambiente";
 
 export interface Produto {
   id: string;
@@ -8,5 +8,9 @@ export interface Produto {
   descricao: string;
   preco: number;
   categoria: string;
-  ambiente: Ambiente; // A API deve retornar o ambiente de preparo aninhado
+  ambiente: Ambiente;
+  // ==================================================================
+  // ## CORREÇÃO: Adicionamos a propriedade que faltava ##
+  // ==================================================================
+  urlImagem?: string | null; // A imagem pode ser opcional
 }
