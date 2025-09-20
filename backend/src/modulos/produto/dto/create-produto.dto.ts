@@ -1,6 +1,11 @@
 // backend/src/modulos/produto/dto/create-produto.dto.ts
 
 import { ApiProperty } from '@nestjs/swagger';
+// ==================================================================
+// ## A CORREÇÃO ESTÁ AQUI (1/2) ##
+// Importamos o decorador 'Type' da biblioteca de transformação.
+// ==================================================================
+import { Type } from 'class-transformer';
 import {
   IsNotEmpty,
   IsNumber,
@@ -32,6 +37,12 @@ export class CreateProdutoDto {
     description: 'O preço de venda do produto.',
     example: 9.9,
   })
+  // ==================================================================
+  // ## A CORREÇÃO ESTÁ AQUI (2/2) ##
+  // Adicionamos @Type(() => Number) para converter a string em número
+  // antes de aplicar as validações @IsNumber e @IsPositive.
+  // ==================================================================
+  @Type(() => Number)
   @IsNumber()
   @IsPositive()
   preco: number;
