@@ -4,7 +4,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  Logger, // Importe o Logger
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
@@ -13,10 +13,13 @@ import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
+// ==================================================================
+// ## CORREÇÃO (1/2): Importamos o nosso Gateway de notificações ##
+// ==================================================================
+import { PedidosGateway } from '../pedido/pedidos.gateway';
 
 @Injectable()
 export class ComandaService {
-  // Adicionamos um logger para o diagnóstico
   private readonly logger = new Logger(ComandaService.name);
 
   constructor(
@@ -26,8 +29,13 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
+    // ==================================================================
+    // ## CORREÇÃO (2/2): Injetamos o Gateway para podermos usá-lo ##
+    // ==================================================================
+    private readonly pedidosGateway: PedidosGateway,
   ) {}
 
+  // ... (métodos create, findAll, search, findOne, etc., continuam iguais)
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
     const { mesaId, clienteId } = createComandaDto;
     if (!mesaId && !clienteId) {
@@ -107,12 +115,10 @@ export class ComandaService {
       .orderBy('pedido.data', 'ASC')
       .getOne();
     
-    // ================== LOG DE DIAGNÓSTICO ADICIONADO ==================
     this.logger.debug(
       `[DIAGNÓSTICO findOne] Dados da Comanda ID ${id} antes de enviar:`,
       JSON.stringify(comanda, null, 2),
     );
-    // =================================================================
 
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
@@ -183,7 +189,15 @@ export class ComandaService {
       comanda.mesa.status = MesaStatus.LIVRE;
       await this.mesaRepository.save(comanda.mesa);
     }
-    return this.comandaRepository.save(comanda);
+
+    const comandaFechada = await this.comandaRepository.save(comanda);
+
+    // ==================================================================
+    // ## CORREÇÃO: Notificamos todos os clientes sobre a mudança de status da comanda ##
+    // ==================================================================
+    this.pedidosGateway.emitComandaAtualizada(comandaFechada);
+    
+    return comandaFechada;
   }
 
   async update(
@@ -197,7 +211,12 @@ export class ComandaService {
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
-    return this.comandaRepository.save(comanda);
+    const comandaAtualizada = await this.comandaRepository.save(comanda);
+
+    // Também notificamos em qualquer outra atualização da comanda
+    this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
+    
+    return comandaAtualizada;
   }
 
   async remove(id: string): Promise<void> {
