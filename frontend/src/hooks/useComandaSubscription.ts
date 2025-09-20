@@ -17,7 +17,6 @@ export const useComandaSubscription = (comandaId: string | null) => {
   const [isAudioAllowed, setIsAudioAllowed] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Armazenamos a referência da comanda anterior para comparação
   const comandaAnteriorRef = useRef<Comanda | null>(null);
 
   useEffect(() => {
@@ -41,7 +40,6 @@ export const useComandaSubscription = (comandaId: string | null) => {
     try {
       const data = await getPublicComandaById(comandaId);
 
-      // Lógica para detectar mudanças e tocar som de notificação
       if (comandaAnteriorRef.current && audioRef.current) {
         const novosPedidosAlterados = new Set<string>();
 
@@ -49,10 +47,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
           const pedidoAntigo = comandaAnteriorRef.current?.pedidos?.find(
             (p) => p.id === pedidoNovo.id,
           );
-
-          // ================== INÍCIO DA CORREÇÃO ==================
-          // 1. Corrigido o erro de digitação de "edidoNovo" para "pedidoNovo"
-          // 2. Lógica de comparação melhorada para usar "item.id" em vez de índice
+          
           pedidoNovo.itens.forEach((itemNovo) => {
             const itemAntigo = pedidoAntigo?.itens.find(
               (i) => i.id === itemNovo.id,
@@ -61,7 +56,6 @@ export const useComandaSubscription = (comandaId: string | null) => {
               novosPedidosAlterados.add(pedidoNovo.id);
             }
           });
-          // =================== FIM DA CORREÇÃO ====================
         });
 
         if (novosPedidosAlterados.size > 0) {
@@ -69,12 +63,11 @@ export const useComandaSubscription = (comandaId: string | null) => {
             audioRef.current.play().catch((e) => console.error('Erro ao tocar áudio:', e));
           }
           setChangedPedidos(novosPedidosAlterados);
-          setTimeout(() => setChangedPedidos(new Set()), 3000); // Limpa o highlight após 3s
+          setTimeout(() => setChangedPedidos(new Set()), 3000);
         }
       }
       
       setComanda(data);
-      // Atualizamos a referência *depois* de usá-la para comparação
       comandaAnteriorRef.current = data;
 
     } catch (err) {
@@ -93,7 +86,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
       setError('ID da comanda não fornecido.');
       setIsLoading(false);
     }
-  }, [comandaId]); // Removido fetchComanda daqui para simplificar
+  }, [comandaId]);
 
   useEffect(() => {
     if (!comandaId) return;
@@ -105,9 +98,18 @@ export const useComandaSubscription = (comandaId: string | null) => {
     });
 
     socket.on('status_atualizado', (pedidoAtualizado: Pedido) => {
-      // Verifica se a atualização pertence a esta comanda antes de refazer o fetch
       if (pedidoAtualizado.comanda?.id === comandaId) {
-        console.log('[Socket.IO] Recebida atualização de status. Buscando dados novos...');
+        console.log('[Socket.IO] Recebida atualização de status de item. Buscando dados novos...');
+        fetchComanda();
+      }
+    });
+
+    // ==================================================================
+    // ## CORREÇÃO: Adicionamos o "ouvinte" para a atualização da comanda ##
+    // ==================================================================
+    socket.on('comanda_atualizada', (comandaAtualizada: Comanda) => {
+      if (comandaAtualizada.id === comandaId) {
+        console.log('[Socket.IO] Recebida atualização de comanda. Buscando dados novos...');
         fetchComanda();
       }
     });
