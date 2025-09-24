@@ -1,10 +1,12 @@
+// Caminho: frontend/src/services/produtoService.ts
 import { Produto } from '@/types/produto';
-import { UpdateProdutoDto } from '@/types/produto.dto';
 import api from './api';
 
 export const getProdutos = async (): Promise<Produto[]> => {
   try {
-    const response = await api.get<Produto[]>('/produtos');
+    const response = await api.get<Produto[]>('/produtos', {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
@@ -12,12 +14,11 @@ export const getProdutos = async (): Promise<Produto[]> => {
   }
 };
 
-// --- FUNÇÃO CREATEPRODUTO ATUALIZADA ---
-// Agora ela recebe um FormData e o envia diretamente para a API.
-// O Axios configurará o 'Content-Type' como 'multipart/form-data' automaticamente.
 export const createProduto = async (data: FormData): Promise<Produto> => {
   try {
-    const response = await api.post<Produto>('/produtos', data);
+    const response = await api.post<Produto>('/produtos', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   } catch (error) {
     console.error('Erro ao criar produto:', error);
@@ -25,9 +26,12 @@ export const createProduto = async (data: FormData): Promise<Produto> => {
   }
 };
 
-export const updateProduto = async (id: string, produtoData: UpdateProdutoDto): Promise<Produto> => {
+export const updateProduto = async (id: string, data: FormData): Promise<Produto> => {
   try {
-    const response = await api.patch<Produto>(`/produtos/${id}`, produtoData);
+    // Corrigido para usar PATCH e enviar FormData
+    const response = await api.patch<Produto>(`/produtos/${id}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   } catch (error) {
     console.error(`Erro ao atualizar produto ${id}:`, error);
@@ -35,13 +39,12 @@ export const updateProduto = async (id: string, produtoData: UpdateProdutoDto): 
   }
 };
 
-export const deleteProduto = async (id: string): Promise<void> => {
+export const deleteProduto = async (id: string): Promise<Produto> => {
   try {
-    await api.delete(`/produtos/${id}`);
+    const response = await api.delete<Produto>(`/produtos/${id}`);
+    return response.data;
   } catch (error) {
     console.error(`Erro ao deletar produto ${id}:`, error);
     throw error;
   }
 };
-
-// A função 'uploadImagem' foi REMOVIDA, pois a lógica agora está unificada.

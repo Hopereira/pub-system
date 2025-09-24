@@ -1,15 +1,14 @@
+// Caminho: backend/src/modulos/pedido/entities/item-pedido.entity.ts
 import {
   Column,
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  JoinColumn, // É uma boa prática adicionar o JoinColumn
 } from 'typeorm';
 import { Pedido } from './pedido.entity';
-import { Produto } from 'src/modulos/produto/entities/produto.entity';
-// ==================================================================
-// ## A CORREÇÃO ESTÁ AQUI: O caminho do import foi ajustado ##
-// Usamos '../' para "subir" um nível de pasta antes de procurar por 'enums'.
-// ==================================================================
+// --- CORREÇÃO APLICADA AQUI ---
+import { Produto } from '../../produto/entities/produto.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
 
 @Entity('itens_pedido')
@@ -18,9 +17,11 @@ export class ItemPedido {
   id: string;
 
   @ManyToOne(() => Pedido, (pedido) => pedido.itens, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'pedidoId' })
   pedido: Pedido;
 
-  @ManyToOne(() => Produto, { eager: true })
+  @ManyToOne(() => Produto, { eager: true, onDelete: 'SET NULL' }) // onDelete SET NULL para não dar erro ao apagar produto
+  @JoinColumn({ name: 'produtoId' })
   produto: Produto;
 
   @Column()

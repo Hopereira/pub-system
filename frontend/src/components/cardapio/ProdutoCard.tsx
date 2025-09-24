@@ -1,8 +1,7 @@
-// Caminho: frontend/src/components/cardapio/ProdutoCard.tsx
 import Image from 'next/image';
 import { Produto } from '@/types/produto';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart } from 'lucide-react'; // Ícone para o botão
+import { ShoppingCart } from 'lucide-react';
 
 interface ProdutoCardProps {
   produto: Produto;
@@ -17,10 +16,8 @@ export default function ProdutoCard({ produto, onAddToCart }: ProdutoCardProps) 
 
   return (
     <div className="flex flex-col rounded-lg border bg-card text-card-foreground shadow-sm transition-transform hover:scale-105 duration-300">
-      {/* ==================================================================
-          ## CORREÇÃO: Lógica de imagem com placeholder ##
-         ================================================================== */}
       <div className="relative w-full aspect-[4/3]">
+        {/* Lógica de renderização condicional da imagem */}
         {produto.urlImagem ? (
           <Image
             src={produto.urlImagem}

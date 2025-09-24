@@ -1,16 +1,13 @@
-// Caminho: frontend/src/types/produto.ts
-
-import { Ambiente } from "@/types/ambiente";
-
 export interface Produto {
   id: string;
   nome: string;
-  descricao: string;
+  descricao: string | null;
   preco: number;
   categoria: string;
-  ambiente: Ambiente;
-  // ==================================================================
-  // ## CORREÇÃO: Adicionamos a propriedade que faltava ##
-  // ==================================================================
-  urlImagem?: string | null; // A imagem pode ser opcional
+  urlImagem: string | null;
+  ativo: boolean;
+  ambiente: {
+    id: string;
+    nome: string;
+  };
 }
