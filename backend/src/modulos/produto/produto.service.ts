@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 // Caminho: backend/src/modulos/produto/produto.service.ts
+=======
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,8 +9,11 @@ import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+<<<<<<< HEAD
 import { promises as fs } from 'fs';
 import { join } from 'path';
+=======
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
 
 @Injectable()
 export class ProdutoService {

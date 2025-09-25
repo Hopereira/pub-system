@@ -53,7 +53,11 @@ export default function ProdutoPageClient() {
     if (!produtoToDelete) return; 
     try { 
       await deleteProduto(produtoToDelete.id); 
+<<<<<<< HEAD
       await fetchData(); 
+=======
+      await fetchData(); // Simplesmente busca os dados atualizados do backend
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
     } catch (err) { 
       setError(`Erro ao excluir o produto ${produtoToDelete.nome}.`); 
     } finally { 
@@ -63,7 +67,11 @@ export default function ProdutoPageClient() {
   };
   
   const handleSuccess = () => {
+<<<<<<< HEAD
     fetchData(); 
+=======
+    fetchData(); // Simplesmente busca os dados atualizados do backend
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
     setIsDialogOpen(false); 
     setProdutoToEdit(null); 
   };

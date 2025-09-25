@@ -1,8 +1,11 @@
-// Caminho: backend/src/modulos/produto/produto.controller.ts
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, UseGuards,
+<<<<<<< HEAD
   UploadedFile, UseInterceptors, ParseFilePipe, MaxFileSizeValidator,
   FileTypeValidator, ParseUUIDPipe, Logger,
+=======
+  UploadedFile, UseInterceptors, ParseUUIDPipe, Logger
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
@@ -39,6 +42,7 @@ export class ProdutoController {
     }),
   }))
   create(
+<<<<<<< HEAD
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -49,11 +53,18 @@ export class ProdutoController {
       }),
     )
     imagemFile: Express.Multer.File,
+=======
+    @UploadedFile() imagemFile: Express.Multer.File,
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
     @Body() createProdutoDto: CreateProdutoDto,
   ) {
     if (imagemFile) {
       const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+<<<<<<< HEAD
       createProdutoDto.urlImagem = `${baseUrl}/${imagemFile.filename}`;
+=======
+      createProdutoDto.urlImagem = `${baseUrl}/public/${imagemFile.filename}`;
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
       this.logger.log(`URL da imagem gerada: ${createProdutoDto.urlImagem}`);
     }
     return this.produtoService.create(createProdutoDto);
@@ -71,6 +82,7 @@ export class ProdutoController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProdutoDto: UpdateProdutoDto,
+<<<<<<< HEAD
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -84,6 +96,13 @@ export class ProdutoController {
     if (imagemFile) {
       const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
       updateProdutoDto.urlImagem = `${baseUrl}/${imagemFile.filename}`;
+=======
+    @UploadedFile() imagemFile?: Express.Multer.File,
+  ) {
+    if (imagemFile) {
+      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+      updateProdutoDto.urlImagem = `${baseUrl}/public/${imagemFile.filename}`;
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
       this.logger.log(`Nova URL de imagem gerada para atualização: ${updateProdutoDto.urlImagem}`);
     }
     return this.produtoService.update(id, updateProdutoDto);

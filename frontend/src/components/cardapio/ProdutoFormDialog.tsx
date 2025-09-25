@@ -31,7 +31,7 @@ const formSchema = z.object({
   descricao: z.string().optional(),
   categoria: z.string().min(2, { message: "A categoria é obrigatória." }),
   preco: z.coerce.number().positive({ message: "O preço deve ser um número positivo." }),
-  ambienteId: z.string({ required_error: "Por favor, selecione um ambiente." }),
+  ambienteId: z.string({ required_error: "Por favor, selecione um ambiente." }).uuid({ message: "Seleção de ambiente inválida."}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -42,14 +42,21 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
   const isEditMode = !!produtoToEdit;
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { nome: '', descricao: '', preco: 0, categoria: '', ambienteId: '' },
-  });
+  resolver: zodResolver(formSchema),
+  defaultValues: {
+    nome: '',
+    descricao: '',
+    preco: 0,
+    categoria: '',
+    ambienteId: ambientesDePreparo[0]?.id || '',
+  },
+});
 
   useEffect(() => {
     if (open) {
       setError(null);
       setImagemFile(null);
+      // Reseta o formulário com os valores corretos ao abrir
       if (isEditMode && produtoToEdit) {
         const ambienteId = produtoToEdit.ambiente?.id || '';
         form.reset({
@@ -57,18 +64,28 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
             descricao: produtoToEdit.descricao || '',
             preco: produtoToEdit.preco,
             categoria: produtoToEdit.categoria,
+<<<<<<< HEAD
             ambienteId: ambienteId,
-        });
-      } else {
-        form.reset({ nome: '', descricao: '', preco: 0, categoria: '', ambienteId: '' });
-      }
-    }
-  }, [open, isEditMode, produtoToEdit, form]);
-
-  const onSubmit = async (values: FormValues) => {
-    setError(null);
-    try {
+      nome: produtoToEdit.nome,
+      descricao: produtoToEdit.descricao || '',
+      preco: produtoToEdit.preco,
+      categoria: produtoToEdit.categoria,
+      ambienteId: produtoToEdit.ambiente?.id || '',
+  });
+} else {
+  form.reset({
+      nome: '',
+      descricao: '',
+      preco: 0,
+      categoria: '',
+      ambienteId: ambientesDePreparo[0]?.id || '',
+  });
+}
       const formData = new FormData();
+<<<<<<< HEAD
+=======
+      
+>>>>>>> d738c0d94244b2141347abcc7b7f1cd9a5c54292
       formData.append('nome', values.nome);
       formData.append('descricao', values.descricao || '');
       formData.append('categoria', values.categoria);
@@ -76,17 +93,13 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
       formData.append('ambienteId', values.ambienteId);
       
       if (imagemFile) {
-        formData.append('imagemFile', imagemFile);
-      }
-
-      if (isEditMode && produtoToEdit) {
-        await updateProduto(produtoToEdit.id, formData);
-        toast.success('Produto atualizado com sucesso!');
-      } else {
-        await createProduto(formData);
-        toast.success('Produto criado com sucesso!');
-      }
-      onSuccess();
+try {
+  const formData = new FormData();
+  formData.append('nome', values.nome);
+  formData.append('descricao', values.descricao || '');
+  formData.append('categoria', values.categoria);
+  formData.append('preco', String(values.preco).replace(',', '.'));
+  formData.append('ambienteId', values.ambienteId);
     } catch (err: any) {
       const apiErrorMessages = err.response?.data?.message;
       const displayError = Array.isArray(apiErrorMessages) 
