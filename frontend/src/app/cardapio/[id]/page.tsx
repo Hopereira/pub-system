@@ -1,25 +1,26 @@
 // Caminho: frontend/src/app/cardapio/[id]/page.tsx
 import { notFound } from 'next/navigation';
-
 import { getPublicComandaById } from '@/services/comandaService';
 import { getProdutos } from '@/services/produtoService';
 import CardapioClientPage from './CardapioClientPage';
 
+// O tipo das props continua o mesmo
 type CardapioPageProps = {
   params: {
     id: string; // ID da Comanda
   };
 };
 
-// Tornamos a função assíncrona para buscar dados no servidor
-export default async function CardapioPage({ params: { id } }: CardapioPageProps) { // <-- MUDANÇA AQUI
-  const comandaId = id; // Agora isso é seguro
+// MUDANÇA AQUI: A função agora recebe o objeto 'props' inteiro
+export default async function CardapioPage(props: CardapioPageProps) {
+  // CORRIGIDO: Acessamos o 'id' a partir de 'props.params.id' de forma segura
+  const comandaId = props.params.id;
 
   try {
     // Usamos Promise.all para buscar os dados em paralelo, otimizando o carregamento
     const [comanda, produtos] = await Promise.all([
       getPublicComandaById(comandaId),
-      getProdutos()
+      getProdutos(),
     ]);
 
     // Se a comanda não for encontrada, exibimos a página 404
@@ -31,13 +32,14 @@ export default async function CardapioPage({ params: { id } }: CardapioPageProps
     return <CardapioClientPage comanda={comanda} produtos={produtos} />;
 
   } catch (error) {
-    // Em caso de erro na busca dos dados, podemos renderizar uma mensagem de erro
-    // ou redirecionar. Por enquanto, vamos retornar uma mensagem simples.
+    // Em caso de erro na busca dos dados, renderizamos uma mensagem de erro clara.
     console.error('Falha ao carregar dados do cardápio:', error);
     return (
-      <div className="p-8 text-center text-red-500">
-        <h1>Erro ao carregar o cardápio</h1>
-        <p>Não foi possível buscar os dados necessários. Tente novamente mais tarde.</p>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-100 p-8 text-center">
+        <div className="rounded-lg bg-white p-8 shadow-md">
+            <h1 className="text-2xl font-bold text-red-600">Erro ao Carregar o Cardápio</h1>
+            <p className="mt-2 text-gray-600">Não foi possível buscar os dados necessários. Verifique a sua conexão ou tente novamente mais tarde.</p>
+        </div>
       </div>
     );
   }

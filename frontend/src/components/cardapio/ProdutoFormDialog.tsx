@@ -1,10 +1,10 @@
+// Caminho: frontend/src/components/cardapio/ProdutoFormDialog.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,16 +14,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { Produto } from '@/types/produto';
-import { UpdateProdutoDto } from '@/types/produto.dto';
 import { createProduto, updateProduto } from '@/services/produtoService';
 import { AmbienteData } from '@/services/ambienteService';
 
 interface ProdutoFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (produto: Produto) => void;
+  onSuccess: () => void;
   produtoToEdit?: Produto | null;
   ambientesDePreparo: AmbienteData[];
 }
@@ -45,7 +43,7 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { nome: '', descricao: '', preco: '' as any, categoria: '', ambienteId: '' },
+    defaultValues: { nome: '', descricao: '', preco: 0, categoria: '', ambienteId: '' },
   });
 
   useEffect(() => {
@@ -53,17 +51,16 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
       setError(null);
       setImagemFile(null);
       if (isEditMode && produtoToEdit) {
+        const ambienteId = produtoToEdit.ambiente?.id || '';
         form.reset({
             nome: produtoToEdit.nome,
             descricao: produtoToEdit.descricao || '',
             preco: produtoToEdit.preco,
             categoria: produtoToEdit.categoria,
-            ambienteId: produtoToEdit.ambiente.id,
+            ambienteId: ambienteId,
         });
       } else {
-        form.reset({
-            nome: '', descricao: '', preco: '' as any, categoria: '', ambienteId: ''
-        });
+        form.reset({ nome: '', descricao: '', preco: 0, categoria: '', ambienteId: '' });
       }
     }
   }, [open, isEditMode, produtoToEdit, form]);
@@ -72,28 +69,24 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
     setError(null);
     try {
       const formData = new FormData();
-      const precoFormatado = String(values.preco).replace(',', '.');
-
       formData.append('nome', values.nome);
       formData.append('descricao', values.descricao || '');
       formData.append('categoria', values.categoria);
-      formData.append('preco', precoFormatado);
+      formData.append('preco', String(values.preco).replace(',', '.'));
       formData.append('ambienteId', values.ambienteId);
       
       if (imagemFile) {
         formData.append('imagemFile', imagemFile);
       }
 
-      let result: Produto;
       if (isEditMode && produtoToEdit) {
-        // A lógica de update ainda não suporta upload, focando no 'create'
-        result = await updateProduto(produtoToEdit.id, values as UpdateProdutoDto);
-        toast.success(`Produto atualizado com sucesso!`);
+        await updateProduto(produtoToEdit.id, formData);
+        toast.success('Produto atualizado com sucesso!');
       } else {
-        result = await createProduto(formData);
-        toast.success(`Produto criado com sucesso!`);
+        await createProduto(formData);
+        toast.success('Produto criado com sucesso!');
       }
-      onSuccess(result);
+      onSuccess();
     } catch (err: any) {
       const apiErrorMessages = err.response?.data?.message;
       const displayError = Array.isArray(apiErrorMessages) 
@@ -131,7 +124,7 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
                 </FormItem>
                 <FormField control={form.control} name="categoria" render={({ field }) => ( <FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Ex: Bebidas, Petiscos" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="preco" render={({ field }) => ( <FormItem><FormLabel>Preço (R$)</FormLabel><FormControl><Input type="text" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                <FormField control={form.control} name="ambienteId" render={({ field }) => ( <FormItem><FormLabel>Ambiente de Preparo</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione um ambiente" /></SelectTrigger></FormControl><SelectContent>{ambientesDePreparo.map(ambiente => <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                <FormField control={form.control} name="ambienteId" render={({ field }) => ( <FormItem><FormLabel>Ambiente de Preparo</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione um ambiente" /></SelectTrigger></FormControl><SelectContent>{ambientesDePreparo.map(ambiente => <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
                 <DialogFooter>
                     <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Salvando...' : 'Salvar'}</Button>
                 </DialogFooter>

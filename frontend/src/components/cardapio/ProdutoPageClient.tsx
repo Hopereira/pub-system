@@ -1,23 +1,22 @@
 // Caminho: frontend/src/components/cardapio/ProdutoPageClient.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-
 import { Produto } from '@/types/produto';
 import { getProdutos, deleteProduto } from '@/services/produtoService';
-import { getAmbientes, AmbienteData } from '@/services/ambienteService'; // <-- NOVO IMPORT
+import { getAmbientes, AmbienteData } from '@/services/ambienteService';
 import ProdutosTable from './ProdutosTable';
 import ProdutoFormDialog from './ProdutoFormDialog';
 
 export default function ProdutoPageClient() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [ambientesDePreparo, setAmbientesDePreparo] = useState<AmbienteData[]>([]); // <-- NOVO ESTADO
+  const [ambientesDePreparo, setAmbientesDePreparo] = useState<AmbienteData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -25,34 +24,49 @@ export default function ProdutoPageClient() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        // Busca produtos e ambientes em paralelo para otimizar
-        const [produtosData, ambientesData] = await Promise.all([
-          getProdutos(),
-          getAmbientes(),
-        ]);
-        setProdutos(produtosData);
-        // Filtra os ambientes para manter apenas os de preparo
-        setAmbientesDePreparo(ambientesData.filter(a => a.tipo === 'PREPARO'));
-      } catch (err) {
-        setError('Não foi possível carregar os dados da página.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const [produtosData, ambientesData] = await Promise.all([
+        getProdutos(),
+        getAmbientes(),
+      ]);
+      setProdutos(produtosData);
+      setAmbientesDePreparo(ambientesData.filter(a => a.tipo === 'PREPARO'));
+    } catch (err) {
+      setError('Não foi possível carregar os dados da página.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // O resto das funções (handleOpenCreateDialog, handleConfirmDelete, etc.) continua igual...
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const handleOpenCreateDialog = () => { setProdutoToEdit(null); setIsDialogOpen(true); };
   const handleOpenEditDialog = (produto: Produto) => { setProdutoToEdit(produto); setIsDialogOpen(true); };
   const handleOpenDeleteDialog = (produto: Produto) => { setProdutoToDelete(produto); setIsConfirmOpen(true); };
-  const handleConfirmDelete = async () => { if (!produtoToDelete) return; try { await deleteProduto(produtoToDelete.id); setProdutos(current => current.filter(p => p.id !== produtoToDelete.id)); } catch (err) { setError(`Erro ao excluir o produto ${produtoToDelete.nome}.`); } finally { setIsConfirmOpen(false); setProdutoToDelete(null); } };
-  const handleSuccess = (resultProduto: Produto) => { if (produtoToEdit) { setProdutos(current => current.map(p => (p.id === resultProduto.id ? resultProduto : p))); } else { setProdutos(current => [resultProduto, ...current]); } setIsDialogOpen(false); setProdutoToEdit(null); };
+  
+  const handleConfirmDelete = async () => { 
+    if (!produtoToDelete) return; 
+    try { 
+      await deleteProduto(produtoToDelete.id); 
+      await fetchData(); 
+    } catch (err) { 
+      setError(`Erro ao excluir o produto ${produtoToDelete.nome}.`); 
+    } finally { 
+      setIsConfirmOpen(false); 
+      setProdutoToDelete(null); 
+    } 
+  };
+  
+  const handleSuccess = () => {
+    fetchData(); 
+    setIsDialogOpen(false); 
+    setProdutoToEdit(null); 
+  };
 
   const renderContent = () => {
     if (isLoading) { return ( <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div> ); }
@@ -72,8 +86,8 @@ export default function ProdutoPageClient() {
 
       {renderContent()}
 
-      {/* ATUALIZADO: Passamos a lista de ambientes como prop */}
       <ProdutoFormDialog
+        key={produtoToEdit ? produtoToEdit.id : 'create'}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSuccess={handleSuccess}
@@ -85,11 +99,11 @@ export default function ProdutoPageClient() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita. Isso excluirá permanentemente o produto <span className="font-bold">{produtoToDelete?.nome}</span>.</AlertDialogDescription>
+            <AlertDialogDescription>Esta ação não pode ser desfeita. Isso irá inativar o produto <span className="font-bold">{produtoToDelete?.nome}</span> e ele não aparecerá mais nos cardápios.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setProdutoToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Confirmar Exclusão</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmDelete}>Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

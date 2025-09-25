@@ -1,6 +1,5 @@
 // Caminho: backend/src/modulos/produto/entities/produto.entity.ts
 
-// --- CORREÇÃO AQUI: Voltamos a usar 'Ambiente' e o caminho original ---
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 
@@ -24,8 +23,12 @@ export class Produto {
   @Column({ type: 'varchar', length: 512, nullable: true })
   urlImagem: string;
 
-  // --- CORREÇÃO AQUI: Voltamos a usar 'Ambiente' ---
-  @ManyToOne(() => Ambiente, (ambiente) => ambiente.produtos) // Assumindo que a entidade Ambiente tem uma propriedade 'produtos'
-  @JoinColumn({ name: 'ambienteId' })
+  // --- ADIÇÃO CRUCIAL PARA O SOFT DELETE ---
+  // Esta coluna vai controlar se o produto está visível ou "apagado"
+  @Column({ type: 'boolean', default: true })
+  ativo: boolean;
+
+  @ManyToOne(() => Ambiente, (ambiente) => ambiente.produtos)
+  @JoinColumn({ name: 'ambienteId' }) // Seu @JoinColumn está correto
   ambiente: Ambiente;
 }

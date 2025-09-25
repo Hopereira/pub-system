@@ -2,10 +2,11 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, UseGuards,
   UploadedFile, UseInterceptors, ParseFilePipe, MaxFileSizeValidator,
-  FileTypeValidator, ParseUUIDPipe,
+  FileTypeValidator, ParseUUIDPipe, Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Express } from 'express'; // Import direto do express
+import { Express } from 'express';
+import { diskStorage } from 'multer';
 import { ProdutoService } from './produto.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
@@ -13,20 +14,30 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/auth/decorators/public.decorator';
 
-@ApiTags('Produtos / Cardápio')
+const generateUniqueFilename = (file: Express.Multer.File) => {
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substring(2, 8);
+  const extension = file.originalname.split('.').pop();
+  return `${timestamp}-${randomStr}.${extension}`;
+};
+
 @Controller('produtos')
 export class ProdutoController {
+  private readonly logger = new Logger(ProdutoController.name);
+
   constructor(private readonly produtoService: ProdutoService) {}
 
-  // --- ROTA UNIFICADA E CORRIGIDA ---
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: 'Cria um novo produto com upload de imagem opcional' })
-  @UseInterceptors(FileInterceptor('imagemFile')) // 'imagemFile' deve ser o nome do campo no FormData
+  @UseInterceptors(FileInterceptor('imagemFile', {
+    storage: diskStorage({
+      destination: './public',
+      filename: (req, file, cb) => cb(null, generateUniqueFilename(file)),
+    }),
+  }))
   create(
     @UploadedFile(
       new ParseFilePipe({
@@ -34,49 +45,66 @@ export class ProdutoController {
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
         ],
-        fileIsRequired: false, // Torna o arquivo opcional
+        fileIsRequired: false,
       }),
     )
-    file: Express.Multer.File,
+    imagemFile: Express.Multer.File,
     @Body() createProdutoDto: CreateProdutoDto,
   ) {
-    // Passamos tanto os dados do DTO quanto o arquivo para o serviço
-    return this.produtoService.create(createProdutoDto, file);
+    if (imagemFile) {
+      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+      createProdutoDto.urlImagem = `${baseUrl}/${imagemFile.filename}`;
+      this.logger.log(`URL da imagem gerada: ${createProdutoDto.urlImagem}`);
+    }
+    return this.produtoService.create(createProdutoDto);
   }
 
-  // A rota /upload-imagem foi REMOVIDA por ser redundante.
-
-  @Public()
-  @Get()
-  @ApiOperation({ summary: 'Lista todos os produtos do cardápio (Rota Pública)' })
-  findAll() {
-    return this.produtoService.findAll();
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Busca um produto específico por ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.produtoService.findOne(id);
-  }
-
-  // A rota PATCH (update) também precisará de uma lógica similar no futuro, mas vamos focar no create primeiro.
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: 'Atualiza os dados de um produto' })
+  @UseInterceptors(FileInterceptor('imagemFile', {
+    storage: diskStorage({
+      destination: './public',
+      filename: (req, file, cb) => cb(null, generateUniqueFilename(file)),
+    }),
+  }))
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProdutoDto: UpdateProdutoDto,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) imagemFile?: Express.Multer.File,
   ) {
+    if (imagemFile) {
+      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+      updateProdutoDto.urlImagem = `${baseUrl}/${imagemFile.filename}`;
+      this.logger.log(`Nova URL de imagem gerada para atualização: ${updateProdutoDto.urlImagem}`);
+    }
     return this.produtoService.update(id, updateProdutoDto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: 'Remove um produto do cardápio' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.produtoService.remove(id);
+  }
+  
+  @Public()
+  @Get()
+  findAll() {
+    return this.produtoService.findAll();
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.produtoService.findOne(id);
   }
 }
