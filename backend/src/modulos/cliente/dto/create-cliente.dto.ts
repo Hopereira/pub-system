@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class CreateClienteDto {
   @ApiProperty({
@@ -21,4 +27,24 @@ export class CreateClienteDto {
   @IsString()
   @IsOptional()
   nome?: string;
+
+  // --- NOVOS CAMPOS QUE PRECISAM SER ADICIONADOS ---
+
+  @ApiProperty({
+    description: 'O email do cliente.',
+    example: 'maria.souza@email.com',
+    required: false,
+  })
+  @IsEmail() // Valida se o texto é um email válido
+  @IsOptional()
+  email?: string;
+
+  @ApiProperty({
+    description: 'O número de celular do cliente.',
+    example: '21999998888',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  celular?: string;
 }
