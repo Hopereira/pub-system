@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-
-// Importando os módulos de funcionalidades
 import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
@@ -13,16 +11,12 @@ import { ClienteModule } from './modulos/cliente/cliente.module';
 import { PedidoModule } from './modulos/pedido/pedido.module';
 import { ProdutoModule } from './modulos/produto/produto.module';
 import { SeederModule } from './database/seeder.module';
-import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module'; // <-- 1. IMPORTAR O NOVO MÓDULO
+import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
+import { EventoModule } from './modulos/evento/evento.module'; // <-- IMPORTAÇÃO NOVA
 
 @Module({
   imports: [
-    
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
-
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -34,11 +28,9 @@ import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false, // <-- MUDANÇA IMPORTANTE
       }),
     }),
-
-    // Módulos de Funcionalidades (Features): Registra todos os nossos módulos
     EmpresaModule,
     AmbienteModule,
     FuncionarioModule,
@@ -49,7 +41,8 @@ import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module
     PedidoModule,
     ProdutoModule,
     SeederModule,
-    PaginaEventoModule, // <-- 2. ADICIONAR À LISTA DE IMPORTS
+    PaginaEventoModule,
+    EventoModule, // <-- REGISTRO DO NOVO MÓDULO
   ],
   controllers: [],
   providers: [],
