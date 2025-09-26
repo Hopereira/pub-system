@@ -1,4 +1,3 @@
-// Caminho: frontend/src/app/(protected)/dashboard/admin/paginas-evento/PaginasEventoClientPage.tsx
 'use client';
 
 import { useState } from 'react';
@@ -9,7 +8,8 @@ import { DataTable } from '@/components/ui/data-table';
 import { columns } from './columns';
 import { getPaginasEvento } from '@/services/paginaEventoService';
 import PaginaEventoFormDialog from '@/components/paginas-evento/PaginaEventoFormDialog';
-import { PaginaEventoDeleteAlert } from '@/components/paginas-evento/PaginaEventoDeleteAlert'; // <-- NOVO IMPORT
+import { PaginaEventoDeleteAlert } from '@/components/paginas-evento/PaginaEventoDeleteAlert';
+import PaginaEventoUploadDialog from '@/components/paginas-evento/PaginaEventoUploadDialog'; // <-- CORRIGIDO: Importação Padrão
 
 interface PaginasEventoClientPageProps {
   paginasIniciais: PaginaEvento[];
@@ -19,15 +19,18 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
   const [paginas, setPaginas] = useState(paginasIniciais);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paginaToEdit, setPaginaToEdit] = useState<PaginaEvento | null>(null);
-  const [paginaToDelete, setPaginaToDelete] = useState<PaginaEvento | null>(null); // <-- NOVO ESTADO
+  const [paginaToDelete, setPaginaToDelete] = useState<PaginaEvento | null>(null);
+  const [paginaToUpload, setPaginaToUpload] = useState<PaginaEvento | null>(null); // Estado para o Upload
 
   const handleSuccess = async () => {
     try {
-      // Recarrega os dados após qualquer operação (Criar/Editar/Excluir)
+      // Recarrega os dados após qualquer operação (Criar/Editar/Excluir/Upload)
       const paginasAtualizadas = await getPaginasEvento();
       setPaginas(paginasAtualizadas);
       setIsModalOpen(false);
-      setPaginaToEdit(null); // Limpa o estado de edição
+      setPaginaToEdit(null);
+      setPaginaToDelete(null); 
+      setPaginaToUpload(null); // Limpa o estado de upload
     } catch (error) {
       console.error('Erro ao recarregar os dados:', error);
     }
@@ -37,13 +40,20 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
     setPaginaToEdit(pagina);
     setIsModalOpen(true);
   };
-
-  // FUNÇÃO PARA ABRIR O ALERTA DE EXCLUSÃO
-  const handleDelete = (pagina: PaginaEvento) => {
-    setPaginaToDelete(pagina); // Define qual página será deletada
+  
+  // Função para abrir o Modal de Upload
+  const handleUploadMedia = (pagina: PaginaEvento) => {
+    setPaginaToUpload(pagina);
   };
   
-  // Função para fechar o alerta
+  const handleCloseUpload = () => {
+    setPaginaToUpload(null);
+  };
+
+  const handleDelete = (pagina: PaginaEvento) => {
+    setPaginaToDelete(pagina);
+  };
+  
   const handleCloseDeleteAlert = () => {
     setPaginaToDelete(null);
   };
@@ -53,8 +63,12 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
     setIsModalOpen(true);
   };
 
-  // Passamos as funções de callback para as colunas
-  const tableColumns = columns({ onEdit: handleEdit, onDelete: handleDelete });
+  // Passamos todos os callbacks para as colunas
+  const tableColumns = columns({ 
+    onEdit: handleEdit, 
+    onDelete: handleDelete, 
+    onUploadMedia: handleUploadMedia, 
+  });
 
   return (
     <div className="p-6">
@@ -68,7 +82,7 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
 
       <DataTable columns={tableColumns} data={paginas} />
 
-      {/* Formulário de Criação/Edição */}
+      {/* Formulário de Criação/Edição de Título */}
       <PaginaEventoFormDialog
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
@@ -81,6 +95,14 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
         paginaToDelete={paginaToDelete}
         onClose={handleCloseDeleteAlert}
         onSuccess={handleSuccess}
+      />
+      
+      {/* Diálogo de Upload de Mídia */}
+      <PaginaEventoUploadDialog
+        open={!!paginaToUpload}
+        onOpenChange={handleCloseUpload}
+        onSuccess={handleSuccess}
+        paginaToUpload={paginaToUpload}
       />
     </div>
   );

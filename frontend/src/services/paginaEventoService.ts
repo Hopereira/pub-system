@@ -1,3 +1,5 @@
+// Caminho: frontend/src/services/paginaEventoService.ts
+
 import { PaginaEvento } from '@/types/pagina-evento';
 import { CreatePaginaEventoDto, UpdatePaginaEventoDto } from '@/types/pagina-evento.dto';
 import api from './api';
@@ -22,13 +24,40 @@ export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<P
   }
 };
 
-// --- FUNÇÃO DE ATUALIZAÇÃO CORRIGIDA ---
 export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto): Promise<PaginaEvento> => {
   try {
     const response = await api.patch<PaginaEvento>(`/paginas-evento/${id}`, data);
     return response.data;
   } catch (error) {
     console.error(`Erro ao atualizar página de evento ${id}:`, error);
+    throw error;
+  }
+};
+
+// --- NOVA FUNÇÃO: UPLOAD DE MÍDIA EXCLUSIVO ---
+export const uploadPaginaEventoMedia = async (
+  id: string,
+  mediaFile: File, // Recebe o objeto File
+): Promise<PaginaEvento> => {
+  try {
+    const formData = new FormData();
+    // O backend espera que a chave do arquivo seja 'file'
+    formData.append('file', mediaFile); 
+
+    // O PATCH será enviado para o ID da página, com o Content-Type correto
+    const response = await api.patch<PaginaEvento>(
+      `/paginas-evento/${id}`, 
+      formData,
+      {
+        headers: {
+          // Garante que o Axios envie no formato correto para o arquivo
+          'Content-Type': 'multipart/form-data', 
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao fazer upload de mídia para a página ${id}:`, error);
     throw error;
   }
 };

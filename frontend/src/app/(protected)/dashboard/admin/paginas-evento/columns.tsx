@@ -9,15 +9,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator, // Importar o Separator para melhor UX
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-// A definição de colunas agora é uma função que recebe os handlers (callbacks)
+// A definição de colunas agora recebe o novo callback onUploadMedia
 export const columns = (callbacks: {
   onEdit: (pagina: PaginaEvento) => void;
-  onDelete: (pagina: PaginaEvento) => void; // <-- O CALLBACK DE DELETE
+  onDelete: (pagina: PaginaEvento) => void;
+  onUploadMedia: (pagina: PaginaEvento) => void; // <-- NOVO CALLBACK
 }): ColumnDef<PaginaEvento>[] => [
   {
     accessorKey: 'titulo',
@@ -52,10 +54,16 @@ export const columns = (callbacks: {
             <DropdownMenuLabel>Ações</DropdownMenuLabel>
             
             <DropdownMenuItem onClick={() => callbacks.onEdit(pagina)}>
-              Editar
+              Editar Título
             </DropdownMenuItem>
             
-            {/* NOVO: Ação de Excluir, chamando o callback que abre o alerta */}
+            {/* NOVO: Ação de Upload de Mídia */}
+            <DropdownMenuItem onClick={() => callbacks.onUploadMedia(pagina)}>
+              Upload Mídia
+            </DropdownMenuItem>
+            
+            <DropdownMenuSeparator /> 
+
             <DropdownMenuItem onClick={() => callbacks.onDelete(pagina)}>
               Excluir
             </DropdownMenuItem>
