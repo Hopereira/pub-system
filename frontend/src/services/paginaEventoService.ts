@@ -1,27 +1,43 @@
-// Caminho: frontend/src/services/paginaEventoService.ts
+import { PaginaEvento } from '@/types/pagina-evento';
+import { CreatePaginaEventoDto, UpdatePaginaEventoDto } from '@/types/pagina-evento.dto';
 import api from './api';
 
-// Interface para os dados da PaginaEvento
-export interface PaginaEventoData {
-  id: string;
-  titulo: string;
-  urlImagem: string;
-  ativa: boolean;
-}
-
-/**
- * Busca os dados de uma PaginaEvento pública.
- * Não necessita de autenticação.
- * @param id O ID da PaginaEvento
- * @returns Os dados da página do evento.
- */
-export const getPublicPaginaEvento = async (id: string): Promise<PaginaEventoData> => {
+export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
   try {
-    // Assumindo que o endpoint no backend seja /paginas-evento/:id/public
-    const response = await api.get<PaginaEventoData>(`/paginas-evento/${id}/public`);
+    const response = await api.get<PaginaEvento[]>('/paginas-evento');
     return response.data;
   } catch (error) {
-    console.error(`Erro ao buscar página de evento pública ${id}:`, error);
+    console.error('Erro ao buscar páginas de evento:', error);
+    throw error;
+  }
+};
+
+export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<PaginaEvento> => {
+  try {
+    const response = await api.post<PaginaEvento>('/paginas-evento', data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar página de evento:', error);
+    throw error;
+  }
+};
+
+// --- FUNÇÃO DE ATUALIZAÇÃO CORRIGIDA ---
+export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto): Promise<PaginaEvento> => {
+  try {
+    const response = await api.patch<PaginaEvento>(`/paginas-evento/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao atualizar página de evento ${id}:`, error);
+    throw error;
+  }
+};
+
+export const deletePaginaEvento = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`/paginas-evento/${id}`);
+  } catch (error) {
+    console.error(`Erro ao deletar página de evento ${id}:`, error);
     throw error;
   }
 };

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
-    Settings, Building2, DoorOpen, ChefHat, Landmark // NOVO: Importamos o ícone Landmark
+    Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation // 1. IMPORTAR O NOVO ÍCONE
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -16,14 +16,18 @@ import { AmbienteData } from '@/types/ambiente';
 
 const baseNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
-  { href: '/dashboard/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  { href: '/dashboard/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  // ... (links de admin)
+  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] }, // Rota corrigida para consistência
+  { href: '/dashboard/operacional/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] }, // Rota corrigida para consistência
+  // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
-  { href: '/dashboard/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
-  { href: '/dashboard/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN',"GARCOM","COZINHA"] },
-  { href: '/dashboard/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
+  { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] }, // Rota corrigida
+  { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] }, // Rota corrigida
+  
+  // 2. ADICIONAR O NOVO LINK AQUI
+  { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'] },
+  
+  { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] }, // Rota corrigida
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];
 
@@ -43,7 +47,9 @@ export function Sidebar() {
     const fetchOperationalLinks = async () => {
       try {
         const ambientes = await getAmbientes();
-        const dynamicLinks = ambientes.map(ambiente => ({
+        const dynamicLinks = ambientes
+          .filter(ambiente => ambiente.tipo === 'PREPARO') // Mostra apenas painéis para ambientes de preparo
+          .map(ambiente => ({
             href: `/dashboard/operacional/${ambiente.id}`,
             label: `Painel ${ambiente.nome}`,
             icon: ChefHat,
@@ -62,9 +68,8 @@ export function Sidebar() {
     }
   }, [user]);
   
-  // NOVO: Link para o Terminal de Caixa
   const caixaLink = { 
-    href: '/dashboard/caixa', 
+    href: '/dashboard/operacional/caixa', // Rota corrigida para consistência
     label: 'Terminal de Caixa', 
     icon: Landmark, 
     roles: ['ADMIN', 'CAIXA'] 
@@ -73,13 +78,9 @@ export function Sidebar() {
   const allLinks = useMemo(() => {
     let combinedLinks = [...baseNavLinks];
     
-    // Adiciona os links operacionais dinâmicos
-    const insertIndexOp = combinedLinks.findIndex(link => link.href === '/dashboard/pedidos') + 1;
-    combinedLinks.splice(insertIndexOp, 0, ...operationalLinks);
-    
-    // Adiciona o link do caixa
-    const insertIndexCaixa = combinedLinks.findIndex(link => link.href === '/dashboard/pedidos') + 1;
-    combinedLinks.splice(insertIndexCaixa, 0, caixaLink);
+    // Adiciona o link do caixa e os links operacionais dinâmicos
+    const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
+    combinedLinks.splice(insertIndexOp, 0, caixaLink, ...operationalLinks);
 
     return combinedLinks;
   }, [operationalLinks]);
