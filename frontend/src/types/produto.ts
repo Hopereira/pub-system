@@ -1,12 +1,13 @@
-// Caminho: frontend/src/types/produto.ts
-
-import { Ambiente } from "@/types/ambiente"; // Supondo que você tenha um types/ambiente.ts
-
 export interface Produto {
   id: string;
   nome: string;
-  descricao: string;
+  descricao: string | null;
   preco: number;
   categoria: string;
-  ambiente: Ambiente; // A API deve retornar o ambiente de preparo aninhado
+  urlImagem: string | null;
+  ativo: boolean;
+  ambiente: {
+    id: string;
+    nome: string;
+  };
 }

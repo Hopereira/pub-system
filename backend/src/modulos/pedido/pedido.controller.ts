@@ -19,10 +19,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from 'src/auth/decorators/public.decorator';
-// --- CORRECÇÃO DOS IMPORTS ---
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
-import { UpdatePedidoStatusDto } from './dto/update-pedido-status.dto';
-
 
 @ApiTags('Pedidos')
 @Controller('pedidos')
@@ -56,20 +53,6 @@ export class PedidoController {
       itemPedidoId,
       updateItemPedidoStatusDto,
     );
-  }
-
-  @Patch(':id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.COZINHA)
-  @ApiOperation({
-    summary: 'Atualiza o status de um pedido inteiro (Obsoleto)',
-    deprecated: true,
-  })
-  updateStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updatePedidoStatusDto: UpdatePedidoStatusDto,
-  ) {
-    return this.pedidoService.updateStatus(id, updatePedidoStatusDto);
   }
 
   @Get()

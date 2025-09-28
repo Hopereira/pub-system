@@ -10,4 +10,12 @@ export class Cliente {
 
   @Column({ nullable: true })
   nome: string;
+
+  // --- NOVOS CAMPOS ADICIONADOS ---
+
+  @Column({ unique: true, nullable: true }) // Único, mas pode ser nulo se o cliente não quiser fornecer
+  email: string;
+
+  @Column({ nullable: true }) // Celular é opcional
+  celular: string;
 }

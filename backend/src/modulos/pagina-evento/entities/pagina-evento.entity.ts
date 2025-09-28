@@ -16,7 +16,8 @@ export class PaginaEvento {
   @Column({ length: 100 })
   titulo: string;
 
-  @Column({ type: 'text', name: 'url_imagem' })
+  // ALTERAÇÃO AQUI: Adicionamos "nullable: true" para tornar a coluna opcional
+  @Column({ type: 'text', name: 'url_imagem', nullable: true })
   urlImagem: string;
 
   @Column({ type: 'boolean', default: true })
