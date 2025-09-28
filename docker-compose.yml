@@ -10,17 +10,16 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
+      - ./backend/gcs-credentials.json:/usr/src/app/gcs-credentials.json:ro
     depends_on:
       db:
         condition: service_healthy
     networks:
       - pub_network
     environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USERNAME: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_DATABASE: ${DB_DATABASE}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - BACKEND_URL=http://localhost:3000
     env_file:
       - ./.env
     command: npm run start:dev
@@ -33,7 +32,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    shm_size: '1gb'
     networks:
       - pub_network
     env_file:
@@ -44,7 +42,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- (Bônus) Serviço do PGAdmin ---
+  # --- Serviço do PGAdmin ---
   pgadmin:
     image: dpage/pgadmin4
     container_name: pub_system_pgadmin
@@ -67,20 +65,18 @@ services:
       - "3001:3000"
     volumes:
       - ./frontend:/app
-      - node_modules_frontend:/app/node_modules
+      - /app/node_modules
     networks:
       - pub_network
-    environment: # <-- BLOCO ADICIONADO
+    environment:
       - API_URL_SERVER=http://backend:3000
       - NEXT_PUBLIC_API_URL=http://localhost:3000
     stdin_open: true
     tty: true
 
-# --- Declaração das redes e volumes ---
 networks:
   pub_network:
     driver: bridge
 
 volumes:
   postgres_data:
-  node_modules_frontend: {}

@@ -22,7 +22,6 @@ const formatCurrency = (value: number) => {
 
 export default function ComandaClientePage() {
     const params = useParams();
-    // Garantimos que comandaId nunca será um array, pegando apenas o primeiro elemento se for o caso
     const comandaId = Array.isArray(params.id) ? params.id[0] : params.id;
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
@@ -39,7 +38,6 @@ export default function ComandaClientePage() {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Comanda não encontrada.</div>;
     }
 
-    // Lógica para tela de comanda PAGA ou FECHADA
     if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
         return (
             <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
@@ -56,7 +54,6 @@ export default function ComandaClientePage() {
         )
     }
 
-    // Lógica correta para achatar a lista de itens, mantendo a referência ao pedido pai
     const todosOsItens: EnrichedItemPedido[] = 
         comanda.pedidos?.flatMap(pedido => 
             (pedido.itens || []).map(item => ({ ...item, pedido }))

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+;import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PedidoService } from './pedido.service';
 import { PedidoController } from './pedido.controller';
@@ -12,6 +12,9 @@ import { PedidosGateway } from './pedidos.gateway';
   imports: [TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda, Produto])],
   controllers: [PedidoController],
   providers: [PedidoService, PedidosGateway],
-  exports: [PedidoService],
+  // ==================================================================
+  // ## CORREÇÃO: Exportamos o Gateway para que outros módulos o possam usar ##
+  // ==================================================================
+  exports: [PedidoService, PedidosGateway],
 })
 export class PedidoModule {}

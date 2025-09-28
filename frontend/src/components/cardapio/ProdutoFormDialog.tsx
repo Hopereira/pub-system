@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,16 +13,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { Produto } from '@/types/produto';
-import { UpdateProdutoDto } from '@/types/produto.dto';
 import { createProduto, updateProduto } from '@/services/produtoService';
 import { AmbienteData } from '@/services/ambienteService';
 
 interface ProdutoFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (produto: Produto) => void;
+  onSuccess: () => void;
   produtoToEdit?: Produto | null;
   ambientesDePreparo: AmbienteData[];
 }
@@ -33,7 +30,7 @@ const formSchema = z.object({
   descricao: z.string().optional(),
   categoria: z.string().min(2, { message: "A categoria é obrigatória." }),
   preco: z.coerce.number().positive({ message: "O preço deve ser um número positivo." }),
-  ambienteId: z.string({ required_error: "Por favor, selecione um ambiente." }),
+  ambienteId: z.string({ required_error: "Por favor, selecione um ambiente." }).uuid({ message: "Seleção de ambiente inválida."}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,55 +42,65 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { nome: '', descricao: '', preco: '' as any, categoria: '', ambienteId: '' },
+    // --- CORREÇÃO APLICADA AQUI ---
+    // Garantimos que o valor padrão NUNCA é uma string vazia se houver ambientes.
+    defaultValues: {
+      nome: '',
+      descricao: '',
+      preco: 0,
+      categoria: '',
+      ambienteId: ambientesDePreparo[0]?.id || undefined, // Usa o primeiro ambiente como padrão
+    },
   });
 
   useEffect(() => {
     if (open) {
       setError(null);
       setImagemFile(null);
+      // Reseta o formulário com os valores corretos ao abrir
       if (isEditMode && produtoToEdit) {
         form.reset({
             nome: produtoToEdit.nome,
             descricao: produtoToEdit.descricao || '',
             preco: produtoToEdit.preco,
             categoria: produtoToEdit.categoria,
-            ambienteId: produtoToEdit.ambiente.id,
+            ambienteId: produtoToEdit.ambiente?.id,
         });
       } else {
         form.reset({
-            nome: '', descricao: '', preco: '' as any, categoria: '', ambienteId: ''
+            nome: '',
+            descricao: '',
+            preco: 0,
+            categoria: '',
+            ambienteId: ambientesDePreparo[0]?.id || undefined,
         });
       }
     }
-  }, [open, isEditMode, produtoToEdit, form]);
+  }, [open, isEditMode, produtoToEdit, form, ambientesDePreparo]);
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
     try {
       const formData = new FormData();
-      const precoFormatado = String(values.preco).replace(',', '.');
-
+      
       formData.append('nome', values.nome);
       formData.append('descricao', values.descricao || '');
       formData.append('categoria', values.categoria);
-      formData.append('preco', precoFormatado);
+      formData.append('preco', String(values.preco).replace(',', '.'));
       formData.append('ambienteId', values.ambienteId);
       
       if (imagemFile) {
         formData.append('imagemFile', imagemFile);
       }
 
-      let result: Produto;
       if (isEditMode && produtoToEdit) {
-        // A lógica de update ainda não suporta upload, focando no 'create'
-        result = await updateProduto(produtoToEdit.id, values as UpdateProdutoDto);
-        toast.success(`Produto atualizado com sucesso!`);
+        await updateProduto(produtoToEdit.id, formData);
+        toast.success('Produto atualizado com sucesso!');
       } else {
-        result = await createProduto(formData);
-        toast.success(`Produto criado com sucesso!`);
+        await createProduto(formData);
+        toast.success('Produto criado com sucesso!');
       }
-      onSuccess(result);
+      onSuccess();
     } catch (err: any) {
       const apiErrorMessages = err.response?.data?.message;
       const displayError = Array.isArray(apiErrorMessages) 
