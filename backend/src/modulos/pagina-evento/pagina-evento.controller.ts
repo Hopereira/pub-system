@@ -2,11 +2,14 @@
 
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, UseGuards,
+  UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PaginaEventoService } from './pagina-evento.service';
 import { CreatePaginaEventoDto } from './dto/create-pagina-evento.dto';
 import { UpdatePaginaEventoDto } from './dto/update-pagina-evento.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+// --- IMPORTAÇÕES CORRIGIDAS/ADICIONADAS ---
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -18,14 +21,12 @@ import { Public } from '../../auth/decorators/public.decorator';
 export class PaginaEventoController {
   constructor(private readonly paginaEventoService: PaginaEventoService) {}
 
-  // --- MÉTODO CREATE SIMPLIFICADO ---
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria uma nova página de evento (Apenas Admin)' })
   create(@Body() createPaginaEventoDto: CreatePaginaEventoDto) {
-    // Removemos toda a lógica de upload. Agora apenas passamos o DTO para o serviço.
     return this.paginaEventoService.create(createPaginaEventoDto);
   }
 
@@ -36,7 +37,6 @@ export class PaginaEventoController {
     return this.paginaEventoService.findAll();
   }
   
-  // ... (Os outros métodos: findOne, update, remove continuam iguais por enquanto)
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
@@ -49,6 +49,7 @@ export class PaginaEventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualiza os dados de texto de uma página de evento' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePaginaEventoDto: UpdatePaginaEventoDto,
@@ -62,5 +63,40 @@ export class PaginaEventoController {
   @ApiBearerAuth()
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.paginaEventoService.remove(id);
+  }
+
+  // --- ENDPOINT DE UPLOAD DE MÍDIA CORRIGIDO ---
+  @Patch(':id/media')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Faz o upload de uma mídia para uma página de evento' })
+  @ApiConsumes('multipart/form-data') // <-- AVISO 1 PARA O SWAGGER
+  @ApiBody({ // <-- AVISO 2 PARA O SWAGGER
+    description: 'Ficheiro de mídia (imagem ou vídeo)',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  uploadMedia(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|mp4|webp)' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.paginaEventoService.uploadMedia(id, file);
   }
 }

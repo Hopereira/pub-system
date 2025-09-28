@@ -10,6 +10,7 @@ services:
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
+      - ./backend/gcs-credentials.json:/usr/src/app/gcs-credentials.json:ro
     depends_on:
       db:
         condition: service_healthy
