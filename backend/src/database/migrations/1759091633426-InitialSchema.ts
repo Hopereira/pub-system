@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialSchema1758901990644 implements MigrationInterface {
-    name = 'InitialSchema1758901990644'
+export class InitialSchema1759091633426 implements MigrationInterface {
+    name = 'InitialSchema1759091633426'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "clientes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "cpf" character varying NOT NULL, "nome" character varying, "email" character varying, "celular" character varying, CONSTRAINT "UQ_fd1214820b9f05720b26a917630" UNIQUE ("cpf"), CONSTRAINT "UQ_3cd5652ab34ca1a0a2c7a255313" UNIQUE ("email"), CONSTRAINT "PK_d76bf3571d906e4e86470482c08" PRIMARY KEY ("id"))`);
@@ -19,7 +19,7 @@ export class InitialSchema1758901990644 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "empresas" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "cnpj" character varying NOT NULL, "nomeFantasia" character varying NOT NULL, "razaoSocial" character varying NOT NULL, "telefone" character varying, "endereco" character varying, CONSTRAINT "UQ_f5ed71aeb4ef47f95df5f8830b8" UNIQUE ("cnpj"), CONSTRAINT "PK_ce7b122b37c6499bfd6520873e1" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."funcionarios_cargo_enum" AS ENUM('ADMIN', 'CAIXA', 'GARCOM', 'COZINHA')`);
         await queryRunner.query(`CREATE TABLE "funcionarios" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nome" character varying NOT NULL, "email" character varying NOT NULL, "senha" character varying NOT NULL, "cargo" "public"."funcionarios_cargo_enum" NOT NULL DEFAULT 'GARCOM', CONSTRAINT "UQ_5536df94d421db7d1a1ba832f0f" UNIQUE ("email"), CONSTRAINT "PK_a6ee7c0e30d968db531ad073337" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "paginas_evento" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "titulo" character varying(100) NOT NULL, "url_imagem" text NOT NULL, "ativa" boolean NOT NULL DEFAULT true, "criado_em" TIMESTAMP NOT NULL DEFAULT now(), "atualizado_em" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_9cd8a83a55186b10f83ffea76bc" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "paginas_evento" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "titulo" character varying(100) NOT NULL, "url_imagem" text, "ativa" boolean NOT NULL DEFAULT true, "criado_em" TIMESTAMP NOT NULL DEFAULT now(), "atualizado_em" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_9cd8a83a55186b10f83ffea76bc" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "eventos" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "titulo" character varying NOT NULL, "descricao" text, "dataEvento" TIMESTAMP NOT NULL, "urlImagem" character varying, CONSTRAINT "PK_40d4a3c6a4bfd24280cb97a509e" PRIMARY KEY ("id"))`);
         await queryRunner.query(`ALTER TABLE "produtos" ADD CONSTRAINT "FK_daf6d14dbfbb283e0a7741a3ba0" FOREIGN KEY ("ambienteId") REFERENCES "ambientes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "itens_pedido" ADD CONSTRAINT "FK_ab2b96858c45196d22cce672215" FOREIGN KEY ("pedidoId") REFERENCES "pedidos"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);

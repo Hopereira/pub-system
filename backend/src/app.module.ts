@@ -1,3 +1,5 @@
+// app.module.ts
+
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -12,7 +14,8 @@ import { PedidoModule } from './modulos/pedido/pedido.module';
 import { ProdutoModule } from './modulos/produto/produto.module';
 import { SeederModule } from './database/seeder.module';
 import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
-import { EventoModule } from './modulos/evento/evento.module'; // <-- IMPORTAÇÃO NOVA
+import { EventoModule } from './modulos/evento/evento.module';
+import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE ESTA LINHA
 
 @Module({
   imports: [
@@ -28,7 +31,7 @@ import { EventoModule } from './modulos/evento/evento.module'; // <-- IMPORTAÇ�
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: false, // <-- MUDANÇA IMPORTANTE
+        synchronize: false,
       }),
     }),
     EmpresaModule,
@@ -42,7 +45,8 @@ import { EventoModule } from './modulos/evento/evento.module'; // <-- IMPORTAÇ�
     ProdutoModule,
     SeederModule,
     PaginaEventoModule,
-    EventoModule, // <-- REGISTRO DO NOVO MÓDULO
+    EventoModule,
+    StorageModule, // <-- E ADICIONE ESTA LINHA AQUI
   ],
   controllers: [],
   providers: [],
