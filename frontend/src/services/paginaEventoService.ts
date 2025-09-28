@@ -16,6 +16,7 @@ export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
 
 export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<PaginaEvento> => {
   try {
+    // Para a criação, enviamos apenas o DTO com o título
     const response = await api.post<PaginaEvento>('/paginas-evento', data);
     return response.data;
   } catch (error) {
@@ -26,6 +27,7 @@ export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<P
 
 export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto): Promise<PaginaEvento> => {
   try {
+    // Este patch é para atualizar o título e outros dados de texto
     const response = await api.patch<PaginaEvento>(`/paginas-evento/${id}`, data);
     return response.data;
   } catch (error) {
@@ -34,23 +36,20 @@ export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto
   }
 };
 
-// --- NOVA FUNÇÃO: UPLOAD DE MÍDIA EXCLUSIVO ---
+// --- FUNÇÃO DE UPLOAD CORRIGIDA ---
 export const uploadPaginaEventoMedia = async (
   id: string,
-  mediaFile: File, // Recebe o objeto File
+  mediaFile: File,
 ): Promise<PaginaEvento> => {
   try {
     const formData = new FormData();
-    // O backend espera que a chave do arquivo seja 'file'
     formData.append('file', mediaFile); 
 
-    // O PATCH será enviado para o ID da página, com o Content-Type correto
     const response = await api.patch<PaginaEvento>(
-      `/paginas-evento/${id}`, 
+      `/paginas-evento/${id}/media`, // <--- CORREÇÃO: URL aponta para o endpoint de mídia
       formData,
       {
         headers: {
-          // Garante que o Axios envie no formato correto para o arquivo
           'Content-Type': 'multipart/form-data', 
         },
       }
