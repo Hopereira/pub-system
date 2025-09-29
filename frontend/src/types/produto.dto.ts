@@ -1,18 +1,9 @@
-// Caminho: frontend/src/types/produto.dto.ts
-
 export interface CreateProdutoDto {
   nome: string;
-  descricao: string;
-  preco: number;
+  descricao?: string;
   categoria: string;
-  ambienteId: string; // Enviamos apenas o ID do ambiente de preparo
+  preco: number;
+  ambienteId: string;
 }
 
-// Já vamos deixar pronto o DTO para a atualização
-export interface UpdateProdutoDto {
-  nome?: string;
-  descricao?: string;
-  preco?: number;
-  categoria?: string;
-  ambienteId?: string;
-}
+export type UpdateProdutoDto = Partial<CreateProdutoDto>;

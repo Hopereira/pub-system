@@ -1,4 +1,4 @@
-// app.module.ts
+// Caminho: backend/src/app.module.ts
 
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -15,7 +15,7 @@ import { ProdutoModule } from './modulos/produto/produto.module';
 import { SeederModule } from './database/seeder.module';
 import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
 import { EventoModule } from './modulos/evento/evento.module';
-import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE ESTA LINHA
+import { StorageModule } from './shared/storage/storage.module';
 
 @Module({
   imports: [
@@ -31,9 +31,13 @@ import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: false, // Mantemos false por segurança
+        // --- MUDANÇA IMPORTANTE ---
+        // migrationsRun: true, // Esta linha diz ao TypeORM para executar as migrações automaticamente
+        // migrations: [join(__dirname, '../database/migrations/*{.ts,.js}')], // E onde encontrá-las
       }),
     }),
+    // O resto dos módulos...
     EmpresaModule,
     AmbienteModule,
     FuncionarioModule,
@@ -46,7 +50,7 @@ import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE
     SeederModule,
     PaginaEventoModule,
     EventoModule,
-    StorageModule, // <-- E ADICIONE ESTA LINHA AQUI
+    StorageModule,
   ],
   controllers: [],
   providers: [],

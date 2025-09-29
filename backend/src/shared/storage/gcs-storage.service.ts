@@ -1,43 +1,47 @@
-// backend/src/shared/storage/gcs-storage.service.ts
+// Caminho: backend/src/shared/storage/gcs-storage.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { Storage } from '@google-cloud/storage';
-import { ConfigService } from '@nestjs/config';
+import { v4 as uuidv4 } from 'uuid';
+import { extname } from 'path';
 
 @Injectable()
 export class GcsStorageService {
-  private storage: Storage;
-  private bucket: string;
+  private readonly storage: Storage;
+  private readonly bucketName: string;
   private readonly logger = new Logger(GcsStorageService.name);
 
-  constructor(private configService: ConfigService) {
+  constructor() {
     this.storage = new Storage({
-      keyFilename: this.configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS'),
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
     });
-    this.bucket = this.configService.get<string>('GCS_BUCKET_NAME');
+    this.bucketName = process.env.GCS_BUCKET_NAME;
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<string> {
-    const bucket = this.storage.bucket(this.bucket);
-    // Gera um nome de ficheiro único para evitar sobrepor ficheiros com o mesmo nome
-    const blob = bucket.file(Date.now() + '-' + file.originalname.replace(/ /g, '_'));
+  // ALTERAÇÃO: A função agora aceita um segundo argumento opcional 'subfolder'
+  async uploadFile(
+    file: Express.Multer.File,
+    subfolder?: string,
+  ): Promise<string> {
+    const uniqueFileName = `${uuidv4()}${extname(file.originalname)}`;
+    
+    // ALTERAÇÃO: O nome do ficheiro no bucket agora inclui a pasta, se ela for fornecida
+    const blobName = subfolder ? `${subfolder}/${uniqueFileName}` : uniqueFileName;
+
+    const blob = this.storage.bucket(this.bucketName).file(blobName);
+    const blobStream = blob.createWriteStream({
+      resumable: false,
+    });
 
     return new Promise((resolve, reject) => {
-      const blobStream = blob.createWriteStream({
-        resumable: false,
-        contentType: file.mimetype,
-      });
-
       blobStream.on('error', (err) => {
-        this.logger.error('GCS Upload Error:', err);
-        reject(`Não foi possível fazer o upload do ficheiro: ${err.message}`);
+        this.logger.error(`Erro no upload para GCS: ${err.message}`);
+        reject(err);
       });
 
-      blobStream.on('finish', async () => {
-        const publicUrl = `https://storage.googleapis.com/${this.bucket}/${blob.name}`;
-        
-        // await blob.makePublic(); // <--- ESTA É A LINHA QUE FOI REMOVIDA/COMENTADA
-
-        this.logger.log(`Upload bem-sucedido. URL Pública: ${publicUrl}`);
+      blobStream.on('finish', () => {
+        const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${blobName}`;
+        this.logger.log(`Ficheiro carregado com sucesso: ${publicUrl}`);
         resolve(publicUrl);
       });
 
@@ -47,21 +51,22 @@ export class GcsStorageService {
 
   async deleteFile(publicUrl: string): Promise<void> {
     try {
-      // Extrai o nome do ficheiro da URL completa
-      const fileName = publicUrl.split(`https://storage.googleapis.com/${this.bucket}/`)[1];
-      if (!fileName) {
-        this.logger.warn(`URL inválida para exclusão: ${publicUrl}`);
+      const urlParts = publicUrl.split('/');
+      const blobName = urlParts.slice(4).join('/'); // Pega tudo depois do nome do bucket
+
+      if (!blobName) {
+        this.logger.warn(`Nome de ficheiro inválido extraído da URL: ${publicUrl}`);
         return;
       }
 
-      await this.storage.bucket(this.bucket).file(fileName).delete();
-      this.logger.log(`Ficheiro ${fileName} apagado com sucesso do GCS.`);
+      await this.storage.bucket(this.bucketName).file(blobName).delete();
+      this.logger.log(`Ficheiro deletado com sucesso: ${blobName}`);
     } catch (error) {
-      // Não lança um erro se o ficheiro não existir, apenas regista o aviso
       if (error.code === 404) {
-        this.logger.warn(`Tentativa de apagar um ficheiro que não existe no GCS: ${publicUrl}`);
+        this.logger.warn(`Tentativa de deletar ficheiro que não existe: ${publicUrl}`);
       } else {
-        this.logger.error(`Falha ao apagar dos ficheiro do GCS: ${publicUrl}`, error);
+        this.logger.error(`Falha ao deletar ficheiro do GCS: ${error.message}`);
+        throw error;
       }
     }
   }

@@ -14,8 +14,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 import { toast } from 'sonner';
 import { Produto } from '@/types/produto';
-import { createProduto, updateProduto } from '@/services/produtoService';
+import { createProduto, updateProduto, uploadProdutoMedia } from '@/services/produtoService';
 import { AmbienteData } from '@/services/ambienteService';
+import { UpdateProdutoDto } from '@/types/produto.dto';
 
 interface ProdutoFormDialogProps {
   open: boolean;
@@ -42,22 +43,13 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // --- CORREÇÃO APLICADA AQUI ---
-    // Garantimos que o valor padrão NUNCA é uma string vazia se houver ambientes.
-    defaultValues: {
-      nome: '',
-      descricao: '',
-      preco: 0,
-      categoria: '',
-      ambienteId: ambientesDePreparo[0]?.id || undefined, // Usa o primeiro ambiente como padrão
-    },
+    defaultValues: { nome: '', descricao: '', preco: 0, categoria: '', ambienteId: undefined },
   });
 
   useEffect(() => {
     if (open) {
       setError(null);
       setImagemFile(null);
-      // Reseta o formulário com os valores corretos ao abrir
       if (isEditMode && produtoToEdit) {
         form.reset({
             nome: produtoToEdit.nome,
@@ -80,34 +72,39 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
 
   const onSubmit = async (values: FormValues) => {
     setError(null);
-    try {
-      const formData = new FormData();
-      
-      formData.append('nome', values.nome);
-      formData.append('descricao', values.descricao || '');
-      formData.append('categoria', values.categoria);
-      formData.append('preco', String(values.preco).replace(',', '.'));
-      formData.append('ambienteId', values.ambienteId);
-      
-      if (imagemFile) {
-        formData.append('imagemFile', imagemFile);
-      }
+    // ALTERAÇÃO: Linha removida daqui. A biblioteca gere isto.
 
+    try {
       if (isEditMode && produtoToEdit) {
-        await updateProduto(produtoToEdit.id, formData);
-        toast.success('Produto atualizado com sucesso!');
+        // --- FLUXO DE ATUALIZAÇÃO ---
+        const dadosAtualizacao: UpdateProdutoDto = values;
+        const produtoAtualizado = await updateProduto(produtoToEdit.id, dadosAtualizacao);
+        toast.success('Dados do produto atualizados!');
+
+        if (imagemFile) {
+          await uploadProdutoMedia(produtoAtualizado.id, imagemFile);
+          toast.success('Imagem atualizada com sucesso!');
+        }
       } else {
-        await createProduto(formData);
+        // --- FLUXO DE CRIAÇÃO ---
+        const novoProduto = await createProduto(values);
         toast.success('Produto criado com sucesso!');
+
+        if (imagemFile && novoProduto.id) {
+          await uploadProdutoMedia(novoProduto.id, imagemFile);
+          toast.success('Imagem enviada com sucesso!');
+        }
       }
       onSuccess();
     } catch (err: any) {
       const apiErrorMessages = err.response?.data?.message;
       const displayError = Array.isArray(apiErrorMessages) 
         ? apiErrorMessages.join('. ') 
-        : apiErrorMessages || `Falha ao ${isEditMode ? 'atualizar' : 'criar'} o produto.`;
+        : apiErrorMessages || `Falha na operação.`;
       setError(displayError);
-    }
+      toast.error(displayError);
+    } 
+    // ALTERAÇÃO: Linha removida do 'finally'. A biblioteca gere isto.
   };
 
   return (
@@ -123,7 +120,7 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
                 <FormField control={form.control} name="nome" render={({ field }) => ( <FormItem><FormLabel>Nome do Produto</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                 <FormItem>
-                  <FormLabel>Imagem do Produto</FormLabel>
+                  <FormLabel>Imagem do Produto (Opcional)</FormLabel>
                   <FormControl>
                     <Input 
                       type="file"

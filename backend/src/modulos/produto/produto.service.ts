@@ -1,3 +1,5 @@
+// Caminho: backend/src/modulos/produto/produto.service.ts
+
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -5,6 +7,8 @@ import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+// ALTERAÇÃO: Corrigido o caminho para remover a pasta "providers" que não existe.
+import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
 
 @Injectable()
 export class ProdutoService {
@@ -15,6 +19,7 @@ export class ProdutoService {
     private readonly produtoRepository: Repository<Produto>,
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
+    private readonly gcsStorage: GcsStorageService,
   ) {}
 
   async create(createProdutoDto: CreateProdutoDto): Promise<Produto> {
@@ -79,6 +84,25 @@ export class ProdutoService {
     produto.ativo = false;
     this.logger.log(`Inativando produto: ${produto.nome}`);
 
+    return this.produtoRepository.save(produto);
+  }
+
+  async updateUrlImagem(id: string, file: Express.Multer.File): Promise<Produto> {
+    const produto = await this.findOne(id);
+
+    if (produto.urlImagem) {
+      try {
+        await this.gcsStorage.deleteFile(produto.urlImagem);
+        this.logger.log(`Imagem antiga do produto ${id} deletada: ${produto.urlImagem}`);
+      } catch (error) {
+        this.logger.error(`Falha ao deletar imagem antiga do produto ${id}. Continuando...`, error);
+      }
+    }
+
+    const novaUrl = await this.gcsStorage.uploadFile(file, 'produtos');
+    this.logger.log(`Nova imagem do produto ${id} carregada: ${novaUrl}`);
+
+    produto.urlImagem = novaUrl;
     return this.produtoRepository.save(produto);
   }
 }
