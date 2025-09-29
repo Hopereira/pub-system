@@ -61,7 +61,7 @@ export class GcsStorageService {
       if (error.code === 404) {
         this.logger.warn(`Tentativa de apagar um ficheiro que não existe no GCS: ${publicUrl}`);
       } else {
-        this.logger.error(`Falha ao apagar o ficheiro do GCS: ${publicUrl}`, error);
+        this.logger.error(`Falha ao apagar dos ficheiro do GCS: ${publicUrl}`, error);
       }
     }
   }

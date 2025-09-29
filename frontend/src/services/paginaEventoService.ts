@@ -2,7 +2,7 @@
 
 import { PaginaEvento } from '@/types/pagina-evento';
 import { CreatePaginaEventoDto, UpdatePaginaEventoDto } from '@/types/pagina-evento.dto';
-import api from './api';
+import api, { publicApi } from './api';
 
 export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
   try {
@@ -34,23 +34,19 @@ export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto
   }
 };
 
-// --- NOVA FUNÇÃO: UPLOAD DE MÍDIA EXCLUSIVO ---
 export const uploadPaginaEventoMedia = async (
   id: string,
-  mediaFile: File, // Recebe o objeto File
+  mediaFile: File,
 ): Promise<PaginaEvento> => {
   try {
     const formData = new FormData();
-    // O backend espera que a chave do arquivo seja 'file'
     formData.append('file', mediaFile); 
 
-    // O PATCH será enviado para o ID da página, com o Content-Type correto
     const response = await api.patch<PaginaEvento>(
-      `/paginas-evento/${id}`, 
+      `/paginas-evento/${id}/media`,
       formData,
       {
         headers: {
-          // Garante que o Axios envie no formato correto para o arquivo
           'Content-Type': 'multipart/form-data', 
         },
       }
@@ -67,6 +63,17 @@ export const deletePaginaEvento = async (id: string): Promise<void> => {
     await api.delete(`/paginas-evento/${id}`);
   } catch (error) {
     console.error(`Erro ao deletar página de evento ${id}:`, error);
+    throw error;
+  }
+};
+
+export const getPublicPaginaEvento = async (id: string): Promise<PaginaEvento> => {
+  try {
+    // Esta função agora usa a 'publicApi' para não enviar o token de autenticação
+    const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar página de evento pública ${id}:`, error);
     throw error;
   }
 };

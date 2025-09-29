@@ -8,24 +8,25 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { PaginaEventoData } from '@/services/paginaEventoService';
-import { createCliente } from '@/services/clienteService'; // <-- Importamos o nosso novo serviço
-import { abrirComanda } from '@/services/comandaService'; // <-- E o serviço de comanda
+import { PaginaEvento } from '@/types/pagina-evento';
+import { createCliente } from '@/services/clienteService';
+import { abrirComanda } from '@/services/comandaService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 
-// Schema de validação para o formulário
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
   cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos (apenas números).' }),
+  email: z.string().email({ message: 'Por favor, insira um email válido.' }).optional().or(z.literal('')),
+  celular: z.string().min(10, { message: 'O celular deve ter pelo menos 10 dígitos.' }).optional().or(z.literal('')),
 });
 type FormValues = z.infer<typeof formSchema>;
 
 interface EventoClientPageProps {
-  paginaEvento: PaginaEventoData;
+  paginaEvento: PaginaEvento;
   mesaId?: string;
 }
 
@@ -35,28 +36,25 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { nome: '', cpf: '' },
+    defaultValues: { nome: '', cpf: '', email: '', celular: '' },
   });
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Passo 1: Criar o cliente
       const novoCliente = await createCliente({
         nome: values.nome,
         cpf: values.cpf,
+        email: values.email,
+        celular: values.celular,
       });
 
-      // Passo 2: Criar a comanda associada ao novo cliente e, se existir, à mesa
       const novaComanda = await abrirComanda({
         clienteId: novoCliente.id,
-        mesaId: mesaId, // Passa o mesaId, que pode ser undefined
+        mesaId: mesaId,
       });
       
-      toast.success(`Bem-vindo(a), ${novoCliente.nome}! Comanda aberta.`);
-
-      // Passo 3: Redirecionar para a página do cardápio/comanda
-      // (Vamos precisar de criar esta página a seguir)
+      toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
       router.push(`/cardapio/${novaComanda.id}`);
 
     } catch (error: any) {
@@ -72,12 +70,12 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       <Card className="w-full max-w-md">
         <CardHeader className="p-0">
           <div className="relative w-full h-48">
+            {/* --- COMPONENTE DE IMAGEM CORRIGIDO --- */}
             <Image
-              src={paginaEvento.urlImagem}
+              src={paginaEvento.urlImagem || '/placeholder.png'}
               alt={paginaEvento.titulo}
-              layout="fill"
-              objectFit="cover"
-              className="rounded-t-lg"
+              fill // Usa 'fill' em vez de 'layout="fill"'
+              className="rounded-t-lg object-cover" // Usa 'className' para o 'object-fit'
             />
           </div>
           <div className="p-6">
@@ -110,6 +108,29 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email (Opcional)</FormLabel>
+                    <FormControl><Input type="email" placeholder="seu.email@exemplo.com" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="celular"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Celular (Opcional)</FormLabel>
+                    <FormControl><Input type="number" placeholder="21999998888" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Aguarde...' : 'Entrar e Ver Cardápio'}
               </Button>
