@@ -2,7 +2,7 @@
 
 import { PaginaEvento } from '@/types/pagina-evento';
 import { CreatePaginaEventoDto, UpdatePaginaEventoDto } from '@/types/pagina-evento.dto';
-import api from './api';
+import api, { publicApi } from './api';
 
 export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
   try {
@@ -16,7 +16,6 @@ export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
 
 export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<PaginaEvento> => {
   try {
-    // Para a criação, enviamos apenas o DTO com o título
     const response = await api.post<PaginaEvento>('/paginas-evento', data);
     return response.data;
   } catch (error) {
@@ -27,7 +26,6 @@ export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<P
 
 export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto): Promise<PaginaEvento> => {
   try {
-    // Este patch é para atualizar o título e outros dados de texto
     const response = await api.patch<PaginaEvento>(`/paginas-evento/${id}`, data);
     return response.data;
   } catch (error) {
@@ -36,7 +34,6 @@ export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto
   }
 };
 
-// --- FUNÇÃO DE UPLOAD CORRIGIDA ---
 export const uploadPaginaEventoMedia = async (
   id: string,
   mediaFile: File,
@@ -46,7 +43,7 @@ export const uploadPaginaEventoMedia = async (
     formData.append('file', mediaFile); 
 
     const response = await api.patch<PaginaEvento>(
-      `/paginas-evento/${id}/media`, // <--- CORREÇÃO: URL aponta para o endpoint de mídia
+      `/paginas-evento/${id}/media`,
       formData,
       {
         headers: {
@@ -66,6 +63,17 @@ export const deletePaginaEvento = async (id: string): Promise<void> => {
     await api.delete(`/paginas-evento/${id}`);
   } catch (error) {
     console.error(`Erro ao deletar página de evento ${id}:`, error);
+    throw error;
+  }
+};
+
+export const getPublicPaginaEvento = async (id: string): Promise<PaginaEvento> => {
+  try {
+    // Esta função agora usa a 'publicApi' para não enviar o token de autenticação
+    const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar página de evento pública ${id}:`, error);
     throw error;
   }
 };

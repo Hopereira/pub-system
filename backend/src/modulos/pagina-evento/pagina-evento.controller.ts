@@ -8,7 +8,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { PaginaEventoService } from './pagina-evento.service';
 import { CreatePaginaEventoDto } from './dto/create-pagina-evento.dto';
 import { UpdatePaginaEventoDto } from './dto/update-pagina-evento.dto';
-// --- IMPORTAÇÕES CORRIGIDAS/ADICIONADAS ---
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
@@ -37,10 +36,10 @@ export class PaginaEventoController {
     return this.paginaEventoService.findAll();
   }
   
+  // --- MÉTODO CORRIGIDO PARA SER PÚBLICO ---
+  @Public() // <--- ESTA FOI A LINHA ADICIONADA
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Busca uma página de evento específica pelo ID (Público)' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.paginaEventoService.findOne(id);
   }
@@ -65,14 +64,13 @@ export class PaginaEventoController {
     return this.paginaEventoService.remove(id);
   }
 
-  // --- ENDPOINT DE UPLOAD DE MÍDIA CORRIGIDO ---
   @Patch(':id/media')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Faz o upload de uma mídia para uma página de evento' })
-  @ApiConsumes('multipart/form-data') // <-- AVISO 1 PARA O SWAGGER
-  @ApiBody({ // <-- AVISO 2 PARA O SWAGGER
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
     description: 'Ficheiro de mídia (imagem ou vídeo)',
     schema: {
       type: 'object',

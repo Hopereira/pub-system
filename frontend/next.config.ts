@@ -13,7 +13,14 @@ const nextConfig = {
         hostname: 'backend',
         port: '3000',
         pathname: '/public/**',
-      }
+      },
+      // --- BLOCO ADICIONADO PARA O GOOGLE STORAGE ---
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/pub-system-media-storage/**', // IMPORTANTE: Confirme que este é o nome exato do seu bucket
+      },
     ],
   },
 };
