@@ -29,6 +29,15 @@ export class PaginaEventoController {
     return this.paginaEventoService.create(createPaginaEventoDto);
   }
 
+  // --- NOVO ENDPOINT PÚBLICO ADICIONADO ---
+  @Public()
+  @Get('ativa/publica')
+  @ApiOperation({ summary: 'Busca a página de evento atualmente ativa (Público)' })
+  findAtiva() {
+    return this.paginaEventoService.findAtiva();
+  }
+  // --- FIM DA ADIÇÃO ---
+
   @Public()
   @Get()
   @ApiOperation({ summary: 'Lista todas as páginas de evento (Público)' })
@@ -36,8 +45,7 @@ export class PaginaEventoController {
     return this.paginaEventoService.findAll();
   }
   
-  // --- MÉTODO CORRIGIDO PARA SER PÚBLICO ---
-  @Public() // <--- ESTA FOI A LINHA ADICIONADA
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Busca uma página de evento específica pelo ID (Público)' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
