@@ -1,5 +1,3 @@
-// Caminho: frontend/src/services/paginaEventoService.ts
-
 import { PaginaEvento } from '@/types/pagina-evento';
 import { CreatePaginaEventoDto, UpdatePaginaEventoDto } from '@/types/pagina-evento.dto';
 import api, { publicApi } from './api';
@@ -69,11 +67,23 @@ export const deletePaginaEvento = async (id: string): Promise<void> => {
 
 export const getPublicPaginaEvento = async (id: string): Promise<PaginaEvento> => {
   try {
-    // Esta função agora usa a 'publicApi' para não enviar o token de autenticação
     const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}`);
     return response.data;
   } catch (error) {
     console.error(`Erro ao buscar página de evento pública ${id}:`, error);
     throw error;
+  }
+};
+
+// --- FUNÇÃO ADICIONADA ---
+// Esta é a função que estava a faltar. Ela busca a página de evento
+// que está marcada como "ativa" no backend.
+export const getPaginaEventoAtiva = async (): Promise<PaginaEvento | null> => {
+  try {
+    const response = await publicApi.get<PaginaEvento>('/paginas-evento/ativa/publica');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar página de evento ativa:', error);
+    return null; // Retorna nulo para não quebrar a página se houver erro.
   }
 };

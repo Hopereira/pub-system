@@ -1,5 +1,3 @@
-// app.module.ts
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -15,7 +13,7 @@ import { ProdutoModule } from './modulos/produto/produto.module';
 import { SeederModule } from './database/seeder.module';
 import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
 import { EventoModule } from './modulos/evento/evento.module';
-import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE ESTA LINHA
+import { StorageModule } from './shared/storage/storage.module';
 
 @Module({
   imports: [
@@ -30,10 +28,11 @@ import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true,
-        synchronize: false,
+        autoLoadEntities: true, // Garante que todas as entidades sejam carregadas
+        synchronize: false, // Importante para usar migrations
       }),
     }),
+    // Módulos de funcionalidades da aplicação
     EmpresaModule,
     AmbienteModule,
     FuncionarioModule,
@@ -46,7 +45,7 @@ import { StorageModule } from './shared/storage/storage.module'; // <-- ADICIONE
     SeederModule,
     PaginaEventoModule,
     EventoModule,
-    StorageModule, // <-- E ADICIONE ESTA LINHA AQUI
+    StorageModule,
   ],
   controllers: [],
   providers: [],

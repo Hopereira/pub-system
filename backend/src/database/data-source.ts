@@ -1,68 +1,42 @@
-// Caminho: backend/src/database/data-source.ts
-import { DataSource, DataSourceOptions } from 'typeorm';
-import * as fs from 'fs';
+// Importa o 'dotenv' e o 'path'
+import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// --- INÍCIO DO CARREGADOR MANUAL DE .ENV ---
-// (O seu código para carregar o .env continua o mesmo, sem alterações)
-const envFilePath = path.resolve(__dirname, '../../.env');
-if (fs.existsSync(envFilePath)) {
-  const fileContent = fs.readFileSync(envFilePath, 'utf8');
-  const lines = fileContent.split('\n');
-  for (const line of lines) {
-    if (line && !line.trim().startsWith('#')) {
-      const [key, value] = line.split('=').map(part => part.trim());
-      if (key && value && !process.env[key]) {
-        process.env[key] = value;
-      }
-    }
-  }
-}
-// --- FIM DO CARREGADOR MANUAL DE .ENV ---
+// Configura o dotenv para procurar o arquivo .env dois níveis de diretório acima
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+import { DataSource, DataSourceOptions } from 'typeorm';
 
-// --- Importação de todas as entidades do projeto ---
-import { Ambiente } from '../modulos/ambiente/entities/ambiente.entity';
-import { Cliente } from '../modulos/cliente/entities/cliente.entity';
-import { Comanda } from '../modulos/comanda/entities/comanda.entity';
-import { Empresa } from '../modulos/empresa/entities/empresa.entity';
-import { Funcionario } from '../modulos/funcionario/entities/funcionario.entity';
-import { Mesa } from '../modulos/mesa/entities/mesa.entity';
-import { ItemPedido } from '../modulos/pedido/entities/item-pedido.entity';
-import { Pedido } from '../modulos/pedido/entities/pedido.entity';
-import { Produto } from '../modulos/produto/entities/produto.entity';
-import { PaginaEvento } from '../modulos/pagina-evento/entities/pagina-evento.entity';
-import { Evento } from '../modulos/evento/entities/evento.entity'; // <-- 1. IMPORTAR A NOVA ENTIDADE
-
-// Verificação de Segurança (continua o mesmo)
-const requiredEnv = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_DATABASE'];
-for (const v of requiredEnv) {
-  if (!process.env[v]) {
-    throw new Error(`Erro Crítico: A variável de ambiente ${v} não está definida. Verifique o seu ficheiro .env.`);
-  }
-}
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
+  // Usa as variáveis separadas, que agora serão carregadas corretamente
   host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
+  port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  password: String(process.env.DB_PASSWORD), // Garante que a senha seja uma string
   database: process.env.DB_DATABASE,
+  extra: {
+    extension: 'uuid-ossp',
+  },
   entities: [
-    Ambiente,
-    Cliente,
-    Comanda,
-    Empresa,
-    Funcionario,
-    Mesa,
-    ItemPedido,
-    Pedido,
-    Produto,
-    PaginaEvento,
-    Evento, // <-- 2. ADICIONAR À LISTA DE ENTIDADES
+    path.join(
+      process.cwd(),
+      'src',
+      '**',
+      '*.entity.{ts,js}'.replace(isDevelopment ? ',js' : 'ts,', ''),
+    ),
   ],
-  migrations: [__dirname + '/migrations/*{.ts,.js}'],
+  migrations: [
+    path.join(
+      process.cwd(),
+      'src',
+      'database',
+      'migrations',
+      '*{.ts,.js}'.replace(isDevelopment ? ',js' : 'ts,', ''),
+    ),
+  ],
   synchronize: false,
 };
 

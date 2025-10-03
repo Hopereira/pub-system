@@ -1,4 +1,3 @@
-// Caminho: frontend/src/app/evento/[id]/EventoClientPage.tsx
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -55,7 +54,11 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       });
       
       toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
-      router.push(`/cardapio/${novaComanda.id}`);
+
+      // --- ALTERAÇÃO PRINCIPAL AQUI ---
+      // Redireciona para o novo Portal do Cliente em vez do cardápio direto.
+      router.push(`/portal-cliente/${novaComanda.id}`);
+      // --- FIM DA ALTERAÇÃO ---
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao fazer o cadastro. Tente novamente.';
@@ -70,12 +73,11 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       <Card className="w-full max-w-md">
         <CardHeader className="p-0">
           <div className="relative w-full h-48">
-            {/* --- COMPONENTE DE IMAGEM CORRIGIDO --- */}
             <Image
               src={paginaEvento.urlImagem || '/placeholder.png'}
               alt={paginaEvento.titulo}
-              fill // Usa 'fill' em vez de 'layout="fill"'
-              className="rounded-t-lg object-cover" // Usa 'className' para o 'object-fit'
+              fill
+              className="rounded-t-lg object-cover"
             />
           </div>
           <div className="p-6">
@@ -132,7 +134,7 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Aguarde...' : 'Entrar e Ver Cardápio'}
+                {isSubmitting ? 'Aguarde...' : 'Criar Acesso e Entrar'}
               </Button>
             </form>
           </Form>
