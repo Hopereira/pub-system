@@ -1,42 +1,26 @@
-// Importa o 'dotenv' e o 'path'
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-// Configura o dotenv para procurar o arquivo .env dois níveis de diretório acima
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-
+import 'dotenv/config';
 import { DataSource, DataSourceOptions } from 'typeorm';
-
-const isDevelopment = process.env.NODE_ENV !== 'production';
+import * as path from 'path';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
-  // Usa as variáveis separadas, que agora serão carregadas corretamente
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USER,
-  password: String(process.env.DB_PASSWORD), // Garante que a senha seja uma string
+  password: String(process.env.DB_PASSWORD),
   database: process.env.DB_DATABASE,
   extra: {
     extension: 'uuid-ossp',
   },
-  entities: [
-    path.join(
-      process.cwd(),
-      'src',
-      '**',
-      '*.entity.{ts,js}'.replace(isDevelopment ? ',js' : 'ts,', ''),
-    ),
-  ],
-  migrations: [
-    path.join(
-      process.cwd(),
-      'src',
-      'database',
-      'migrations',
-      '*{.ts,.js}'.replace(isDevelopment ? ',js' : 'ts,', ''),
-    ),
-  ],
+  // ==================== CORREÇÃO AQUI ====================
+  // Este padrão simples e robusto encontra todas as entidades,
+  // quer estejam em formato .ts (desenvolvimento) ou .js (produção).
+  entities: [path.join(__dirname, '..', '**', '*.entity.{ts,js}')],
+  
+  // ==================== CORREÇÃO AQUI ====================
+  // O mesmo padrão robusto para as migrações.
+  migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
+  // =======================================================
   synchronize: false,
 };
 

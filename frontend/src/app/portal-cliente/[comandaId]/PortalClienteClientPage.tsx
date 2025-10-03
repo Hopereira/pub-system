@@ -7,7 +7,7 @@ import { Evento } from '@/types/evento';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { BookOpen, Calendar, UtensilsCrossed } from 'lucide-react';
+import { BookOpen, Calendar, UtensilsCrossed, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getPublicEventos } from '@/services/eventoService';
@@ -27,6 +27,9 @@ export default function PortalClienteClientPage({ comanda, paginaAtiva }: Portal
 
   // Função para buscar os eventos da semana quando o modal for aberto.
   const handleOpenEventosModal = async () => {
+    // Evita recarregar se os eventos já foram buscados
+    if (eventos.length > 0) return;
+
     setIsLoadingEventos(true);
     try {
       const data = await getPublicEventos(); 
@@ -92,21 +95,40 @@ export default function PortalClienteClientPage({ comanda, paginaAtiva }: Portal
                 <p className="mt-4 font-semibold text-lg">Eventos do Pub</p>
               </Card>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-slate-900 text-white border-slate-700">
+            <DialogContent className="sm:max-w-lg bg-slate-900 text-white border-slate-700">
               <DialogHeader>
                 <DialogTitle>Eventos da Semana</DialogTitle>
               </DialogHeader>
               <div className="max-h-[60vh] overflow-y-auto p-1">
-                {isLoadingEventos ? <p>Carregando eventos...</p> : 
+                {isLoadingEventos ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+                  </div>
+                ) : 
                   eventos.length > 0 ? (
                     eventos.map(evento => (
-                      <div key={evento.id} className="mb-4 border-b border-slate-800 pb-4 last:border-b-0">
-                        <h3 className="font-bold">{evento.titulo}</h3>
-                        <p className="text-sm text-slate-400">{new Date(evento.dataEvento).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</p>
-                        <p className="text-sm mt-2">{evento.descricao}</p>
+                      <div key={evento.id} className="mb-4 border-b border-slate-800 pb-4 last:border-b-0 flex flex-col sm:flex-row gap-4">
+                        {/* ==================== ALTERAÇÃO AQUI ==================== */}
+                        {/* Adicionado o bloco para exibir a imagem do evento */}
+                        {evento.urlImagem && (
+                          <div className="relative w-full sm:w-1/3 aspect-video rounded-md overflow-hidden flex-shrink-0">
+                            <Image 
+                              src={evento.urlImagem} 
+                              alt={evento.titulo} 
+                              fill 
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                        {/* ========================================================= */}
+                        <div className="flex-1">
+                          <h3 className="font-bold">{evento.titulo}</h3>
+                          <p className="text-sm text-slate-400">{new Date(evento.dataEvento).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</p>
+                          <p className="text-sm mt-2">{evento.descricao}</p>
+                        </div>
                       </div>
                     ))
-                  ) : <p>Nenhum evento programado para esta semana.</p>
+                  ) : <p className='text-center'>Nenhum evento programado para esta semana.</p>
                 }
               </div>
             </DialogContent>
