@@ -12,8 +12,6 @@ import {
 import { EventoService } from './evento.service';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
-
-// --- IMPORTAÇÕES DE SEGURANÇA E SWAGGER ---
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -26,7 +24,6 @@ import { Public } from 'src/auth/decorators/public.decorator';
 export class EventoController {
   constructor(private readonly eventoService: EventoService) {}
 
-  // --- CRITÉRIO #4: Proteger endpoints de escrita ---
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
@@ -36,15 +33,14 @@ export class EventoController {
     return this.eventoService.create(createEventoDto);
   }
 
-  // --- CRITÉRIO #5: Endpoint público para clientes ---
-  @Public() // Nosso decorador que torna a rota pública
+  @Public()
   @Get('publicos')
   @ApiOperation({ summary: 'Lista todos os eventos para o público' })
   findAllPublic() {
+    // Assumindo que o seu service tem um método findAll() que busca todos os eventos
     return this.eventoService.findAll();
   }
 
-  // --- PROTEÇÃO DAS ROTAS DE ADMIN ---
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
