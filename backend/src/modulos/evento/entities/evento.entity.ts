@@ -17,21 +17,21 @@ export class Evento {
   @Column({ type: 'text', nullable: true })
   descricao: string;
 
-  @Column({ type: 'timestamp' }) // Já armazena a data e o horário de início
+  // ✅ AJUSTE AQUI: Mudado para 'timestamptz' para incluir o fuso horário
+  @Column({ type: 'timestamptz' }) 
   dataEvento: Date;
 
-  @Column({ nullable: true })
+  // ✅ AJUSTE AQUI: Especificamos o tipo e o comprimento para otimização
+  @Column({ type: 'varchar', length: 512, nullable: true })
   urlImagem: string;
 
-  // ==================== NOVO CAMPO ====================
   @Column({ 
-    type: 'decimal',    // Tipo ideal para dinheiro
-    precision: 10,      // Total de dígitos
-    scale: 2,           // Dígitos após a vírgula
-    default: 0          // Padrão é gratuito
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0
   })
   valor: number;
-  // ====================================================
 
   @Column({ default: true })
   ativo: boolean;
