@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Comanda } from '@/types/comanda';
 import { PaginaEvento } from '@/types/pagina-evento';
-// CORREÇÃO: Importamos o seu componente com o nome correto
-import EventosPubModal from '@/components/cliente/EventosPubModal'; 
+import EventosPubModal from '@/components/cliente/EventosPubModal'; // Usando o seu componente
 import Image from 'next/image';
 
 interface ClienteHubPageProps {
@@ -43,7 +42,6 @@ export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageP
         </div>
       </div>
       
-      {/* CORREÇÃO: Usamos o seu componente e passamos a prop 'onOpenChange' simplificada */}
       <EventosPubModal
         open={isEventosModalOpen}
         onOpenChange={setIsEventosModalOpen}

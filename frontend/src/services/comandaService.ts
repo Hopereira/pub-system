@@ -1,7 +1,7 @@
 // Caminho: frontend/src/services/comandaService.ts
 
 import { Comanda } from "@/types/comanda";
-import api from "./api";
+import api, { publicApi } from "./api";
 
 export interface AbrirComandaDto {
   mesaId?: string;
@@ -10,16 +10,13 @@ export interface AbrirComandaDto {
 
 export const getComandaById = async (id: string): Promise<Comanda> => {
     try {
-        // ================== INÍCIO DA CORREÇÃO ==================
         const response = await api.get<Comanda>(`/comandas/${id}`, {
-            // Adicionamos estes cabeçalhos para impedir o cache do navegador
             headers: {
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache',
                 'Expires': '0',
             },
         });
-        // =================== FIM DA CORREÇÃO ====================
         return response.data;
     } catch (error) {
         console.error(`Erro ao buscar comanda ${id}:`, error);
@@ -70,14 +67,16 @@ export const fecharComanda = async (id: string): Promise<Comanda> => {
   }
 };
 
-// --- FUNÇÃO ADICIONADA ---
-// Busca os dados públicos de uma comanda, sem necessidade de autenticação.
-export const getPublicComandaById = async (id: string): Promise<Comanda> => {
+/**
+ * Busca os dados públicos de uma comanda, sem necessidade de autenticação.
+ */
+export const getPublicComandaById = async (id: string): Promise<Comanda | null> => {
   try {
-    const response = await api.get<Comanda>(`/comandas/${id}/public`);
+    // CORREÇÃO: Ajustado de '/publica' para '/public' para corresponder ao backend
+    const response = await publicApi.get<Comanda>(`/comandas/${id}/public`);
     return response.data;
   } catch (error) {
     console.error(`Erro ao buscar comanda pública ${id}:`, error);
-    throw error;
+    return null;
   }
 };
