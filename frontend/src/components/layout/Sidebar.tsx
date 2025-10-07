@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
-    Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation // 1. IMPORTAR O NOVO ÍCONE
+    Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
+    Calendar // 1. ÍCONE CALENDAR IMPORTADO
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -24,9 +25,15 @@ const baseNavLinks = [
   { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] }, // Rota corrigida
   { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] }, // Rota corrigida
   
-  // 2. ADICIONAR O NOVO LINK AQUI
-  { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'] },
+  // 2. NOVO LINK: AGENDA DE EVENTOS ADICIONADO AQUI
+  { 
+    href: '/dashboard/admin/agenda-eventos', 
+    label: 'Agenda de Eventos', 
+    icon: Calendar, 
+    roles: ['ADMIN'] 
+  },
   
+  { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'] },
   { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] }, // Rota corrigida
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];

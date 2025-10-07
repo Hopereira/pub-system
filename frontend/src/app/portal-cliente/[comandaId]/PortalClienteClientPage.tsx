@@ -11,6 +11,8 @@ import { BookOpen, Calendar, UtensilsCrossed, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getPublicEventos } from '@/services/eventoService';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 interface PortalClienteClientPageProps {
@@ -123,7 +125,9 @@ export default function PortalClienteClientPage({ comanda, paginaAtiva }: Portal
                         {/* ========================================================= */}
                         <div className="flex-1">
                           <h3 className="font-bold">{evento.titulo}</h3>
-                          <p className="text-sm text-slate-400">{new Date(evento.dataEvento).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</p>
+                          <p className="text-sm text-slate-400 capitalize">
+                            {format(new Date(evento.dataEvento), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                          </p>
                           <p className="text-sm mt-2">{evento.descricao}</p>
                         </div>
                       </div>

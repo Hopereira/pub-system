@@ -35,10 +35,10 @@ export class EventoController {
 
   @Public()
   @Get('publicos')
-  @ApiOperation({ summary: 'Lista todos os eventos para o público' })
+  @ApiOperation({ summary: 'Lista todos os eventos ativos para o público' })
   findAllPublic() {
-    // Assumindo que o seu service tem um método findAll() que busca todos os eventos
-    return this.eventoService.findAll();
+    // <-- ALTERAÇÃO AQUI: Chamando o método correto do serviço
+    return this.eventoService.findAllPublic();
   }
 
   @Get()
