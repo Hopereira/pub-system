@@ -10,6 +10,8 @@ import EventoFormDialog from "@/components/eventos/EventoFormDialog";
 import { getAllEventos } from "@/services/eventoService";
 import { toast } from "sonner";
 import EventoDeleteAlert from "@/components/eventos/EventoDeleteAlert";
+// ✅ NOVO: Importar o novo modal de upload
+import EventoUploadDialog from "@/components/eventos/EventoUploadDialog";
 
 interface AgendaEventosClientPageProps {
   initialData: Evento[];
@@ -23,6 +25,10 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [eventoToDelete, setEventoToDelete] = useState<Evento | null>(null);
 
+  // ✅ NOVO: Estados para controlar o modal de upload
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [eventoToUpload, setEventoToUpload] = useState<Evento | null>(null);
+
   const loadEventos = async () => {
     setIsLoading(true);
     try {
@@ -31,7 +37,6 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
     } catch (error) {
       console.error("Erro ao carregar a lista de eventos:", error);
       toast.error("Não foi possível carregar a lista de eventos.");
-      setEventos([]);
     } finally {
       setIsLoading(false);
     }
@@ -46,9 +51,11 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
     setEventoToEdit(null);
     setIsDeleteAlertOpen(false);
     setEventoToDelete(null);
+    setIsUploadModalOpen(false); // Fecha o modal de upload também
+    setEventoToUpload(null);
     loadEventos();
   };
-  
+
   const columns = createColumns({
     onEdit: (evento) => {
       setEventoToEdit(evento);
@@ -57,6 +64,11 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
     onDelete: (evento) => {
       setEventoToDelete(evento);
       setIsDeleteAlertOpen(true);
+    },
+    // ✅ NOVO: Conectar a ação do menu com a abertura do modal
+    onUpload: (evento) => {
+      setEventoToUpload(evento);
+      setIsUploadModalOpen(true);
     },
     onStatusChangeSuccess: loadEventos,
   });
@@ -77,6 +89,14 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
         onSuccess={handleSuccess}
       />
 
+      {/* ✅ NOVO: Renderizar o novo modal de upload */}
+      <EventoUploadDialog
+        open={isUploadModalOpen}
+        onOpenChange={setIsUploadModalOpen}
+        onSuccess={handleSuccess}
+        eventoToUpload={eventoToUpload}
+      />
+
       <div className="rounded-md border bg-card">
         <div className="p-4 flex justify-between items-center">
           {isLoading && <span className="text-sm text-muted-foreground">Carregando eventos...</span>}
@@ -90,7 +110,7 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
             Adicionar Novo Evento
           </Button>
         </div>
-        
+
         <DataTable columns={columns} data={eventos} />
       </div>
     </>

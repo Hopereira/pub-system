@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Evento } from "@/types/evento";
-import { ArrowUpDown, MoreHorizontal, Loader2 } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Loader2, PictureInPicture } from "lucide-react"; // ✅ Adicionado PictureInPicture
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,15 +18,44 @@ import { toggleEventoStatus } from "@/services/eventoService";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
+import Image from "next/image"; // ✅ Adicionado Image
 
-// A interface de props está correta.
 interface ColumnsProps {
   onEdit: (evento: Evento) => void;
   onDelete: (evento: Evento) => void;
+  onUpload: (evento: Evento) => void;
   onStatusChangeSuccess: () => void;
 }
 
-export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: ColumnsProps): ColumnDef<Evento>[] => [
+export const createColumns = ({ onEdit, onDelete, onUpload, onStatusChangeSuccess }: ColumnsProps): ColumnDef<Evento>[] => [
+  // ✅ =======================================================
+  // ✅ NOVA COLUNA PARA EXIBIR A IMAGEM DO EVENTO
+  // ✅ =======================================================
+  {
+    id: 'imagem',
+    header: 'Imagem',
+    cell: ({ row }) => {
+      const evento = row.original;
+      if (evento.urlImagem) {
+        return (
+          <div className="relative h-10 w-16 rounded-md overflow-hidden">
+            <Image
+              src={evento.urlImagem}
+              alt={evento.titulo}
+              fill
+              className="object-cover"
+            />
+          </div>
+        );
+      }
+      // Se não houver imagem, mostra um placeholder
+      return (
+        <div className="flex h-10 w-16 items-center justify-center rounded-md bg-muted text-muted-foreground">
+          <PictureInPicture className="h-4 w-4" />
+        </div>
+      );
+    },
+  },
   {
     accessorKey: "titulo",
     header: ({ column }) => (
@@ -58,7 +87,6 @@ export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: Colum
             style: "currency",
             currency: "BRL",
         }).format(valor);
-        // Alinhado à direita para consistência
         return <div className="text-right font-medium">{valor > 0 ? formatado : 'Gratuito'}</div>;
     },
   },
@@ -74,17 +102,11 @@ export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: Colum
 
         setIsPending(true);
         try {
-            // A chamada ao serviço está correta
             await toggleEventoStatus(evento.id, checked);
             toast.success(`Status de "${evento.titulo}" alterado com sucesso!`);
-            
-            // A chamada de recarregamento está correta
             onStatusChangeSuccess(); 
-
         } catch (error) {
-            console.error("Erro ao alterar o status do evento:", error);
             toast.error(`Falha ao alterar o status de "${evento.titulo}".`);
-            // Mesmo em caso de erro, recarregamos para reverter o switch visualmente
             onStatusChangeSuccess();
         } finally {
             setIsPending(false);
@@ -121,7 +143,10 @@ export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: Colum
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Ações</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => onEdit(evento)}>
-                Editar
+                Editar Dados
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onUpload(evento)}>
+                Enviar Imagem
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

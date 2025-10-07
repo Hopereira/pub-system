@@ -73,3 +73,24 @@ export const toggleEventoStatus = async (id: string, ativo: boolean): Promise<Ev
 export const deleteEvento = async (id: string): Promise<void> => {
     await api.delete(`/eventos/${id}`);
 };
+
+// ✅ =======================================================
+// ✅ NOVA FUNÇÃO PARA UPLOAD DA IMAGEM
+// ✅ =======================================================
+export const uploadEventoImagem = async (id: string, imagemFile: File): Promise<Evento> => {
+  const formData = new FormData();
+  // 'file' deve ser o mesmo nome que definimos no FileInterceptor do backend
+  formData.append('file', imagemFile);
+
+  try {
+    const response = await api.patch<Evento>(`/eventos/${id}/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao fazer upload da imagem do evento:', error);
+    throw error;
+  }
+};
