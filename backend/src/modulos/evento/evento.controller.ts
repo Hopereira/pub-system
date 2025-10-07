@@ -1,3 +1,5 @@
+// Caminho: backend/src/modulos/evento/evento.controller.ts
+
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe, Logger,
   UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
@@ -19,19 +21,16 @@ export class EventoController {
 
   constructor(private readonly eventoService: EventoService) {}
 
-  // =================================================================
-  // ✅ NOVO: ENDPOINT DEDICADO PARA UPLOAD DA IMAGEM
-  // =================================================================
   @Patch(':id/upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @UseInterceptors(FileInterceptor('file')) // 'file' é o nome do campo que o frontend enviará
+  @UseInterceptors(FileInterceptor('file'))
   async uploadImagem(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10 MB
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
         ],
       }),
@@ -39,7 +38,9 @@ export class EventoController {
     file: Express.Multer.File,
   ) {
     this.logger.log(`Recebida imagem para o evento ID ${id}. A fazer upload...`);
-    return this.eventoService.updateUrlImagem(id, file);
+    
+    // ✅ CORREÇÃO AQUI: Chamamos a função com o nome correto 'uploadImagem'
+    return this.eventoService.uploadImagem(id, file);
   }
 
   @Post()
@@ -65,7 +66,6 @@ export class EventoController {
     return this.eventoService.findAllPublic();
   }
   
-  // Este endpoint agora serve para atualizar apenas os dados de TEXTO
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
