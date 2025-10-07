@@ -1,10 +1,10 @@
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, UseGuards,
-  UploadedFile, UseInterceptors, ParseUUIDPipe, Logger
+  UploadedFile, UseInterceptors, ParseUUIDPipe, Logger, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
-import { diskStorage } from 'multer';
+// import { diskStorage } from 'multer'; // <-- REMOVIDO
 import { ProdutoService } from './produto.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
@@ -14,12 +14,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
 
-const generateUniqueFilename = (file: Express.Multer.File) => {
-  const timestamp = Date.now();
-  const randomStr = Math.random().toString(36).substring(2, 8);
-  const extension = file.originalname.split('.').pop();
-  return `${timestamp}-${randomStr}.${extension}`;
-};
+// A função generateUniqueFilename não é mais necessária aqui, pois o GCS cuida disso.
 
 @Controller('produtos')
 export class ProdutoController {
@@ -30,46 +25,51 @@ export class ProdutoController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @UseInterceptors(FileInterceptor('imagemFile', {
-    storage: diskStorage({
-      destination: './public',
-      filename: (req, file, cb) => cb(null, generateUniqueFilename(file)),
-    }),
-  }))
+  // --- MUDANÇA: O FileInterceptor agora é mais simples, sem 'diskStorage' ---
+  @UseInterceptors(FileInterceptor('imagemFile'))
   create(
-    @UploadedFile() imagemFile: Express.Multer.File,
+    @UploadedFile(
+      // Mantemos a validação do arquivo aqui, é uma boa prática
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    imagemFile: Express.Multer.File,
     @Body() createProdutoDto: CreateProdutoDto,
   ) {
-    if (imagemFile) {
-      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
-      createProdutoDto.urlImagem = `${baseUrl}/public/${imagemFile.filename}`;
-      this.logger.log(`URL da imagem gerada: ${createProdutoDto.urlImagem}`);
-    }
-    return this.produtoService.create(createProdutoDto);
+    // --- MUDANÇA: A lógica de criar a URL foi removida ---
+    // Agora, simplesmente passamos o DTO e o arquivo para o serviço.
+    return this.produtoService.create(createProdutoDto, imagemFile);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @UseInterceptors(FileInterceptor('imagemFile', {
-    storage: diskStorage({
-      destination: './public',
-      filename: (req, file, cb) => cb(null, generateUniqueFilename(file)),
-    }),
-  }))
+  // --- MUDANÇA: O FileInterceptor também foi simplificado aqui ---
+  @UseInterceptors(FileInterceptor('imagemFile'))
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProdutoDto: UpdateProdutoDto,
-    @UploadedFile() imagemFile?: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    ) imagemFile?: Express.Multer.File,
   ) {
-    if (imagemFile) {
-      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
-      updateProdutoDto.urlImagem = `${baseUrl}/public/${imagemFile.filename}`;
-      this.logger.log(`Nova URL de imagem gerada para atualização: ${updateProdutoDto.urlImagem}`);
-    }
-    return this.produtoService.update(id, updateProdutoDto);
+    // --- MUDANÇA: A lógica de criar a URL foi removida ---
+    // Passamos o ID, o DTO e o novo arquivo (se existir) para o serviço.
+    return this.produtoService.update(id, updateProdutoDto, imagemFile);
   }
 
+  // Os outros métodos (remove, findAll, findOne) continuam exatamente iguais.
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)

@@ -1,7 +1,18 @@
 // Caminho: backend/src/modulos/pagina-evento/dto/update-pagina-evento.dto.ts
 
-import { PartialType } from '@nestjs/swagger';
+import { PartialType, ApiProperty } from '@nestjs/swagger';
 import { CreatePaginaEventoDto } from './create-pagina-evento.dto';
+import { IsBoolean, IsOptional } from 'class-validator';
 
-// PartialType torna todos os campos de CreatePaginaEventoDto opcionais para a atualização.
-export class UpdatePaginaEventoDto extends PartialType(CreatePaginaEventoDto) {}
+export class UpdatePaginaEventoDto extends PartialType(CreatePaginaEventoDto) {
+  // --- LINHAS ADICIONADAS ---
+  @ApiProperty({
+    description: 'Define se a página de evento está ativa ou não.',
+    example: false,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  ativa?: boolean;
+  // --- FIM DA ADIÇÃO ---
+}

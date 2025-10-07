@@ -234,7 +234,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
                             className="w-full"
                             onClick={handleFinalizarPedido}
                         >
-                            Enviar Pedido para Cozinha
+                            Enviar Pedido para o preparo
                         </Button>
                     </div>
                 </SheetFooter>

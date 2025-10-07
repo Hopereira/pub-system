@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // A sua configuração de imagens que você me mostrou. Está correta.
   images: {
     remotePatterns: [
       {
@@ -14,14 +15,22 @@ const nextConfig = {
         port: '3000',
         pathname: '/public/**',
       },
-      // --- BLOCO ADICIONADO PARA O GOOGLE STORAGE ---
       {
         protocol: 'https',
         hostname: 'storage.googleapis.com',
         port: '',
-        pathname: '/pub-system-media-storage/**', // IMPORTANTE: Confirme que este é o nome exato do seu bucket
+        pathname: '/pub-system-media-storage/**',
       },
     ],
+  },
+
+  // ✅ ADIÇÃO AQUI: Esta é a parte que estabiliza o ambiente Docker
+  webpack: (config) => {
+    config.watchOptions = {
+      poll: 1000, // Verifica por alterações a cada segundo
+      aggregateTimeout: 300, // Agrupa múltiplas alterações num único rebuild
+    };
+    return config;
   },
 };
 
