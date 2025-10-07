@@ -1,4 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe, Logger } from '@nestjs/common';
+import {
+  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe, Logger,
+  UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Express } from 'express';
 import { EventoService } from './evento.service';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
@@ -10,16 +15,37 @@ import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('eventos')
 export class EventoController {
-  // ✅ NOVO: Inicializamos o Logger
   private readonly logger = new Logger(EventoController.name);
 
   constructor(private readonly eventoService: EventoService) {}
+
+  // =================================================================
+  // ✅ NOVO: ENDPOINT DEDICADO PARA UPLOAD DA IMAGEM
+  // =================================================================
+  @Patch(':id/upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @UseInterceptors(FileInterceptor('file')) // 'file' é o nome do campo que o frontend enviará
+  async uploadImagem(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    this.logger.log(`Recebida imagem para o evento ID ${id}. A fazer upload...`);
+    return this.eventoService.updateUrlImagem(id, file);
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   create(@Body() createEventoDto: CreateEventoDto) {
-    // ✅ NOVO: Log para ver os dados que chegam
     this.logger.log(`Recebida requisição para criar evento. Dados: ${JSON.stringify(createEventoDto)}`);
     return this.eventoService.create(createEventoDto);
   }
@@ -39,12 +65,12 @@ export class EventoController {
     return this.eventoService.findAllPublic();
   }
   
+  // Este endpoint agora serve para atualizar apenas os dados de TEXTO
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateEventoDto: UpdateEventoDto) {
-    // ✅ NOVO: Log para ver os dados que chegam na atualização
-    this.logger.log(`Recebida requisição para atualizar evento ID ${id}. Dados: ${JSON.stringify(updateEventoDto)}`);
+    this.logger.log(`Recebida requisição para atualizar dados de texto do evento ID ${id}.`);
     return this.eventoService.update(id, updateEventoDto);
   }
 
