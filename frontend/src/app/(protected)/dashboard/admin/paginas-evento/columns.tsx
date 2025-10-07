@@ -9,17 +9,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator, // Importar o Separator para melhor UX
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-// A definição de colunas agora recebe o novo callback onUploadMedia
-export const columns = (callbacks: {
+// CORREÇÃO: Renomeamos a função para 'createColumns' para ser mais explícito
+export const createColumns = (callbacks: {
   onEdit: (pagina: PaginaEvento) => void;
   onDelete: (pagina: PaginaEvento) => void;
-  onUploadMedia: (pagina: PaginaEvento) => void; // <-- NOVO CALLBACK
+  onUploadMedia: (pagina: PaginaEvento) => void;
 }): ColumnDef<PaginaEvento>[] => [
   {
     accessorKey: 'titulo',
@@ -57,14 +57,16 @@ export const columns = (callbacks: {
               Editar Título
             </DropdownMenuItem>
             
-            {/* NOVO: Ação de Upload de Mídia */}
             <DropdownMenuItem onClick={() => callbacks.onUploadMedia(pagina)}>
               Upload Mídia
             </DropdownMenuItem>
             
             <DropdownMenuSeparator /> 
 
-            <DropdownMenuItem onClick={() => callbacks.onDelete(pagina)}>
+            <DropdownMenuItem 
+              onClick={() => callbacks.onDelete(pagina)}
+              className="text-red-600 focus:text-red-600" // Melhoria de UX
+            >
               Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>

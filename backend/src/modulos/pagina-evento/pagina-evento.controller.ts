@@ -29,14 +29,12 @@ export class PaginaEventoController {
     return this.paginaEventoService.create(createPaginaEventoDto);
   }
 
-  // --- NOVO ENDPOINT PÚBLICO ADICIONADO ---
   @Public()
   @Get('ativa/publica')
   @ApiOperation({ summary: 'Busca a página de evento atualmente ativa (Público)' })
   findAtiva() {
     return this.paginaEventoService.findAtiva();
   }
-  // --- FIM DA ADIÇÃO ---
 
   @Public()
   @Get()
@@ -72,7 +70,8 @@ export class PaginaEventoController {
     return this.paginaEventoService.remove(id);
   }
 
-  @Patch(':id/media')
+  // CORREÇÃO AQUI: Ajustamos a rota de '/:id/media' para '/:id/upload-media'
+  @Patch(':id/upload-media')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
