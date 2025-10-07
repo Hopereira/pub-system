@@ -1,24 +1,95 @@
+// Caminho: frontend/src/services/paginaEventoService.ts
+
 import { PaginaEvento } from '@/types/pagina-evento';
 import { CreatePaginaEventoDto, UpdatePaginaEventoDto } from '@/types/pagina-evento.dto';
 import api, { publicApi } from './api';
 
-export const getPaginasEvento = async (): Promise<PaginaEvento[]> => { /* ... */ };
-export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<PaginaEvento> => { /* ... */ };
-export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto): Promise<PaginaEvento> => { /* ... */ };
-export const uploadPaginaEventoMedia = async (id: string, mediaFile: File): Promise<PaginaEvento> => { /* ... */ };
-export const deletePaginaEvento = async (id: string): Promise<void> => { /* ... */ };
+/**
+ * Busca todas as Páginas de Evento (para o painel de admin).
+ */
+export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
+  try {
+    const response = await api.get<PaginaEvento[]>('/paginas-evento');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar páginas de evento:', error);
+    // Lançamos o erro para que o componente que chamou saiba que algo deu errado
+    throw error;
+  }
+};
 
 /**
- * Função FINAL para o Cliente.
- * Busca o registro da Página de Evento que está marcada como ATIVA pelo administrador.
+ * CORREÇÃO: Função para criar uma nova Página de Evento.
+ */
+export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<PaginaEvento> => {
+  try {
+    // Usamos o 'api.post' para enviar os dados para o endpoint do backend
+    const response = await api.post<PaginaEvento>('/paginas-evento', data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar página de evento:', error);
+    throw error;
+  }
+};
+
+/**
+ * Atualiza uma Página de Evento existente.
+ */
+export const updatePaginaEvento = async (id: string, data: UpdatePaginaEventoDto): Promise<PaginaEvento> => {
+  try {
+    const response = await api.patch<PaginaEvento>(`/paginas-evento/${id}`, data);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao atualizar página de evento ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Faz o upload de uma mídia (imagem/vídeo) para uma Página de Evento.
+ */
+export const uploadPaginaEventoMedia = async (id: string, mediaFile: File): Promise<PaginaEvento> => {
+  const formData = new FormData();
+  formData.append('file', mediaFile);
+
+  try {
+    const response = await api.patch<PaginaEvento>(
+      `/paginas-evento/${id}/upload-media`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao fazer upload de mídia para a página ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Deleta uma Página de Evento.
+ */
+export const deletePaginaEvento = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`/paginas-evento/${id}`);
+  } catch (error) {
+    console.error(`Erro ao deletar página de evento ${id}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Busca a Página de Evento pública que está marcada como ATIVA.
  */
 export const getPublicPaginaEventoAtiva = async (): Promise<PaginaEvento | null> => {
   try {
-    // Presume que o endpoint /paginas-evento/ativa/publica existe no backend.
     const response = await publicApi.get<PaginaEvento>('/paginas-evento/ativa/publica');
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar página de evento ativa:', error);
-    return null; 
+    return null;
   }
 };

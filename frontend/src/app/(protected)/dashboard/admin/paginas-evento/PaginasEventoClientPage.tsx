@@ -1,3 +1,4 @@
+// Caminho: frontend/src/app/(protected)/dashboard/admin/paginas-evento/PaginasEventoClientPage.tsx
 'use client';
 
 import { useState } from 'react';
@@ -5,34 +6,35 @@ import { PaginaEvento } from '@/types/pagina-evento';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
-import { columns } from './columns';
+// CORREÇÃO: Importamos a função renomeada 'createColumns'
+import { createColumns } from './columns';
 import { getPaginasEvento } from '@/services/paginaEventoService';
 import PaginaEventoFormDialog from '@/components/paginas-evento/PaginaEventoFormDialog';
 import { PaginaEventoDeleteAlert } from '@/components/paginas-evento/PaginaEventoDeleteAlert';
-import PaginaEventoUploadDialog from '@/components/paginas-evento/PaginaEventoUploadDialog'; // <-- CORRIGIDO: Importação Padrão
+import PaginaEventoUploadDialog from '@/components/paginas-evento/PaginaEventoUploadDialog';
 
 interface PaginasEventoClientPageProps {
-  paginasIniciais: PaginaEvento[];
+  paginasIniciais: PaginaEvento[] | null | undefined;
 }
 
 export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClientPageProps) {
-  const [paginas, setPaginas] = useState(paginasIniciais);
+  const [paginas, setPaginas] = useState(paginasIniciais || []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paginaToEdit, setPaginaToEdit] = useState<PaginaEvento | null>(null);
   const [paginaToDelete, setPaginaToDelete] = useState<PaginaEvento | null>(null);
-  const [paginaToUpload, setPaginaToUpload] = useState<PaginaEvento | null>(null); // Estado para o Upload
+  const [paginaToUpload, setPaginaToUpload] = useState<PaginaEvento | null>(null);
 
   const handleSuccess = async () => {
     try {
-      // Recarrega os dados após qualquer operação (Criar/Editar/Excluir/Upload)
       const paginasAtualizadas = await getPaginasEvento();
-      setPaginas(paginasAtualizadas);
+      setPaginas(paginasAtualizadas || []);
       setIsModalOpen(false);
       setPaginaToEdit(null);
       setPaginaToDelete(null); 
-      setPaginaToUpload(null); // Limpa o estado de upload
+      setPaginaToUpload(null);
     } catch (error) {
       console.error('Erro ao recarregar os dados:', error);
+      setPaginas([]);
     }
   };
 
@@ -41,7 +43,6 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
     setIsModalOpen(true);
   };
   
-  // Função para abrir o Modal de Upload
   const handleUploadMedia = (pagina: PaginaEvento) => {
     setPaginaToUpload(pagina);
   };
@@ -59,12 +60,12 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
   };
 
   const handleAddNew = () => {
-    setPaginaToEdit(null); // Garante que o formulário abra em modo de criação
+    setPaginaToEdit(null);
     setIsModalOpen(true);
   };
 
-  // Passamos todos os callbacks para as colunas
-  const tableColumns = columns({ 
+  // CORREÇÃO: Chamamos a nova função 'createColumns'
+  const tableColumns = createColumns({ 
     onEdit: handleEdit, 
     onDelete: handleDelete, 
     onUploadMedia: handleUploadMedia, 
@@ -82,7 +83,6 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
 
       <DataTable columns={tableColumns} data={paginas} />
 
-      {/* Formulário de Criação/Edição de Título */}
       <PaginaEventoFormDialog
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
@@ -90,14 +90,12 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
         paginaToEdit={paginaToEdit}
       />
       
-      {/* Alerta de Confirmação de Exclusão */}
       <PaginaEventoDeleteAlert
         paginaToDelete={paginaToDelete}
         onClose={handleCloseDeleteAlert}
         onSuccess={handleSuccess}
       />
       
-      {/* Diálogo de Upload de Mídia */}
       <PaginaEventoUploadDialog
         open={!!paginaToUpload}
         onOpenChange={handleCloseUpload}
