@@ -16,28 +16,26 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 
-@Controller('empresas') // A rota base para o recurso é no plural
+@Controller('empresa') // A rota base é no singular
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Cargo.ADMIN) // Protege todas as rotas para apenas ADMIN
 export class EmpresaController {
   constructor(private readonly empresaService: EmpresaService) {}
 
-  // POST /empresas -> Cria uma nova empresa
+  // POST /empresa
   @Post()
-  @Roles(Cargo.ADMIN)
   create(@Body() createEmpresaDto: CreateEmpresaDto) {
     return this.empresaService.create(createEmpresaDto);
   }
 
-  // GET /empresas/unica -> Busca a única empresa cadastrada
-  @Get('unica')
-  @Roles(Cargo.ADMIN)
+  // GET /empresa
+  @Get()
   findOne() {
     return this.empresaService.findOne();
   }
 
-  // PATCH /empresas/:id -> Atualiza a empresa pelo ID
+  // PATCH /empresa/:id
   @Patch(':id')
-  @Roles(Cargo.ADMIN)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateEmpresaDto: UpdateEmpresaDto,

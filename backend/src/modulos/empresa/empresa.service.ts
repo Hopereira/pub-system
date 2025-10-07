@@ -1,39 +1,50 @@
-import { Empresa } from '@/types/empresa';
-import { CreateEmpresaDto, UpdateEmpresaDto } from '@/types/empresa.dto';
-import api from './api';
-import { AxiosError } from 'axios';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateEmpresaDto } from './dto/create-empresa.dto';
+import { UpdateEmpresaDto } from './dto/update-empresa.dto';
+import { Empresa } from './entities/empresa.entity';
 
-/**
- * Busca o registro único da empresa.
- * Espera um objeto, não um array.
- */
-export const getEmpresa = async (): Promise<Empresa | null> => {
-  try {
-    // Chama a rota específica para buscar o recurso único
-    const response = await api.get<Empresa>('/empresas/unica');
-    return response.data;
-  } catch (error) {
-    if (error instanceof AxiosError && error.response?.status === 404) {
-      console.log('Empresa ainda não cadastrada.');
-      return null; // Comportamento esperado quando o DB está vazio
+@Injectable()
+export class EmpresaService {
+  constructor(
+    @InjectRepository(Empresa)
+    private readonly empresaRepository: Repository<Empresa>,
+  ) {}
+
+  async create(createEmpresaDto: CreateEmpresaDto): Promise<Empresa> {
+    const empresa = this.empresaRepository.create(createEmpresaDto);
+    try {
+      return await this.empresaRepository.save(empresa);
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Uma empresa com este CNPJ já está cadastrada.');
+      }
+      throw error;
     }
-    console.error('Erro ao buscar empresa:', error);
-    throw error; // Lança outros erros para serem tratados pela UI
   }
-};
 
-/**
- * Cria o registro da empresa.
- */
-export const createEmpresa = async (data: CreateEmpresaDto): Promise<Empresa> => {
-  const response = await api.post<Empresa>('/empresas', data);
-  return response.data;
-};
+  async findOne(): Promise<Empresa> {
+    const empresa = await this.empresaRepository.findOneBy({});
+    if (!empresa) {
+      throw new NotFoundException('Nenhuma empresa encontrada.');
+    }
+    return empresa;
+  }
 
-/**
- * Atualiza o registro da empresa.
- */
-export const updateEmpresa = async (id: string, data: UpdateEmpresaDto): Promise<Empresa> => {
-  const response = await api.patch<Empresa>(`/empresas/${id}`, data);
-  return response.data;
-};
+  async update(id: string, updateEmpresaDto: UpdateEmpresaDto): Promise<Empresa> {
+    const empresa = await this.empresaRepository.preload({
+      id: id,
+      ...updateEmpresaDto,
+    });
+    if (!empresa) {
+      throw new NotFoundException(`Empresa com ID "${id}" não encontrada.`);
+    }
+
+    return this.empresaRepository.save(empresa);
+  }
+}
