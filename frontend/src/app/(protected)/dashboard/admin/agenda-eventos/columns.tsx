@@ -19,29 +19,26 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
 
-// Interface para as funções que a página pai (ClientPage) vai nos passar
+// A interface de props está correta.
 interface ColumnsProps {
   onEdit: (evento: Evento) => void;
   onDelete: (evento: Evento) => void;
-  onStatusChangeSuccess: () => void; // NOVO: Função para recarregar a lista
+  onStatusChangeSuccess: () => void;
 }
 
-// A definição das colunas agora é uma função que retorna o array de colunas
 export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: ColumnsProps): ColumnDef<Evento>[] => [
   {
     accessorKey: "titulo",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Título
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => <div className="pl-4">{row.getValue("titulo")}</div>,
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Título
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => <div className="pl-4 font-medium">{row.getValue("titulo")}</div>,
   },
   {
     accessorKey: "dataEvento",
@@ -49,28 +46,27 @@ export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: Colum
     cell: ({ row }) => {
       const data = new Date(row.getValue("dataEvento"));
       const formatada = format(data, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-      return <div className="font-medium">{formatada}</div>;
+      return <div>{formatada}</div>;
     },
   },
   {
     accessorKey: "valor",
-    header: "Valor",
+    header: () => <div className="text-right">Valor</div>,
     cell: ({ row }) => {
         const valor = parseFloat(row.getValue("valor"));
         const formatado = new Intl.NumberFormat("pt-BR", {
             style: "currency",
             currency: "BRL",
         }).format(valor);
-        return <div className="font-medium">{valor > 0 ? formatado : 'Gratuito'}</div>;
+        // Alinhado à direita para consistência
+        return <div className="text-right font-medium">{valor > 0 ? formatado : 'Gratuito'}</div>;
     },
   },
   {
     accessorKey: "ativo",
     header: "Status",
-    // Componente personalizado para o Switch
     cell: ({ row }) => {
       const evento = row.original;
-      const initialStatus = row.getValue("ativo") as boolean;
       const [isPending, setIsPending] = useState(false);
       
       const handleToggle = async (checked: boolean) => {
@@ -78,16 +74,18 @@ export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: Colum
 
         setIsPending(true);
         try {
+            // A chamada ao serviço está correta
             await toggleEventoStatus(evento.id, checked);
-            toast.success(`Evento "${evento.titulo}" ${checked ? 'ativado' : 'desativado'} com sucesso!`);
+            toast.success(`Status de "${evento.titulo}" alterado com sucesso!`);
             
-            // Chamar a função da página pai para recarregar os dados e atualizar a tabela
+            // A chamada de recarregamento está correta
             onStatusChangeSuccess(); 
 
         } catch (error) {
             console.error("Erro ao alterar o status do evento:", error);
             toast.error(`Falha ao alterar o status de "${evento.titulo}".`);
-            onStatusChangeSuccess(); // Recarrega para garantir que o estado visual está correto
+            // Mesmo em caso de erro, recarregamos para reverter o switch visualmente
+            onStatusChangeSuccess();
         } finally {
             setIsPending(false);
         }
@@ -98,7 +96,7 @@ export const createColumns = ({ onEdit, onDelete, onStatusChangeSuccess }: Colum
             {isPending && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             <Switch
                 id={`status-${evento.id}`}
-                checked={initialStatus}
+                checked={evento.ativo}
                 onCheckedChange={handleToggle}
                 disabled={isPending}
             />

@@ -1,5 +1,3 @@
-// src/components/eventos/EventoFormDialog.tsx
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -15,14 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format } from 'date-fns'; 
+// ✅ ADIÇÃO: Funções para manipular a data e hora
+import { format, setHours, setMinutes } from 'date-fns'; 
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-
 import { Evento } from '@/types/evento';
 import { createEvento, updateEvento } from '@/services/eventoService';
+import { CreateEventoDto, UpdateEventoDto } from '@/types/evento.dto';
 
 interface EventoFormDialogProps {
   open: boolean;
@@ -31,14 +29,16 @@ interface EventoFormDialogProps {
   eventoToEdit?: Evento | null;
 }
 
-// Schema de validação do formulário
+// ✅ ALTERAÇÃO: Adicionamos hora e minuto ao schema de validação
 const formSchema = z.object({
   titulo: z.string().min(3, { message: "O título é obrigatório." }),
-  descricao: z.string().optional(),
+  descricao: z.string().optional().nullable(),
   dataEvento: z.date({
-    required_error: "A data e hora do evento são obrigatórias.",
+    required_error: "A data do evento é obrigatória.",
   }),
-  valor: z.coerce.number().min(0, { message: "O valor não pode ser negativo." }),
+  hora: z.coerce.number().min(0, { message: 'Hora deve ser no mínimo 0' }).max(23, { message: 'Hora deve ser no máximo 23' }),
+  minuto: z.coerce.number().min(0, { message: 'Minuto deve ser no mínimo 0' }).max(59, { message: 'Minuto deve ser no máximo 59' }),
+  valor: z.coerce.number().min(0, { message: "O valor não pode ser negativo." }).default(0),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,30 +49,39 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    // ✅ ALTERAÇÃO: Adicionamos valores padrão para hora e minuto
     defaultValues: {
       titulo: '',
       descricao: '',
-      dataEvento: undefined,
       valor: 0,
+      hora: 0,
+      minuto: 0,
     },
   });
 
-  // Preenche o formulário ao abrir em modo de edição
   useEffect(() => {
     if (open) {
-      setApiError(null); // Limpa erros anteriores ao abrir
+      setApiError(null);
       if (isEditMode && eventoToEdit) {
+        const data = new Date(eventoToEdit.dataEvento);
         form.reset({
           titulo: eventoToEdit.titulo,
           descricao: eventoToEdit.descricao || '',
-          dataEvento: new Date(eventoToEdit.dataEvento),
+          dataEvento: data,
+          // ✅ ALTERAÇÃO: Preenche os campos de hora e minuto ao editar
+          hora: data.getHours(),
+          minuto: data.getMinutes(),
           valor: eventoToEdit.valor,
         });
       } else {
+        const agora = new Date();
         form.reset({
           titulo: '',
           descricao: '',
           dataEvento: undefined,
+          // ✅ ALTERAÇÃO: Sugere a hora e minuto atuais para um novo evento
+          hora: agora.getHours(),
+          minuto: agora.getMinutes(),
           valor: 0,
         });
       }
@@ -81,12 +90,27 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
 
   const onSubmit = async (values: FormValues) => {
     setApiError(null);
+    
+    // ✅ ALTERAÇÃO: Combinamos a data do calendário com a hora e os minutos dos inputs
+    let dataFinal = values.dataEvento;
+    dataFinal = setHours(dataFinal, values.hora);
+    dataFinal = setMinutes(dataFinal, values.minuto);
+    
+    const payload = {
+      titulo: values.titulo,
+      descricao: values.descricao,
+      dataEvento: dataFinal, // Usamos a data combinada
+      valor: values.valor,
+    };
+    
+    console.log("Enviando para a API com data e hora combinadas:", payload);
+
     try {
       if (isEditMode && eventoToEdit) {
-        await updateEvento(eventoToEdit.id, values);
+        await updateEvento(eventoToEdit.id, payload as UpdateEventoDto);
         toast.success('Evento atualizado com sucesso!');
       } else {
-        await createEvento(values);
+        await createEvento(payload as CreateEventoDto);
         toast.success('Novo evento criado com sucesso!');
       }
       onSuccess();
@@ -99,7 +123,6 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
   };
 
   return (
-    // CORREÇÃO: onOpen-Change para onOpenChange
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -118,69 +141,62 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
               </Alert>
             )}
             
-            <FormField
-              control={form.control}
-              name="titulo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Título do Evento</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="descricao"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl><Textarea className="resize-none" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormField control={form.control} name="titulo" render={({ field }) => ( <FormItem><FormLabel>Título do Evento</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+            <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem> )}/>
 
             <FormField
               control={form.control}
               name="dataEvento"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Data e Hora do Evento</FormLabel>
+                  <FormLabel>Data do Evento</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP 'às' HH:mm", { locale: ptBR })
-                          ) : (
-                            <span>Escolha uma data</span>
-                          )}
+                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                          {field.value ? ( format(field.value, "PPP", { locale: ptBR }) ) : ( <span>Escolha uma data</span> )}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                      {/* Adicionar input de hora aqui se necessário no futuro */}
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* ✅ NOVO: Campos para Hora e Minuto */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="hora"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hora</FormLabel>
+                    <FormControl>
+                      <Input type="number" min="0" max="23" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="minuto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Minuto</FormLabel>
+                    <FormControl>
+                      <Input type="number" min="0" max="59" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -198,9 +214,7 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
 
             <DialogFooter>
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
-                ) : 'Salvar'}
+                {form.formState.isSubmitting ? ( <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> ) : 'Salvar'}
               </Button>
             </DialogFooter>
           </form>

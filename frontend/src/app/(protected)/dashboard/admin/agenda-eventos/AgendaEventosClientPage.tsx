@@ -1,5 +1,3 @@
-// src/app/(protected)/dashboard/admin/agenda-eventos/AgendaEventosClientPage.tsx
-
 'use client';
 
 import { useState, useEffect } from "react"; 
@@ -11,6 +9,7 @@ import { createColumns } from "./columns";
 import EventoFormDialog from "@/components/eventos/EventoFormDialog";
 import { getAllEventos } from "@/services/eventoService";
 import { toast } from "sonner";
+import EventoDeleteAlert from "@/components/eventos/EventoDeleteAlert";
 
 interface AgendaEventosClientPageProps {
   initialData: Evento[];
@@ -18,9 +17,11 @@ interface AgendaEventosClientPageProps {
 
 export default function AgendaEventosClientPage({ initialData }: AgendaEventosClientPageProps) {
   const [eventos, setEventos] = useState<Evento[]>(initialData);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventoToEdit, setEventoToEdit] = useState<Evento | null>(null);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [eventoToDelete, setEventoToDelete] = useState<Evento | null>(null);
 
   const loadEventos = async () => {
     setIsLoading(true);
@@ -28,30 +29,35 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
       const data = await getAllEventos();
       setEventos(data);
     } catch (error) {
-      console.error("Erro ao recarregar a lista de eventos:", error);
-      toast.error("Não foi possível carregar a lista de eventos do servidor.");
+      console.error("Erro ao carregar a lista de eventos:", error);
+      toast.error("Não foi possível carregar a lista de eventos.");
       setEventos([]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadEventos();
+  }, []);
+
   const handleSuccess = () => {
     setIsModalOpen(false);
     setEventoToEdit(null);
+    setIsDeleteAlertOpen(false);
+    setEventoToDelete(null);
     loadEventos();
   };
   
-  // VAMOS PASSAR AS FUNÇÕES PARA AS COLUNAS
   const columns = createColumns({
     onEdit: (evento) => {
       setEventoToEdit(evento);
       setIsModalOpen(true);
     },
     onDelete: (evento) => {
-      // Lógica para o modal de exclusão virá aqui
+      setEventoToDelete(evento);
+      setIsDeleteAlertOpen(true);
     },
-    // ✅ ALTERAÇÃO AQUI: Adicionamos a linha em falta
     onStatusChangeSuccess: loadEventos,
   });
 
@@ -64,9 +70,16 @@ export default function AgendaEventosClientPage({ initialData }: AgendaEventosCl
         eventoToEdit={eventoToEdit}
       />
 
+      <EventoDeleteAlert
+        open={isDeleteAlertOpen}
+        onOpenChange={setIsDeleteAlertOpen}
+        eventoToDelete={eventoToDelete}
+        onSuccess={handleSuccess}
+      />
+
       <div className="rounded-md border bg-card">
         <div className="p-4 flex justify-between items-center">
-          {isLoading && <span className="text-sm text-muted-foreground">Carregando dados...</span>}
+          {isLoading && <span className="text-sm text-muted-foreground">Carregando eventos...</span>}
           {!isLoading && <div />}
 
           <Button onClick={() => {

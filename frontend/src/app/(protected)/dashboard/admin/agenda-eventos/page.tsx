@@ -1,16 +1,9 @@
-// frontend/src/app/(protected)/dashboard/admin/agenda-eventos/page.tsx
-import { getAllEventos } from "@/services/eventoService"; // Precisaremos criar esta função no service
 import AgendaEventosClientPage from "./AgendaEventosClientPage";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
-// Esta página busca os dados iniciais no servidor.
-export default async function AgendaEventosPage() {
+// Esta página renderiza a estrutura e passa a responsabilidade para o componente cliente.
+export default function AgendaEventosPage() {
   
-  // NOTA: A função `getAllEventos` ainda não existe, teremos que a criar.
-  // Por agora, vamos imaginar que ela funciona e retorna os eventos.
-  // const eventos = await getAllEventos();
-  const eventos = []; // Começaremos com uma lista vazia por enquanto.
-
   return (
     <div className="p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
@@ -31,8 +24,9 @@ export default async function AgendaEventosPage() {
         </BreadcrumbList>
       </Breadcrumb>
       
-      {/* O componente cliente receberá os dados e cuidará de toda a interatividade */}
-      <AgendaEventosClientPage initialData={eventos} />
+      {/* ✅ A LINHA MAIS IMPORTANTE DO PROJETO NESTE MOMENTO. */}
+      {/* ELA RENDERIZA A TABELA, O BOTÃO E BUSCA OS DADOS. */}
+      <AgendaEventosClientPage initialData={[]} />
     </div>
   );
 }

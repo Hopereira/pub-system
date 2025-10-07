@@ -1,10 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
+  Min,
 } from 'class-validator';
 
 export class CreateEventoDto {
@@ -29,6 +32,18 @@ export class CreateEventoDto {
   @IsDateString({}, { message: 'A data do evento deve estar no formato de data válido.' })
   @IsNotEmpty({ message: 'A data do evento é obrigatória.' })
   dataEvento: Date;
+
+  @ApiProperty({
+    description: 'O valor do ingresso ou entrada. 0 para gratuito.',
+    example: 25.50,
+    required: false,
+    default: 0,
+  })
+  @Type(() => Number) // Garante a conversão para número
+  @IsNumber({}, { message: 'O valor deve ser um número.' })
+  @Min(0, { message: 'O valor não pode ser negativo.' })
+  @IsOptional()
+  valor?: number;
 
   @ApiProperty({
     description: 'A URL para a imagem de divulgação do evento.',
