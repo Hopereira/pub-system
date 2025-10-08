@@ -13,17 +13,15 @@ export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar páginas de evento:', error);
-    // Lançamos o erro para que o componente que chamou saiba que algo deu errado
     throw error;
   }
 };
 
 /**
- * CORREÇÃO: Função para criar uma nova Página de Evento.
+ * Cria uma nova Página de Evento.
  */
 export const createPaginaEvento = async (data: CreatePaginaEventoDto): Promise<PaginaEvento> => {
   try {
-    // Usamos o 'api.post' para enviar os dados para o endpoint do backend
     const response = await api.post<PaginaEvento>('/paginas-evento', data);
     return response.data;
   } catch (error) {
@@ -91,5 +89,22 @@ export const getPublicPaginaEventoAtiva = async (): Promise<PaginaEvento | null>
   } catch (error) {
     console.error('Erro ao buscar página de evento ativa:', error);
     return null;
+  }
+};
+
+// =======================================================
+// ✅ NOVA FUNÇÃO ADICIONADA AQUI
+// =======================================================
+/**
+ * Busca os dados públicos de UMA página de evento específica pelo ID.
+ */
+export const getPublicPaginaEvento = async (id: string): Promise<PaginaEvento | null> => {
+  try {
+    // Usa a API pública para chamar o endpoint GET /paginas-evento/:id
+    const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar página de evento pública com ID ${id}:`, error);
+    return null; 
   }
 };
