@@ -1,5 +1,3 @@
-// Caminho: backend/src/modulos/evento/evento.controller.ts
-
 import {
   Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe, Logger,
   UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
@@ -21,6 +19,9 @@ export class EventoController {
 
   constructor(private readonly eventoService: EventoService) {}
 
+  // ✅ =======================================================
+  // ✅ NOVO ENDPOINT PARA RECEBER O UPLOAD DA IMAGEM
+  // ✅ =======================================================
   @Patch(':id/upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
@@ -30,7 +31,7 @@ export class EventoController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10 MB
           new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
         ],
       }),
@@ -38,9 +39,7 @@ export class EventoController {
     file: Express.Multer.File,
   ) {
     this.logger.log(`Recebida imagem para o evento ID ${id}. A fazer upload...`);
-    
-    // ✅ CORREÇÃO AQUI: Chamamos a função com o nome correto 'uploadImagem'
-    return this.eventoService.uploadImagem(id, file);
+    return this.eventoService.uploadImagem(id, file); // <- Corrigido para uploadImagem
   }
 
   @Post()
@@ -55,14 +54,12 @@ export class EventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   findAll() {
-    this.logger.log('Recebida requisição para listar todos os eventos.');
     return this.eventoService.findAll();
   }
 
   @Public()
   @Get('publicos')
   findAllPublic() {
-    this.logger.log('Recebida requisição para listar eventos públicos.');
     return this.eventoService.findAllPublic();
   }
   
@@ -70,7 +67,6 @@ export class EventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateEventoDto: UpdateEventoDto) {
-    this.logger.log(`Recebida requisição para atualizar dados de texto do evento ID ${id}.`);
     return this.eventoService.update(id, updateEventoDto);
   }
 
@@ -78,7 +74,14 @@ export class EventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string) {
-    this.logger.log(`Recebida requisição para remover evento ID ${id}.`);
     return this.eventoService.remove(id);
+  }
+  
+  // Adicionando o findOne que estava faltando para o getEventoById do service funcionar
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.eventoService.findOne(id);
   }
 }
