@@ -12,26 +12,31 @@ import {
 import { ClienteService } from './cliente.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
-
-// --- IMPORTAÇÕES DE SEGURANÇA E SWAGGER ---
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+// ✅ 1. IMPORTAR O DECORADOR 'Public'
+import { Public } from 'src/auth/decorators/public.decorator';
+
 @ApiTags('Clientes')
-@ApiBearerAuth() // Indica que todas as rotas precisam de autenticação
-@UseGuards(JwtAuthGuard) // Garante que apenas usuários logados podem acessar
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard) // A proteção geral para todas as rotas continua aqui
 @Controller('clientes')
 export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 
+  // ✅ 2. APLICAR O DECORADOR '@Public()' A ESTE MÉTODO
+  // Isto faz com que esta rota específica ignore a proteção geral da classe
+  @Public() 
   @Post()
-  @ApiOperation({ summary: 'Cria um novo cliente no sistema' })
+  @ApiOperation({ summary: 'Cria um novo cliente no sistema (Rota Pública)' })
   @ApiResponse({ status: 201, description: 'Cliente criado com sucesso.' })
   @ApiResponse({ status: 409, description: 'Cliente com este CPF já existe.' })
   create(@Body() createClienteDto: CreateClienteDto) {
     return this.clienteService.create(createClienteDto);
   }
 
+  // As outras rotas continuam protegidas pelo @UseGuards da classe
   @Get()
   @ApiOperation({ summary: 'Lista todos os clientes cadastrados' })
   @ApiResponse({ status: 200, description: 'Lista de clientes retornada com sucesso.' })
@@ -41,16 +46,14 @@ export class ClienteController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Busca um cliente específico por ID' })
-  @ApiResponse({ status: 200, description: 'Dados do cliente retornados com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Cliente não encontrado.' })
+  // ... (resto dos seus métodos, sem alterações)
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.clienteService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualiza os dados de um cliente' })
-  @ApiResponse({ status: 200, description: 'Cliente atualizado com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Cliente não encontrado.' })
+  // ...
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateClienteDto: UpdateClienteDto,
@@ -60,8 +63,7 @@ export class ClienteController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remove um cliente do sistema' })
-  @ApiResponse({ status: 200, description: 'Cliente removido com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Cliente não encontrado.' })
+  // ...
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.clienteService.remove(id);
   }
