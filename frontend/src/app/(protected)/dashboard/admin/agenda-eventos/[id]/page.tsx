@@ -1,26 +1,20 @@
-import { getEventoById } from '@/services/eventoService';
-import EventoFormPage from './EventoFormPage'; // O componente de formulário que vamos criar
-import { notFound } from 'next/navigation';
+// frontend/src/app/(protected)/dashboard/admin/agenda-eventos/[id]/page.tsx
+
+import EventoFormPage from './EventoFormPage';
 
 interface PageProps {
-  params: { id: string };
+  params: {
+    id: string;
+  };
 }
 
-// Este é o Componente de Servidor. Ele busca os dados ANTES da página carregar.
-export default async function GerirEventoPage({ params }: PageProps) {
+// O componente de servidor agora é extremamente simples.
+// Ele não faz nenhum trabalho assíncrono, evitando o crash.
+export default function GerirEventoPage({ params }: PageProps) {
+  // A única responsabilidade dele é obter o ID da URL...
   const { id } = params;
-  const isEditMode = id !== 'novo';
-  let evento = null;
 
-  // Se estivermos no modo de edição, buscamos os dados do evento.
-  if (isEditMode) {
-    evento = await getEventoById(id);
-    // Se o evento com o ID fornecido não existir, mostra a página 404.
-    if (!evento) {
-      notFound();
-    }
-  }
-
-  // Passa os dados do evento (ou null, se for um novo) para o componente de cliente.
-  return <EventoFormPage eventoToEdit={evento} />;
+  // ...e passar esse ID para o componente de cliente (o formulário),
+  // que fará todo o trabalho de busca de dados e renderização.
+  return <EventoFormPage eventoId={id} />;
 }

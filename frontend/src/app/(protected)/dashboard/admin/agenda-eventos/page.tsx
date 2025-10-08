@@ -3,7 +3,6 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 
 // Esta página renderiza a estrutura e passa a responsabilidade para o componente cliente.
 export default function AgendaEventosPage() {
-  
   return (
     <div className="p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
@@ -24,9 +23,8 @@ export default function AgendaEventosPage() {
         </BreadcrumbList>
       </Breadcrumb>
       
-      {/* ✅ A LINHA MAIS IMPORTANTE DO PROJETO NESTE MOMENTO. */}
-      {/* ELA RENDERIZA A TABELA, O BOTÃO E BUSCA OS DADOS. */}
-      <AgendaEventosClientPage initialData={[]} />
+      {/* Esta linha renderiza o componente que contém toda a lógica da página */}
+      <AgendaEventosClientPage />
     </div>
   );
 }

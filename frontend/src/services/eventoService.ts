@@ -1,12 +1,11 @@
+// frontend/src/services/eventoService.ts
+
 import { Evento } from '@/types/evento';
-// Importa o cliente de API autenticado para uso no painel de administrador ('api')
-// e o cliente de API público ('publicApi') para a tela do cliente.
-import api, { publicApi } from './api'; 
-import { CreateEventoDto, UpdateEventoDto } from '@/types/evento.dto'; 
+import api, { publicApi } from './api';
+import { CreateEventoDto, UpdateEventoDto } from '@/types/evento.dto';
 
 /**
  * Busca a lista de TODOS os eventos (para o painel de admin).
- * Utiliza a API autenticada.
  */
 export const getAllEventos = async (): Promise<Evento[]> => {
   try {
@@ -14,13 +13,12 @@ export const getAllEventos = async (): Promise<Evento[]> => {
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar todos os eventos:', error);
-    return []; // Retorna array vazio em caso de erro
+    return [];
   }
 };
 
 /**
  * Busca a lista de eventos públicos e ativos da API.
- * Utiliza a API pública.
  */
 export const getPublicEventos = async (): Promise<Evento[]> => {
   try {
@@ -33,53 +31,72 @@ export const getPublicEventos = async (): Promise<Evento[]> => {
 };
 
 /**
+ * Busca um único evento pelo seu ID (para a página de edição do admin).
+ * ACEITA UM TOKEN OPCIONAL PARA CHAMADAS DO LADO DO SERVIDOR.
+ */
+export const getEventoById = async (id: string, token?: string): Promise<Evento | null> => {
+  try {
+    // 1. Cria um objeto de cabeçalho vazio.
+    const headers: { Authorization?: string } = {};
+
+    // 2. Se um token for fornecido, adiciona-o ao cabeçalho.
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    // 3. Passa os cabeçalhos para a chamada da API.
+    const response = await api.get<Evento>(`/eventos/${id}`, { headers });
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar o evento com ID ${id}:`, error);
+    return null;
+  }
+};
+
+/**
  * Cria um novo evento (API POST).
  */
 export const createEvento = async (data: CreateEventoDto): Promise<Evento> => {
-    // É crucial formatar a data como string ISO para o backend
-    const payload = {
-        ...data,
-        dataEvento: data.dataEvento.toISOString(),
-    };
-    const response = await api.post<Evento>('/eventos', payload);
-    return response.data;
+  const payload = {
+    ...data,
+    dataEvento: data.dataEvento.toISOString(),
+  };
+  const response = await api.post<Evento>('/eventos', payload);
+  return response.data;
 };
 
 /**
  * Atualiza um evento existente (API PATCH).
  */
 export const updateEvento = async (id: string, data: Partial<UpdateEventoDto>): Promise<Evento> => {
-    // Trata a data para ISO string, se presente
-    const payload: Partial<UpdateEventoDto & { dataEvento?: string }> = { ...data };
-    if (data.dataEvento instanceof Date) {
-        payload.dataEvento = data.dataEvento.toISOString();
-    }
+  const payload: Partial<UpdateEventoDto & { dataEvento?: string }> = { ...data };
+  if (data.dataEvento instanceof Date) {
+    payload.dataEvento = data.dataEvento.toISOString();
+  }
 
-    const response = await api.patch<Evento>(`/eventos/${id}`, payload);
-    return response.data;
+  const response = await api.patch<Evento>(`/eventos/${id}`, payload);
+  return response.data;
 };
 
 /**
- * Altera o status (ativo/inativo) de um evento (função de conveniência para PATCH).
+ * Altera o status (ativo/inativo) de um evento.
  */
 export const toggleEventoStatus = async (id: string, ativo: boolean): Promise<Evento> => {
-    // Reutiliza a função de atualização, enviando apenas o campo 'ativo'
-    return updateEvento(id, { ativo });
+  return updateEvento(id, { ativo });
 };
 
 /**
  * Remove um evento permanentemente (API DELETE).
  */
 export const deleteEvento = async (id: string): Promise<void> => {
-    await api.delete(`/eventos/${id}`);
+  await api.delete(`/eventos/${id}`);
 };
 
-// ✅ =======================================================
-// ✅ NOVA FUNÇÃO PARA UPLOAD DA IMAGEM
-// ✅ =======================================================
+/**
+ * Faz o upload da imagem de um evento.
+ */
 export const uploadEventoImagem = async (id: string, imagemFile: File): Promise<Evento> => {
   const formData = new FormData();
-  // 'file' deve ser o mesmo nome que definimos no FileInterceptor do backend
   formData.append('file', imagemFile);
 
   try {

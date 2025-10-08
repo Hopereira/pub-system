@@ -1,9 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
@@ -55,10 +56,7 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       
       toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
 
-      // --- ALTERAÇÃO PRINCIPAL AQUI ---
-      // Redireciona para o novo Portal do Cliente em vez do cardápio direto.
       router.push(`/portal-cliente/${novaComanda.id}`);
-      // --- FIM DA ALTERAÇÃO ---
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao fazer o cadastro. Tente novamente.';
