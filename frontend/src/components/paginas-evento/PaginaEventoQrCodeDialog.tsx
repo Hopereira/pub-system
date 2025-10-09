@@ -5,8 +5,8 @@ import { useRef } from 'react';
 import { PaginaEvento } from '@/types/pagina-evento';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-// ✅ CORREÇÃO: A importação correta usa chaves { }.
-import { QRCode } from 'qrcode.react';
+// ✅ 1. Importar a NOVA biblioteca. A sintaxe é diferente.
+import QRCode from "react-qr-code";
 
 interface PaginaEventoQrCodeDialogProps {
   pagina: PaginaEvento | null;
@@ -14,26 +14,31 @@ interface PaginaEventoQrCodeDialogProps {
 }
 
 export default function PaginaEventoQrCodeDialog({ pagina, onClose }: PaginaEventoQrCodeDialogProps) {
-  const qrCodeRef = useRef<HTMLDivElement>(null);
-
   if (!pagina) {
     return null;
   }
 
   const url = `${window.location.origin}/evento/${pagina.id}`;
 
+  // A função de download continua a funcionar, mas agora pega o SVG
   const handleDownload = () => {
-    const canvas = qrCodeRef.current?.querySelector('canvas');
-    if (canvas) {
-      const pngUrl = canvas
-        .toDataURL("image/png")
-        .replace("image/png", "image/octet-stream");
-      let downloadLink = document.createElement("a");
-      downloadLink.href = pngUrl;
-      downloadLink.download = `qrcode-${pagina.titulo}.png`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+    const svg = document.getElementById("QRCodeSvg");
+    if (svg) {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        const pngFile = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.download = `qrcode-${pagina.titulo}.png`;
+        downloadLink.href = pngFile;
+        downloadLink.click();
+      };
+      img.src = "data:image/svg+xml;base64," + btoa(svgData);
     }
   };
 
@@ -47,12 +52,12 @@ export default function PaginaEventoQrCodeDialog({ pagina, onClose }: PaginaEven
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-center p-6" ref={qrCodeRef}>
+        {/* ✅ 2. Usar o NOVO componente. Ele é responsivo. */}
+        <div className="p-6 bg-white flex justify-center">
           <QRCode
+            id="QRCodeSvg" // Adicionamos um ID para o download funcionar
             value={url}
             size={256}
-            level={"H"}
-            includeMargin={true}
           />
         </div>
 
