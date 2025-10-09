@@ -6,21 +6,18 @@ import api, { publicApi } from './api';
 
 /**
  * Busca todas as Páginas de Evento (para o painel de admin).
- * ✅ MUDANÇA: Agora aceita um token opcional para autenticação em chamadas do servidor.
  */
 export const getPaginasEvento = async (token?: string): Promise<PaginaEvento[]> => {
   try {
-    // Monta o cabeçalho de autenticação se o token for fornecido
     const headers: { Authorization?: string } = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
-    // Envia o cabeçalho na requisição
     const response = await api.get<PaginaEvento[]>('/paginas-evento', { headers });
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar páginas de evento:', error);
-    throw error; // Lança o erro para a página poder tratar (ex: redirecionar para login)
+    throw error;
   }
 };
 
@@ -105,6 +102,7 @@ export const getPublicPaginaEventoAtiva = async (): Promise<PaginaEvento | null>
 export const getPublicPaginaEvento = async (id: string): Promise<PaginaEvento | null> => {
   if (!id) return null;
   try {
+    // ✅ CORREÇÃO FINAL: A URL agora corresponde à rota pública do seu backend.
     const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}/public`);
     return response.data;
   } catch (error) {

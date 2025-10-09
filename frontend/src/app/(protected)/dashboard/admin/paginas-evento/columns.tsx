@@ -12,14 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+// ✅ 1. Importar o ícone do QR Code
+import { MoreHorizontal, QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-// CORREÇÃO: Renomeamos a função para 'createColumns' para ser mais explícito
+// ✅ 2. A função agora também espera o callback 'onShowQrCode'
 export const createColumns = (callbacks: {
   onEdit: (pagina: PaginaEvento) => void;
   onDelete: (pagina: PaginaEvento) => void;
   onUploadMedia: (pagina: PaginaEvento) => void;
+  onShowQrCode: (pagina: PaginaEvento) => void; 
 }): ColumnDef<PaginaEvento>[] => [
   {
     accessorKey: 'titulo',
@@ -53,6 +55,12 @@ export const createColumns = (callbacks: {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Ações</DropdownMenuLabel>
             
+            {/* ✅ 3. Adicionar a nova opção de menu aqui */}
+            <DropdownMenuItem onClick={() => callbacks.onShowQrCode(pagina)}>
+              <QrCode className="mr-2 h-4 w-4" />
+              Ver QR Code
+            </DropdownMenuItem>
+
             <DropdownMenuItem onClick={() => callbacks.onEdit(pagina)}>
               Editar Título
             </DropdownMenuItem>
@@ -65,7 +73,7 @@ export const createColumns = (callbacks: {
 
             <DropdownMenuItem 
               onClick={() => callbacks.onDelete(pagina)}
-              className="text-red-600 focus:text-red-600" // Melhoria de UX
+              className="text-red-600 focus:text-red-600"
             >
               Excluir
             </DropdownMenuItem>

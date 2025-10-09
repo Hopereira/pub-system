@@ -14,19 +14,18 @@ import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-
-// ✅ 1. IMPORTAR O DECORADOR 'Public'
 import { Public } from 'src/auth/decorators/public.decorator';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Cargo } from '../funcionario/enums/cargo.enum';
 
 @ApiTags('Clientes')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard) // A proteção geral para todas as rotas continua aqui
-@Controller('clientes')
+@Controller('clientes') // ✅ MUDANÇA: Removemos a proteção geral daqui
 export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 
-  // ✅ 2. APLICAR O DECORADOR '@Public()' A ESTE MÉTODO
-  // Isto faz com que esta rota específica ignore a proteção geral da classe
+  // ✅ ROTA PÚBLICA:
+  // Esta rota é para o cliente se cadastrar, então ela é marcada como @Public
   @Public() 
   @Post()
   @ApiOperation({ summary: 'Cria um novo cliente no sistema (Rota Pública)' })
@@ -36,24 +35,32 @@ export class ClienteController {
     return this.clienteService.create(createClienteDto);
   }
 
-  // As outras rotas continuam protegidas pelo @UseGuards da classe
+  // ✅ ROTAS PROTEGIDAS PARA ADMINS:
+  // Todas as outras rotas agora têm a sua própria proteção explícita.
   @Get()
-  @ApiOperation({ summary: 'Lista todos os clientes cadastrados' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lista todos os clientes cadastrados (Apenas Admin)' })
   @ApiResponse({ status: 200, description: 'Lista de clientes retornada com sucesso.' })
   findAll() {
     return this.clienteService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Busca um cliente específico por ID' })
-  // ... (resto dos seus métodos, sem alterações)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Busca um cliente específico por ID (Apenas Admin)' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.clienteService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Atualiza os dados de um cliente' })
-  // ...
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualiza os dados de um cliente (Apenas Admin)' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateClienteDto: UpdateClienteDto,
@@ -62,8 +69,10 @@ export class ClienteController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove um cliente do sistema' })
-  // ...
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove um cliente do sistema (Apenas Admin)' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.clienteService.remove(id);
   }
