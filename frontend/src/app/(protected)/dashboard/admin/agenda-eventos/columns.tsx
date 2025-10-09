@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Evento } from "@/types/evento";
-import { ArrowUpDown, MoreHorizontal, Loader2, PictureInPicture } from "lucide-react"; // ✅ Adicionado PictureInPicture
+import { MoreHorizontal, Edit, Upload, Trash2, QrCode, Loader2, PictureInPicture } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,76 +18,51 @@ import { toggleEventoStatus } from "@/services/eventoService";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from "sonner";
-import Image from "next/image"; // ✅ Adicionado Image
+import Image from "next/image";
 
 interface ColumnsProps {
   onEdit: (evento: Evento) => void;
   onDelete: (evento: Evento) => void;
   onUpload: (evento: Evento) => void;
+  onShowQrCode: (evento: Evento) => void;
   onStatusChangeSuccess: () => void;
 }
 
-export const createColumns = ({ onEdit, onDelete, onUpload, onStatusChangeSuccess }: ColumnsProps): ColumnDef<Evento>[] => [
-  // ✅ =======================================================
-  // ✅ NOVA COLUNA PARA EXIBIR A IMAGEM DO EVENTO
-  // ✅ =======================================================
+export const createColumns = ({ onEdit, onDelete, onUpload, onShowQrCode, onStatusChangeSuccess }: ColumnsProps): ColumnDef<Evento>[] => [
   {
-    id: 'imagem',
+    accessorKey: 'urlImagem',
     header: 'Imagem',
     cell: ({ row }) => {
       const evento = row.original;
-      if (evento.urlImagem) {
-        return (
-          <div className="relative h-10 w-16 rounded-md overflow-hidden">
-            <Image
-              src={evento.urlImagem}
-              alt={evento.titulo}
-              fill
-              className="object-cover"
-            />
-          </div>
-        );
-      }
-      // Se não houver imagem, mostra um placeholder
       return (
-        <div className="flex h-10 w-16 items-center justify-center rounded-md bg-muted text-muted-foreground">
-          <PictureInPicture className="h-4 w-4" />
+        <div className="w-24 h-16 bg-muted rounded-md flex items-center justify-center">
+          {evento.urlImagem ? (
+            <Image src={evento.urlImagem} alt={evento.titulo} width={96} height={64} className="object-cover h-16 w-24 rounded-md" />
+          ) : (
+            <span className="text-xs text-muted-foreground">Sem Imagem</span>
+          )}
         </div>
       );
     },
   },
   {
     accessorKey: "titulo",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Título
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => <div className="pl-4 font-medium">{row.getValue("titulo")}</div>,
+    header: "Título",
   },
   {
     accessorKey: "dataEvento",
     header: "Data do Evento",
     cell: ({ row }) => {
       const data = new Date(row.getValue("dataEvento"));
-      const formatada = format(data, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-      return <div>{formatada}</div>;
+      return <div>{format(data, "dd/MM/yyyy 'às' HH:mm'h'", { locale: ptBR })}</div>;
     },
   },
   {
     accessorKey: "valor",
-    header: () => <div className="text-right">Valor</div>,
+    header: "Valor",
     cell: ({ row }) => {
         const valor = parseFloat(row.getValue("valor"));
-        const formatado = new Intl.NumberFormat("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-        }).format(valor);
-        return <div className="text-right font-medium">{valor > 0 ? formatado : 'Gratuito'}</div>;
+        return <div>{valor > 0 ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor) : 'Gratuito'}</div>;
     },
   },
   {
@@ -95,33 +70,30 @@ export const createColumns = ({ onEdit, onDelete, onUpload, onStatusChangeSucces
     header: "Status",
     cell: ({ row }) => {
       const evento = row.original;
-      const [isPending, setIsPending] = useState(false);
-      
-      const handleToggle = async (checked: boolean) => {
-        if (isPending) return;
+      const [isLoading, setIsLoading] = useState(false);
 
-        setIsPending(true);
+      const handleToggleStatus = async (ativo: boolean) => {
+        setIsLoading(true);
         try {
-            await toggleEventoStatus(evento.id, checked);
-            toast.success(`Status de "${evento.titulo}" alterado com sucesso!`);
-            onStatusChangeSuccess(); 
+          await toggleEventoStatus(evento.id, ativo);
+          toast.success(`Status do evento "${evento.titulo}" alterado com sucesso!`);
+          onStatusChangeSuccess();
         } catch (error) {
-            toast.error(`Falha ao alterar o status de "${evento.titulo}".`);
-            onStatusChangeSuccess();
+          toast.error("Falha ao alterar o status do evento.");
         } finally {
-            setIsPending(false);
+          setIsLoading(false);
         }
       };
 
       return (
         <div className="flex items-center space-x-2">
-            {isPending && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-            <Switch
-                id={`status-${evento.id}`}
-                checked={evento.ativo}
-                onCheckedChange={handleToggle}
-                disabled={isPending}
-            />
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+          <Switch
+            checked={evento.ativo}
+            onCheckedChange={handleToggleStatus}
+            disabled={isLoading}
+            aria-label="Ativar ou desativar evento"
+          />
         </div>
       );
     },
@@ -130,7 +102,6 @@ export const createColumns = ({ onEdit, onDelete, onUpload, onStatusChangeSucces
     id: "actions",
     cell: ({ row }) => {
       const evento = row.original;
- 
       return (
         <div className="text-right">
           <DropdownMenu>
@@ -142,17 +113,28 @@ export const createColumns = ({ onEdit, onDelete, onUpload, onStatusChangeSucces
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Ações</DropdownMenuLabel>
+              
+              <DropdownMenuItem onClick={() => onShowQrCode(evento)}>
+                <QrCode className="mr-2 h-4 w-4" />
+                Ver QR Code
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem onClick={() => onEdit(evento)}>
+                <Edit className="mr-2 h-4 w-4" />
                 Editar Dados
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onUpload(evento)}>
+                <Upload className="mr-2 h-4 w-4" />
                 Enviar Imagem
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
-                className="text-red-500 focus:text-red-500 focus:bg-red-50"
+                className="text-red-500 focus:text-red-500"
                 onClick={() => onDelete(evento)}
               >
+                <Trash2 className="mr-2 h-4 w-4" />
                 Excluir
               </DropdownMenuItem>
             </DropdownMenuContent>

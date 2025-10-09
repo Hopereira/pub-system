@@ -1,21 +1,11 @@
-import { getPaginasEvento } from "@/services/paginaEventoService";
+// Caminho: frontend/src/app/(protected)/dashboard/admin/paginas-evento/page.tsx
+
 import { PaginasEventoClientPage } from "./PaginasEventoClientPage";
-import { toast } from "sonner";
 
-export default async function PaginaEventoPage() {
-  try {
-    // Buscamos os dados no lado do servidor
-    const paginas = await getPaginasEvento();
-
-    // Passamos os dados para o componente cliente renderizar
-    return <PaginasEventoClientPage paginasIniciais={paginas} />;
-  } catch (error) {
-    console.error("Falha ao buscar páginas de evento:", error);
-    // Idealmente, renderizaríamos um componente de erro aqui
-    return (
-      <div className="p-6 text-red-500">
-        Erro ao carregar os dados das páginas de evento. Tente novamente mais tarde.
-      </div>
-    );
-  }
+// Este componente de servidor agora é o mais simples possível.
+export default function PaginaEventoPage() {
+  // A única responsabilidade dele é renderizar o componente de cliente.
+  // Isso evita o uso de 'cookies()' aqui e previne o crash do servidor
+  // que estava causando o loop de logout.
+  return <PaginasEventoClientPage />;
 }

@@ -1,27 +1,14 @@
-// Caminho: frontend/src/services/clienteService.ts
-import api from './api';
-
-// Interface para os dados de um Cliente, como vêm da API
-export interface ClienteData {
-  id: string;
-  nome: string;
-  cpf: string;
-}
-
-// DTO para criar um novo cliente
-export interface CreateClienteDto {
-  nome: string;
-  cpf: string;
-}
+// frontend/src/services/clienteService.ts
+import { Cliente } from '@/types/cliente';
+import { CreateClienteDto } from '@/types/cliente.dto';
+import { publicApi } from './api'; // ✅ CORREÇÃO: Usar publicApi para cadastro
 
 /**
  * Cria um novo cliente no sistema.
- * @param data Os dados do cliente (nome e CPF).
- * @returns Os dados do cliente criado, incluindo o seu ID.
  */
-export const createCliente = async (data: CreateClienteDto): Promise<ClienteData> => {
+export const createCliente = async (data: CreateClienteDto): Promise<Cliente> => {
   try {
-    const response = await api.post<ClienteData>('/clientes', data);
+    const response = await publicApi.post<Cliente>('/clientes', data);
     return response.data;
   } catch (error) {
     console.error('Erro ao criar cliente:', error);

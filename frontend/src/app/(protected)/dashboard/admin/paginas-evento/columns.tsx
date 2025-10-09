@@ -9,17 +9,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator, // Importar o Separator para melhor UX
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+// ✅ 1. Importar o ícone do QR Code
+import { MoreHorizontal, QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-// A definição de colunas agora recebe o novo callback onUploadMedia
-export const columns = (callbacks: {
+// ✅ 2. A função agora também espera o callback 'onShowQrCode'
+export const createColumns = (callbacks: {
   onEdit: (pagina: PaginaEvento) => void;
   onDelete: (pagina: PaginaEvento) => void;
-  onUploadMedia: (pagina: PaginaEvento) => void; // <-- NOVO CALLBACK
+  onUploadMedia: (pagina: PaginaEvento) => void;
+  onShowQrCode: (pagina: PaginaEvento) => void; 
 }): ColumnDef<PaginaEvento>[] => [
   {
     accessorKey: 'titulo',
@@ -53,18 +55,26 @@ export const columns = (callbacks: {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Ações</DropdownMenuLabel>
             
+            {/* ✅ 3. Adicionar a nova opção de menu aqui */}
+            <DropdownMenuItem onClick={() => callbacks.onShowQrCode(pagina)}>
+              <QrCode className="mr-2 h-4 w-4" />
+              Ver QR Code
+            </DropdownMenuItem>
+
             <DropdownMenuItem onClick={() => callbacks.onEdit(pagina)}>
               Editar Título
             </DropdownMenuItem>
             
-            {/* NOVO: Ação de Upload de Mídia */}
             <DropdownMenuItem onClick={() => callbacks.onUploadMedia(pagina)}>
               Upload Mídia
             </DropdownMenuItem>
             
             <DropdownMenuSeparator /> 
 
-            <DropdownMenuItem onClick={() => callbacks.onDelete(pagina)}>
+            <DropdownMenuItem 
+              onClick={() => callbacks.onDelete(pagina)}
+              className="text-red-600 focus:text-red-600"
+            >
               Excluir
             </DropdownMenuItem>
           </DropdownMenuContent>

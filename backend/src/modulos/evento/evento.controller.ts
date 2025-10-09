@@ -19,13 +19,13 @@ export class EventoController {
 
   constructor(private readonly eventoService: EventoService) {}
 
-  // =================================================================
-  // ✅ NOVO: ENDPOINT DEDICADO PARA UPLOAD DA IMAGEM
-  // =================================================================
+  // ✅ =======================================================
+  // ✅ NOVO ENDPOINT PARA RECEBER O UPLOAD DA IMAGEM
+  // ✅ =======================================================
   @Patch(':id/upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @UseInterceptors(FileInterceptor('file')) // 'file' é o nome do campo que o frontend enviará
+  @UseInterceptors(FileInterceptor('file'))
   async uploadImagem(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile(
@@ -39,7 +39,7 @@ export class EventoController {
     file: Express.Multer.File,
   ) {
     this.logger.log(`Recebida imagem para o evento ID ${id}. A fazer upload...`);
-    return this.eventoService.updateUrlImagem(id, file);
+    return this.eventoService.uploadImagem(id, file); // <- Corrigido para uploadImagem
   }
 
   @Post()
@@ -54,23 +54,19 @@ export class EventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   findAll() {
-    this.logger.log('Recebida requisição para listar todos os eventos.');
     return this.eventoService.findAll();
   }
 
   @Public()
   @Get('publicos')
   findAllPublic() {
-    this.logger.log('Recebida requisição para listar eventos públicos.');
     return this.eventoService.findAllPublic();
   }
   
-  // Este endpoint agora serve para atualizar apenas os dados de TEXTO
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateEventoDto: UpdateEventoDto) {
-    this.logger.log(`Recebida requisição para atualizar dados de texto do evento ID ${id}.`);
     return this.eventoService.update(id, updateEventoDto);
   }
 
@@ -78,7 +74,14 @@ export class EventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string) {
-    this.logger.log(`Recebida requisição para remover evento ID ${id}.`);
     return this.eventoService.remove(id);
+  }
+  
+  // Adicionando o findOne que estava faltando para o getEventoById do service funcionar
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.eventoService.findOne(id);
   }
 }

@@ -8,12 +8,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { PaginaEventoService } from './pagina-evento.service';
 import { CreatePaginaEventoDto } from './dto/create-pagina-evento.dto';
 import { UpdatePaginaEventoDto } from './dto/update-pagina-evento.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiConsumes, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Public } from '../../auth/decorators/public.decorator';
+import { Express } from 'express';
 
 @ApiTags('Páginas de Evento')
 @Controller('paginas-evento')
@@ -28,26 +29,21 @@ export class PaginaEventoController {
   create(@Body() createPaginaEventoDto: CreatePaginaEventoDto) {
     return this.paginaEventoService.create(createPaginaEventoDto);
   }
-
-  // --- NOVO ENDPOINT PÚBLICO ADICIONADO ---
-  @Public()
-  @Get('ativa/publica')
-  @ApiOperation({ summary: 'Busca a página de evento atualmente ativa (Público)' })
-  findAtiva() {
-    return this.paginaEventoService.findAtiva();
-  }
-  // --- FIM DA ADIÇÃO ---
-
-  @Public()
+  
   @Get()
-  @ApiOperation({ summary: 'Lista todas as páginas de evento (Público)' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lista todas as páginas de evento (Apenas Admin)' })
   findAll() {
     return this.paginaEventoService.findAll();
   }
   
-  @Public()
   @Get(':id')
-  @ApiOperation({ summary: 'Busca uma página de evento específica pelo ID (Público)' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Busca uma página de evento específica pelo ID (Apenas Admin)' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.paginaEventoService.findOne(id);
   }
@@ -72,24 +68,11 @@ export class PaginaEventoController {
     return this.paginaEventoService.remove(id);
   }
 
-  @Patch(':id/media')
+  @Patch(':id/upload-media')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Faz o upload de uma mídia para uma página de evento' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    description: 'Ficheiro de mídia (imagem ou vídeo)',
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
+  // ... (documentação do swagger)
   @UseInterceptors(FileInterceptor('file'))
   uploadMedia(
     @Param('id', ParseUUIDPipe) id: string,
@@ -104,5 +87,24 @@ export class PaginaEventoController {
     file: Express.Multer.File,
   ) {
     return this.paginaEventoService.uploadMedia(id, file);
+  }
+
+  // --- ROTAS PÚBLICAS ---
+
+  @Public()
+  @Get('ativa/publica')
+  @ApiOperation({ summary: 'Busca a página de evento atualmente ativa (Público)' })
+  findAtiva() {
+    return this.paginaEventoService.findAtiva();
+  }
+  
+  @Public()
+  @Get(':id/public')
+  @ApiOperation({ summary: 'Busca uma página de evento pública por ID' })
+  @ApiResponse({ status: 200, description: 'Página de evento encontrada.' })
+  @ApiResponse({ status: 404, description: 'Página de evento não encontrada.' })
+  findOnePublic(@Param('id', ParseUUIDPipe) id: string) {
+    // Reutiliza o método findOne, pois ele já busca pelo ID.
+    return this.paginaEventoService.findOne(id);
   }
 }

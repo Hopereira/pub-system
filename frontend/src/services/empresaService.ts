@@ -1,32 +1,37 @@
-// Caminho: frontend/src/services/empresaService.ts
+import { Empresa } from '@/types/empresa';
+import { CreateEmpresaDto, UpdateEmpresaDto } from '@/types/empresa.dto';
 import api from './api';
+import { AxiosError } from 'axios';
 
-// CORRIGIDO: Alinhamos os nomes dos campos com o DTO do backend
-export interface EmpresaData {
-  id?: string;
-  nomeFantasia: string; // Renomeado de 'nome'
-  razaoSocial: string;  // Adicionado
-  cnpj: string;
-  endereco: string;
-  telefone: string;
-}
-
-export const getEmpresa = async (): Promise<EmpresaData | null> => {
+/**
+ * Busca o registro único da empresa.
+ */
+export const getEmpresa = async (): Promise<Empresa | null> => {
   try {
-    const response = await api.get<EmpresaData>('/empresa');
+    const response = await api.get<Empresa>('/empresa');
     return response.data;
   } catch (error) {
-    console.error("Empresa ainda não cadastrada.", error);
-    return null;
+    if (error instanceof AxiosError && error.response?.status === 404) {
+      console.log('Empresa ainda não cadastrada (comportamento esperado).');
+      return null;
+    }
+    console.error('Erro ao buscar empresa:', error);
+    throw error;
   }
 };
 
-export const createOrUpdateEmpresa = async (data: Partial<EmpresaData>): Promise<EmpresaData> => {
-  if (data.id) {
-    const response = await api.put<EmpresaData>(`/empresa/${data.id}`, data);
-    return response.data;
-  } else {
-    const response = await api.post<EmpresaData>('/empresa', data);
-    return response.data;
-  }
+/**
+ * Cria o registro da empresa.
+ */
+export const createEmpresa = async (data: CreateEmpresaDto): Promise<Empresa> => {
+  const response = await api.post<Empresa>('/empresa', data);
+  return response.data;
+};
+
+/**
+ * Atualiza o registro da empresa.
+ */
+export const updateEmpresa = async (id: string, data: UpdateEmpresaDto): Promise<Empresa> => {
+  const response = await api.patch<Empresa>(`/empresa/${id}`, data);
+  return response.data;
 };
