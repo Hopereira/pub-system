@@ -1,24 +1,28 @@
+// Caminho: frontend/src/app/evento/[id]/EventoClientPage.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { PaginaEvento } from '@/types/pagina-evento';
 import { createCliente } from '@/services/clienteService';
-import { abrirComanda } from '@/services/comandaService';
+import { abrirComandaPublica } from '@/services/comandaService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
+
+// ✅ REMOVEMOS AS IMPORTAÇÕES DESNECESSÁRIAS DAQUI (DataTable, createColumns, etc.)
 
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
-  cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos (apenas números).' }),
+  cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos (apenas números).' }).regex(/^\d+$/, 'CPF deve conter apenas números.'),
   email: z.string().email({ message: 'Por favor, insira um email válido.' }).optional().or(z.literal('')),
   celular: z.string().min(10, { message: 'O celular deve ter pelo menos 10 dígitos.' }).optional().or(z.literal('')),
 });
@@ -44,21 +48,18 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       const novoCliente = await createCliente({
         nome: values.nome,
         cpf: values.cpf,
-        email: values.email,
-        celular: values.celular,
+        email: values.email || undefined,
+        celular: values.celular || undefined,
       });
 
-      const novaComanda = await abrirComanda({
+      const novaComanda = await abrirComandaPublica({
         clienteId: novoCliente.id,
         mesaId: mesaId,
       });
       
       toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
 
-      // --- ALTERAÇÃO PRINCIPAL AQUI ---
-      // Redireciona para o novo Portal do Cliente em vez do cardápio direto.
       router.push(`/portal-cliente/${novaComanda.id}`);
-      // --- FIM DA ALTERAÇÃO ---
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao fazer o cadastro. Tente novamente.';
@@ -105,7 +106,7 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>CPF (apenas números)</FormLabel>
-                    <FormControl><Input type="number" placeholder="12345678900" {...field} /></FormControl>
+                    <FormControl><Input type="text" placeholder="12345678900" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -127,13 +128,14 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Celular (Opcional)</FormLabel>
-                    <FormControl><Input type="number" placeholder="21999998888" {...field} /></FormControl>
+                    <FormControl><Input type="text" placeholder="21999998888" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? 'Aguarde...' : 'Criar Acesso e Entrar'}
               </Button>
             </form>

@@ -1,75 +1,79 @@
 // Caminho: frontend/src/app/(protected)/dashboard/admin/paginas-evento/PaginasEventoClientPage.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PaginaEvento } from '@/types/pagina-evento';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { DataTable } from '@/components/ui/data-table';
-// CORREÇÃO: Importamos a função renomeada 'createColumns'
 import { createColumns } from './columns';
 import { getPaginasEvento } from '@/services/paginaEventoService';
 import PaginaEventoFormDialog from '@/components/paginas-evento/PaginaEventoFormDialog';
 import { PaginaEventoDeleteAlert } from '@/components/paginas-evento/PaginaEventoDeleteAlert';
 import PaginaEventoUploadDialog from '@/components/paginas-evento/PaginaEventoUploadDialog';
+// ✅ 1. Importar o nosso novo componente de modal do QR Code
+import PaginaEventoQrCodeDialog from '@/components/paginas-evento/PaginaEventoQrCodeDialog';
+import { toast } from 'sonner';
 
-interface PaginasEventoClientPageProps {
-  paginasIniciais: PaginaEvento[] | null | undefined;
-}
+export function PaginasEventoClientPage() {
+  const [paginas, setPaginas] = useState<PaginaEvento[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClientPageProps) {
-  const [paginas, setPaginas] = useState(paginasIniciais || []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paginaToEdit, setPaginaToEdit] = useState<PaginaEvento | null>(null);
   const [paginaToDelete, setPaginaToDelete] = useState<PaginaEvento | null>(null);
   const [paginaToUpload, setPaginaToUpload] = useState<PaginaEvento | null>(null);
+  // ✅ 2. Adicionar um novo estado para controlar qual QR Code mostrar
+  const [paginaToShowQr, setPaginaToShowQr] = useState<PaginaEvento | null>(null);
 
-  const handleSuccess = async () => {
+  const carregarPaginas = async () => {
+    setIsLoading(true);
     try {
       const paginasAtualizadas = await getPaginasEvento();
       setPaginas(paginasAtualizadas || []);
-      setIsModalOpen(false);
-      setPaginaToEdit(null);
-      setPaginaToDelete(null); 
-      setPaginaToUpload(null);
     } catch (error) {
-      console.error('Erro ao recarregar os dados:', error);
-      setPaginas([]);
+      toast.error('Falha ao carregar a lista de páginas.');
+      console.error('Erro ao carregar os dados:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleEdit = (pagina: PaginaEvento) => {
-    setPaginaToEdit(pagina);
-    setIsModalOpen(true);
-  };
-  
-  const handleUploadMedia = (pagina: PaginaEvento) => {
-    setPaginaToUpload(pagina);
-  };
-  
-  const handleCloseUpload = () => {
-    setPaginaToUpload(null);
-  };
+  useEffect(() => {
+    carregarPaginas();
+  }, []);
 
-  const handleDelete = (pagina: PaginaEvento) => {
-    setPaginaToDelete(pagina);
-  };
-  
-  const handleCloseDeleteAlert = () => {
-    setPaginaToDelete(null);
-  };
-
-  const handleAddNew = () => {
+  const handleSuccess = () => {
+    setIsModalOpen(false);
     setPaginaToEdit(null);
-    setIsModalOpen(true);
+    setPaginaToDelete(null); 
+    setPaginaToUpload(null);
+    setPaginaToShowQr(null); // ✅ Limpa também o estado do QR Code
+    carregarPaginas();
   };
 
-  // CORREÇÃO: Chamamos a nova função 'createColumns'
+  const handleEdit = (pagina: PaginaEvento) => { setPaginaToEdit(pagina); setIsModalOpen(true); };
+  const handleUploadMedia = (pagina: PaginaEvento) => { setPaginaToUpload(pagina); };
+  const handleDelete = (pagina: PaginaEvento) => { setPaginaToDelete(pagina); };
+  const handleAddNew = () => { setPaginaToEdit(null); setIsModalOpen(true); };
+  // ✅ 3. Nova função para abrir o modal do QR Code
+  const handleShowQrCode = (pagina: PaginaEvento) => { setPaginaToShowQr(pagina); };
+
   const tableColumns = createColumns({ 
     onEdit: handleEdit, 
     onDelete: handleDelete, 
-    onUploadMedia: handleUploadMedia, 
+    onUploadMedia: handleUploadMedia,
+    onShowQrCode: handleShowQrCode, // ✅ 4. Passar a nova função para as colunas
   });
+
+  if (isLoading && paginas.length === 0) {
+    return (
+        <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin mr-2"/>
+            Carregando páginas de boas-vindas...
+        </div>
+    )
+  }
 
   return (
     <div className="p-6">
@@ -83,24 +87,29 @@ export function PaginasEventoClientPage({ paginasIniciais }: PaginasEventoClient
 
       <DataTable columns={tableColumns} data={paginas} />
 
+      {/* Os seus modais existentes continuam aqui */}
       <PaginaEventoFormDialog
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onSuccess={handleSuccess}
         paginaToEdit={paginaToEdit}
       />
-      
       <PaginaEventoDeleteAlert
         paginaToDelete={paginaToDelete}
-        onClose={handleCloseDeleteAlert}
+        onClose={() => setPaginaToDelete(null)}
         onSuccess={handleSuccess}
       />
-      
       <PaginaEventoUploadDialog
         open={!!paginaToUpload}
-        onOpenChange={handleCloseUpload}
+        onOpenChange={() => setPaginaToUpload(null)}
         onSuccess={handleSuccess}
         paginaToUpload={paginaToUpload}
+      />
+
+      {/* ✅ 5. Adicionamos o novo modal do QR Code à página */}
+      <PaginaEventoQrCodeDialog
+        pagina={paginaToShowQr}
+        onClose={() => setPaginaToShowQr(null)}
       />
     </div>
   );

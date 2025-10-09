@@ -1,18 +1,11 @@
 // Caminho: frontend/src/app/(protected)/dashboard/admin/paginas-evento/page.tsx
 
-import { getPaginasEvento } from "@/services/paginaEventoService";
 import { PaginasEventoClientPage } from "./PaginasEventoClientPage";
 
-export default async function PaginaEventoPage() {
-  try {
-    // CORREÇÃO: Adicionamos `|| []` como uma camada extra de segurança.
-    // Se `getPaginasEvento` retornar `undefined` ou `null`, `paginas` se tornará `[]`.
-    const paginas = (await getPaginasEvento()) || [];
-
-    return <PaginasEventoClientPage paginasIniciais={paginas} />;
-  } catch (error) {
-    console.error("Falha ao buscar páginas de evento:", error);
-    // Em caso de erro na busca, também passamos um array vazio para não quebrar.
-    return <PaginasEventoClientPage paginasIniciais={[]} />;
-  }
+// Este componente de servidor agora é o mais simples possível.
+export default function PaginaEventoPage() {
+  // A única responsabilidade dele é renderizar o componente de cliente.
+  // Isso evita o uso de 'cookies()' aqui e previne o crash do servidor
+  // que estava causando o loop de logout.
+  return <PaginasEventoClientPage />;
 }
