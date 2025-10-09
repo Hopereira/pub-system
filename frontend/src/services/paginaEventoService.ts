@@ -6,14 +6,21 @@ import api, { publicApi } from './api';
 
 /**
  * Busca todas as Páginas de Evento (para o painel de admin).
+ * ✅ MUDANÇA: Agora aceita um token opcional para autenticação em chamadas do servidor.
  */
-export const getPaginasEvento = async (): Promise<PaginaEvento[]> => {
+export const getPaginasEvento = async (token?: string): Promise<PaginaEvento[]> => {
   try {
-    const response = await api.get<PaginaEvento[]>('/paginas-evento');
+    // Monta o cabeçalho de autenticação se o token for fornecido
+    const headers: { Authorization?: string } = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    // Envia o cabeçalho na requisição
+    const response = await api.get<PaginaEvento[]>('/paginas-evento', { headers });
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar páginas de evento:', error);
-    throw error;
+    throw error; // Lança o erro para a página poder tratar (ex: redirecionar para login)
   }
 };
 
@@ -92,16 +99,13 @@ export const getPublicPaginaEventoAtiva = async (): Promise<PaginaEvento | null>
   }
 };
 
-// =======================================================
-// ✅ NOVA FUNÇÃO ADICIONADA AQUI
-// =======================================================
 /**
  * Busca os dados públicos de UMA página de evento específica pelo ID.
  */
 export const getPublicPaginaEvento = async (id: string): Promise<PaginaEvento | null> => {
+  if (!id) return null;
   try {
-    // Usa a API pública para chamar o endpoint GET /paginas-evento/:id
-    const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}`);
+    const response = await publicApi.get<PaginaEvento>(`/paginas-evento/${id}/public`);
     return response.data;
   } catch (error) {
     console.error(`Erro ao buscar página de evento pública com ID ${id}:`, error);

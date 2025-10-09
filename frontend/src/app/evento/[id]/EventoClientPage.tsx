@@ -1,143 +1,115 @@
+// Caminho: frontend/src/app/(protected)/dashboard/admin/paginas-evento/PaginasEventoClientPage.tsx
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { useState } from 'react';
+// ✅ MUDANÇA: Importamos useEffect e Loader2 para a tela de carregamento
+import { useState, useEffect } from 'react';
+import { PaginaEvento } from '@/types/pagina-evento';
+import { Button } from '@/components/ui/button';
+import { PlusCircle, Loader2 } from 'lucide-react';
+import { DataTable } from '@/components/ui/data-table';
+import { createColumns } from './columns';
+import { getPaginasEvento } from '@/services/paginaEventoService';
+import PaginaEventoFormDialog from '@/components/paginas-evento/PaginaEventoFormDialog';
+import { PaginaEventoDeleteAlert } from '@/components/paginas-evento/PaginaEventoDeleteAlert';
+import PaginaEventoUploadDialog from '@/components/paginas-evento/PaginaEventoUploadDialog';
 import { toast } from 'sonner';
 
-import { PaginaEvento } from '@/types/pagina-evento';
-import { createCliente } from '@/services/clienteService';
-import { abrirComanda } from '@/services/comandaService';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import Image from 'next/image';
-import { Loader2 } from 'lucide-react';
+// ✅ MUDANÇA: As props foram removidas, o componente não precisa mais receber dados iniciais.
+export function PaginasEventoClientPage() {
+  const [paginas, setPaginas] = useState<PaginaEvento[]>([]);
+  // ✅ MUDANÇA: Novo estado para controlar o carregamento inicial da lista
+  const [isLoading, setIsLoading] = useState(true);
 
-const formSchema = z.object({
-  nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
-  cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos (apenas números).' }),
-  email: z.string().email({ message: 'Por favor, insira um email válido.' }).optional().or(z.literal('')),
-  celular: z.string().min(10, { message: 'O celular deve ter pelo menos 10 dígitos.' }).optional().or(z.literal('')),
-});
-type FormValues = z.infer<typeof formSchema>;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [paginaToEdit, setPaginaToEdit] = useState<PaginaEvento | null>(null);
+  const [paginaToDelete, setPaginaToDelete] = useState<PaginaEvento | null>(null);
+  const [paginaToUpload, setPaginaToUpload] = useState<PaginaEvento | null>(null);
 
-interface EventoClientPageProps {
-  paginaEvento: PaginaEvento;
-  mesaId?: string;
-}
-
-export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientPageProps) {
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { nome: '', cpf: '', email: '', celular: '' },
-  });
-
-  const onSubmit = async (values: FormValues) => {
-    setIsSubmitting(true);
+  // ✅ MUDANÇA: Esta função agora será chamada pelo useEffect e pelo handleSuccess
+  const carregarPaginas = async () => {
     try {
-      const novoCliente = await createCliente({
-        nome: values.nome,
-        cpf: values.cpf,
-        email: values.email,
-        celular: values.celular,
-      });
-
-      const novaComanda = await abrirComanda({
-        clienteId: novoCliente.id,
-        mesaId: mesaId,
-      });
-      
-      toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
-
-      router.push(`/portal-cliente/${novaComanda.id}`);
-
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao fazer o cadastro. Tente novamente.';
-      toast.error(errorMessage);
+      // A chamada aqui funciona pois está no cliente (navegador).
+      // O 'api.ts' injetará o token do localStorage automaticamente.
+      const paginasAtualizadas = await getPaginasEvento();
+      setPaginas(paginasAtualizadas || []);
+    } catch (error) {
+      toast.error('Falha ao carregar a lista de páginas.');
+      console.error('Erro ao carregar os dados:', error);
+      setPaginas([]);
     } finally {
-      setIsSubmitting(false);
+        setIsLoading(false); // Garante que o loading termine
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="p-0">
-          <div className="relative w-full h-48">
-            <Image
-              src={paginaEvento.urlImagem || '/placeholder.png'}
-              alt={paginaEvento.titulo}
-              fill
-              className="rounded-t-lg object-cover"
-            />
-          </div>
-          <div className="p-6">
-            <CardTitle className="text-2xl">{paginaEvento.titulo}</CardTitle>
-            <CardDescription>Para começar, por favor, preencha os seus dados abaixo.</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="nome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo</FormLabel>
-                    <FormControl><Input placeholder="Seu nome" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cpf"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CPF (apenas números)</FormLabel>
-                    <FormControl><Input type="number" placeholder="12345678900" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email (Opcional)</FormLabel>
-                    <FormControl><Input type="email" placeholder="seu.email@exemplo.com" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="celular"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Celular (Opcional)</FormLabel>
-                    <FormControl><Input type="number" placeholder="21999998888" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+  // ✅ MUDANÇA: useEffect para buscar os dados assim que o componente for montado
+  useEffect(() => {
+    carregarPaginas();
+  }, []); // O array vazio [] garante que isso só rode uma vez
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Aguarde...' : 'Criar Acesso e Entrar'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+  const handleSuccess = () => {
+    // Apenas fechamos os modais e recarregamos a lista
+    setIsModalOpen(false);
+    setPaginaToEdit(null);
+    setPaginaToDelete(null); 
+    setPaginaToUpload(null);
+    carregarPaginas();
+  };
+
+  // O resto do código continua igual
+  const handleEdit = (pagina: PaginaEvento) => { setPaginaToEdit(pagina); setIsModalOpen(true); };
+  const handleUploadMedia = (pagina: PaginaEvento) => { setPaginaToUpload(pagina); };
+  const handleCloseUpload = () => { setPaginaToUpload(null); };
+  const handleDelete = (pagina: PaginaEvento) => { setPaginaToDelete(pagina); };
+  const handleCloseDeleteAlert = () => { setPaginaToDelete(null); };
+  const handleAddNew = () => { setPaginaToEdit(null); setIsModalOpen(true); };
+
+  const tableColumns = createColumns({ 
+    onEdit: handleEdit, 
+    onDelete: handleDelete, 
+    onUploadMedia: handleUploadMedia, 
+  });
+
+  // ✅ MUDANÇA: Adicionamos uma verificação de 'isLoading'
+  if (isLoading) {
+    return (
+        <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin mr-2"/>
+            Carregando páginas...
+        </div>
+    )
+  }
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold tracking-tight">Páginas de Boas-Vindas</h1>
+        <Button onClick={handleAddNew}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Adicionar Nova Página
+        </Button>
+      </div>
+
+      <DataTable columns={tableColumns} data={paginas} />
+
+      <PaginaEventoFormDialog
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onSuccess={handleSuccess}
+        paginaToEdit={paginaToEdit}
+      />
+      
+      <PaginaEventoDeleteAlert
+        paginaToDelete={paginaToDelete}
+        onClose={handleCloseDeleteAlert}
+        onSuccess={handleSuccess}
+      />
+      
+      <PaginaEventoUploadDialog
+        open={!!paginaToUpload}
+        onOpenChange={() => setPaginaToUpload(null)} // Simplificado
+        onSuccess={handleSuccess}
+        paginaToUpload={paginaToUpload}
+      />
     </div>
   );
 }
