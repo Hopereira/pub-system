@@ -1,4 +1,4 @@
-// backend/src/modulos/comanda/comanda.module.ts
+// Caminho: backend/src/modulos/comanda/comanda.module.ts
 import { Module } from '@nestjs/common';
 import { ComandaService } from './comanda.service';
 import { ComandaController } from './comanda.controller';
@@ -6,16 +6,28 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Comanda } from './entities/comanda.entity';
 import { Mesa } from '../mesa/entities/mesa.entity';
 import { Cliente } from '../cliente/entities/cliente.entity';
-// ==================================================================
-// ## CORREÇÃO (1/2): Importamos o módulo vizinho ##
-// ==================================================================
 import { PedidoModule } from '../pedido/pedido.module';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
+
+// ✅ 1. Importar as entidades necessárias para a nova lógica de entrada do evento
+import { Evento } from '../evento/entities/evento.entity';
+import { Pedido } from '../pedido/entities/pedido.entity';
+import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 
 @Module({
-  // ==================================================================
-  // ## CORREÇÃO (2/2): Damos acesso ao nosso módulo para usar as ferramentas do PedidoModule ##
-  // ==================================================================
-  imports: [TypeOrmModule.forFeature([Comanda, Mesa, Cliente]), PedidoModule],
+  imports: [
+    // ✅ 2. Adicionar TODAS as entidades que o ComandaService agora utiliza
+    TypeOrmModule.forFeature([
+      Comanda, 
+      Mesa, 
+      Cliente, 
+      PaginaEvento,
+      Evento,
+      Pedido,
+      ItemPedido,
+    ]), 
+    PedidoModule, // Mantemos a importação do PedidoModule para acesso ao Gateway
+  ],
   controllers: [ComandaController],
   providers: [ComandaService],
 })

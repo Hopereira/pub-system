@@ -1,3 +1,4 @@
+// Caminho: frontend/src/app/(protected)/dashboard/admin/agenda-eventos/AgendaEventosClientPage.tsx
 'use client';
 
 import { useState, useEffect, useRef } from "react"; 
@@ -48,7 +49,13 @@ export default function AgendaEventosClientPage() {
   };
   
   const handleShowQrCode = (evento: Evento) => {
-    setEventoParaQrCode(evento);
+    if (evento.paginaEvento && evento.paginaEvento.id) {
+      setEventoParaQrCode(evento);
+    } else {
+      toast.error("Ação inválida!", {
+        description: "Este evento não tem um Tema de Boas-Vindas associado. Por favor, edite o evento e selecione um tema.",
+      });
+    }
   };
   
   const handleDownloadQrCode = () => {
@@ -63,6 +70,7 @@ export default function AgendaEventosClientPage() {
       }
     }
   };
+  
   const handlePrintQrCode = () => window.print();
 
   const columns = createColumns({
@@ -72,6 +80,10 @@ export default function AgendaEventosClientPage() {
     onShowQrCode: handleShowQrCode,
     onStatusChangeSuccess: loadEventos,
   });
+
+  const qrCodeUrl = eventoParaQrCode?.paginaEvento?.id 
+    ? `${window.location.origin}/evento/${eventoParaQrCode.paginaEvento.id}`
+    : '';
 
   return (
     <>
@@ -99,19 +111,19 @@ export default function AgendaEventosClientPage() {
           </DialogHeader>
           <div className="flex justify-center p-8 bg-white" ref={qrCodeRef}>
             <QRCodeCanvas
-              value={`${window.location.origin}/evento-publico/${eventoParaQrCode?.id}`}
+              value={qrCodeUrl}
               size={256}
               includeMargin={true}
             />
           </div>
            <div className="mt-2 text-center text-sm">
             <a
-              href={`${window.location.origin}/evento/${eventoParaQrCode?.id}`}
+              href={qrCodeUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sky-600 hover:underline break-all"
             >
-              {`${window.location.origin}/evento/${eventoParaQrCode?.id}`}
+              {qrCodeUrl}
             </a>
           </div>
           <DialogFooter className="print:hidden pt-4">
@@ -128,6 +140,7 @@ export default function AgendaEventosClientPage() {
       <div className="rounded-md border bg-card">
         <div className="p-4 flex justify-end items-center">
           <Button onClick={() => router.push('/dashboard/admin/agenda-eventos/novo')}>
+            {/* ✅ CORREÇÃO AQUI: O componente e o texto do botão estavam incompletos */}
             <PlusCircle className="h-4 w-4 mr-2" />
             Adicionar Novo Evento
           </Button>

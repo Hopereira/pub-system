@@ -1,4 +1,4 @@
-// frontend/src/app/(protected)/dashboard/admin/agenda-eventos/[id]/page.tsx
+// Caminho: frontend/src/app/(protected)/dashboard/admin/agenda-eventos/[id]/page.tsx
 
 import EventoFormPage from './EventoFormPage';
 
@@ -8,11 +8,10 @@ interface PageProps {
   };
 }
 
-// O componente de servidor agora é extremamente simples.
-// Ele não faz nenhum trabalho assíncrono, evitando o crash.
-export default function GerirEventoPage({ params }: PageProps) {
+// Este componente não é 'async' pois não busca mais dados.
+export default async function GerirEventoPage({ params }: PageProps) {
   // A única responsabilidade dele é obter o ID da URL...
-  const { id } = params;
+  const { id } = await params;
 
   // ...e passar esse ID para o componente de cliente (o formulário),
   // que fará todo o trabalho de busca de dados e renderização.

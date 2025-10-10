@@ -1,7 +1,8 @@
-// backend/src/shared/storage/gcs-storage.service.ts
+// Caminho: backend/src/shared/storage/gcs-storage.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Storage } from '@google-cloud/storage';
 import { ConfigService } from '@nestjs/config';
+import { Express } from 'express'; // É necessário importar Express aqui para tipagem
 
 @Injectable()
 export class GcsStorageService {
@@ -16,10 +17,15 @@ export class GcsStorageService {
     this.bucket = this.configService.get<string>('GCS_BUCKET_NAME');
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<string> {
+  // ✅ CORREÇÃO AQUI: Agora aceita o 'folderPath'
+  async uploadFile(file: Express.Multer.File, folderPath: string = ''): Promise<string> {
     const bucket = this.storage.bucket(this.bucket);
-    // Gera um nome de ficheiro único para evitar sobrepor ficheiros com o mesmo nome
-    const blob = bucket.file(Date.now() + '-' + file.originalname.replace(/ /g, '_'));
+    
+    // Gera o nome de ficheiro único com o prefixo da pasta (ex: 'eventos/1700000000-nome.jpg')
+    const uniqueFileName = Date.now() + '-' + file.originalname.replace(/ /g, '_');
+    const filePath = folderPath ? `${folderPath}/${uniqueFileName}` : uniqueFileName;
+    
+    const blob = bucket.file(filePath); // Usa o caminho completo
 
     return new Promise((resolve, reject) => {
       const blobStream = blob.createWriteStream({
@@ -33,10 +39,12 @@ export class GcsStorageService {
       });
 
       blobStream.on('finish', async () => {
-        const publicUrl = `https://storage.googleapis.com/${this.bucket}/${blob.name}`;
+        // Se a linha 'makePublic' estiver comentada (como no seu código), 
+        // a permissão deve ser dada ao bucket via IAM ou as fotos não serão visíveis.
+        // Se precisar de permissão pública no nível do arquivo, descomente esta linha:
+        // await blob.makePublic(); 
         
-        // await blob.makePublic(); // <--- ESTA É A LINHA QUE FOI REMOVIDA/COMENTADA
-
+        const publicUrl = `https://storage.googleapis.com/${this.bucket}/${blob.name}`;
         this.logger.log(`Upload bem-sucedido. URL Pública: ${publicUrl}`);
         resolve(publicUrl);
       });
