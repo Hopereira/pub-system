@@ -1,4 +1,4 @@
-// frontend/src/app/(protected)/dashboard/admin/agenda-eventos/[id]/EventoFormPage.tsx
+// Caminho: frontend/src/app/(protected)/dashboard/admin/agenda-eventos/[id]/EventoFormPage.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -6,8 +6,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Evento } from '@/types/evento';
-// ✅ MUDANÇA: Importamos a função de busca e o useEffect/useState
 import { createEvento, updateEvento, getEventoById } from '@/services/eventoService';
+import { getPaginasEvento } from '@/services/paginaEventoService';
+import { PaginaEvento } from '@/types/pagina-evento';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,6 +24,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 
+// ✅ 1. CORREÇÃO NA VALIDAÇÃO
+// A validação agora trata corretamente a opção "Nenhum" (que vem como a string "null").
 const formSchema = z.object({
   titulo: z.string().min(3, { message: "O título é obrigatório." }),
   descricao: z.string().optional().nullable(),
@@ -29,11 +33,14 @@ const formSchema = z.object({
   hora: z.coerce.number().min(0, 'Hora inválida').max(23, 'Hora inválida'),
   minuto: z.coerce.number().min(0, 'Minuto inválido').max(59, 'Minuto inválido'),
   valor: z.coerce.number().min(0, "O valor não pode ser negativo.").default(0),
+  paginaEventoId: z.preprocess(
+    (val) => (val === "null" ? null : val), // Converte a string "null" para o valor null
+    z.string().uuid("Seleção inválida.").nullable().optional()
+  ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-// ✅ MUDANÇA: As props agora recebem o ID, não o objeto evento completo.
 interface EventoFormPageProps {
   eventoId: string;
 }
@@ -42,59 +49,67 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
   const router = useRouter();
   const isEditMode = eventoId !== 'novo';
 
-  // ✅ MUDANÇA: Adicionamos estados para controlar o carregamento e erros da busca.
-  const [isLoadingData, setIsLoadingData] = useState(isEditMode); // Só carrega se for modo de edição
+  const [isLoadingData, setIsLoadingData] = useState(isEditMode);
   const [error, setError] = useState<string | null>(null);
+  const [paginasEvento, setPaginasEvento] = useState<PaginaEvento[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    // ✅ MUDANÇA: Os valores padrão agora são simples, pois serão preenchidos depois.
     defaultValues: {
       titulo: '',
       descricao: '',
       valor: 0,
-      hora: new Date().getHours(),
-      minuto: new Date().getMinutes(),
+      hora: 19,
+      minuto: 0,
+      paginaEventoId: null,
     },
   });
 
-  // ✅ MUDANÇA: Este useEffect busca os dados do evento quando a página carrega.
   useEffect(() => {
-    // Se não estivermos no modo de edição, não há nada a fazer.
+    const fetchPaginasEvento = async () => {
+      try {
+        const data = await getPaginasEvento();
+        setPaginasEvento(data);
+      } catch {
+        toast.error("Não foi possível carregar a lista de temas.");
+      }
+    };
+    fetchPaginasEvento();
+  }, []);
+
+  useEffect(() => {
     if (!isEditMode) {
+      setIsLoadingData(false); // Garante que o loading para no modo de criação
       return;
     }
-
     const fetchEvento = async () => {
       setIsLoadingData(true);
-      setError(null);
       const eventoData = await getEventoById(eventoId);
-
       if (eventoData) {
-        // Se encontrarmos o evento, usamos o form.reset para preencher o formulário.
         form.reset({
-          ...eventoData,
+          titulo: eventoData.titulo,
+          descricao: eventoData.descricao || '',
           dataEvento: new Date(eventoData.dataEvento),
           hora: new Date(eventoData.dataEvento).getHours(),
           minuto: new Date(eventoData.dataEvento).getMinutes(),
+          valor: eventoData.valor,
+          paginaEventoId: eventoData.paginaEvento?.id || null,
         });
       } else {
-        // Se a API retornar nulo, mostramos um erro.
-        setError('Evento não encontrado.');
-        toast.error('Evento não encontrado.');
+        setError("Evento não encontrado.");
+        toast.error("Evento não encontrado.");
       }
       setIsLoadingData(false);
     };
-
     fetchEvento();
-  }, [eventoId, isEditMode, form.reset]); // Dependências do useEffect
+  }, [eventoId, isEditMode, form]);
 
   const onSubmit = async (values: FormValues) => {
     let dataFinal = setMinutes(setHours(values.dataEvento, values.hora), values.minuto);
     const payload = { ...values, dataEvento: dataFinal };
 
     try {
-      if (isEditMode) { // A lógica de submissão não precisa do objeto 'eventoToEdit'
+      if (isEditMode) {
         await updateEvento(eventoId, payload);
         toast.success('Evento atualizado com sucesso!');
       } else {
@@ -104,24 +119,15 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
       router.push('/dashboard/admin/agenda-eventos');
       router.refresh();
     } catch (error) {
-      toast.error('Falha ao salvar o evento.');
-      console.error("Erro ao submeter formulário de evento:", error);
+      toast.error("Falha ao salvar o evento.");
     }
   };
   
-  // ✅ MUDANÇA: Adicionamos uma tela de carregamento enquanto os dados são buscados.
   if (isLoadingData) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="mr-2 h-8 w-8 animate-spin" />
-        <span>Carregando dados do evento...</span>
-      </div>
-    );
+    return <div className="text-center p-8">Carregando dados do evento...</div>
   }
-
-  // Se houver um erro na busca, exibimos uma mensagem.
   if (error) {
-      return <div className="text-red-500 text-center mt-8">{error}</div>;
+    return <div className="text-center p-8 text-red-500">{error}</div>
   }
 
   return (
@@ -129,69 +135,57 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
       <CardHeader>
         <CardTitle>{isEditMode ? 'Editar Evento' : 'Criar Novo Evento'}</CardTitle>
         <CardDescription>
-          {isEditMode ? 'Altere os dados do evento abaixo.' : 'Preencha os dados para criar um novo evento na agenda.'}
+            {isEditMode ? "Altere os dados do evento." : "Preencha os dados para criar um novo evento na agenda."}
         </CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
             
+            {/* ✅ 2. CAMPOS DO FORMULÁRIO RESTAURADOS */}
             <FormField control={form.control} name="titulo" render={({ field }) => ( <FormItem><FormLabel>Título do Evento</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
             <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )}/>
 
             <FormField
               control={form.control}
-              name="dataEvento"
+              name="paginaEventoId"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data do Evento</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? ( format(field.value, "PPP", { locale: ptBR }) ) : ( <span>Escolha uma data</span> )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                    </PopoverContent>
-                  </Popover>
+                <FormItem>
+                  <FormLabel>Tema da Página de Boas-Vindas (Opcional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || 'null'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um tema para a página de entrada" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="null">Nenhum</SelectItem>
+                      {paginasEvento.map((pagina) => (
+                        <SelectItem key={pagina.id} value={pagina.id}>
+                          {pagina.titulo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="hora" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Hora</FormLabel>
-                  <FormControl><Input type="number" min="0" max="23" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}/>
-              <FormField control={form.control} name="minuto" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Minuto</FormLabel>
-                  <FormControl><Input type="number" min="0" max="59" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}/>
-            </div>
-
-            <FormField control={form.control} name="valor" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valor (R$)</FormLabel>
-                <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
+            <FormField control={form.control} name="dataEvento" render={({ field }) => ( 
+                <FormItem className="flex flex-col"><FormLabel>Data do Evento</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? ( format(field.value, "PPP", { locale: ptBR }) ) : ( <span>Escolha uma data</span> )}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> 
             )}/>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="hora" render={({ field }) => ( <FormItem><FormLabel>Hora</FormLabel><FormControl><Input type="number" min="0" max="23" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+              <FormField control={form.control} name="minuto" render={({ field }) => ( <FormItem><FormLabel>Minuto</FormLabel><FormControl><Input type="number" min="0" max="59" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+            </div>
+            
+            <FormField control={form.control} name="valor" render={({ field }) => ( <FormItem><FormLabel>Valor (R$)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+
           </CardContent>
           <CardFooter className="border-t px-6 py-4 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
-              Cancelar
-            </Button>
+            <Button type="button" variant="outline" onClick={() => router.push('/dashboard/admin/agenda-eventos')}>Cancelar</Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? 'Salvar Alterações' : 'Criar Evento'}

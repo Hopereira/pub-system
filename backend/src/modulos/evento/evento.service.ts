@@ -1,12 +1,13 @@
 // Caminho: backend/src/modulos/evento/evento.service.ts
-
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { Evento } from './entities/evento.entity';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
+import { Express } from 'express';
 
 @Injectable()
 export class EventoService {
@@ -15,86 +16,108 @@ export class EventoService {
   constructor(
     @InjectRepository(Evento)
     private readonly eventoRepository: Repository<Evento>,
+    @InjectRepository(PaginaEvento)
+    private readonly paginaEventoRepository: Repository<PaginaEvento>,
     private readonly storageService: GcsStorageService,
   ) {}
 
   async create(createEventoDto: CreateEventoDto): Promise<Evento> {
-    const evento = this.eventoRepository.create(createEventoDto);
+    const { paginaEventoId, ...restoDoDto } = createEventoDto;
+    
+    let paginaEvento: PaginaEvento | null = null;
+    if (paginaEventoId) {
+      paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
+      if (!paginaEvento) {
+        throw new NotFoundException(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
+      }
+    }
+
+    const evento = this.eventoRepository.create({
+      ...restoDoDto,
+      paginaEvento,
+    });
     return this.eventoRepository.save(evento);
   }
 
   findAll(): Promise<Evento[]> {
-    return this.eventoRepository.find({ order: { dataEvento: 'DESC' } });
+    // ✅ Garante que a paginaEvento (tema) seja sempre incluída na listagem
+    return this.eventoRepository.find({ 
+      relations: ['paginaEvento'], 
+      order: { dataEvento: 'DESC' } 
+    });
   }
 
   findAllPublic(): Promise<Evento[]> {
-    return this.eventoRepository.find({ where: { ativo: true }, order: { dataEvento: 'ASC' } });
+    return this.eventoRepository.find({
+      where: { ativo: true },
+      relations: ['paginaEvento'],
+      order: { dataEvento: 'ASC' },
+    });
   }
 
   async findOne(id: string): Promise<Evento> {
-    const evento = await this.eventoRepository.findOne({ where: { id } });
+    const evento = await this.eventoRepository.findOne({
+      where: { id },
+      relations: ['paginaEvento'],
+    });
     if (!evento) {
       throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
     }
     return evento;
   }
-
+  
   async update(id: string, updateEventoDto: UpdateEventoDto): Promise<Evento> {
+    const { paginaEventoId, ...restoDoDto } = updateEventoDto;
+    
     const evento = await this.eventoRepository.preload({
       id: id,
-      ...updateEventoDto,
+      ...restoDoDto,
     });
     if (!evento) {
       throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
     }
-    return this.eventoRepository.save(evento);
-  }
 
-  // =================================================================
-  // ✅ CORREÇÃO 1: Lógica de exclusão robusta
-  // =================================================================
-  async remove(id: string): Promise<void> {
-    // Primeiro, buscamos o evento completo
-    const evento = await this.findOne(id);
-
-    // Segundo, se ele tiver uma imagem, apagamos do Google Cloud Storage
-    if (evento.urlImagem) {
-      this.logger.log(`A apagar imagem do GCS: ${evento.urlImagem}`);
-      try {
-        await this.storageService.deleteFile(evento.urlImagem);
-      } catch (error) {
-        this.logger.error(`Falha ao apagar a imagem do GCS. O processo de exclusão do DB continuará. Erro: ${error.message}`);
+    if (updateEventoDto.hasOwnProperty('paginaEventoId')) {
+      if (paginaEventoId) {
+        const paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
+        if (!paginaEvento) {
+          throw new NotFoundException(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
+        }
+        evento.paginaEvento = paginaEvento;
+      } else {
+        // Permite desassociar um tema ao enviar paginaEventoId: null
+        evento.paginaEvento = null;
       }
     }
 
-    // Terceiro, após limpar o storage, apagamos do banco de dados
+    return this.eventoRepository.save(evento);
+  }
+
+  async uploadImagem(id: string, file: Express.Multer.File): Promise<Evento> {
+    const evento = await this.findOne(id);
+
+    // Se já existir uma imagem antiga, apaga-a do Google Cloud Storage
+    if (evento.urlImagem) {
+      try {
+        await this.storageService.deleteFile(evento.urlImagem);
+        this.logger.log(`Imagem antiga do evento ${id} apagada do GCS.`);
+      } catch (error) {
+        this.logger.error(`Falha ao apagar a imagem antiga do GCS: ${evento.urlImagem}`, error);
+      }
+    }
+
+    // Faz o upload do novo ficheiro para a pasta 'eventos'
+    const novaUrl = await this.storageService.uploadFile(file, 'eventos');
+
+    // Atualiza a URL no registo do evento e salva no banco de dados
+    evento.urlImagem = novaUrl;
+    return this.eventoRepository.save(evento);
+  }
+  
+  async remove(id: string): Promise<void> {
     const result = await this.eventoRepository.delete(id);
     if (result.affected === 0) {
-      // Esta verificação é uma segurança extra, embora o findOne já valide
-      throw new NotFoundException(`Evento com ID "${id}" não encontrado para exclusão.`);
+      throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
     }
-  }
-
-  // =================================================================
-  // ✅ CORREÇÃO 2: Renomeado de 'updateUrlImagem' para 'uploadImagem'
-  // =================================================================
-  async uploadImagem(id: string, file: Express.Multer.File): Promise<Evento> {
-    this.logger.log(`A iniciar upload para o GCS para o evento ID ${id}`);
-    const evento = await this.findOne(id);
-
-    if (evento.urlImagem) {
-      this.logger.log(`A apagar imagem antiga do GCS: ${evento.urlImagem}`);
-      try {
-        await this.storageService.deleteFile(evento.urlImagem);
-      } catch (error) {
-        this.logger.error(`Falha ao apagar a imagem antiga. O processo continuará. Erro: ${error.message}`);
-      }
-    }
-
-    const publicUrl = await this.storageService.uploadFile(file);
-    this.logger.log(`Upload para GCS concluído. URL pública: ${publicUrl}`);
-
-    evento.urlImagem = publicUrl;
-    return this.eventoRepository.save(evento);
   }
 }

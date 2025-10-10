@@ -11,9 +11,13 @@ export class CreateComandaDto {
   @IsOptional()
   clienteId?: string;
   
+  @IsUUID()
+  @IsOptional()
+  paginaEventoId?: string;
+
   // ✅ NOVO CAMPO ADICIONADO
   @IsUUID()
   @IsOptional()
-  @ApiProperty({ description: 'ID da Página de Evento usada para o cadastro (opcional)' })
-  paginaEventoId?: string;
+  @ApiProperty({ description: 'ID do Evento (da agenda) para cobrar a entrada (opcional)' })
+  eventoId?: string;
 }

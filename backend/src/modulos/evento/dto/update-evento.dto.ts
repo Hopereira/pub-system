@@ -1,14 +1,7 @@
-import { PartialType, ApiProperty } from '@nestjs/swagger';
+// Caminho: backend/src/modulos/evento/dto/update-evento.dto.ts
+import { PartialType } from '@nestjs/swagger';
 import { CreateEventoDto } from './create-evento.dto';
-import { IsBoolean, IsOptional } from 'class-validator';
 
-export class UpdateEventoDto extends PartialType(CreateEventoDto) {
-  @ApiProperty({
-    description: 'Define se o evento está ativo (visível para o público) ou inativo.',
-    example: false,
-    required: false,
-  })
-  @IsBoolean({ message: 'O status de ativo deve ser um booleano (true/false).' })
-  @IsOptional()
-  ativo?: boolean;
-}
+// Ao estender o CreateEventoDto, ele automaticamente herda o novo campo 'paginaEventoId' como opcional.
+// Este arquivo já está correto na sua estrutura, mas o forneço completo para garantir.
+export class UpdateEventoDto extends PartialType(CreateEventoDto) {}
