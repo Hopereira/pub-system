@@ -56,19 +56,19 @@ export class ComandaService {
       cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
       if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
       
-      // LÓGICA DE FLEXIBILIDADE PARA REENTRADA (SEM MESA):
-      // Se não houver mesa, permitimos que o cliente abra uma nova comanda, 
-      // mesmo que já tenha uma aberta. Isso suporta o fluxo de reentrada após o checkout.
-      if (!mesaId) {
-          const comandaAbertaExistente = await this.comandaRepository.findOne({
-              where: { cliente: { id: clienteId }, status: ComandaStatus.ABERTA }
-          });
-          
-          if (comandaAbertaExistente) {
-              this.logger.warn(`Cliente ${clienteId} está a criar uma nova comanda de evento, mas já tem uma comanda aberta: ${comandaAbertaExistente.id}.`);
-              // Não bloqueia a criação, mas regista um aviso.
-          }
+      // ✅ IMPLEMENTAÇÃO DA NOVA REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
+      const comandaAbertaExistente = await this.comandaRepository.findOne({
+          where: { cliente: { id: clienteId }, status: ComandaStatus.ABERTA }
+      });
+      
+      if (comandaAbertaExistente) {
+          this.logger.warn(`BLOQUEIO: Cliente ${clienteId} tentou criar nova comanda, mas já possui comanda aberta: ${comandaAbertaExistente.id}.`);
+          // Bloqueia a criação da nova comanda com um erro 400
+          throw new BadRequestException(
+              `O Cliente "${cliente.nome}" já possui uma comanda aberta (ID: ${comandaAbertaExistente.id}). Por favor, feche a comanda anterior.`
+          );
       }
+      
     }
     
     let paginaEvento: PaginaEvento | null = null;
