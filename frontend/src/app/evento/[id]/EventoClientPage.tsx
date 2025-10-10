@@ -55,6 +55,7 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       const novaComanda = await abrirComandaPublica({
         clienteId: novoCliente.id,
         mesaId: mesaId,
+        paginaEventoId: paginaEvento.id,
       });
       
       toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);

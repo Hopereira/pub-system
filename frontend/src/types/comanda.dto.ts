@@ -2,4 +2,5 @@
 export interface CreateComandaDto {
   clienteId?: string;
   mesaId?: string;
+  paginaEventoId?: string;
 }

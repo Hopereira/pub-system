@@ -8,6 +8,8 @@ import { CreateComandaDto } from './dto/create-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
+// ✅ 1. IMPORTAR a entidade PaginaEvento
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 
 @Injectable()
 export class ComandaService {
@@ -20,25 +22,24 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
+    // ✅ 2. INJETAR o repositório que faltava
+    @InjectRepository(PaginaEvento)
+    private readonly paginaEventoRepository: Repository<PaginaEvento>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
-    const { mesaId, clienteId } = createComandaDto;
+    // ✅ 3. OBTER o paginaEventoId que vem do frontend
+    const { mesaId, clienteId, paginaEventoId } = createComandaDto;
 
-    // A regra principal é que precisamos de PELO MENOS um dos dois.
     if (!mesaId && !clienteId) {
       throw new BadRequestException('A comanda precisa estar associada a uma mesa ou a um cliente.');
     }
-
-    // ✅ CORREÇÃO: A regra que impedia a associação dupla foi removida.
-    // Agora, uma comanda PODE ter uma mesa e um cliente ao mesmo tempo.
 
     let mesa: Mesa | null = null;
     if (mesaId) {
       mesa = await this.mesaRepository.findOne({ where: { id: mesaId } });
       if (!mesa) throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
-      // Apenas checamos o status se não houver um cliente se cadastrando
       if (!clienteId && mesa.status !== MesaStatus.LIVRE) {
         throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
       }
@@ -49,10 +50,20 @@ export class ComandaService {
       cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
       if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
     }
+    
+    // ✅ 4. LÓGICA para buscar e associar a PaginaEvento
+    let paginaEvento: PaginaEvento | null = null;
+    if (paginaEventoId) {
+      paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
+      if (!paginaEvento) {
+        this.logger.warn(`Página de Evento com ID "${paginaEventoId}" não encontrada, a comanda será criada sem ela.`);
+      }
+    }
 
     const comanda = this.comandaRepository.create({
       mesa: mesa,
       cliente: cliente,
+      paginaEvento: paginaEvento, // ✅ 5. ASSOCIAR a paginaEvento ao criar
       status: ComandaStatus.ABERTA,
     });
 
@@ -64,9 +75,6 @@ export class ComandaService {
     return this.comandaRepository.save(comanda);
   }
 
-  // ... O resto do seu arquivo (findAll, search, findOne, etc.) continua exatamente igual ...
-  // Cole apenas o método create atualizado ou substitua o arquivo inteiro.
-  
   findAll(): Promise<Comanda[]> {
     return this.comandaRepository.find({ relations: ['mesa', 'cliente'] });
   }
@@ -99,6 +107,8 @@ export class ComandaService {
       .createQueryBuilder('comanda')
       .leftJoinAndSelect('comanda.mesa', 'mesa')
       .leftJoinAndSelect('comanda.cliente', 'cliente')
+      // ✅ 6. ADICIONAR a junção que faltava no SEU QueryBuilder
+      .leftJoinAndSelect('comanda.paginaEvento', 'paginaEvento')
       .leftJoinAndSelect('comanda.pedidos', 'pedido')
       .leftJoinAndSelect('pedido.itens', 'itemPedido')
       .leftJoinAndSelect('itemPedido.produto', 'produto')
@@ -144,7 +154,7 @@ export class ComandaService {
         `Nenhuma comanda aberta encontrada para a mesa com ID "${mesaId}".`,
       );
     }
-    return comanda;
+    return this.findOne(comanda.id);
   }
 
   async findPublicOne(id: string) {
@@ -157,14 +167,13 @@ export class ComandaService {
       cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
       pedidos: comanda.pedidos,
       totalComanda: (comanda as any).total,
+      // ✅ 7. GARANTIR que a paginaEvento é retornada para o público
+      paginaEvento: comanda.paginaEvento
     };
   }
 
   async fecharComanda(id: string): Promise<Comanda> {
-    const comanda = await this.comandaRepository.findOne({
-      where: { id },
-      relations: ['mesa'],
-    });
+    const comanda = await this.findOne(id); // Usar findOne para carregar todas as relações
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
@@ -186,8 +195,10 @@ export class ComandaService {
   }
 
   async update(id: string, updateComandaDto: any): Promise<Comanda> {
+    // Usar findOne para garantir que todas as relações sejam carregadas antes do preload
+    const comandaExistente = await this.findOne(id);
     const comanda = await this.comandaRepository.preload({
-      id,
+      ...comandaExistente,
       ...updateComandaDto,
     });
     if (!comanda) {
