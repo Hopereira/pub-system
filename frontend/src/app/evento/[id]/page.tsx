@@ -14,11 +14,10 @@ interface EventoPageProps {
 
 // O componente de servidor para a página pública de evento
 export default async function EventoPage({ params, searchParams }: EventoPageProps) {
-  
-  // Acessamos o ID e o ID da mesa de forma segura
   const { id } = await params;
-  const { mesaId } = await searchParams ?? {};
-  const mesaIdFinal = typeof mesaId === 'string' ? mesaId : undefined;
+  const search = await searchParams ?? {};
+  const mesaId = typeof search.mesaId === 'string' ? search.mesaId : undefined;
+
 
   // Buscamos os dados da página de evento usando o ID
   const paginaEvento = await getPublicPaginaEvento(id);
@@ -38,7 +37,7 @@ export default async function EventoPage({ params, searchParams }: EventoPagePro
   return (
     <EventoClientPage 
       paginaEvento={paginaEvento} 
-      mesaId={mesaIdFinal}
+      mesaId={mesaId}
     />
   );
 }
