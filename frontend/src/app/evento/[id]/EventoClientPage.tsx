@@ -8,8 +8,10 @@ import * as z from 'zod';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { Cliente } from '@/types/cliente'; // Importar Cliente
 import { PaginaEvento } from '@/types/pagina-evento';
-import { createCliente } from '@/services/clienteService';
+// ✅ IMPORTAÇÕES CORRIGIDAS: Agora inclui getClienteByCpf
+import { createCliente, getClienteByCpf } from '@/services/clienteService'; 
 import { abrirComandaPublica } from '@/services/comandaService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +19,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import { Loader2 } from 'lucide-react';
-
-// ✅ REMOVEMOS AS IMPORTAÇÕES DESNECESSÁRIAS DAQUI (DataTable, createColumns, etc.)
 
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
@@ -42,28 +42,56 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
     defaultValues: { nome: '', cpf: '', email: '', celular: '' },
   });
 
+  // ✅ NOVA FUNÇÃO: Trata a lógica de buscar um cliente existente ou criar um novo
+  const findOrCreateClient = async (values: FormValues): Promise<Cliente> => {
+    // 1. Tenta buscar o cliente pelo CPF
+    try {
+      const clienteExistente = await getClienteByCpf(values.cpf);
+      return clienteExistente; // Cliente encontrado, retorna o objeto existente
+    } catch (error: any) {
+      // 2. Se a busca retornar 404 (cliente não encontrado), cria um novo
+      if (error.response?.status === 404) {
+        // Se não existir, criamos um novo com os dados fornecidos
+        const novoCliente = await createCliente({
+            nome: values.nome,
+            cpf: values.cpf,
+            email: values.email || undefined,
+            celular: values.celular || undefined,
+        });
+        return novoCliente;
+      }
+      // Para qualquer outro erro de busca (500, etc.), lança o erro
+      throw error; 
+    }
+  };
+
+
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
-    try {
-      const novoCliente = await createCliente({
-        nome: values.nome,
-        cpf: values.cpf,
-        email: values.email || undefined,
-        celular: values.celular || undefined,
-      });
+    let clienteFinal: Cliente;
 
+    try {
+      // ✅ PASSO 1: Busca o cliente existente ou cria um novo.
+      // Isto resolve o erro 409 (Conflict).
+      clienteFinal = await findOrCreateClient(values);
+      
+      // ✅ PASSO 2: ABRIR NOVA COMANDA
+      // O backend (comanda.service.ts) agora permite que um cliente abra uma nova comanda 
+      // (sem mesa) mesmo que tenha uma anterior aberta.
       const novaComanda = await abrirComandaPublica({
-        clienteId: novoCliente.id,
+        clienteId: clienteFinal.id,
         mesaId: mesaId,
         paginaEventoId: paginaEvento.id,
+        // Se este evento estiver ligado à Agenda e cobrar entrada, adicione o eventoId aqui:
+        // eventoId: 'ID_DO_EVENTO_AQUI_SE_NECESSARIO', 
       });
       
-      toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
+      toast.success(`Bem-vindo(a), ${clienteFinal.nome || 'Cliente'}! Comanda aberta.`);
 
       router.push(`/portal-cliente/${novaComanda.id}`);
 
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao fazer o cadastro. Tente novamente.';
+      const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao criar a sua sessão. Tente novamente.';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);

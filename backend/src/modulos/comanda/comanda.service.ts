@@ -9,7 +9,6 @@ import { Comanda, ComandaStatus } from './entities/comanda.entity';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
-// ✅ 1. Importar as entidades necessárias para a nova lógica
 import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
@@ -28,7 +27,6 @@ export class ComandaService {
     @InjectRepository(PaginaEvento)
     private readonly paginaEventoRepository: Repository<PaginaEvento>,
     private readonly pedidosGateway: PedidosGateway,
-    // ✅ 2. Injetar os repositórios para a nova lógica
     @InjectRepository(Evento)
     private readonly eventoRepository: Repository<Evento>,
     @InjectRepository(Pedido)
@@ -57,6 +55,20 @@ export class ComandaService {
     if (clienteId) {
       cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
       if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
+      
+      // LÓGICA DE FLEXIBILIDADE PARA REENTRADA (SEM MESA):
+      // Se não houver mesa, permitimos que o cliente abra uma nova comanda, 
+      // mesmo que já tenha uma aberta. Isso suporta o fluxo de reentrada após o checkout.
+      if (!mesaId) {
+          const comandaAbertaExistente = await this.comandaRepository.findOne({
+              where: { cliente: { id: clienteId }, status: ComandaStatus.ABERTA }
+          });
+          
+          if (comandaAbertaExistente) {
+              this.logger.warn(`Cliente ${clienteId} está a criar uma nova comanda de evento, mas já tem uma comanda aberta: ${comandaAbertaExistente.id}.`);
+              // Não bloqueia a criação, mas regista um aviso.
+          }
+      }
     }
     
     let paginaEvento: PaginaEvento | null = null;
@@ -76,22 +88,20 @@ export class ComandaService {
 
     const novaComanda = await this.comandaRepository.save(comanda);
 
-    // ✅ 3. NOVA LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO
+    // LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO
     if (eventoId) {
       const evento = await this.eventoRepository.findOne({ where: { id: eventoId } });
       if (evento && evento.valor > 0) {
         this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
         
-        // Criamos um "ItemPedido" especial para a entrada
         const itemEntrada = this.itemPedidoRepository.create({
-          produto: null, // Não é um produto do cardápio
+          produto: null, 
           quantidade: 1,
           precoUnitario: evento.valor,
-          observacao: `Entrada: ${evento.titulo}`, // Usamos a observação para descrever o item
-          status: PedidoStatus.ENTREGUE, // Marcamos como entregue, pois é um serviço
+          observacao: `Entrada: ${evento.titulo}`, 
+          status: PedidoStatus.ENTREGUE, 
         });
 
-        // Criamos um Pedido para conter este item de entrada
         const pedidoEntrada = this.pedidoRepository.create({
           comanda: novaComanda,
           itens: [itemEntrada],

@@ -22,6 +22,7 @@ export class ClienteService {
     });
 
     if (clienteExistente) {
+      // ✅ Lança 409 Conflict se o cliente tentar se recadastrar
       throw new ConflictException('Um cliente com este CPF já está cadastrado.');
     }
 
@@ -31,6 +32,20 @@ export class ClienteService {
 
   findAll(): Promise<Cliente[]> {
     return this.clienteRepository.find();
+  }
+
+  // ✅ NOVO: Função para buscar o cliente pelo CPF (essencial para o fluxo de entrada pública)
+  async findByCpf(cpf: string): Promise<Cliente> {
+    const cliente = await this.clienteRepository.findOne({ 
+        where: { cpf } 
+    });
+
+    if (!cliente) {
+      // ✅ ESSENCIAL: Lança 404 para que o frontend saiba que deve CRIAR o cliente.
+      throw new NotFoundException(`Cliente com CPF "${cpf}" não encontrado.`);
+    }
+
+    return cliente;
   }
 
   async findOne(id: string): Promise<Cliente> {
