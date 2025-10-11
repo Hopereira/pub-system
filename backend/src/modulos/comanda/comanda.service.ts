@@ -2,16 +2,23 @@
 import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
+
+// Entidades de Módulos Associados
 import { Cliente } from '../cliente/entities/cliente.entity';
 import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
-import { CreateComandaDto } from './dto/create-comanda.dto';
-import { Comanda, ComandaStatus } from './entities/comanda.entity';
-import { PedidosGateway } from '../pedido/pedidos.gateway';
-import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
+
+// Entidades e DTOs Locais
+import { CreateComandaDto } from './dto/create-comanda.dto';
+import { Comanda, ComandaStatus } from './entities/comanda.entity';
+import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
+
+// Gateways
+import { PedidosGateway } from '../pedido/pedidos.gateway';
+
 
 @Injectable()
 export class ComandaService {
@@ -24,15 +31,15 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
-    @InjectRepository(PaginaEvento)
+    @InjectRepository(PaginaEvento) // ✅ Necessário para o fluxo de Eventos
     private readonly paginaEventoRepository: Repository<PaginaEvento>,
-    private readonly pedidosGateway: PedidosGateway,
-    @InjectRepository(Evento)
+    @InjectRepository(Evento) // ✅ Necessário para obter o valor de entrada
     private readonly eventoRepository: Repository<Evento>,
-    @InjectRepository(Pedido)
+    @InjectRepository(Pedido) // ✅ Necessário para criar o Pedido de Entrada
     private readonly pedidoRepository: Repository<Pedido>,
-    @InjectRepository(ItemPedido)
+    @InjectRepository(ItemPedido) // ✅ Necessário para criar o Item de Pedido de Entrada
     private readonly itemPedidoRepository: Repository<ItemPedido>,
+    private readonly pedidosGateway: PedidosGateway,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -56,21 +63,19 @@ export class ComandaService {
       cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
       if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
       
-      // ✅ IMPLEMENTAÇÃO DA NOVA REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
+      // ✅ REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
       const comandaAbertaExistente = await this.comandaRepository.findOne({
           where: { cliente: { id: clienteId }, status: ComandaStatus.ABERTA }
       });
       
       if (comandaAbertaExistente) {
           this.logger.warn(`BLOQUEIO: Cliente ${clienteId} tentou criar nova comanda, mas já possui comanda aberta: ${comandaAbertaExistente.id}.`);
-          // Bloqueia a criação da nova comanda com um erro 400
           throw new BadRequestException(
               `O Cliente "${cliente.nome}" já possui uma comanda aberta (ID: ${comandaAbertaExistente.id}). Por favor, feche a comanda anterior.`
           );
       }
-      
     }
-    
+
     let paginaEvento: PaginaEvento | null = null;
     if (paginaEventoId) {
       paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
@@ -88,31 +93,35 @@ export class ComandaService {
 
     const novaComanda = await this.comandaRepository.save(comanda);
 
-    // LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO
+    // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
     if (eventoId) {
-      const evento = await this.eventoRepository.findOne({ where: { id: eventoId } });
-      if (evento && evento.valor > 0) {
-        this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
-        
-        const itemEntrada = this.itemPedidoRepository.create({
-          produto: null, 
-          quantidade: 1,
-          precoUnitario: evento.valor,
-          observacao: `Entrada: ${evento.titulo}`, 
-          status: PedidoStatus.ENTREGUE, 
-        });
+        // Buscamos o evento para obter o valor (Assumindo que o campo é 'valor' conforme a entidade)
+        const evento = await this.eventoRepository.findOne({ where: { id: eventoId } });
+        if (evento && evento.valor > 0) {
+            this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
+          
+            // 1. Cria o Item de Pedido (que representa a entrada)
+            const itemEntrada = this.itemPedidoRepository.create({
+                produto: null, // Não é um produto de inventário
+                quantidade: 1,
+                precoUnitario: evento.valor,
+                observacao: `Entrada: ${evento.titulo}`, 
+                status: PedidoStatus.ENTREGUE, // Entregue/Concluído, pois a entrada é paga na hora
+            });
 
-        const pedidoEntrada = this.pedidoRepository.create({
-          comanda: novaComanda,
-          itens: [itemEntrada],
-          total: evento.valor,
-          status: PedidoStatus.ENTREGUE,
-        });
-        
-        await this.pedidoRepository.save(pedidoEntrada);
-      }
+            // 2. Cria o Pedido (que contém o item)
+            const pedidoEntrada = this.pedidoRepository.create({
+                comanda: novaComanda,
+                itens: [itemEntrada],
+                total: evento.valor,
+                status: PedidoStatus.ENTREGUE,
+            });
+          
+            await this.itemPedidoRepository.save(itemEntrada);
+            await this.pedidoRepository.save(pedidoEntrada);
+        }
     }
-    
+
     if (mesa) {
       mesa.status = MesaStatus.OCUPADA;
       await this.mesaRepository.save(mesa);

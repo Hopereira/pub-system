@@ -9,8 +9,10 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Cliente } from '@/types/cliente'; // Importar Cliente
+// Assumindo que você tem um tipo Evento
+import { Evento } from '@/types/evento'; 
 import { PaginaEvento } from '@/types/pagina-evento';
-// ✅ IMPORTAÇÕES CORRIGIDAS: Agora inclui getClienteByCpf
+// ✅ IMPORTAÇÕES CORRIGIDAS: Agora inclui a lógica Buscar ou Criar
 import { createCliente, getClienteByCpf } from '@/services/clienteService'; 
 import { abrirComandaPublica } from '@/services/comandaService';
 import { Button } from '@/components/ui/button';
@@ -29,11 +31,13 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface EventoClientPageProps {
+  // ✅ ADICIONADO: Agora este componente recebe o objeto Evento completo
+  evento?: Evento; 
   paginaEvento: PaginaEvento;
   mesaId?: string;
 }
 
-export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientPageProps) {
+export default function EventoClientPage({ evento, paginaEvento, mesaId }: EventoClientPageProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,16 +46,13 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
     defaultValues: { nome: '', cpf: '', email: '', celular: '' },
   });
 
-  // ✅ NOVA FUNÇÃO: Trata a lógica de buscar um cliente existente ou criar um novo
+  // ✅ LÓGICA DE BUSCAR OU CRIAR CLIENTE (COPIADA DE NOSSA CORREÇÃO ANTERIOR)
   const findOrCreateClient = async (values: FormValues): Promise<Cliente> => {
-    // 1. Tenta buscar o cliente pelo CPF
     try {
       const clienteExistente = await getClienteByCpf(values.cpf);
-      return clienteExistente; // Cliente encontrado, retorna o objeto existente
+      return clienteExistente; 
     } catch (error: any) {
-      // 2. Se a busca retornar 404 (cliente não encontrado), cria um novo
       if (error.response?.status === 404) {
-        // Se não existir, criamos um novo com os dados fornecidos
         const novoCliente = await createCliente({
             nome: values.nome,
             cpf: values.cpf,
@@ -60,7 +61,6 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
         });
         return novoCliente;
       }
-      // Para qualquer outro erro de busca (500, etc.), lança o erro
       throw error; 
     }
   };
@@ -71,19 +71,16 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
     let clienteFinal: Cliente;
 
     try {
-      // ✅ PASSO 1: Busca o cliente existente ou cria um novo.
-      // Isto resolve o erro 409 (Conflict).
+      // ✅ PASSO 1: Busca ou Cria o Cliente (resolve o 409)
       clienteFinal = await findOrCreateClient(values);
       
       // ✅ PASSO 2: ABRIR NOVA COMANDA
-      // O backend (comanda.service.ts) agora permite que um cliente abra uma nova comanda 
-      // (sem mesa) mesmo que tenha uma anterior aberta.
       const novaComanda = await abrirComandaPublica({
         clienteId: clienteFinal.id,
         mesaId: mesaId,
         paginaEventoId: paginaEvento.id,
-        // Se este evento estiver ligado à Agenda e cobrar entrada, adicione o eventoId aqui:
-        // eventoId: 'ID_DO_EVENTO_AQUI_SE_NECESSARIO', 
+        // ✅ CORREÇÃO CRÍTICA AQUI: Envia o ID do Evento se ele existir
+        eventoId: evento ? evento.id : undefined, 
       });
       
       toast.success(`Bem-vindo(a), ${clienteFinal.nome || 'Cliente'}! Comanda aberta.`);
@@ -97,6 +94,8 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
       setIsSubmitting(false);
     }
   };
+
+  const valorEntrada = evento?.valor || 0; // Pega o valor se o objeto evento existir
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
@@ -112,7 +111,14 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
           </div>
           <div className="p-6">
             <CardTitle className="text-2xl">{paginaEvento.titulo}</CardTitle>
-            <CardDescription>Para começar, por favor, preencha os seus dados abaixo.</CardDescription>
+            <CardDescription>
+                Para começar, por favor, preencha os seus dados abaixo.
+                {valorEntrada > 0 && (
+                    <span className="block font-semibold text-red-600 mt-1">
+                        Taxa de Entrada/Cover: R$ {valorEntrada.toFixed(2).replace('.', ',')}
+                    </span>
+                )}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
