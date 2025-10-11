@@ -12,7 +12,6 @@ import { getAllEventos } from "@/services/eventoService";
 import { toast } from "sonner";
 import EventoDeleteAlert from "@/components/eventos/EventoDeleteAlert";
 import EventoUploadDialog from "@/components/eventos/EventoUploadDialog";
-
 import { QRCodeCanvas } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
@@ -48,10 +47,13 @@ export default function AgendaEventosClientPage() {
     loadEventos();
   };
   
+  // LÓGICA ATUALIZADA: APONTA PARA A ROTA /entrada/
   const handleShowQrCode = (evento: Evento) => {
+    // A Agenda precisa de uma Página de Evento associada para saber o tema
     if (evento.paginaEvento && evento.paginaEvento.id) {
       setEventoParaQrCode(evento);
     } else {
+      // Se não tiver tema, não podemos gerar uma página de boas-vindas válida.
       toast.error("Ação inválida!", {
         description: "Este evento não tem um Tema de Boas-Vindas associado. Por favor, edite o evento e selecione um tema.",
       });
@@ -81,8 +83,9 @@ export default function AgendaEventosClientPage() {
     onStatusChangeSuccess: loadEventos,
   });
 
-  const qrCodeUrl = eventoParaQrCode?.paginaEvento?.id 
-    ? `${window.location.origin}/evento/${eventoParaQrCode.paginaEvento.id}`
+  // ✅ CORREÇÃO CRÍTICA AQUI: A URL AGORA APONTA PARA /entrada/
+  const qrCodeUrl = eventoParaQrCode?.id 
+    ? `${window.location.origin}/entrada/${eventoParaQrCode.id}` 
     : '';
 
   return (
@@ -106,19 +109,19 @@ export default function AgendaEventosClientPage() {
           <DialogHeader>
             <DialogTitle>QR Code para "{eventoParaQrCode?.titulo}"</DialogTitle>
             <DialogDescription>
-              Aponte a câmara para este código para aceder à página pública do evento.
+              Aponte a câmara para este código para aceder à página de entrada com cobrança.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center p-8 bg-white" ref={qrCodeRef}>
             <QRCodeCanvas
-              value={qrCodeUrl}
+              value={qrCodeUrl} // Usa a URL corrigida
               size={256}
               includeMargin={true}
             />
           </div>
            <div className="mt-2 text-center text-sm">
             <a
-              href={qrCodeUrl}
+              href={qrCodeUrl} // Usa a URL corrigida
               target="_blank"
               rel="noopener noreferrer"
               className="text-sky-600 hover:underline break-all"
@@ -140,7 +143,6 @@ export default function AgendaEventosClientPage() {
       <div className="rounded-md border bg-card">
         <div className="p-4 flex justify-end items-center">
           <Button onClick={() => router.push('/dashboard/admin/agenda-eventos/novo')}>
-            {/* ✅ CORREÇÃO AQUI: O componente e o texto do botão estavam incompletos */}
             <PlusCircle className="h-4 w-4 mr-2" />
             Adicionar Novo Evento
           </Button>
