@@ -1,4 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+// Caminho: backend/src/modulos/cliente/entities/cliente.entity.ts
+
+// ✅ CORREÇÃO: O caminho agora é relativo, subindo dois níveis de pasta.
+import { Comanda } from '../../comanda/entities/comanda.entity';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 
 @Entity('clientes')
 export class Cliente {
@@ -8,14 +12,15 @@ export class Cliente {
   @Column({ unique: true })
   cpf: string;
 
-  @Column({ nullable: true })
+  @Column()
   nome: string;
 
-  // --- NOVOS CAMPOS ADICIONADOS ---
+  @Column({ nullable: true })
+  email?: string;
 
-  @Column({ unique: true, nullable: true }) // Único, mas pode ser nulo se o cliente não quiser fornecer
-  email: string;
+  @Column({ nullable: true })
+  celular?: string;
 
-  @Column({ nullable: true }) // Celular é opcional
-  celular: string;
+  @OneToMany(() => Comanda, (comanda) => comanda.cliente)
+  comandas: Comanda[];
 }

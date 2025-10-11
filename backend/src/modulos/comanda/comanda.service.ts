@@ -1,4 +1,4 @@
-// backend/src/modulos/comanda/comanda.service.ts
+// Caminho: backend/src/modulos/comanda/comanda.service.ts
 import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
@@ -8,6 +8,11 @@ import { CreateComandaDto } from './dto/create-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
+// ✅ 1. Importar as entidades necessárias para a nova lógica
+import { Evento } from '../evento/entities/evento.entity';
+import { Pedido } from '../pedido/entities/pedido.entity';
+import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 
 @Injectable()
 export class ComandaService {
@@ -20,25 +25,29 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
+    @InjectRepository(PaginaEvento)
+    private readonly paginaEventoRepository: Repository<PaginaEvento>,
     private readonly pedidosGateway: PedidosGateway,
+    // ✅ 2. Injetar os repositórios para a nova lógica
+    @InjectRepository(Evento)
+    private readonly eventoRepository: Repository<Evento>,
+    @InjectRepository(Pedido)
+    private readonly pedidoRepository: Repository<Pedido>,
+    @InjectRepository(ItemPedido)
+    private readonly itemPedidoRepository: Repository<ItemPedido>,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
-    const { mesaId, clienteId } = createComandaDto;
+    const { mesaId, clienteId, paginaEventoId, eventoId } = createComandaDto;
 
-    // A regra principal é que precisamos de PELO MENOS um dos dois.
     if (!mesaId && !clienteId) {
       throw new BadRequestException('A comanda precisa estar associada a uma mesa ou a um cliente.');
     }
-
-    // ✅ CORREÇÃO: A regra que impedia a associação dupla foi removida.
-    // Agora, uma comanda PODE ter uma mesa e um cliente ao mesmo tempo.
 
     let mesa: Mesa | null = null;
     if (mesaId) {
       mesa = await this.mesaRepository.findOne({ where: { id: mesaId } });
       if (!mesa) throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
-      // Apenas checamos o status se não houver um cliente se cadastrando
       if (!clienteId && mesa.status !== MesaStatus.LIVRE) {
         throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
       }
@@ -49,26 +58,62 @@ export class ComandaService {
       cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
       if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
     }
+    
+    let paginaEvento: PaginaEvento | null = null;
+    if (paginaEventoId) {
+      paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
+      if (!paginaEvento) {
+        this.logger.warn(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
+      }
+    }
 
     const comanda = this.comandaRepository.create({
-      mesa: mesa,
-      cliente: cliente,
+      mesa,
+      cliente,
+      paginaEvento,
       status: ComandaStatus.ABERTA,
     });
 
+    const novaComanda = await this.comandaRepository.save(comanda);
+
+    // ✅ 3. NOVA LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO
+    if (eventoId) {
+      const evento = await this.eventoRepository.findOne({ where: { id: eventoId } });
+      if (evento && evento.valor > 0) {
+        this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
+        
+        // Criamos um "ItemPedido" especial para a entrada
+        const itemEntrada = this.itemPedidoRepository.create({
+          produto: null, // Não é um produto do cardápio
+          quantidade: 1,
+          precoUnitario: evento.valor,
+          observacao: `Entrada: ${evento.titulo}`, // Usamos a observação para descrever o item
+          status: PedidoStatus.ENTREGUE, // Marcamos como entregue, pois é um serviço
+        });
+
+        // Criamos um Pedido para conter este item de entrada
+        const pedidoEntrada = this.pedidoRepository.create({
+          comanda: novaComanda,
+          itens: [itemEntrada],
+          total: evento.valor,
+          status: PedidoStatus.ENTREGUE,
+        });
+        
+        await this.pedidoRepository.save(pedidoEntrada);
+      }
+    }
+    
     if (mesa) {
       mesa.status = MesaStatus.OCUPADA;
       await this.mesaRepository.save(mesa);
     }
     
-    return this.comandaRepository.save(comanda);
+    // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
+    return this.findOne(novaComanda.id);
   }
 
-  // ... O resto do seu arquivo (findAll, search, findOne, etc.) continua exatamente igual ...
-  // Cole apenas o método create atualizado ou substitua o arquivo inteiro.
-  
   findAll(): Promise<Comanda[]> {
-    return this.comandaRepository.find({ relations: ['mesa', 'cliente'] });
+    return this.comandaRepository.find({ relations: ['mesa', 'cliente', 'paginaEvento'] });
   }
 
   async search(term: string): Promise<Comanda[]> {
@@ -95,16 +140,22 @@ export class ComandaService {
   }
 
   async findOne(id: string): Promise<Comanda> {
-    const comanda = await this.comandaRepository
-      .createQueryBuilder('comanda')
-      .leftJoinAndSelect('comanda.mesa', 'mesa')
-      .leftJoinAndSelect('comanda.cliente', 'cliente')
-      .leftJoinAndSelect('comanda.pedidos', 'pedido')
-      .leftJoinAndSelect('pedido.itens', 'itemPedido')
-      .leftJoinAndSelect('itemPedido.produto', 'produto')
-      .where('comanda.id = :id', { id })
-      .orderBy('pedido.data', 'ASC')
-      .getOne();
+    const comanda = await this.comandaRepository.findOne({
+        where: { id },
+        relations: [
+            'mesa', 
+            'cliente', 
+            'paginaEvento', 
+            'pedidos', 
+            'pedidos.itens', 
+            'pedidos.itens.produto'
+        ],
+        order: {
+            pedidos: {
+                data: "ASC"
+            }
+        }
+    });
 
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
@@ -114,6 +165,7 @@ export class ComandaService {
     if (comanda.pedidos) {
       comanda.pedidos.forEach(pedido => {
         const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
+          // Itens de entrada (sem produto) também devem ser somados
           if (item.status !== PedidoStatus.CANCELADO) {
             return sum + (Number(item.precoUnitario) * item.quantidade);
           }
@@ -124,14 +176,8 @@ export class ComandaService {
         totalComandaCalculado += totalPedidoCalculado;
       });
     }
-
     (comanda as any).total = totalComandaCalculado;
     
-    this.logger.debug(
-      `[DIAGNÓSTICO findOne] Comanda ID ${id} com totais RECALCULADOS:`,
-      JSON.stringify(comanda, null, 2),
-    );
-
     return comanda;
   }
 
@@ -144,34 +190,39 @@ export class ComandaService {
         `Nenhuma comanda aberta encontrada para a mesa com ID "${mesaId}".`,
       );
     }
-    return comanda;
+    return this.findOne(comanda.id);
   }
 
   async findPublicOne(id: string) {
     const comanda = await this.findOne(id);
     
+    // Simplificamos o retorno dos itens para o frontend não se confundir
+    const pedidosSimplificados = comanda.pedidos.map(p => ({
+        ...p,
+        itens: p.itens.map(i => ({
+            ...i,
+            produto: i.produto ? { nome: i.produto.nome } : null, // Envia só o nome do produto
+        }))
+    }));
+
     return {
       id: comanda.id,
       status: comanda.status,
       mesa: comanda.mesa ? { numero: comanda.mesa.numero } : null,
       cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
-      pedidos: comanda.pedidos,
+      pedidos: pedidosSimplificados, // Usa a versão simplificada
       totalComanda: (comanda as any).total,
+      paginaEvento: comanda.paginaEvento 
     };
   }
 
   async fecharComanda(id: string): Promise<Comanda> {
-    const comanda = await this.comandaRepository.findOne({
-      where: { id },
-      relations: ['mesa'],
-    });
+    const comanda = await this.findOne(id);
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
     if (comanda.status !== ComandaStatus.ABERTA) {
-      throw new BadRequestException(
-        'Apenas comandas com status ABERTA podem ser fechadas.',
-      );
+      throw new BadRequestException('Apenas comandas com status ABERTA podem ser fechadas.');
     }
     comanda.status = ComandaStatus.FECHADA;
     if (comanda.mesa) {
@@ -186,17 +237,12 @@ export class ComandaService {
   }
 
   async update(id: string, updateComandaDto: any): Promise<Comanda> {
-    const comanda = await this.comandaRepository.preload({
-      id,
-      ...updateComandaDto,
-    });
+    const comanda = await this.comandaRepository.preload({ id, ...updateComandaDto });
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
     const comandaAtualizada = await this.comandaRepository.save(comanda);
-    
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
-    
     return comandaAtualizada;
   }
 

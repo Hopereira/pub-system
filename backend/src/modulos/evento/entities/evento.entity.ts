@@ -1,10 +1,8 @@
-import { 
-  Column, 
-  CreateDateColumn, 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  UpdateDateColumn 
-} from 'typeorm';
+// Caminho: backend/src/modulos/evento/entities/evento.entity.ts
+
+// ✅ CORREÇÃO: O caminho agora é relativo, subindo dois níveis de pasta.
+import { PaginaEvento } from '../../pagina-evento/entities/pagina-evento.entity';
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('eventos')
 export class Evento {
@@ -17,21 +15,14 @@ export class Evento {
   @Column({ type: 'text', nullable: true })
   descricao: string;
 
-  // ✅ AJUSTE AQUI: Mudado para 'timestamptz' para incluir o fuso horário
-  @Column({ type: 'timestamptz' }) 
+  @Column()
   dataEvento: Date;
 
-  // ✅ AJUSTE AQUI: Especificamos o tipo e o comprimento para otimização
-  @Column({ type: 'varchar', length: 512, nullable: true })
-  urlImagem: string;
-
-  @Column({ 
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-    default: 0
-  })
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   valor: number;
+
+  @Column({ nullable: true })
+  urlImagem: string;
 
   @Column({ default: true })
   ativo: boolean;
@@ -41,4 +32,7 @@ export class Evento {
 
   @UpdateDateColumn({ name: 'atualizado_em' })
   atualizadoEm: Date;
+
+  @ManyToOne(() => PaginaEvento, { eager: true, nullable: true })
+  paginaEvento: PaginaEvento;
 }
