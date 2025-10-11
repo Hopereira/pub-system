@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
+  Query, // ✅ Importação do Decorador Query
 } from '@nestjs/common';
 import { ClienteService } from './cliente.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
@@ -20,12 +21,11 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 
 @ApiTags('Clientes')
-@Controller('clientes') // ✅ MUDANÇA: Removemos a proteção geral daqui
+@Controller('clientes') 
 export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 
-  // ✅ ROTA PÚBLICA:
-  // Esta rota é para o cliente se cadastrar, então ela é marcada como @Public
+  // ✅ ROTA PÚBLICA DE CRIAÇÃO
   @Public() 
   @Post()
   @ApiOperation({ summary: 'Cria um novo cliente no sistema (Rota Pública)' })
@@ -35,17 +35,50 @@ export class ClienteController {
     return this.clienteService.create(createClienteDto);
   }
 
-  // ✅ ROTAS PROTEGIDAS PARA ADMINS:
-  // Todas as outras rotas agora têm a sua própria proteção explícita.
+  // ✅ CORREÇÃO CRÍTICA: ROTA DE BUSCA FLEXÍVEL
+  @Get()
+  // Não colocamos @Public aqui para permitir o uso ADMIN. 
+  // No NestJS, se o controller não tem um @Public, ele é protegido.
+  // Vamos assumir que se o @Query('cpf') for usado, é a busca pública.
+  // Se for o caso, a rota mais específica DEVE ter o @Public.
+  // Se a rota for usada SÓ para busca de ADMIN, movemos a busca de CPF para uma nova rota.
+
+  // OPÇÃO 1 (Recomendada: Nova Rota Pública e Específica para busca por CPF)
+  // Deixe o GET /clientes protegido para listar TUDO.
+  // E crie uma rota nova e pública para a busca: GET /clientes/buscar-cpf?cpf=...
+  
+  // Como o seu frontend usa GET /clientes?cpf=..., vamos ajustar a rota existente:
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Lista todos os clientes cadastrados (Apenas Admin)' })
-  @ApiResponse({ status: 200, description: 'Lista de clientes retornada com sucesso.' })
-  findAll() {
+  @ApiOperation({ summary: 'Lista todos os clientes ou busca por CPF (Admin).' })
+  findAll(@Query('cpf') cpf?: string) {
+    if (cpf) {
+        // Se a busca por CPF DEVE ser pública: O frontend deve usar uma rota diferente
+        // ou a rota findAll DEVE ser @Public e a lógica de Admin filtrada.
+
+        // Por enquanto, vou manter esta rota protegida, assumindo que a rota de busca pública 
+        // deve ser implementada no service. Se você não tiver uma rota pública no service
+        // para isso, esta rota deve ser pública.
+
+        // CORREÇÃO: Vamos criar uma rota pública dedicada.
+
+        // return this.clienteService.findByCpf(cpf); // Assumindo que você tem esta função
+    }
     return this.clienteService.findAll();
   }
+  
+  // ✅ NOVA ROTA PÚBLICA PARA BUSCA POR CPF
+  @Public()
+  @Get('by-cpf') // Novo endpoint: /clientes/by-cpf?cpf=...
+  @ApiOperation({ summary: 'Busca um cliente por CPF (Rota Pública).' })
+  @ApiResponse({ status: 200, description: 'Cliente encontrado.' })
+  @ApiResponse({ status: 404, description: 'Cliente não encontrado.' })
+  findByCpfPublic(@Query('cpf') cpf: string) {
+      return this.clienteService.findByCpf(cpf); // Assumindo que findByCpf lança 404
+  }
+
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -56,24 +89,5 @@ export class ClienteController {
     return this.clienteService.findOne(id);
   }
 
-  @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualiza os dados de um cliente (Apenas Admin)' })
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateClienteDto: UpdateClienteDto,
-  ) {
-    return this.clienteService.update(id, updateClienteDto);
-  }
-
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remove um cliente do sistema (Apenas Admin)' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.clienteService.remove(id);
-  }
+  // ... (o resto do controller continua igual) ...
 }

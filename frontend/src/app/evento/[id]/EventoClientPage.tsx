@@ -8,8 +8,12 @@ import * as z from 'zod';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { Cliente } from '@/types/cliente'; // Importar Cliente
+// Assumindo que você tem um tipo Evento
+import { Evento } from '@/types/evento'; 
 import { PaginaEvento } from '@/types/pagina-evento';
-import { createCliente } from '@/services/clienteService';
+// ✅ IMPORTAÇÕES CORRIGIDAS: Agora inclui a lógica Buscar ou Criar
+import { createCliente, getClienteByCpf } from '@/services/clienteService'; 
 import { abrirComandaPublica } from '@/services/comandaService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,8 +21,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import { Loader2 } from 'lucide-react';
-
-// ✅ REMOVEMOS AS IMPORTAÇÕES DESNECESSÁRIAS DAQUI (DataTable, createColumns, etc.)
 
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
@@ -29,11 +31,13 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface EventoClientPageProps {
+  // ✅ ADICIONADO: Agora este componente recebe o objeto Evento completo
+  evento?: Evento; 
   paginaEvento: PaginaEvento;
   mesaId?: string;
 }
 
-export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientPageProps) {
+export default function EventoClientPage({ evento, paginaEvento, mesaId }: EventoClientPageProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,33 +46,56 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
     defaultValues: { nome: '', cpf: '', email: '', celular: '' },
   });
 
+  // ✅ LÓGICA DE BUSCAR OU CRIAR CLIENTE (COPIADA DE NOSSA CORREÇÃO ANTERIOR)
+  const findOrCreateClient = async (values: FormValues): Promise<Cliente> => {
+    try {
+      const clienteExistente = await getClienteByCpf(values.cpf);
+      return clienteExistente; 
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        const novoCliente = await createCliente({
+            nome: values.nome,
+            cpf: values.cpf,
+            email: values.email || undefined,
+            celular: values.celular || undefined,
+        });
+        return novoCliente;
+      }
+      throw error; 
+    }
+  };
+
+
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
-    try {
-      const novoCliente = await createCliente({
-        nome: values.nome,
-        cpf: values.cpf,
-        email: values.email || undefined,
-        celular: values.celular || undefined,
-      });
+    let clienteFinal: Cliente;
 
+    try {
+      // ✅ PASSO 1: Busca ou Cria o Cliente (resolve o 409)
+      clienteFinal = await findOrCreateClient(values);
+      
+      // ✅ PASSO 2: ABRIR NOVA COMANDA
       const novaComanda = await abrirComandaPublica({
-        clienteId: novoCliente.id,
+        clienteId: clienteFinal.id,
         mesaId: mesaId,
         paginaEventoId: paginaEvento.id,
+        // ✅ CORREÇÃO CRÍTICA AQUI: Envia o ID do Evento se ele existir
+        eventoId: evento ? evento.id : undefined, 
       });
       
-      toast.success(`Bem-vindo(a), ${novoCliente.nome || 'Cliente'}! Comanda aberta.`);
+      toast.success(`Bem-vindo(a), ${clienteFinal.nome || 'Cliente'}! Comanda aberta.`);
 
       router.push(`/portal-cliente/${novaComanda.id}`);
 
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao fazer o cadastro. Tente novamente.';
+      const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao criar a sua sessão. Tente novamente.';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const valorEntrada = evento?.valor || 0; // Pega o valor se o objeto evento existir
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
@@ -84,7 +111,14 @@ export default function EventoClientPage({ paginaEvento, mesaId }: EventoClientP
           </div>
           <div className="p-6">
             <CardTitle className="text-2xl">{paginaEvento.titulo}</CardTitle>
-            <CardDescription>Para começar, por favor, preencha os seus dados abaixo.</CardDescription>
+            <CardDescription>
+                Para começar, por favor, preencha os seus dados abaixo.
+                {valorEntrada > 0 && (
+                    <span className="block font-semibold text-red-600 mt-1">
+                        Taxa de Entrada/Cover: R$ {valorEntrada.toFixed(2).replace('.', ',')}
+                    </span>
+                )}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
