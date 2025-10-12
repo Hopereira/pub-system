@@ -19,9 +19,6 @@ export class EventoController {
 
   constructor(private readonly eventoService: EventoService) {}
 
-  // ✅ =======================================================
-  // ✅ NOVO ENDPOINT PARA RECEBER O UPLOAD DA IMAGEM
-  // ✅ =======================================================
   @Patch(':id/upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
@@ -39,7 +36,7 @@ export class EventoController {
     file: Express.Multer.File,
   ) {
     this.logger.log(`Recebida imagem para o evento ID ${id}. A fazer upload...`);
-    return this.eventoService.uploadImagem(id, file); // <- Corrigido para uploadImagem
+    return this.eventoService.uploadImagem(id, file);
   }
 
   @Post()
@@ -63,6 +60,15 @@ export class EventoController {
     return this.eventoService.findAllPublic();
   }
   
+  // ✅ NOVA ROTA PÚBLICA: Permite que o frontend busque um único evento (para a página /entrada/)
+  @Public()
+  @Get('publicos/:id') // Endpoint: /eventos/publicos/:id
+  findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
+    // Você precisará de um método findPublicOne no seu EventoService para buscar eventos ativos.
+    // Se não tiver, use findOne e implemente a verificação de ativo no service.
+    return this.eventoService.findOne(id); 
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
@@ -77,7 +83,6 @@ export class EventoController {
     return this.eventoService.remove(id);
   }
   
-  // Adicionando o findOne que estava faltando para o getEventoById do service funcionar
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)

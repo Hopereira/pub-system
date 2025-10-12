@@ -1,28 +1,31 @@
 // Caminho: frontend/src/app/evento/[id]/page.tsx
 
 import { getPublicPaginaEvento } from '@/services/paginaEventoService';
-// ✅ CORREÇÃO: Importamos o componente correto para esta página: EventoClientPage
 import EventoClientPage from './EventoClientPage';
 
-// A interface para as props da página
+// Assumindo que o tipo Evento tem uma relação com PaginaEvento
+interface EventoClientData {
+    id: string; // ID da PaginaEvento
+    paginaEvento: any; // Tipo real de PaginaEvento
+    evento?: any; // Assumindo que pode ter dados do Evento relacionados
+}
+
+
 interface EventoPageProps {
   params: {
-    id: string;
+    id: string; // ID da PaginaEvento
   };
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
 // O componente de servidor para a página pública de evento
 export default async function EventoPage({ params, searchParams }: EventoPageProps) {
-  const { id } = await params;
-  const search = await searchParams ?? {};
-  const mesaId = typeof search.mesaId === 'string' ? search.mesaId : undefined;
-
+  const { id } = params; // Este ID é o ID da PaginaEvento!
+  const mesaId = typeof searchParams.mesaId === 'string' ? searchParams.mesaId : undefined;
 
   // Buscamos os dados da página de evento usando o ID
   const paginaEvento = await getPublicPaginaEvento(id);
 
-  // Se a página não for encontrada ou estiver inativa, mostramos uma mensagem de erro amigável.
   if (!paginaEvento || !paginaEvento.ativa) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-center">
@@ -32,12 +35,17 @@ export default async function EventoPage({ params, searchParams }: EventoPagePro
     );
   }
 
-  // ✅ CORREÇÃO: Renderizamos o componente correto, o EventoClientPage,
-  // passando os dados que ele precisa.
+  // A CORREÇÃO ESTÁ AQUI: PaginaEvento não tem um objeto Evento. 
+  // No fluxo normal de Boas-Vindas (/evento/[id]), NÃO EXISTE um evento (cobrança).
+  // Portanto, a prop 'evento' deve ser 'undefined'.
+  
   return (
     <EventoClientPage 
       paginaEvento={paginaEvento} 
       mesaId={mesaId}
+      // Se não estamos na rota /entrada, não enviamos o objeto evento.
+      // Isso permite que o mesmo componente sirva para dois propósitos.
+      evento={undefined} 
     />
   );
 }

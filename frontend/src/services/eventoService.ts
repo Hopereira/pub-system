@@ -1,4 +1,4 @@
-// frontend/src/services/eventoService.ts
+// Caminho: frontend/src/services/eventoService.ts
 
 import { Evento } from '@/types/evento';
 import api, { publicApi } from './api';
@@ -109,5 +109,20 @@ export const uploadEventoImagem = async (id: string, imagemFile: File): Promise<
   } catch (error) {
     console.error('Erro ao fazer upload da imagem do evento:', error);
     throw error;
+  }
+};
+
+/**
+ * ✅ NOVO: Busca um único evento pelo seu ID PUBLICAMENTE (necessário para a rota /entrada/[id]).
+ * Assumimos que o backend tem um endpoint público (ex: /eventos/publicos/:id).
+ */
+export const getPublicEventoById = async (id: string): Promise<Evento | null> => {
+  try {
+    // Usamos a API pública para garantir que não exige token.
+    const response = await publicApi.get<Evento>(`/eventos/publicos/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar o evento público com ID ${id}:`, error);
+    return null;
   }
 };

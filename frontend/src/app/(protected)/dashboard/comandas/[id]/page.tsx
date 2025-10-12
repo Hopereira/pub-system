@@ -4,7 +4,7 @@ import { AddItemDrawer } from "@/components/comandas/AddItemDrawer";
 import { Button } from "@/components/ui/button";
 import { getComandaById, fecharComanda } from "@/services/comandaService";
 import { Comanda } from "@/types/comanda";
-import { PlusCircle, Banknote, ShieldAlert } from "lucide-react"; // Adicionado ícone de alerta
+import { PlusCircle, Banknote, ShieldAlert } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { PedidoStatus } from "@/types/pedido-status.enum";
@@ -73,7 +73,7 @@ export default function ComandaDetalhePage() {
         const comandaFechada = await fecharComanda(comandaId);
         setComanda(comandaFechada);
         toast.success('Comanda fechada com sucesso!');
-        setTimeout(() => router.push('/dashboard/mesas'), 2000);
+        setTimeout(() => router.push('/dashboard'), 2000);
       } catch (error) {
         toast.error('Não foi possível fechar a comanda.');
       }
@@ -93,10 +93,7 @@ export default function ComandaDetalhePage() {
     .reduce((acc, item) => acc + (Number(item.precoUnitario) * item.quantidade), 0) ?? 0;
 
   // ==================================================================
-  // ## A NOSSA NOVA REGRA DE NEGÓCIO ESTÁ AQUI ##
-  // 1. Pegamos todos os itens da comanda.
-  // 2. Usamos `.every()` para verificar se TODOS os itens
-  //    satisfazem a condição: estar ENTREGUE ou CANCELADO.
+  // ## Lógica de Fechamento de Comanda (Correta)
   // ==================================================================
   const todosOsItens = comanda.pedidos?.flatMap(pedido => pedido.itens) ?? [];
   const podeFechar = todosOsItens.length > 0 && todosOsItens.every(
@@ -125,12 +122,18 @@ export default function ComandaDetalhePage() {
                   {pedido.itens.map(item => (
                     <li key={item.id} className="flex justify-between items-center text-sm border-t pt-3 first:border-t-0 first:pt-0">
                       <div>
-                        <p><span className="font-semibold">{item.quantidade}x</span> {item.produto.nome}</p>
-                        {item.observacao && <p className="text-xs text-gray-500">Obs: {item.observacao}</p>}
+                        {/* ✅ CORREÇÃO CRÍTICA AQUI: Usa item.observacao se item.produto for null */}
+                        <p>
+                          <span className="font-semibold">{item.quantidade}x</span> 
+                          {item.produto ? item.produto.nome : item.observacao || 'Item Avulso (Verificar)'}
+                        </p>
+                        
+                        {/* Exibe a observação apenas para produtos reais, se a observação do item de entrada já foi usada acima */}
+                        {item.observacao && item.produto && <p className="text-xs text-gray-500">Obs: {item.observacao}</p>}
                       </div>
                       <div className="flex items-center gap-4">
                         <p>{formatCurrency(Number(item.precoUnitario) * item.quantidade)}</p>
-                        <Badge variant={getStatusVariant(item.status)}>
+                        <Badge variant={getStatusVariant(item.status as PedidoStatus)}>
                           {item.status.replace('_', ' ')}
                         </Badge>
                       </div>
@@ -153,11 +156,7 @@ export default function ComandaDetalhePage() {
           <h2 className="text-2xl font-bold text-center mb-4">Painel de Pagamento</h2>
           <div className="flex flex-col items-center">
             <p className="text-lg mb-4">Verifique os itens com o cliente antes de fechar a conta.</p>
-            {/* ==================================================================
-                ## A MUDANÇA VISUAL ESTÁ AQUI ##
-                1. O botão usa a propriedade `disabled` para ser desativado.
-                2. Adicionamos uma mensagem de aviso quando ele está desativado.
-               ================================================================== */}
+            
             <Button size="lg" className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed" onClick={handleFecharComanda} disabled={!podeFechar}>
               <Banknote className="h-6 w-6 mr-2" />
               Confirmar Pagamento e Fechar Comanda
