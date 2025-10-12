@@ -7,13 +7,12 @@ import CardapioClientPage from './CardapioClientPage';
 
 // 1. O tipo agora espera 'comandaId' nos parâmetros da página.
 type CardapioPageProps = { 
-  params: { comandaId: string; } 
+  params: Promise<{ comandaId: string }>;
 };
 
 // Tornamos a função assíncrona para buscar dados no servidor
 export default async function CardapioPage({ params }: CardapioPageProps) {
-  // 2. Extraímos 'comandaId' diretamente dos parâmetros. Muito mais limpo!
-  const { comandaId } = params;
+  const { comandaId } = await params;
 
   try {
     // Usamos Promise.all para buscar os dados em paralelo, otimizando o carregamento
