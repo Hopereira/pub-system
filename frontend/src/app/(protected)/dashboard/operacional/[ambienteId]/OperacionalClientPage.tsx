@@ -7,6 +7,9 @@ import { PedidoStatus } from '@/types/pedido-status.enum';
 import { getPedidosPorAmbiente, updateItemStatus } from '@/services/pedidoService';
 import { getAmbienteById } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
+import { useAmbienteNotification } from '@/hooks/useAmbienteNotification';
+import { Button } from '@/components/ui/button';
+import { Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
@@ -14,6 +17,13 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const [ambiente, setAmbiente] = useState<Ambiente | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hook de notificação com som para novos pedidos
+  const { 
+    novoPedidoId, 
+    audioConsentNeeded, 
+    handleAllowAudio 
+  } = useAmbienteNotification(ambienteId);
 
   const fetchDados = async () => {
     try {
@@ -72,9 +82,29 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
   return (
     <>
-      <div className="mb-6 flex-shrink-0">
-        <h1 className="text-3xl font-bold tracking-tight">{ambiente?.nome || 'Painel Operacional'}</h1>
-        <p className="text-muted-foreground">Acompanhe e gerencie os pedidos em tempo real.</p>
+      <div className="mb-6 flex-shrink-0 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{ambiente?.nome || 'Painel Operacional'}</h1>
+          <p className="text-muted-foreground">Acompanhe e gerencie os pedidos em tempo real.</p>
+        </div>
+        
+        {/* Botão para ativar notificações sonoras */}
+        {audioConsentNeeded ? (
+          <Button 
+            onClick={handleAllowAudio}
+            variant="default"
+            size="lg"
+            className="gap-2"
+          >
+            <Bell className="h-5 w-5" />
+            Ativar Som de Notificações
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <BellOff className="h-5 w-5" />
+            <span>Notificações ativadas</span>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow h-full">
         {Object.entries(colunas).map(([titulo, status]) => (
@@ -85,13 +115,21 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
               {pedidos
                 .filter(p => p.itens.some(item => item.status === status))
                 .map(pedido => (
-                  <PedidoCard
+                  <div
                     key={pedido.id}
-                    pedido={pedido}
-                    onUpdateStatus={handleUpdateStatus}
-                    onCancel={handleCancelItem}
-                    filtroStatus={status}
-                  />
+                    className={`transition-all duration-500 ${
+                      novoPedidoId === pedido.id 
+                        ? 'ring-4 ring-green-500 ring-opacity-50 animate-pulse' 
+                        : ''
+                    }`}
+                  >
+                    <PedidoCard
+                      pedido={pedido}
+                      onUpdateStatus={handleUpdateStatus}
+                      onCancel={handleCancelItem}
+                      filtroStatus={status}
+                    />
+                  </div>
                 ))}
             </div>
           </div>

@@ -58,4 +58,17 @@ export const findOrCreateClient = async (values: {
     // Para qualquer outro erro (servidor, etc.), lança o erro
     throw error;
   }
+}
+
+/**
+ * Lista todos os clientes cadastrados (rota protegida - Admin).
+ */
+export const getAllClientes = async (): Promise<Cliente[]> => {
+  try {
+    const response = await api.get<Cliente[]>('/clientes');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar clientes:', error);
+    throw error;
+  }
 };

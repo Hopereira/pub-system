@@ -105,7 +105,7 @@ export class ComandaService {
                 produto: null, // Não é um produto de inventário
                 quantidade: 1,
                 precoUnitario: evento.valor,
-                observacao: `Entrada: ${evento.titulo}`, 
+                observacao: `Couvert Artístico - ${evento.titulo}`, 
                 status: PedidoStatus.ENTREGUE, // Entregue/Concluído, pois a entrada é paga na hora
             });
 
@@ -141,20 +141,30 @@ export class ComandaService {
       .leftJoinAndSelect('comanda.mesa', 'mesa')
       .leftJoinAndSelect('comanda.cliente', 'cliente')
       .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
+    
     if (term) {
+      const searchTerm = term.trim();
       queryBuilder.andWhere(
         new Brackets((qb) => {
-          if (!isNaN(parseInt(term, 10))) {
-            qb.where('mesa.numero = :numero', { numero: parseInt(term, 10) });
-          } else {
-            qb.where('cliente.nome ILIKE :term', { term: `%${term}%` }).orWhere(
-              'cliente.cpf = :term',
-              { term },
-            );
+          // Busca por nome do cliente (parcial, case-insensitive)
+          qb.where('LOWER(cliente.nome) LIKE LOWER(:nomeTerm)', { nomeTerm: `%${searchTerm}%` });
+          
+          // Busca por CPF (parcial ou completo, apenas números)
+          const cpfNumeros = searchTerm.replace(/\D/g, ''); // Remove tudo que não é número
+          if (cpfNumeros) {
+            qb.orWhere('cliente.cpf LIKE :cpfTerm', { cpfTerm: `%${cpfNumeros}%` });
+          }
+          
+          // Busca por número de mesa (apenas se for um número pequeno, não um CPF)
+          // CPF tem 11 dígitos, então só considera número de mesa se tiver menos de 5 dígitos
+          const numeroMesa = parseInt(searchTerm, 10);
+          if (!isNaN(numeroMesa) && searchTerm.length < 5) {
+            qb.orWhere('mesa.numero = :numero', { numero: numeroMesa });
           }
         }),
       );
     }
+    
     return queryBuilder.getMany();
   }
 
