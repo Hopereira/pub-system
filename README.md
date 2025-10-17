@@ -58,14 +58,32 @@ O backend está estruturado em 4 fases modulares:
 
 ## 🚀 Como Executar o Projeto
 
-Siga os passos abaixo para configurar e executar o ambiente de desenvolvimento.
+### ⚡ Setup Rápido (Recomendado)
+
+```powershell
+# 1. Execute o script de setup automatizado
+.\setup.ps1
+
+# OU verifique a configuração manualmente
+.\verify-setup.ps1
+```
+
+### 📚 Guias Detalhados
+
+Para configuração completa e detalhada, consulte:
+
+- 📘 **[SETUP.md](./SETUP.md)** - Guia completo de configuração do ambiente
+- 📗 **[MIGRATIONS.md](./MIGRATIONS.md)** - Guia de migrations do banco de dados
 
 ### Pré-requisitos
-- [Node.js](https://nodejs.org/en/) (v16 ou superior)
-- [Docker](https://www.docker.com/products/docker-desktop/) (opcional, mas recomendado)
-- Um cliente de API como [Postman](https://www.postman.com/) ou [Insomnia](https://insomnia.rest/)
+- ✅ [Node.js](https://nodejs.org/en/) (v16 ou superior)
+- ✅ [Docker Desktop](https://www.docker.com/products/docker-desktop/) (recomendado)
+- ✅ [Git](https://git-scm.com/)
+- ✅ Conta no [Google Cloud Platform](https://cloud.google.com/) (para upload de imagens)
 
-### Instalação
+### Instalação Manual
+
+Se preferir não usar os scripts automatizados:
 
 1. **Clone o repositório:**
    ```bash
