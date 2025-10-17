@@ -181,7 +181,7 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
               <FormField control={form.control} name="minuto" render={({ field }) => ( <FormItem><FormLabel>Minuto</FormLabel><FormControl><Input type="number" min="0" max="59" {...field} /></FormControl><FormMessage /></FormItem> )}/>
             </div>
             
-            <FormField control={form.control} name="valor" render={({ field }) => ( <FormItem><FormLabel>Valor (R$)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+            <FormField control={form.control} name="valor" render={({ field }) => ( <FormItem><FormLabel>Valor da Entrada/Couvert Artístico (R$)</FormLabel><FormControl><Input type="number" step="0.01" {...field} placeholder="0.00" /></FormControl><p className="text-sm text-muted-foreground">Valor cobrado por pessoa ao entrar no evento. Deixe 0 para entrada gratuita.</p><FormMessage /></FormItem> )}/>
 
           </CardContent>
           <CardFooter className="border-t px-6 py-4 flex justify-end gap-2">

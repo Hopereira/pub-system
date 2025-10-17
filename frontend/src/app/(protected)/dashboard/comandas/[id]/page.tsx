@@ -73,7 +73,7 @@ export default function ComandaDetalhePage() {
         const comandaFechada = await fecharComanda(comandaId);
         setComanda(comandaFechada);
         toast.success('Comanda fechada com sucesso!');
-        setTimeout(() => router.push('/dashboard/mesas'), 2000);
+        setTimeout(() => router.push('/dashboard'), 2000);
       } catch (error) {
         toast.error('Não foi possível fechar a comanda.');
       }

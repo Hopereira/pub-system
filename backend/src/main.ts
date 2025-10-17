@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { json } from 'express';
+import { SeederService } from './database/seeder.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -37,6 +38,10 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
+
+  // Executar seeder automaticamente na inicialização
+  const seeder = app.get(SeederService);
+  await seeder.seed();
 
   await app.listen(3000);
   logger.log(`Aplicação rodando em: ${await app.getUrl()}`);

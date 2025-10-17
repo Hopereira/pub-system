@@ -11,12 +11,44 @@
 .env
 .env.*
 !.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env.local
+frontend/.env.production
+
+# Credenciais do Google Cloud Storage - NUNCA COMMITAR!
+gcs-credentials.json
+**/gcs-credentials.json
+*.json.key
+service-account*.json
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # Arquivos de Sistema Operacional
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDEs
+.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Testes
+coverage/
+*.lcov
+.nyc_output
+
+# Temporários
+*.tmp
+*.temp
+.cache/

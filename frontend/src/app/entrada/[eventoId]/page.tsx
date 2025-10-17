@@ -3,15 +3,15 @@ import { getPublicEventoById } from '@/services/eventoService';
 import EntradaClienteFormulario from './EntradaClienteFormulario'; 
 import { notFound } from 'next/navigation';
 
-interface EntradaPageProps {
-  params: { eventoId: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+type EntradaPageProps = {
+  params: Promise<{ eventoId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export default async function EntradaPage({ params, searchParams }: EntradaPageProps) {
-  // ✅ CORREÇÃO APLICADA: Next.js é satisfeito quando desestrutura-se diretamente
-  const { eventoId } = params;
-  const mesaId = typeof searchParams.mesaId === 'string' ? searchParams.mesaId : undefined;
+  const { eventoId } = await params;
+  const sp = await searchParams;
+  const mesaId = typeof sp.mesaId === 'string' ? sp.mesaId : undefined;
 
   // Busca os dados do evento da agenda (que inclui a paginaEvento)
   const evento = await getPublicEventoById(eventoId);

@@ -38,11 +38,39 @@ export class PedidosGateway
   emitNovoPedido(pedido: Pedido) {
     this.logger.log(`Emitindo evento 'novo_pedido' para o pedido ID: ${pedido.id}`);
     this.server.emit('novo_pedido', pedido);
+    
+    // Emite eventos específicos por ambiente de preparo
+    if (pedido.itens && pedido.itens.length > 0) {
+      const ambientesNotificados = new Set<string>();
+      
+      pedido.itens.forEach(item => {
+        if (item.produto?.ambiente?.id && !ambientesNotificados.has(item.produto.ambiente.id)) {
+          const ambienteId = item.produto.ambiente.id;
+          this.logger.log(`Emitindo 'novo_pedido_ambiente:${ambienteId}' para o pedido ID: ${pedido.id}`);
+          this.server.emit(`novo_pedido_ambiente:${ambienteId}`, pedido);
+          ambientesNotificados.add(ambienteId);
+        }
+      });
+    }
   }
 
   emitStatusAtualizado(pedido: Pedido) {
     this.logger.log(`Emitindo evento 'status_atualizado' para o pedido ID: ${pedido.id}`);
     this.server.emit('status_atualizado', pedido);
+    
+    // Emite eventos específicos por ambiente quando status muda
+    if (pedido.itens && pedido.itens.length > 0) {
+      const ambientesNotificados = new Set<string>();
+      
+      pedido.itens.forEach(item => {
+        if (item.produto?.ambiente?.id && !ambientesNotificados.has(item.produto.ambiente.id)) {
+          const ambienteId = item.produto.ambiente.id;
+          this.logger.log(`Emitindo 'status_atualizado_ambiente:${ambienteId}' para o pedido ID: ${pedido.id}`);
+          this.server.emit(`status_atualizado_ambiente:${ambienteId}`, pedido);
+          ambientesNotificados.add(ambienteId);
+        }
+      });
+    }
   }
 
   // ==================================================================

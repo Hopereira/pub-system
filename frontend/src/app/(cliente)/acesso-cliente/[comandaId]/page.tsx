@@ -1,3 +1,5 @@
+// Caminho: app/(cliente)/acesso-cliente/[comandaId]/page.tsx
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -22,7 +24,12 @@ const formatCurrency = (value: number) => {
 
 export default function ComandaClientePage() {
     const params = useParams();
-    const comandaId = Array.isArray(params.id) ? params.id[0] : params.id;
+    
+    // ==================================================================
+    // ## A CORREÇÃO ESTÁ AQUI ##
+    // Alterado de params.id para params.comandaId para seguir o padrão
+    const comandaId = Array.isArray(params.comandaId) ? params.comandaId[0] : params.comandaId;
+    // ==================================================================
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
     
@@ -35,6 +42,10 @@ export default function ComandaClientePage() {
     }
 
     if (!comanda) {
+        // Adicionando uma verificação para o caso de o comandaId não ser encontrado pelo hook
+        if (!comandaId) {
+            return <div className="flex justify-center items-center h-screen bg-slate-50 text-red-500">ID da comanda não fornecido.</div>
+        }
         return <div className="flex justify-center items-center h-screen bg-slate-50">Comanda não encontrada.</div>;
     }
 
@@ -96,10 +107,12 @@ export default function ComandaClientePage() {
                             <TableBody>
                                 {itensValidos.map((item, index) => {
                                     const valorItem = (Number(item.precoUnitario) || 0) * (item.quantidade || 0);
+                                    // Se não tem produto, é entrada/couvert artístico
+                                    const nomeItem = item.produto?.nome ?? (item.observacao || 'Entrada/Couvert Artístico');
                                     return (
                                         <TableRow key={`${item.pedido.id}-${item.id}-${index}`} className={ changedPedidos.has(item.pedido.id) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
                                             <TableCell>{item.quantidade}x</TableCell>
-                                            <TableCell className="font-medium">{item.produto?.nome ?? 'Produto não encontrado'}</TableCell>
+                                            <TableCell className="font-medium">{nomeItem}</TableCell>
                                             <TableCell><Badge variant="secondary">{(item.status || 'INDEFINIDO').replace('_', ' ')}</Badge></TableCell>
                                             <TableCell className="text-right">{formatCurrency(valorItem)}</TableCell>
                                         </TableRow>
