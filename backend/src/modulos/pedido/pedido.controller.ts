@@ -17,9 +17,10 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
+import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 
 @ApiTags('Pedidos')
 @Controller('pedidos')
@@ -29,7 +30,13 @@ export class PedidoController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria um novo pedido (Rota interna para funcionários)' })
+  @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos ou pedido sem itens.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
+  @ApiResponse({ status: 404, description: 'Comanda ou produto não encontrado.' })
   create(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidoService.create(createPedidoDto);
   }
@@ -37,6 +44,9 @@ export class PedidoController {
   @Public()
   @Post('cliente')
   @ApiOperation({ summary: 'Cria um novo pedido (Fluxo do cliente público)' })
+  @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos ou pedido sem itens.' })
+  @ApiResponse({ status: 404, description: 'Comanda ou produto não encontrado.' })
   createFromCliente(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidoService.create(createPedidoDto);
   }
@@ -44,7 +54,13 @@ export class PedidoController {
   @Patch('/item/:itemPedidoId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.COZINHA, Cargo.GARCOM)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza o status de um item de pedido específico' })
+  @ApiResponse({ status: 200, description: 'Status atualizado com sucesso.' })
+  @ApiResponse({ status: 400, description: 'UUID inválido.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão.' })
+  @ApiResponse({ status: 404, description: 'Item de pedido não encontrado.' })
   updateItemStatus(
     @Param('itemPedidoId', ParseUUIDPipe) itemPedidoId: string,
     @Body() updateItemPedidoStatusDto: UpdateItemPedidoStatusDto,
@@ -58,7 +74,11 @@ export class PedidoController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista todos os pedidos, com filtro opcional por ambiente' })
+  @ApiResponse({ status: 200, description: 'Lista de pedidos retornada.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão.' })
   findAll(@Query('ambienteId') ambienteId?: string) {
     return this.pedidoService.findAll(ambienteId);
   }
@@ -66,7 +86,13 @@ export class PedidoController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Busca um pedido específico por ID' })
+  @ApiResponse({ status: 200, description: 'Pedido encontrado.' })
+  @ApiResponse({ status: 400, description: 'UUID inválido.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão.' })
+  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.pedidoService.findOne(id);
   }
@@ -74,7 +100,13 @@ export class PedidoController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza dados gerais de um pedido' })
+  @ApiResponse({ status: 200, description: 'Pedido atualizado.' })
+  @ApiResponse({ status: 400, description: 'UUID inválido ou dados inválidos.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão.' })
+  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePedidoDto: UpdatePedidoDto,
@@ -85,8 +117,62 @@ export class PedidoController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Remove/cancela um pedido (Apenas Administradores)' })
+  @ApiResponse({ status: 200, description: 'Pedido removido com sucesso.' })
+  @ApiResponse({ status: 400, description: 'UUID inválido.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN).' })
+  @ApiResponse({ status: 404, description: 'Pedido não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.pedidoService.remove(id);
+  }
+
+  // ==================== NOVOS ENDPOINTS ====================
+
+  @Get('prontos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Lista pedidos prontos para entrega',
+    description: 'Retorna pedidos com status PRONTO formatados com informações de localização (Mesa ou Ponto de Entrega)'
+  })
+  @ApiQuery({ 
+    name: 'ambienteId', 
+    required: false, 
+    description: 'Filtrar por ambiente de preparo (opcional)' 
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lista de pedidos prontos com informações de localização' 
+  })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
+  async getPedidosProntos(@Query('ambienteId') ambienteId?: string) {
+    return this.pedidoService.findProntos(ambienteId);
+  }
+
+  @Patch('item/:id/deixar-no-ambiente')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Deixar item no ambiente (cliente não encontrado)',
+    description: 'Marca item como DEIXADO_NO_AMBIENTE quando o cliente não é encontrado no local. Notifica o cliente via WebSocket.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Item marcado como deixado no ambiente. Cliente notificado.' 
+  })
+  @ApiResponse({ status: 400, description: 'UUID inválido ou item não está pronto.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
+  @ApiResponse({ status: 404, description: 'Item ou ambiente não encontrado.' })
+  deixarNoAmbiente(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeixarNoAmbienteDto,
+  ) {
+    return this.pedidoService.deixarNoAmbiente(id, dto);
   }
 }

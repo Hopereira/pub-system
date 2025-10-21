@@ -438,11 +438,11 @@ SELECT enum_range(NULL::pedido_status_enum);
 - [x] ComandaModule atualizado
 - [x] AppModule registrado
 
-### **Backend - Pedido** ⏳
-- [ ] Método deixarNoAmbiente()
-- [ ] Método findProntos()
-- [ ] Endpoints no controller
-- [ ] Notificação WebSocket
+### **Backend - Pedido** ✅ COMPLETO
+- [x] Método deixarNoAmbiente()
+- [x] Método findProntos()
+- [x] Endpoints no controller
+- [x] Notificação WebSocket
 
 ### **Frontend** ⏳
 - [ ] Página admin: Gestão de pontos
@@ -455,12 +455,12 @@ SELECT enum_range(NULL::pedido_status_enum);
 
 ## 🚀 PRÓXIMOS PASSOS
 
-1. **Completar ComandaService** (30 min)
-2. **Completar PedidoService** (30 min)
-3. **Atualizar Controllers** (20 min)
-4. **Atualizar Modules** (10 min)
-5. **Testar endpoints** (30 min)
-6. **Implementar Frontend** (4-5h)
+1. ~~**Completar ComandaService**~~ ✅ (30 min)
+2. ~~**Completar PedidoService**~~ ✅ (30 min)
+3. ~~**Atualizar Controllers**~~ ✅ (20 min)
+4. ~~**Atualizar Modules**~~ ✅ (10 min)
+5. **Testar endpoints no Swagger** (30 min) ⏳
+6. **Implementar Frontend** (4-5h) ⏳
 
 ---
 
@@ -471,11 +471,12 @@ SELECT enum_range(NULL::pedido_status_enum);
 | 1 - Migrations | ✅ | 1h | - |
 | 2 - Entidades | ✅ | 1h | - |
 | 3 - DTOs | ✅ | 1h | - |
-| 4 - Services/Controllers | ✅ 85% | 2.5h | 0.5h |
+| 4 - Services/Controllers | ✅ 100% | 3h | - |
 | 5 - Frontend Admin | ⏳ 0% | - | 1.5h |
 | 6 - Frontend Cliente | ⏳ 0% | - | 2h |
 | 7 - Frontend Garçom | ⏳ 0% | - | 1.5h |
-| **TOTAL** | **70%** | **5.5h** | **5.5h** |
+| **TOTAL Backend** | **✅ 100%** | **6h** | **-** |
+| **TOTAL Projeto** | **55%** | **6h** | **5h** |
 
 ---
 
@@ -488,6 +489,7 @@ SELECT enum_range(NULL::pedido_status_enum);
 
 ---
 
-**Última Atualização:** 21/10/2025 18:05
-**Status Geral:** 70% Completo (Backend praticamente pronto!)
-**Pronto para Teste:** Sim (Migrations, CRUD Pontos, Criar Comanda com Ponto e Agregados, Mudar Ponto)
+**Última Atualização:** 21/10/2025 20:38
+**Status Geral:** Backend ✅ 100% Completo | Frontend ⏳ 0%
+**Pronto para Teste:** Sim (Swagger, todos endpoints funcionando)
+**Próxima Fase:** Frontend (Admin, Cliente, Garçom) - 5h estimado
