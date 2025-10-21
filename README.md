@@ -1,222 +1,421 @@
-# Pub System - Sistema de Gestão para Bares e Pubs
+# 🍺 Pub System - Sistema de Gestão para Bares e Pubs
 
-## 📜 Descrição do Projeto
+<div align="center">
 
-**Pub System** é a API RESTful de backend para um sistema de gerenciamento modular e completo para bares, pubs e restaurantes. O projeto foi desenvolvido com foco em escalabilidade, segurança e boas práticas de desenvolvimento, utilizando o framework NestJS.
+![Status](https://img.shields.io/badge/Status-Ativo-success)
+![Backend](https://img.shields.io/badge/Backend-NestJS%2010-brightgreen)
+![Frontend](https://img.shields.io/badge/Frontend-Next.js%2015-blue)
+![Database](https://img.shields.io/badge/Database-PostgreSQL%2015-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-O sistema cobre desde a configuração fundamental do estabelecimento até a gestão operacional de comandas e pedidos, finalizando com uma API para a experiência interativa do cliente via QR Code.
+**Sistema completo de gerenciamento para bares, pubs e restaurantes**
 
-**Status do Projeto:** `Backend 100% Concluído`
+[🚀 Início Rápido](#-início-rápido) • [📖 Documentação](#-documentação) • [🛠️ Tecnologias](#️-tecnologias) • [🤝 Contribuição](#-contribuição)
+
+</div>
+
+---
+
+## 📋 Índice
+
+- [Sobre o Projeto](#-sobre-o-projeto)
+- [Funcionalidades](#-funcionalidades)
+- [Tecnologias](#️-tecnologias)
+- [Início Rápido](#-início-rápido)
+- [Estrutura do Projeto](#️-estrutura-do-projeto)
+- [API Endpoints](#-api-endpoints)
+- [Configuração](#-configuração)
+- [Documentação](#-documentação)
+- [Contribuição](#-contribuição)
+- [Licença](#-licença)
+
+---
+
+## 🎯 Sobre o Projeto
+
+O **Pub System** é uma solução completa de gerenciamento para estabelecimentos como bares, pubs e restaurantes. Desenvolvido com arquitetura moderna e modular, o sistema oferece desde a gestão básica do estabelecimento até funcionalidades avançadas como notificações em tempo real e interação com clientes via QR Code.
+
+### 🌟 Principais Diferenciais
+
+- **🔄 Sistema Dinâmico:** Ambientes de preparo totalmente configuráveis
+- **⚡ Tempo Real:** WebSocket para atualizações instantâneas
+- **📱 QR Code:** Interface pública para clientes acompanharem pedidos
+- **🔔 Notificações:** Sistema sonoro inteligente por ambiente
+- **🐳 Containerizado:** Ambiente de desenvolvimento com Docker
+- **📚 Documentado:** Guias completos de setup e uso
 
 ---
 
 ## ✨ Funcionalidades
 
-O backend está estruturado em 4 fases modulares:
+### 🏢 Gestão Empresarial
+- ✅ **Empresa:** Cadastro e gestão dos dados do estabelecimento
+- ✅ **Ambientes:** Criação dinâmica de locais de preparo (Cozinha, Bar, etc.)
+- ✅ **Funcionários:** Sistema de usuários com diferentes níveis de acesso
+- ✅ **Autenticação:** JWT com sistema de permissões baseado em roles
 
-### Fase 1: Fundação e Configuração
-- ✅ **Gestão de Empresa:** CRUD para os dados do estabelecimento.
-- ✅ **Gestão de Ambientes:** CRUD para os locais de preparo (Cozinha, Bar, etc.).
-- ✅ **Gestão de Funcionários:** CRUD para funcionários com diferentes níveis de acesso (Admin, Caixa, Garçom, Cozinha).
-- ✅ **Autenticação:** Sistema de login via JWT (JSON Web Token) com sistema de permissões baseado em cargos (`Roles`).
+### 🍽️ Cardápio e Produtos
+- ✅ **Produtos:** CRUD completo com upload de imagens (Google Cloud Storage)
+- ✅ **Categorização:** Associação de produtos aos ambientes de preparo
+- ✅ **Validações:** Controle de integridade e regras de negócio
 
-### Fase 2: Produtos e Cardápio
-- ✅ **Gestão de Produtos:** CRUD completo para os itens do cardápio.
-- ✅ **Relacionamento:** Cada produto é associado a um ambiente de preparo.
+### 🎯 Operacional
+- ✅ **Mesas:** Gestão com controle de status (LIVRE, OCUPADA, RESERVADA)
+- ✅ **Clientes:** Cadastro e gestão de clientes
+- ✅ **Comandas:** Sistema flexível (Mesa ou Cliente)
+- ✅ **Pedidos:** Lançamento de pedidos complexos com múltiplos itens
+- ✅ **Notificações:** Sistema sonoro por ambiente em tempo real
 
-### Fase 3: Operacional
-- ✅ **Gestão de Mesas:** CRUD para as mesas do local, com controle de status (`LIVRE`, `OCUPADA`, etc.).
-- ✅ **Gestão de Clientes:** CRUD para clientes, permitindo a abertura de comandas por CPF.
-- ✅ **Gestão de Comandas:** Sistema flexível para criar comandas associadas a uma `Mesa` ou a um `Cliente`.
-- ✅ **Lançamento de Pedidos:** Endpoint para criar `Pedidos` complexos, contendo múltiplos `Itens` associados a uma `Comanda`.
-- ✅ **Lógica de Negócio:** Validações para garantir a integridade dos pedidos, comandas e estoque.
+### 👥 Experiência do Cliente
+- ✅ **QR Code:** Visualização pública de comandas sem login
+- ✅ **Tempo Real:** Acompanhamento do status dos pedidos
+- ✅ **Eventos:** Sistema de eventos especiais com landing pages
 
-### Fase 4: Interação com o Cliente
-- ✅ **Endpoint Público para Comandas:** Rota `GET /comandas/:id/public` que permite ao cliente, via QR Code, visualizar o status dos seus pedidos, a lista de itens consumidos e o valor total da conta em tempo real, sem necessidade de login.
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-- **Backend:**
-  - **Node.js:** Ambiente de execução JavaScript.
-  - **NestJS:** Framework Node.js progressivo para construir aplicações eficientes e escaláveis.
-  - **TypeScript:** Superset do JavaScript que adiciona tipagem estática.
-- **Banco de Dados:**
-  - **PostgreSQL:** Banco de dados relacional open-source.
-  - **TypeORM:** ORM (Object-Relational Mapper) para TypeScript.
-- **Autenticação:**
-  - **JWT (JSON Web Token):** Para proteger as rotas da API.
-  - **Passport.js:** Middleware de autenticação.
-  - **bcrypt:** Para hashing de senhas.
-- **Validação:**
-  - **Class-validator & Class-transformer:** Para validação e transformação de dados em DTOs.
-- **Containerização:**
-  - **Docker & Docker Compose:** Para criar um ambiente de desenvolvimento consistente.
+### 🚀 Funcionalidades Avançadas
+- ✅ **WebSocket:** Comunicação em tempo real
+- ✅ **Upload de Imagens:** Integração com Google Cloud Storage
+- ✅ **Migrations:** Sistema de versionamento do banco de dados
+- ✅ **Seeder:** Dados iniciais para desenvolvimento
+- ✅ **Landing Pages:** Páginas personalizadas para eventos
+- ✅ **App Router:** Next.js 13+ com roteamento baseado em arquivos
+- ✅ **Turbopack:** Build otimizado para desenvolvimento
+- ✅ **TypeScript:** Tipagem completa em frontend e backend
+- ✅ **Responsive Design:** Interface adaptável para todos os dispositivos
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 🛠️ Tecnologias
 
-### ⚡ Setup Rápido (Recomendado)
+### Backend
+- **[NestJS 10](https://nestjs.com/)** - Framework Node.js progressivo
+- **[TypeScript 5.1.3](https://www.typescriptlang.org/)** - Superset JavaScript com tipagem
+- **[PostgreSQL 15](https://www.postgresql.org/)** - Banco de dados relacional
+- **[TypeORM 0.3.17](https://typeorm.io/)** - ORM para TypeScript
+- **[JWT](https://jwt.io/)** + **[Passport.js](http://www.passportjs.org/)** - Autenticação
+- **[Socket.IO 4.7.4](https://socket.io/)** - WebSocket para tempo real
+- **[Google Cloud Storage 7.17.1](https://cloud.google.com/storage)** - Upload de arquivos
+- **[bcrypt](https://www.npmjs.com/package/bcrypt)** - Hash de senhas
+- **[class-validator](https://github.com/typestack/class-validator)** + **[class-transformer](https://github.com/typestack/class-transformer)** - Validação e transformação
+- **[Swagger](https://swagger.io/)** - Documentação automática da API
+
+### Frontend
+- **[Next.js 15.5.2](https://nextjs.org/)** - Framework React com Turbopack
+- **[React 19.1.0](https://react.dev/)** - Biblioteca de interface
+- **[Tailwind CSS 4](https://tailwindcss.com/)** - Framework CSS
+- **[Radix UI](https://www.radix-ui.com/)** + **[shadcn/ui](https://ui.shadcn.com/)** - Componentes
+- **[React Hook Form](https://react-hook-form.com/)** + **[Zod 4.1.5](https://zod.dev/)** - Formulários e validação
+- **[Lucide React](https://lucide.dev/)** - Ícones
+- **[Sonner](https://sonner.emilkowal.ski/)** - Notificações toast
+- **[QR Code React](https://www.npmjs.com/package/qrcode.react)** - Geração de QR Codes
+
+### DevOps
+- **[Docker](https://www.docker.com/)** + **[Docker Compose](https://docs.docker.com/compose/)** - Containerização
+- **[PgAdmin](https://www.pgadmin.org/)** - Interface gráfica do PostgreSQL
+
+---
+
+## 🚀 Início Rápido
+
+### Setup Automatizado (Recomendado)
 
 ```powershell
-# 1. Execute o script de setup automatizado
+# Clone o repositório
+git clone https://github.com/seu-usuario/pub-system.git
+cd pub-system
+
+# Execute o script de setup automatizado
 .\setup.ps1
 
-# OU verifique a configuração manualmente
+# OU verifique a configuração atual
 .\verify-setup.ps1
 ```
 
-### 📚 Guias Detalhados
-
-Para configuração completa e detalhada, consulte:
-
-- 📘 **[SETUP.md](./SETUP.md)** - Guia completo de configuração do ambiente
-- 📗 **[MIGRATIONS.md](./MIGRATIONS.md)** - Guia de migrations do banco de dados
-
 ### Pré-requisitos
-- ✅ [Node.js](https://nodejs.org/en/) (v16 ou superior)
-- ✅ [Docker Desktop](https://www.docker.com/products/docker-desktop/) (recomendado)
-- ✅ [Git](https://git-scm.com/)
-- ✅ Conta no [Google Cloud Platform](https://cloud.google.com/) (para upload de imagens)
 
-### Instalação Manual
+- **[Node.js](https://nodejs.org/) v16 ou superior**
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**
+- **[Git](https://git-scm.com/)**
+- **Conta no [Google Cloud Platform](https://cloud.google.com/) (para upload de imagens)**
 
-Se preferir não usar os scripts automatizados:
+### Configuração Manual
 
-1. **Clone o repositório:**
+<details>
+<summary>Clique para ver os passos detalhados</summary>
+
+1. **Configure as variáveis de ambiente:**
    ```bash
-   git clone [https://github.com/SeuUsuario/pub-system.git](https://github.com/SeuUsuario/pub-system.git)
-   cd pub-system/backend
-# Pub System - Sistema de Gestão para Bares e Pubs
+   cp .env.example .env
+   # Edite o arquivo .env com suas configurações
+   ```
 
-## 📜 Descrição do Projeto
+2. **Inicie os containers:**
+   ```bash
+   docker-compose up -d
+   ```
 
-**Pub System** é a API RESTful de backend para um sistema de gerenciamento modular e completo para bares, pubs e restaurantes. O projeto foi desenvolvido com foco em escalabilidade, segurança e boas práticas de desenvolvimento, utilizando o framework NestJS.
+3. **Execute as migrations:**
+   ```bash
+   docker-compose exec backend npm run typeorm:migration:run
+   ```
 
-O sistema cobre desde a configuração fundamental do estabelecimento até a gestão operacional de comandas e pedidos, finalizando com uma API para a experiência interativa do cliente via QR Code.
+4. **Execute o seeder (opcional):**
+   ```bash
+   docker-compose exec backend npm run seed
+   ```
 
-**Status do Projeto:** `Backend 100% Concluído`
+</details>
 
----
+### Acessos
 
-## ✨ Funcionalidades
+Após a configuração, os serviços estarão disponíveis em:
 
-O backend está estruturado em 4 fases modulares:
-
-### Fase 1: Fundação e Configuração
-- ✅ **Gestão de Empresa:** CRUD para os dados do estabelecimento.
-- ✅ **Gestão de Ambientes:** CRUD para os locais de preparo (Cozinha, Bar, etc.).
-- ✅ **Gestão de Funcionários:** CRUD para funcionários com diferentes níveis de acesso (Admin, Caixa, Garçom, Cozinha).
-- ✅ **Autenticação:** Sistema de login via JWT (JSON Web Token) com sistema de permissões baseado em cargos (`Roles`).
-
-### Fase 2: Produtos e Cardápio
-- ✅ **Gestão de Produtos:** CRUD completo para os itens do cardápio.
-- ✅ **Relacionamento:** Cada produto é associado a um ambiente de preparo.
-
-### Fase 3: Operacional
-- ✅ **Gestão de Mesas:** CRUD para as mesas do local, com controle de status (`LIVRE`, `OCUPADA`, etc.).
-- ✅ **Gestão de Clientes:** CRUD para clientes, permitindo a abertura de comandas por CPF.
-- ✅ **Gestão de Comandas:** Sistema flexível para criar comandas associadas a uma `Mesa` ou a um `Cliente`.
-- ✅ **Lançamento de Pedidos:** Endpoint para criar `Pedidos` complexos, contendo múltiplos `Itens` associados a uma `Comanda`.
-- ✅ **Lógica de Negócio:** Validações para garantir a integridade dos pedidos, comandas e estoque.
-
-### Fase 4: Interação com o Cliente
-- ✅ **Endpoint Público para Comandas:** Rota `GET /comandas/:id/public` que permite ao cliente, via QR Code, visualizar o status dos seus pedidos, a lista de itens consumidos e o valor total da conta em tempo real, sem necessidade de login.
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-- **Backend:**
-  - **Node.js:** Ambiente de execução JavaScript.
-  - **NestJS:** Framework Node.js progressivo para construir aplicações eficientes e escaláveis.
-  - **TypeScript:** Superset do JavaScript que adiciona tipagem estática.
-- **Banco de Dados:**
-  - **PostgreSQL:** Banco de dados relacional open-source.
-  - **TypeORM:** ORM (Object-Relational Mapper) para TypeScript.
-- **Autenticação:**
-  - **JWT (JSON Web Token):** Para proteger as rotas da API.
-  - **Passport.js:** Middleware de autenticação.
-  - **bcrypt:** Para hashing de senhas.
-- **Validação:**
-  - **Class-validator & Class-transformer:** Para validação e transformação de dados em DTOs.
-- **Containerização:**
-  - **Docker & Docker Compose:** Para criar um ambiente de desenvolvimento consistente.
-
----
-
-## 🚀 Como Executar o Projeto
-
-Siga os passos abaixo para configurar e executar o ambiente de desenvolvimento.
-
-### Pré-requisitos
-- [Node.js](https://nodejs.org/en/) (v16 ou superior)
-- [Docker](https://www.docker.com/products/docker-desktop/) (opcional, mas recomendado)
-- Um cliente de API como [Postman](https://www.postman.com/) ou [Insomnia](https://insomnia.rest/)
-
-### Instalação
-
-### Instalação
-
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/SeuUsuario/pub-system.git](https://github.com/SeuUsuario/pub-system.git)
-    cd pub-system/backend
-    ```
-
-2.  **Crie o arquivo de variáveis de ambiente:**
-    - Renomeie o arquivo `.env.example` (se houver) para `.env`.
-    - Preencha as variáveis com os dados do seu banco de dados PostgreSQL:
-      ```env
-      # Configurações do Banco de Dados
-      DB_HOST=localhost
-      DB_PORT=5432
-      DB_USER=seu_usuario_postgres
-      DB_PASSWORD=sua_senha_postgres
-      DB_DATABASE=pub_system_db
-
-      # Chave secreta para o JWT
-      JWT_SECRET=sua_chave_secreta_super_forte
-
-      # Porta da aplicação
-      PORT=3000
-      ```
-
-3.  **Instale as dependências:**
-    ```bash
-    npm install
-    ```
-
-4.  **Inicie o servidor de desenvolvimento:**
-    - O servidor irá iniciar e se conectar ao banco de dados. Ele ficará observando por alterações nos arquivos (`watch mode`).
-    ```bash
-    npm run start:dev
-    ```
-
-A API estará disponível em `http://localhost:3000`.
+- **Frontend:** http://localhost:3001
+- **Backend API:** http://localhost:3000
+- **PgAdmin:** http://localhost:8080
+- **Login:** `admin@admin.com` / `admin123`
 
 ---
 
 ## 🏗️ Estrutura do Projeto
 
-O projeto segue uma arquitetura modular, onde cada funcionalidade principal reside em seu próprio diretório dentro de `src/modulos`. Isso promove a separação de responsabilidades e facilita a manutenção.
+```
+pub-system/
+├── backend/                 # API NestJS
+│   ├── src/
+│   │   ├── auth/           # Autenticação e autorização
+│   │   ├── database/       # Migrations e configurações do BD
+│   │   ├── modulos/        # Módulos de funcionalidades
+│   │   │   ├── ambiente/   # Gestão de ambientes
+│   │   │   ├── cliente/    # Gestão de clientes
+│   │   │   ├── comanda/    # Sistema de comandas
+│   │   │   ├── empresa/    # Dados do estabelecimento
+│   │   │   ├── evento/     # Eventos especiais
+│   │   │   ├── funcionario/# Gestão de funcionários
+│   │   │   ├── mesa/       # Gestão de mesas
+│   │   │   ├── pagina-evento/ # Landing pages de eventos
+│   │   │   ├── pedido/     # Sistema de pedidos
+│   │   │   └── produto/    # Gestão de produtos
+│   │   ├── shared/         # Módulos compartilhados
+│   │   └── types/          # Definições de tipos
+│   ├── test/               # Testes automatizados
+│   ├── gcs-credentials.json # Credenciais Google Cloud
+│   └── package.json
+├── frontend/               # Interface Next.js
+│   ├── src/
+│   │   ├── app/           # App Router (Next.js 13+)
+│   │   │   ├── (auth)/    # Rotas de autenticação
+│   │   │   ├── (cliente)/ # Interface pública
+│   │   │   ├── (protected)/ # Rotas protegidas
+│   │   │   ├── comanda/   # Visualização de comandas
+│   │   │   ├── entrada/   # Página inicial
+│   │   │   └── evento/    # Landing pages de eventos
+│   │   ├── components/    # Componentes reutilizáveis
+│   │   ├── context/       # Contextos React
+│   │   ├── hooks/         # Hooks customizados
+│   │   ├── layouts/       # Layouts da aplicação
+│   │   ├── lib/           # Utilitários e configurações
+│   │   ├── services/      # Serviços de API
+│   │   └── types/         # Definições de tipos TypeScript
+│   ├── public/            # Arquivos estáticos
+│   └── package.json
+├── docker-compose.yml      # Configuração dos containers
+├── .env.example           # Template de variáveis de ambiente
+├── setup.ps1              # Script de configuração automática
+├── verify-setup.ps1       # Script de verificação
+└── Documentação adicional:
+    ├── CONFIGURATION.md    # Resumo das configurações
+    ├── CREATE_TEST_DATA.md # Criação de dados de teste
+    ├── DADOS_TESTE.md      # Dados para testes
+    ├── IMPLEMENTACAO_NOTIFICACOES.md # Implementação de notificações
+    ├── MIGRATIONS.md       # Guia de migrations
+    ├── NOTIFICACOES.md     # Sistema de notificações
+    ├── README_NOTIFICACOES.md # Documentação de notificações
+    ├── RELATORIO_SESSAO.md # Relatório de desenvolvimento
+    └── SETUP.md            # Guia completo de configuração
+```
 
-- `src/auth`: Contém toda a lógica de autenticação (JWT, guards, strategies).
-- `src/modulos`: Contém os módulos de cada funcionalidade (CRUDs).
-  - `/ambiente`
-  - `/cliente`
-  - `/comanda`
-  - `/empresa`
-  - `/funcionario`
-  - `/mesa`
-  - `/pedido`
-  - `/produto`
+---
 
+## 🔌 API Endpoints
 
+### 🔐 Autenticação
+```http
+POST /auth/login              # Login de funcionários
+GET  /auth/profile           # Perfil do usuário logado
+```
 
+### 🏢 Gestão
+```http
+GET    /empresas             # Listar empresas
+POST   /empresas             # Criar empresa
+PUT    /empresas/:id         # Atualizar empresa
+DELETE /empresas/:id         # Deletar empresa
+```
 
+### 🍽️ Operacional
+```http
+GET    /mesas                # Listar mesas
+POST   /comandas             # Criar comanda
+GET    /comandas/:id         # Detalhes da comanda
+POST   /pedidos              # Criar pedido
+PUT    /pedidos/:id/status   # Atualizar status do pedido
+```
 
+### 📱 Interface Pública
+```http
+GET    /comandas/:id/public  # Visualização pública (QR Code)
+GET    /evento/:slug         # Landing page de eventos
+```
+
+### 📁 Upload e Mídia
+```http
+POST   /upload               # Upload de imagens (GCS)
+GET    /pagina-evento        # Gerenciamento de landing pages
+POST   /pagina-evento        # Criar landing page
+```
+> 📖 **Documentação completa da API:** Disponível via Swagger em `http://localhost:3000/api` (quando configurado)
+
+---
+
+## ⚙️ Configuração
+
+### 🔑 Variáveis de Ambiente Principais
+
+```env
+# Banco de Dados
+DB_HOST=db
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=sua_senha_forte
+DB_DATABASE=pub_system_db
+
+# Segurança
+JWT_SECRET=sua_chave_jwt_super_secreta
+
+# Google Cloud Storage
+GCS_BUCKET_NAME=seu-bucket-gcs
+GOOGLE_APPLICATION_CREDENTIALS=/usr/src/app/gcs-credentials.json
+
+# Administrador Inicial
+ADMIN_EMAIL=admin@admin.com
+ADMIN_SENHA=admin123
+```
+
+### 🔒 Segurança em Produção
+
+- ⚠️ **Gere um JWT_SECRET forte:** `openssl rand -base64 32`
+- ⚠️ **Use senhas fortes** para banco e admin
+- ⚠️ **Configure HTTPS/SSL**
+- ⚠️ **Use secrets management** (AWS Secrets, Azure Key Vault, etc.)
+- ⚠️ **Configure firewall** e restrinja acessos
+- ⚠️ **Proteja credenciais GCS** - nunca commite `gcs-credentials.json`
+- ⚠️ **Configure CORS** adequadamente para produção
+- ⚠️ **Use rate limiting** para prevenir ataques DDoS
+
+---
+
+## 📚 Documentação
+
+| Documento | Descrição |
+|-----------|-----------|
+| 📘 **[SETUP.md](./SETUP.md)** | Guia completo de configuração do ambiente |
+| 📗 **[MIGRATIONS.md](./MIGRATIONS.md)** | Guia de migrations do banco de dados |
+| 🔔 **[NOTIFICACOES.md](./NOTIFICACOES.md)** | Sistema de notificações em tempo real |
+| 🔔 **[README_NOTIFICACOES.md](./README_NOTIFICACOES.md)** | Documentação detalhada de notificações |
+| 🔧 **[IMPLEMENTACAO_NOTIFICACOES.md](./IMPLEMENTACAO_NOTIFICACOES.md)** | Implementação técnica de notificações |
+| ⚙️ **[CONFIGURATION.md](./CONFIGURATION.md)** | Resumo das configurações aplicadas |
+| 🧪 **[CREATE_TEST_DATA.md](./CREATE_TEST_DATA.md)** | Criação de dados para testes |
+| 📊 **[DADOS_TESTE.md](./DADOS_TESTE.md)** | Dados de exemplo e testes |
+| 📈 **[RELATORIO_SESSAO.md](./RELATORIO_SESSAO.md)** | Relatório de desenvolvimento |
+
+---
+
+## 🧪 Testes
+
+### Backend
+```bash
+# Desenvolvimento
+npm run start:dev          # Inicia em modo desenvolvimento
+npm run start:debug        # Inicia em modo debug
+npm run build              # Build para produção
+npm run start:prod         # Inicia versão de produção
+
+# Banco de Dados
+npm run typeorm:migration:generate -- src/database/migrations/NomeDaMigration
+npm run typeorm:migration:run       # Executa migrations
+
+# Testes
+npm run test               # Testes unitários
+npm run test:watch         # Testes em modo watch
+npm run test:cov           # Testes com coverage
+npm run test:e2e           # Testes end-to-end
+
+# Qualidade de Código
+npm run lint               # ESLint
+npm run format             # Prettier
+```
+
+### Frontend
+```bash
+# Desenvolvimento
+npm run dev                # Inicia servidor de desenvolvimento
+npm run build              # Build com Turbopack
+npm run start              # Inicia versão de produção
+npm run lint               # ESLint
+```
+
+### Docker
+```bash
+# Gerenciamento de containers
+docker-compose up -d       # Inicia todos os serviços
+docker-compose down        # Para todos os serviços
+docker-compose logs -f     # Visualiza logs em tempo real
+docker-compose exec backend npm run typeorm:migration:run
+```
+
+---
+
+## 🤝 Contribuição
+
+Contribuições são sempre bem-vindas! Para contribuir:
+
+1. **Fork** o projeto
+2. **Crie** uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. **Commit** suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** para a branch (`git push origin feature/AmazingFeature`)
+5. **Abra** um Pull Request
+
+### 📋 Diretrizes
+
+- Siga os padrões de código existentes
+- Adicione testes para novas funcionalidades
+- Atualize a documentação quando necessário
+- Use commits semânticos (feat, fix, docs, etc.)
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 📞 Suporte (24) 99828-5751
+
+Se encontrar problemas ou tiver dúvidas:
+
+1. 🔍 Verifique a [documentação](./SETUP.md)
+2. 🐛 Abra uma [issue](https://github.com/seu-usuario/pub-system/issues)
+3. 💬 Entre em contato via [email](mailto:pereira_hebert@msn.com)
+
+---
+
+<div align="center">
+
+**⭐ Se este projeto foi útil, considere dar uma estrela!**
+
+Desenvolvido com ❤️ para a comunidade
+
+</div>
 
     
