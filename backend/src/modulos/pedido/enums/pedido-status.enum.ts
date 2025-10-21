@@ -6,4 +6,5 @@ export enum PedidoStatus {
   PRONTO = 'PRONTO',
   ENTREGUE = 'ENTREGUE',
   CANCELADO = 'CANCELADO',
+  DEIXADO_NO_AMBIENTE = 'DEIXADO_NO_AMBIENTE', // Quando garçom não encontra cliente
 }

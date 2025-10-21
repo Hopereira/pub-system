@@ -5,6 +5,7 @@ import {
 import { ComandaService } from './comanda.service';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
+import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
@@ -97,8 +98,32 @@ export class ComandaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remove uma comanda (Apenas Administradores)' })
+  @ApiOperation({ summary: 'Exclui uma comanda (apenas admin)' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.comandaService.remove(id);
+  }
+
+  @Public()
+  @Patch(':id/ponto-entrega')
+  @ApiOperation({ summary: 'Atualizar ponto de entrega da comanda (cliente pode mudar de local)' })
+  @ApiResponse({ status: 200, description: 'Ponto de entrega atualizado com sucesso' })
+  @ApiResponse({ status: 200, description: 'Ponto atualizado com alerta (pedidos em preparo)' })
+  @ApiResponse({ status: 400, description: 'Comanda não está aberta ou ponto inválido' })
+  @ApiResponse({ status: 404, description: 'Comanda ou ponto de entrega não encontrado' })
+  updatePontoEntrega(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdatePontoEntregaComandaDto,
+  ) {
+    return this.comandaService.updatePontoEntrega(id, dto);
+  }
+
+  @Public()
+  @Get(':id/agregados')
+  @ApiOperation({ summary: 'Listar agregados (acompanhantes) da comanda' })
+  @ApiResponse({ status: 200, description: 'Lista de agregados retornada' })
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada' })
+  async getAgregados(@Param('id', ParseUUIDPipe) id: string) {
+    const comanda = await this.comandaService.findOne(id);
+    return comanda.agregados || [];
   }
 }

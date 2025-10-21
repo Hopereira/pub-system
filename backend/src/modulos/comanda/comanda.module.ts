@@ -13,6 +13,8 @@ import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
+import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
+import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { ItemPedido } from '../pedido/entities/item-pedido.entity';
       Evento,
       Pedido,
       ItemPedido,
+      PontoEntrega,
+      ComandaAgregado,
     ]), 
     PedidoModule, // Mantemos a importação do PedidoModule para acesso ao Gateway
   ],

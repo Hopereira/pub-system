@@ -1,0 +1,64 @@
+// Caminho: backend/src/modulos/ponto-entrega/entities/ponto-entrega.entity.ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
+import { Empresa } from '../../empresa/entities/empresa.entity';
+import { Mesa } from '../../mesa/entities/mesa.entity';
+import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { Comanda } from '../../comanda/entities/comanda.entity';
+
+@Entity('pontos_entrega')
+export class PontoEntrega {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'varchar', length: 100 })
+  nome: string;
+
+  @Column({ type: 'text', nullable: true })
+  descricao: string;
+
+  @Column({ type: 'boolean', default: true })
+  ativo: boolean;
+
+  // Relação: Mesa Próxima (opcional)
+  @Column({ name: 'mesa_proxima_id', type: 'uuid', nullable: true })
+  mesaProximaId: string;
+
+  @ManyToOne(() => Mesa, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'mesa_proxima_id' })
+  mesaProxima: Mesa;
+
+  // Relação: Ambiente de Preparo (obrigatório)
+  @Column({ name: 'ambiente_preparo_id', type: 'uuid' })
+  ambientePreparoId: string;
+
+  @ManyToOne(() => Ambiente, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'ambiente_preparo_id' })
+  ambientePreparo: Ambiente;
+
+  // Relação: Empresa
+  @Column({ name: 'empresa_id', type: 'uuid' })
+  empresaId: string;
+
+  @ManyToOne(() => Empresa, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'empresa_id' })
+  empresa: Empresa;
+
+  // Relação: Comandas que usam este ponto
+  @OneToMany(() => Comanda, (comanda) => comanda.pontoEntrega)
+  comandas: Comanda[];
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}
