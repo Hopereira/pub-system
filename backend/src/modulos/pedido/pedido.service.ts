@@ -37,20 +37,24 @@ export class PedidoService {
   // ## MÉTODO CREATE COM DIAGNÓSTICO ##
   // ==================================================================
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
-    this.logger.debug('[DIAGNÓSTICO] - 1. Método Create Iniciado', { createPedidoDto });
-
     const { comandaId, itens } = createPedidoDto;
+    
+    this.logger.log(`📝 Criando novo pedido | Comanda: ${comandaId} | ${itens.length} itens`);
+
     const comanda = await this.comandaRepository.findOne({ where: { id: comandaId } });
     if (!comanda) {
+      this.logger.warn(`⚠️ Tentativa de criar pedido para comanda inexistente: ${comandaId}`);
       throw new NotFoundException(`Comanda com ID "${comandaId}" não encontrada.`);
     }
     if (!itens || itens.length === 0) {
+      this.logger.warn(`⚠️ Tentativa de criar pedido sem itens | Comanda: ${comandaId}`);
       throw new BadRequestException('Um pedido não pode ser criado sem itens.');
     }
 
     const itensPedidoPromise = itens.map(async (itemDto) => {
       const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
       if (!produto) {
+        this.logger.warn(`⚠️ Tentativa de criar item de pedido para produto inexistente: ${itemDto.produtoId}`);
         throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
       }
       return this.itemPedidoRepository.create({
@@ -141,16 +145,22 @@ export class PedidoService {
   async updateItemStatus(itemPedidoId: string, updateDto: UpdateItemPedidoStatusDto): Promise<ItemPedido> {
     const itemPedido = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
-      relations: ['pedido'],
+      relations: ['pedido', 'produto'],
     });
 
     if (!itemPedido) {
+      this.logger.warn(`⚠️ Tentativa de atualizar status de item inexistente: ${itemPedidoId}`);
       throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
     }
 
+    const statusAnterior = itemPedido.status;
     itemPedido.status = updateDto.status;
+    
     if (updateDto.status === PedidoStatus.CANCELADO) {
       itemPedido.motivoCancelamento = updateDto.motivoCancelamento;
+      this.logger.warn(`🚫 Item cancelado: ${itemPedido.produto?.nome || 'Produto'} | Motivo: ${updateDto.motivoCancelamento}`);
+    } else {
+      this.logger.log(`🔄 Status alterado: ${itemPedido.produto?.nome || 'Produto'} | ${statusAnterior} → ${updateDto.status}`);
     }
 
     const itemAtualizado = await this.itemPedidoRepository.save(itemPedido);

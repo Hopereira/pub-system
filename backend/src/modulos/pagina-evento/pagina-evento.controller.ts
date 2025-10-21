@@ -64,6 +64,9 @@ export class PaginaEventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove uma página de evento' })
+  @ApiResponse({ status: 200, description: 'Página removida com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Página não encontrada.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.paginaEventoService.remove(id);
   }
@@ -72,7 +75,10 @@ export class PaginaEventoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
-  // ... (documentação do swagger)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload de mídia (imagem/vídeo) para página de evento' })
+  @ApiResponse({ status: 200, description: 'Mídia enviada com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
   @UseInterceptors(FileInterceptor('file'))
   uploadMedia(
     @Param('id', ParseUUIDPipe) id: string,
