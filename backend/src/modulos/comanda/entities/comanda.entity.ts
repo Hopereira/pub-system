@@ -1,10 +1,11 @@
 // Caminho: backend/src/modulos/comanda/entities/comanda.entity.ts
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, JoinColumn } from 'typeorm';
 import { Mesa } from '../../mesa/entities/mesa.entity';
 import { Cliente } from '../../cliente/entities/cliente.entity';
 import { Pedido } from '../../pedido/entities/pedido.entity';
-// ✅ CORREÇÃO: O caminho agora é relativo, subindo dois níveis de pasta.
 import { PaginaEvento } from '../../pagina-evento/entities/pagina-evento.entity';
+import { PontoEntrega } from '../../ponto-entrega/entities/ponto-entrega.entity';
+import { ComandaAgregado } from './comanda-agregado.entity';
 
 export enum ComandaStatus {
   ABERTA = 'ABERTA',
@@ -28,6 +29,18 @@ export class Comanda {
 
   @ManyToOne(() => Cliente, (cliente) => cliente.comandas, { nullable: true, eager: true })
   cliente: Cliente;
+
+  // Ponto de Entrega (alternativa a Mesa)
+  @Column({ name: 'ponto_entrega_id', type: 'uuid', nullable: true })
+  pontoEntregaId: string;
+
+  @ManyToOne(() => PontoEntrega, (ponto) => ponto.comandas, { nullable: true, eager: true })
+  @JoinColumn({ name: 'ponto_entrega_id' })
+  pontoEntrega: PontoEntrega;
+
+  // Agregados (familiares/amigos na mesma comanda)
+  @OneToMany(() => ComandaAgregado, (agregado) => agregado.comanda, { cascade: true })
+  agregados: ComandaAgregado[];
 
   @OneToMany(() => Pedido, (pedido) => pedido.comanda)
   pedidos: Pedido[];

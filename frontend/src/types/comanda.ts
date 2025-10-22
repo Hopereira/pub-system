@@ -3,6 +3,7 @@
 import { Mesa } from "./mesa";
 import { PedidoStatus } from "./pedido";
 import { Produto } from "./produto";
+import { PontoEntrega, Agregado } from "./ponto-entrega";
 
 // --- CORREÇÃO APLICADA AQUI ---
 // Transformado de 'type' para 'enum' para que possa ser usado no código em execução.
@@ -36,6 +37,8 @@ export interface Comanda {
   id: string;
   status: ComandaStatus; // Esta linha já estava correta e agora funcionará
   mesa?: Mesa;
+  pontoEntrega?: PontoEntrega;
+  agregados?: Agregado[];
   pedidos: Pedido[];
   // Futuramente adicionaremos cliente
 }

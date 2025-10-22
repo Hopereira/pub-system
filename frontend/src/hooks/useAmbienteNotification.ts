@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Pedido } from '@/types/pedido';
+import { logger } from '@/lib/logger';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -49,8 +50,12 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     audioRef.current?.play().then(() => {
       audioRef.current?.pause();
       if (audioRef.current) audioRef.current.currentTime = 0;
+      logger.log('🔊 Áudio habilitado e testado com sucesso', { module: 'WebSocket' });
     }).catch(e => {
-      console.error("Erro ao testar áudio:", e);
+      logger.error('Falha ao testar áudio de notificação', {
+        module: 'WebSocket',
+        error: e as Error,
+      });
     });
   }, []);
 
@@ -59,7 +64,14 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     if (isAudioAllowed && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch(e => {
-        console.error("Erro ao tocar som de notificação:", e);
+        logger.error('Falha ao reproduzir som de notificação', {
+          module: 'WebSocket',
+          error: e as Error,
+        });
+      });
+    } else if (!isAudioAllowed) {
+      logger.warn('Tentativa de tocar áudio sem permissão do usuário', {
+        module: 'WebSocket',
       });
     }
   }, [isAudioAllowed]);
@@ -77,20 +89,38 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     socketRef.current = io(SOCKET_URL);
 
     socketRef.current.on('connect', () => {
-      console.log(`[Socket.IO Ambiente] Conectado: ${socketRef.current?.id}`);
+      logger.socket(`Conectado ao ambiente ${ambienteId}`, {
+        socketId: socketRef.current?.id,
+      });
     });
 
-    socketRef.current.on('disconnect', () => {
-      console.log('[Socket.IO Ambiente] Desconectado');
+    socketRef.current.on('disconnect', (reason) => {
+      logger.warn(`Desconectado do WebSocket`, {
+        module: 'WebSocket',
+        data: { ambienteId, reason },
+      });
+      
+      // Log se foi desconexão inesperada
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        logger.error('Desconexão inesperada - Tentando reconectar', {
+          module: 'WebSocket',
+          data: { reason },
+        });
+      }
     });
 
     // Escuta novos pedidos para este ambiente específico
     const novoPedidoEvent = `novo_pedido_ambiente:${ambienteId}`;
     socketRef.current.on(novoPedidoEvent, (pedido: Pedido) => {
-      console.log(`[Socket.IO Ambiente] Novo pedido recebido para ambiente ${ambienteId}:`, pedido);
+      logger.log(`🆕 Novo pedido recebido`, {
+        module: 'WebSocket',
+        data: { ambienteId, pedidoId: pedido.id, itens: pedido.itens?.length },
+      });
       
       // Toca o som
       playNotificationSound();
+      
+      logger.log('🔔 Notificação sonora disparada', { module: 'WebSocket' });
       
       // Define o ID do novo pedido para destacar na UI
       setNovoPedidoId(pedido.id);
@@ -104,7 +134,34 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     // Escuta atualizações de status para este ambiente
     const statusAtualizadoEvent = `status_atualizado_ambiente:${ambienteId}`;
     socketRef.current.on(statusAtualizadoEvent, (pedido: Pedido) => {
-      console.log(`[Socket.IO Ambiente] Status atualizado para ambiente ${ambienteId}:`, pedido);
+      logger.log('🔄 Status atualizado', {
+        module: 'WebSocket',
+        data: { ambienteId, pedidoId: pedido.id },
+      });
+    });
+    
+    // Escuta erros de conexão
+    socketRef.current.on('connect_error', (error) => {
+      logger.error('Erro ao conectar no WebSocket', {
+        module: 'WebSocket',
+        error: error as Error,
+      });
+    });
+    
+    // Escuta tentativas de reconexão
+    socketRef.current.on('reconnect_attempt', (attempt) => {
+      logger.warn(`Tentando reconectar (${attempt})`, {
+        module: 'WebSocket',
+        data: { ambienteId },
+      });
+    });
+    
+    // Escuta reconexão bem-sucedida
+    socketRef.current.on('reconnect', (attemptNumber) => {
+      logger.log(`✅ Reconectado com sucesso após ${attemptNumber} tentativas`, {
+        module: 'WebSocket',
+        data: { ambienteId },
+      });
     });
 
     // Cleanup ao desmontar

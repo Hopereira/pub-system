@@ -78,6 +78,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     'A Fazer': PedidoStatus.FEITO,
     'Em Preparo': PedidoStatus.EM_PREPARO,
     'Pronto': PedidoStatus.PRONTO,
+    'Aguardando Retirada': PedidoStatus.DEIXADO_NO_AMBIENTE,
   };
 
   return (
@@ -106,7 +107,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow h-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-grow h-full">
         {Object.entries(colunas).map(([titulo, status]) => (
           <div key={status} className="bg-card rounded-lg p-4 flex flex-col shadow">
             <h2 className="text-xl font-semibold mb-4 text-center">{titulo}</h2>

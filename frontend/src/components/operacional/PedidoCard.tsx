@@ -65,6 +65,9 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel, filtroStatus }: P
               {item.status === PedidoStatus.PRONTO && (
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onUpdateStatus(item.id, PedidoStatus.ENTREGUE)}>Entregar</Button>
               )}
+              {item.status === PedidoStatus.DEIXADO_NO_AMBIENTE && (
+                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onUpdateStatus(item.id, PedidoStatus.ENTREGUE)}>✅ Cliente Retirou</Button>
+              )}
               <Button variant="destructive" size="sm" onClick={() => handleOpenCancelDialog(item.id)}>Cancelar</Button>
             </div>
             <Separator className="mt-3"/>

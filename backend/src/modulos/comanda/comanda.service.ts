@@ -10,15 +10,17 @@ import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
+import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
+import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
+import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 
 // Gateways
 import { PedidosGateway } from '../pedido/pedidos.gateway';
-
 
 @Injectable()
 export class ComandaService {
@@ -31,22 +33,32 @@ export class ComandaService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Cliente)
     private readonly clienteRepository: Repository<Cliente>,
-    @InjectRepository(PaginaEvento) // ✅ Necessário para o fluxo de Eventos
+    @InjectRepository(PaginaEvento)
     private readonly paginaEventoRepository: Repository<PaginaEvento>,
-    @InjectRepository(Evento) // ✅ Necessário para obter o valor de entrada
+    @InjectRepository(Evento)
     private readonly eventoRepository: Repository<Evento>,
-    @InjectRepository(Pedido) // ✅ Necessário para criar o Pedido de Entrada
+    @InjectRepository(Pedido)
     private readonly pedidoRepository: Repository<Pedido>,
-    @InjectRepository(ItemPedido) // ✅ Necessário para criar o Item de Pedido de Entrada
+    @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
+    @InjectRepository(PontoEntrega)
+    private readonly pontoEntregaRepository: Repository<PontoEntrega>,
+    @InjectRepository(ComandaAgregado)
+    private readonly comandaAgregadoRepository: Repository<ComandaAgregado>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
-    const { mesaId, clienteId, paginaEventoId, eventoId } = createComandaDto;
+    const { mesaId, pontoEntregaId, clienteId, paginaEventoId, eventoId, agregados } = createComandaDto;
 
+    // Validação: Mesa XOR Ponto de Entrega (não pode ter ambos)
+    if (mesaId && pontoEntregaId) {
+      throw new BadRequestException('A comanda não pode ter mesa E ponto de entrega ao mesmo tempo.');
+    }
+    
+    // Validação: Se não tiver mesa, precisa ter cliente (balcão/delivery/ponto)
     if (!mesaId && !clienteId) {
-      throw new BadRequestException('A comanda precisa estar associada a uma mesa ou a um cliente.');
+      throw new BadRequestException('Comandas sem mesa precisam estar associadas a um cliente.');
     }
 
     let mesa: Mesa | null = null;
@@ -84,14 +96,44 @@ export class ComandaService {
       }
     }
 
+    // Validar Ponto de Entrega
+    let pontoEntrega: PontoEntrega | null = null;
+    if (pontoEntregaId) {
+      pontoEntrega = await this.pontoEntregaRepository.findOne({ 
+        where: { id: pontoEntregaId } 
+      });
+      if (!pontoEntrega) {
+        throw new NotFoundException(`Ponto de entrega com ID "${pontoEntregaId}" não encontrado.`);
+      }
+      if (!pontoEntrega.ativo) {
+        throw new BadRequestException(`O ponto de entrega "${pontoEntrega.nome}" está desativado.`);
+      }
+      this.logger.log(`📍 Comanda será criada no ponto: ${pontoEntrega.nome}`);
+    }
+
     const comanda = this.comandaRepository.create({
       mesa,
       cliente,
+      pontoEntrega,
       paginaEvento,
       status: ComandaStatus.ABERTA,
     });
 
     const novaComanda = await this.comandaRepository.save(comanda);
+
+    // Criar agregados se fornecidos
+    if (agregados && agregados.length > 0) {
+      const agregadosEntities = agregados.map((agr, index) =>
+        this.comandaAgregadoRepository.create({
+          comandaId: novaComanda.id,
+          nome: agr.nome,
+          cpf: agr.cpf,
+          ordem: index + 1,
+        })
+      );
+      await this.comandaAgregadoRepository.save(agregadosEntities);
+      this.logger.log(`✅ ${agregados.length} agregado(s) adicionado(s) à comanda ${novaComanda.id}`);
+    }
 
     // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
     if (eventoId) {
@@ -174,12 +216,19 @@ export class ComandaService {
         relations: [
             'mesa', 
             'cliente', 
-            'paginaEvento', 
+            'paginaEvento',
+            'pontoEntrega',
+            'pontoEntrega.mesaProxima',
+            'pontoEntrega.ambientePreparo',
+            'agregados',
             'pedidos', 
             'pedidos.itens', 
             'pedidos.itens.produto'
         ],
         order: {
+            agregados: {
+                ordem: 'ASC',
+            },
             pedidos: {
                 data: "ASC"
             }
@@ -278,5 +327,54 @@ export class ComandaService {
   async remove(id: string): Promise<void> {
     const comanda = await this.findOne(id);
     await this.comandaRepository.remove(comanda);
+  }
+
+  async updatePontoEntrega(
+    comandaId: string,
+    dto: UpdatePontoEntregaComandaDto,
+  ): Promise<Comanda> {
+    const comanda = await this.findOne(comandaId);
+
+    if (comanda.status !== ComandaStatus.ABERTA) {
+      throw new BadRequestException('Apenas comandas abertas podem ter o ponto de entrega alterado.');
+    }
+
+    // Verifica se tem pedidos EM_PREPARO
+    const pedidosEmPreparo = await this.pedidoRepository
+      .createQueryBuilder('pedido')
+      .leftJoin('pedido.itens', 'item')
+      .where('pedido.comanda.id = :comandaId', { comandaId })
+      .andWhere('item.status = :status', { status: PedidoStatus.EM_PREPARO })
+      .getCount();
+
+    if (pedidosEmPreparo > 0) {
+      this.logger.warn(
+        `⚠️ Cliente mudou ponto de entrega com ${pedidosEmPreparo} pedido(s) em preparo - Comanda ${comandaId}`
+      );
+      // Não bloqueia, apenas alerta
+    }
+
+    const novoPonto = await this.pontoEntregaRepository.findOne({
+      where: { id: dto.pontoEntregaId },
+    });
+
+    if (!novoPonto) {
+      throw new NotFoundException(`Ponto de entrega com ID "${dto.pontoEntregaId}" não encontrado.`);
+    }
+
+    if (!novoPonto.ativo) {
+      throw new BadRequestException(`O ponto de entrega "${novoPonto.nome}" está desativado.`);
+    }
+
+    comanda.pontoEntrega = novoPonto;
+    comanda.pontoEntregaId = dto.pontoEntregaId;
+
+    await this.comandaRepository.save(comanda);
+
+    this.logger.log(
+      `🔄 Ponto de entrega alterado: Comanda ${comandaId} → ${novoPonto.nome}`
+    );
+
+    return this.findOne(comandaId);
   }
 }

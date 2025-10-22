@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useComandaSubscription } from '@/hooks/useComandaSubscription';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Volume2 } from 'lucide-react';
+import { CheckCircle, Volume2, AlertCircle } from 'lucide-react';
 import { ComandaStatus } from '@/types/comanda';
 import { ItemPedido, Pedido } from '@/types/pedido';
 
@@ -71,6 +71,7 @@ export default function ComandaClientePage() {
         ) ?? [];
 
     const itensValidos = todosOsItens.filter(item => item.status !== 'CANCELADO');
+    const itensDeixadosNoAmbiente = itensValidos.filter(item => item.status === 'DEIXADO_NO_AMBIENTE');
     const total = itensValidos.reduce((acc, item) => acc + (Number(item.precoUnitario) * item.quantidade), 0);
 
     return (
@@ -94,6 +95,38 @@ export default function ComandaClientePage() {
                         <CardDescription>Acompanhe seus pedidos e o total da sua conta.</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* Alerta de Pedidos Deixados no Ambiente */}
+                        {itensDeixadosNoAmbiente.length > 0 && (
+                            <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-400 rounded-lg animate-pulse">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-6 h-6 text-amber-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-amber-900 text-lg mb-1">
+                                            🍽️ Seu Pedido Está Pronto!
+                                        </h4>
+                                        <p className="text-amber-800 text-sm mb-2">
+                                            O garçom não te encontrou no local indicado. Seu pedido foi deixado no seguinte ambiente:
+                                        </p>
+                                        <div className="bg-white rounded-md p-3 border border-amber-300">
+                                            {itensDeixadosNoAmbiente.map((item, idx) => (
+                                                <div key={idx} className="mb-2 last:mb-0">
+                                                    <p className="font-semibold text-gray-900">
+                                                        📍 {item.ambienteRetirada?.nome || 'Ambiente de Preparo'}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600">
+                                                        {item.quantidade}x {item.produto?.nome ?? item.observacao}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-amber-700 text-xs mt-3 font-medium">
+                                            💡 Por favor, retire seu pedido no local indicado acima.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <h3 className="font-bold mb-2">Itens Consumidos</h3>
                         <Table>
                             <TableHeader>
@@ -110,10 +143,26 @@ export default function ComandaClientePage() {
                                     // Se não tem produto, é entrada/couvert artístico
                                     const nomeItem = item.produto?.nome ?? (item.observacao || 'Entrada/Couvert Artístico');
                                     return (
-                                        <TableRow key={`${item.pedido.id}-${item.id}-${index}`} className={ changedPedidos.has(item.pedido.id) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
+                                        <TableRow 
+                                            key={`${item.pedido.id}-${item.id}-${index}`} 
+                                            className={
+                                                item.status === 'DEIXADO_NO_AMBIENTE' 
+                                                    ? 'bg-amber-50 border-l-4 border-amber-500 transition-all duration-500'
+                                                    : changedPedidos.has(item.pedido.id) 
+                                                        ? 'bg-emerald-100 transition-all duration-500' 
+                                                        : 'transition-all duration-500'
+                                            }
+                                        >
                                             <TableCell>{item.quantidade}x</TableCell>
                                             <TableCell className="font-medium">{nomeItem}</TableCell>
-                                            <TableCell><Badge variant="secondary">{(item.status || 'INDEFINIDO').replace('_', ' ')}</Badge></TableCell>
+                                            <TableCell>
+                                                <Badge 
+                                                    variant={item.status === 'DEIXADO_NO_AMBIENTE' ? 'destructive' : 'secondary'}
+                                                    className={item.status === 'DEIXADO_NO_AMBIENTE' ? 'animate-pulse' : ''}
+                                                >
+                                                    {item.status === 'DEIXADO_NO_AMBIENTE' ? '🔔 RETIRAR' : (item.status || 'INDEFINIDO').replace('_', ' ')}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell className="text-right">{formatCurrency(valorItem)}</TableCell>
                                         </TableRow>
                                     )

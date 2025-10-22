@@ -9,6 +9,7 @@ import {
 import { Pedido } from './pedido.entity';
 // --- CORREÇÃO APLICADA AQUI ---
 import { Produto } from '../../produto/entities/produto.entity';
+import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
 
 @Entity('itens_pedido')
@@ -42,4 +43,12 @@ export class ItemPedido {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   motivoCancelamento: string;
+
+  // Ambiente de Retirada (quando garçom deixa no ambiente)
+  @Column({ name: 'ambiente_retirada_id', type: 'uuid', nullable: true })
+  ambienteRetiradaId: string;
+
+  @ManyToOne(() => Ambiente, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'ambiente_retirada_id' })
+  ambienteRetirada: Ambiente;
 }

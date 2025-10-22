@@ -6,10 +6,18 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { json } from 'express';
 import { SeederService } from './database/seeder.service';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
+
+  // 🔥 Ativar Interceptor Global de Logs
+  app.useGlobalInterceptors(new LoggingInterceptor());
+  
+  // 🔥 Ativar Exception Filter Global
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useStaticAssets(join(process.cwd(), 'public'), {
     prefix: '/public/',

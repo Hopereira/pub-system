@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Body, Patch, Param, Delete, UseGuards,
   UploadedFile, UseInterceptors, ParseUUIDPipe, Logger, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 // import { diskStorage } from 'multer'; // <-- REMOVIDO
@@ -16,6 +17,7 @@ import { Public } from 'src/auth/decorators/public.decorator';
 
 // A função generateUniqueFilename não é mais necessária aqui, pois o GCS cuida disso.
 
+@ApiTags('Produtos')
 @Controller('produtos')
 export class ProdutoController {
   private readonly logger = new Logger(ProdutoController.name);
@@ -25,6 +27,11 @@ export class ProdutoController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Cria um novo produto com imagem opcional' })
+  @ApiResponse({ status: 201, description: 'Produto criado com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
   // --- MUDANÇA: O FileInterceptor agora é mais simples, sem 'diskStorage' ---
   @UseInterceptors(FileInterceptor('imagemFile'))
   create(
@@ -49,6 +56,11 @@ export class ProdutoController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Atualiza um produto (imagem opcional)' })
+  @ApiResponse({ status: 200, description: 'Produto atualizado com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
   // --- MUDANÇA: O FileInterceptor também foi simplificado aqui ---
   @UseInterceptors(FileInterceptor('imagemFile'))
   update(
@@ -73,18 +85,28 @@ export class ProdutoController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove um produto' })
+  @ApiResponse({ status: 200, description: 'Produto removido com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.produtoService.remove(id);
   }
   
   @Public()
   @Get()
+  @ApiOperation({ summary: 'Lista todos os produtos (rota pública)' })
+  @ApiResponse({ status: 200, description: 'Lista de produtos retornada com sucesso.' })
   findAll() {
     return this.produtoService.findAll();
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Busca um produto por ID' })
+  @ApiResponse({ status: 200, description: 'Produto retornado com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.produtoService.findOne(id);
   }
