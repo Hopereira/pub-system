@@ -13,13 +13,13 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
-import { AmbienteData } from '@/types/ambiente';
+import { Ambiente } from '@/types/ambiente';
 
 const baseNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
-  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] }, // Rota corrigida para consistência
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'COZINHA'] },
+  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
   { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  { href: '/dashboard/operacional/gestao-pedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
@@ -87,7 +87,7 @@ export function Sidebar() {
     
     // Adiciona o link do caixa e os links operacionais dinâmicos
     const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
-    combinedLinks.splice(insertIndexOp, 0, caixaLink, ...operationalLinks);
+    combinedLinks.splice(insertIndexOp, 0, caixaLink as any, ...(operationalLinks as any[]));
 
     return combinedLinks;
   }, [operationalLinks]);

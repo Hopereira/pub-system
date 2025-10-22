@@ -47,7 +47,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  // Executar seeder automaticamente na inicialização
+  
   const seeder = app.get(SeederService);
   await seeder.seed();
 
