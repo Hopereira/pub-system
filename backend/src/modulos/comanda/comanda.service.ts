@@ -51,15 +51,14 @@ export class ComandaService {
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
     const { mesaId, pontoEntregaId, clienteId, paginaEventoId, eventoId, agregados } = createComandaDto;
 
-    // Validação: Mesa XOR Ponto de Entrega
+    // Validação: Mesa XOR Ponto de Entrega (não pode ter ambos)
     if (mesaId && pontoEntregaId) {
       throw new BadRequestException('A comanda não pode ter mesa E ponto de entrega ao mesmo tempo.');
     }
-    if (!mesaId && !pontoEntregaId) {
-      throw new BadRequestException('A comanda precisa ter uma mesa OU um ponto de entrega.');
-    }
+    
+    // Validação: Se não tiver mesa, precisa ter cliente (balcão/delivery/ponto)
     if (!mesaId && !clienteId) {
-      throw new BadRequestException('A comanda precisa estar associada a uma mesa ou a um cliente.');
+      throw new BadRequestException('Comandas sem mesa precisam estar associadas a um cliente.');
     }
 
     let mesa: Mesa | null = null;

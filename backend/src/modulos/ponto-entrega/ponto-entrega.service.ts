@@ -3,6 +3,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
+import { Empresa } from '../empresa/entities/empresa.entity';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
 import { UpdatePontoEntregaDto } from './dto/update-ponto-entrega.dto';
 
@@ -13,14 +14,27 @@ export class PontoEntregaService {
   constructor(
     @InjectRepository(PontoEntrega)
     private readonly pontoEntregaRepository: Repository<PontoEntrega>,
+    @InjectRepository(Empresa)
+    private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
-  async create(createDto: CreatePontoEntregaDto, empresaId: string): Promise<PontoEntrega> {
+  async create(createDto: CreatePontoEntregaDto, empresaId?: string): Promise<PontoEntrega> {
     this.logger.log(`📍 Criando ponto de entrega: ${createDto.nome}`);
+
+    // Se empresaId não foi fornecido, buscar a primeira empresa
+    let finalEmpresaId = empresaId;
+    if (!finalEmpresaId) {
+      const empresa = await this.empresaRepository.findOne({ where: {} });
+      if (!empresa) {
+        throw new BadRequestException('Nenhuma empresa cadastrada no sistema');
+      }
+      finalEmpresaId = empresa.id;
+      this.logger.log(`🏢 Usando empresa padrão: ${empresa.nomeFantasia} (${finalEmpresaId})`);
+    }
 
     const ponto = this.pontoEntregaRepository.create({
       ...createDto,
-      empresaId,
+      empresaId: finalEmpresaId,
     });
 
     const novoPonto = await this.pontoEntregaRepository.save(ponto);
@@ -30,9 +44,18 @@ export class PontoEntregaService {
     return this.findOne(novoPonto.id);
   }
 
-  async findAll(empresaId: string): Promise<PontoEntrega[]> {
+  async findAll(empresaId?: string): Promise<PontoEntrega[]> {
+    // Se empresaId não foi fornecido, buscar a primeira empresa
+    let finalEmpresaId = empresaId;
+    if (!finalEmpresaId) {
+      const empresa = await this.empresaRepository.findOne({ where: {} });
+      if (empresa) {
+        finalEmpresaId = empresa.id;
+      }
+    }
+
     const pontos = await this.pontoEntregaRepository.find({
-      where: { empresaId },
+      where: finalEmpresaId ? { empresaId: finalEmpresaId } : {},
       relations: ['mesaProxima', 'ambientePreparo'],
       order: { nome: 'ASC' },
     });
@@ -42,9 +65,18 @@ export class PontoEntregaService {
     return pontos;
   }
 
-  async findAllAtivos(empresaId: string): Promise<PontoEntrega[]> {
+  async findAllAtivos(empresaId?: string): Promise<PontoEntrega[]> {
+    // Se empresaId não foi fornecido, buscar a primeira empresa
+    let finalEmpresaId = empresaId;
+    if (!finalEmpresaId) {
+      const empresa = await this.empresaRepository.findOne({ where: {} });
+      if (empresa) {
+        finalEmpresaId = empresa.id;
+      }
+    }
+
     const pontos = await this.pontoEntregaRepository.find({
-      where: { empresaId, ativo: true },
+      where: finalEmpresaId ? { empresaId: finalEmpresaId, ativo: true } : { ativo: true },
       relations: ['mesaProxima', 'ambientePreparo'],
       order: { nome: 'ASC' },
     });

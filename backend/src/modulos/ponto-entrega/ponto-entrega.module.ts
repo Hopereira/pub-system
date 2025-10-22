@@ -4,9 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PontoEntregaService } from './ponto-entrega.service';
 import { PontoEntregaController } from './ponto-entrega.controller';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
+import { Empresa } from '../empresa/entities/empresa.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PontoEntrega])],
+  imports: [TypeOrmModule.forFeature([PontoEntrega, Empresa])],
   controllers: [PontoEntregaController],
   providers: [PontoEntregaService],
   exports: [PontoEntregaService],

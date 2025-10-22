@@ -8,7 +8,6 @@ import {
   Param,
   Delete,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PontoEntregaService } from './ponto-entrega.service';
@@ -27,35 +26,32 @@ export class PontoEntregaController {
   constructor(private readonly pontoEntregaService: PontoEntregaService) {}
 
   @Post()
-  @Roles(Cargo.ADMIN, Cargo.GERENTE)
+  @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Criar novo ponto de entrega' })
   @ApiResponse({ status: 201, description: 'Ponto criado com sucesso' })
   @ApiResponse({ status: 403, description: 'Sem permissão' })
-  create(@Body() createDto: CreatePontoEntregaDto, @Request() req) {
-    const empresaId = req.user.empresaId; // Assumindo que empresaId vem do token JWT
-    return this.pontoEntregaService.create(createDto, empresaId);
+  create(@Body() createDto: CreatePontoEntregaDto) {
+    return this.pontoEntregaService.create(createDto);
   }
 
   @Get()
-  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM)
   @ApiOperation({ summary: 'Listar todos os pontos de entrega' })
   @ApiResponse({ status: 200, description: 'Lista de pontos retornada' })
-  findAll(@Request() req) {
-    const empresaId = req.user.empresaId;
-    return this.pontoEntregaService.findAll(empresaId);
+  findAll() {
+    return this.pontoEntregaService.findAll();
   }
 
   @Get('ativos')
-  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM)
   @ApiOperation({ summary: 'Listar apenas pontos ativos' })
   @ApiResponse({ status: 200, description: 'Lista de pontos ativos' })
-  findAllAtivos(@Request() req) {
-    const empresaId = req.user.empresaId;
-    return this.pontoEntregaService.findAllAtivos(empresaId);
+  findAllAtivos() {
+    return this.pontoEntregaService.findAllAtivos();
   }
 
   @Get(':id')
-  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM)
   @ApiOperation({ summary: 'Buscar ponto específico por ID' })
   @ApiResponse({ status: 200, description: 'Ponto encontrado' })
   @ApiResponse({ status: 404, description: 'Ponto não encontrado' })
@@ -64,7 +60,7 @@ export class PontoEntregaController {
   }
 
   @Patch(':id')
-  @Roles(Cargo.ADMIN, Cargo.GERENTE)
+  @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Atualizar ponto de entrega' })
   @ApiResponse({ status: 200, description: 'Ponto atualizado' })
   @ApiResponse({ status: 404, description: 'Ponto não encontrado' })
@@ -73,7 +69,7 @@ export class PontoEntregaController {
   }
 
   @Patch(':id/toggle-ativo')
-  @Roles(Cargo.ADMIN, Cargo.GERENTE)
+  @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Ativar/Desativar ponto de entrega' })
   @ApiResponse({ status: 200, description: 'Status alterado' })
   toggleAtivo(@Param('id') id: string) {

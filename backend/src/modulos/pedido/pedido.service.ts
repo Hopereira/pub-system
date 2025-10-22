@@ -94,16 +94,18 @@ export class PedidoService {
     .leftJoinAndSelect('pedido.itens', 'itemPedido')
     .leftJoinAndSelect('itemPedido.produto', 'produto')
     .leftJoinAndSelect('produto.ambiente', 'ambiente')
+    .leftJoinAndSelect('itemPedido.ambienteRetirada', 'ambienteRetirada')
     .select([ // ✅ A CORREÇÃO ESTÁ AQUI
       'pedido',
       'comanda',
       'mesa',
       'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
       'produto',
-      'ambiente'
+      'ambiente',
+      'ambienteRetirada'
     ])
     .where('itemPedido.status IN (:...statuses)', {
-      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO]
+      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO, PedidoStatus.DEIXADO_NO_AMBIENTE]
     })
     .orderBy('pedido.data', 'ASC');
 

@@ -1,9 +1,9 @@
 // frontend/src/services/comandaService.ts
 import { Comanda } from "@/types/comanda";
-import { CreateComandaDto } from "@/types/comanda.dto"; // ✅ Usaremos um tipo daqui a pouco
+import { CreateComandaDto } from "@/types/comanda.dto";
+import { UpdatePontoComandaDto } from "@/types/ponto-entrega.dto";
 import api, { publicApi } from "./api";
-
-// ... (suas funções getComandaById, getComandaAbertaPorMesa, searchComandas, fecharComanda continuam iguais)
+import { logger } from "@/lib/logger";
 
 // Esta função é para uso interno, por funcionários já logados
 export const abrirComanda = async (data: CreateComandaDto): Promise<Comanda> => {
@@ -63,6 +63,16 @@ export const searchComandas = async (term: string): Promise<Comanda[]> => {
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar comandas:', error);
+    throw error;
+  }
+};
+
+export const getComandasAbertas = async (): Promise<Comanda[]> => {
+  try {
+    const response = await api.get('/comandas/search');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar comandas abertas:', error);
     throw error;
   }
 };

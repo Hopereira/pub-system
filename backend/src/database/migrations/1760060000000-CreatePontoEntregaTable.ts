@@ -1,7 +1,8 @@
 import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
 
-export class CreatePontoEntregaTable1729540000000 implements MigrationInterface {
+export class CreatePontoEntregaTable1760060000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Criar tabela pontos_entrega
     await queryRunner.createTable(
       new Table({
         name: 'pontos_entrega',
@@ -25,9 +26,9 @@ export class CreatePontoEntregaTable1729540000000 implements MigrationInterface 
             isNullable: true,
           },
           {
-            name: 'ativo',
-            type: 'boolean',
-            default: true,
+            name: 'ambiente_preparo_id',
+            type: 'uuid',
+            isNullable: false,
           },
           {
             name: 'mesa_proxima_id',
@@ -35,14 +36,9 @@ export class CreatePontoEntregaTable1729540000000 implements MigrationInterface 
             isNullable: true,
           },
           {
-            name: 'ambiente_preparo_id',
-            type: 'uuid',
-            isNullable: false,
-          },
-          {
-            name: 'empresa_id',
-            type: 'uuid',
-            isNullable: false,
+            name: 'ativo',
+            type: 'boolean',
+            default: true,
           },
           {
             name: 'created_at',
@@ -59,44 +55,34 @@ export class CreatePontoEntregaTable1729540000000 implements MigrationInterface 
       true,
     );
 
-    // Foreign Key: Mesa Próxima
-    await queryRunner.createForeignKey(
-      'pontos_entrega',
-      new TableForeignKey({
-        columnNames: ['mesa_proxima_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'mesas',
-        onDelete: 'SET NULL',
-        name: 'FK_ponto_entrega_mesa_proxima',
-      }),
-    );
-
-    // Foreign Key: Ambiente de Preparo
+    // FK: ambiente_preparo_id -> ambientes
     await queryRunner.createForeignKey(
       'pontos_entrega',
       new TableForeignKey({
         columnNames: ['ambiente_preparo_id'],
-        referencedColumnNames: ['id'],
         referencedTableName: 'ambientes',
-        onDelete: 'RESTRICT',
+        referencedColumnNames: ['id'],
+        onDelete: 'CASCADE',
         name: 'FK_ponto_entrega_ambiente_preparo',
       }),
     );
 
-    // Foreign Key: Empresa
+    // FK: mesa_proxima_id -> mesas (opcional)
     await queryRunner.createForeignKey(
       'pontos_entrega',
       new TableForeignKey({
-        columnNames: ['empresa_id'],
+        columnNames: ['mesa_proxima_id'],
+        referencedTableName: 'mesas',
         referencedColumnNames: ['id'],
-        referencedTableName: 'empresas',
-        onDelete: 'CASCADE',
-        name: 'FK_ponto_entrega_empresa',
+        onDelete: 'SET NULL',
+        name: 'FK_ponto_entrega_mesa_proxima',
       }),
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.dropForeignKey('pontos_entrega', 'FK_ponto_entrega_mesa_proxima');
+    await queryRunner.dropForeignKey('pontos_entrega', 'FK_ponto_entrega_ambiente_preparo');
     await queryRunner.dropTable('pontos_entrega');
   }
 }

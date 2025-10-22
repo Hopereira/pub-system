@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
 
-export class CreateComandaAgregadoTable1729540100000 implements MigrationInterface {
+export class CreateComandaAgregadoTable1760060100000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({
@@ -33,8 +33,7 @@ export class CreateComandaAgregadoTable1729540100000 implements MigrationInterfa
           {
             name: 'ordem',
             type: 'integer',
-            isNullable: false,
-            comment: 'Ordem de cadastro do agregado (1, 2, 3...)',
+            default: 1,
           },
           {
             name: 'created_at',
@@ -46,26 +45,21 @@ export class CreateComandaAgregadoTable1729540100000 implements MigrationInterfa
       true,
     );
 
-    // Foreign Key: Comanda
+    // FK: comanda_id -> comandas
     await queryRunner.createForeignKey(
       'comanda_agregados',
       new TableForeignKey({
         columnNames: ['comanda_id'],
-        referencedColumnNames: ['id'],
         referencedTableName: 'comandas',
+        referencedColumnNames: ['id'],
         onDelete: 'CASCADE',
-        name: 'FK_comanda_agregado_comanda',
+        name: 'FK_agregado_comanda',
       }),
     );
-
-    // Índice para melhorar performance em consultas
-    await queryRunner.query(`
-      CREATE INDEX IDX_comanda_agregados_comanda 
-      ON comanda_agregados(comanda_id);
-    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.dropForeignKey('comanda_agregados', 'FK_agregado_comanda');
     await queryRunner.dropTable('comanda_agregados');
   }
 }

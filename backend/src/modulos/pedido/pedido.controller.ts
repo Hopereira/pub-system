@@ -83,6 +83,29 @@ export class PedidoController {
     return this.pedidoService.findAll(ambienteId);
   }
 
+  @Get('prontos')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Lista pedidos prontos para entrega',
+    description: 'Retorna pedidos com status PRONTO formatados com informações de localização (Mesa ou Ponto de Entrega)'
+  })
+  @ApiQuery({ 
+    name: 'ambienteId', 
+    required: false, 
+    description: 'Filtrar por ambiente de preparo (opcional)' 
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lista de pedidos prontos com informações de localização' 
+  })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
+  async getPedidosProntos(@Query('ambienteId') ambienteId?: string) {
+    return this.pedidoService.findProntos(ambienteId);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
@@ -129,29 +152,6 @@ export class PedidoController {
   }
 
   // ==================== NOVOS ENDPOINTS ====================
-
-  @Get('prontos')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM)
-  @ApiBearerAuth()
-  @ApiOperation({ 
-    summary: 'Lista pedidos prontos para entrega',
-    description: 'Retorna pedidos com status PRONTO formatados com informações de localização (Mesa ou Ponto de Entrega)'
-  })
-  @ApiQuery({ 
-    name: 'ambienteId', 
-    required: false, 
-    description: 'Filtrar por ambiente de preparo (opcional)' 
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Lista de pedidos prontos com informações de localização' 
-  })
-  @ApiResponse({ status: 401, description: 'Não autenticado.' })
-  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
-  async getPedidosProntos(@Query('ambienteId') ambienteId?: string) {
-    return this.pedidoService.findProntos(ambienteId);
-  }
 
   @Patch('item/:id/deixar-no-ambiente')
   @UseGuards(JwtAuthGuard, RolesGuard)
