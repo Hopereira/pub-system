@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { MapPin, RefreshCw } from 'lucide-react';
 import { CreateAgregadoDto } from '@/types/ponto-entrega.dto';
 import { updatePontoComanda } from '@/services/pontoEntregaService';
+import { updateComanda } from '@/services/comandaService';
 import {
   Dialog,
   DialogContent,
@@ -14,13 +15,14 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { PontoEntregaSeletor } from './PontoEntregaSeletor';
+import { LocalComandaSeletor } from './LocalComandaSeletor';
 import { AgregadosForm } from './AgregadosForm';
 import { logger } from '@/lib/logger';
 
 interface MudarLocalModalProps {
   comandaId: string;
   pontoAtualId?: string;
+  mesaAtualId?: string;
   agregadosAtuais?: CreateAgregadoDto[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,34 +32,70 @@ interface MudarLocalModalProps {
 export const MudarLocalModal = ({
   comandaId,
   pontoAtualId,
+  mesaAtualId,
   agregadosAtuais = [],
   open,
   onOpenChange,
   onSuccess,
 }: MudarLocalModalProps) => {
+  const [tipoSelecionado, setTipoSelecionado] = useState<'mesa' | 'avulsa'>(
+    mesaAtualId ? 'mesa' : 'avulsa'
+  );
+  const [mesaSelecionada, setMesaSelecionada] = useState(mesaAtualId || '');
   const [pontoSelecionado, setPontoSelecionado] = useState(pontoAtualId || '');
   const [agregados, setAgregados] = useState<CreateAgregadoDto[]>(agregadosAtuais);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!pontoSelecionado) {
-      toast.error('Por favor, selecione um ponto de entrega.');
+    // Validações
+    if (tipoSelecionado === 'mesa' && !mesaSelecionada) {
+      toast.error('Por favor, selecione uma mesa.');
       return;
+    }
+
+    if (tipoSelecionado === 'avulsa' && !pontoSelecionado) {
+      toast.error('Por favor, selecione um ponto de entrega ou mantenha sem ponto.');
     }
 
     try {
       setIsLoading(true);
-      logger.log('🔄 Mudando local da comanda', {
-        module: 'MudarLocalModal',
-        data: { comandaId, pontoId: pontoSelecionado },
-      });
 
-      await updatePontoComanda(comandaId, {
-        pontoEntregaId: pontoSelecionado,
-        agregados: agregados.length > 0 ? agregados : undefined,
-      });
+      if (tipoSelecionado === 'mesa') {
+        // Atualizar comanda com mesa
+        logger.log('🔄 Vinculando comanda à mesa', {
+          module: 'MudarLocalModal',
+          data: { comandaId, mesaId: mesaSelecionada },
+        });
 
-      toast.success('Local de retirada atualizado com sucesso!');
+        await updateComanda(comandaId, {
+          mesaId: mesaSelecionada,
+          pontoEntregaId: null, // Remove ponto de entrega se houver
+        });
+
+        toast.success('Comanda vinculada à mesa com sucesso!');
+      } else {
+        // Atualizar comanda avulsa com ponto de entrega
+        logger.log('🔄 Atualizando ponto de entrega', {
+          module: 'MudarLocalModal',
+          data: { comandaId, pontoId: pontoSelecionado || 'sem ponto' },
+        });
+
+        await updateComanda(comandaId, {
+          mesaId: null, // Remove mesa se houver
+          pontoEntregaId: pontoSelecionado || null,
+        });
+
+        // Se tiver ponto e agregados, atualiza
+        if (pontoSelecionado && agregados.length > 0) {
+          await updatePontoComanda(comandaId, {
+            pontoEntregaId: pontoSelecionado,
+            agregados,
+          });
+        }
+
+        toast.success('Local de retirada atualizado com sucesso!');
+      }
+
       logger.log('✅ Local atualizado', { module: 'MudarLocalModal' });
 
       onOpenChange(false);
@@ -89,21 +127,45 @@ export const MudarLocalModal = ({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Seletor de Ponto */}
-          <PontoEntregaSeletor
+          {/* Seletor de Mesa ou Ponto de Entrega */}
+          <LocalComandaSeletor
+            onSelectMesa={(mesaId) => {
+              setMesaSelecionada(mesaId);
+              setTipoSelecionado('mesa');
+              setPontoSelecionado(''); // Limpa ponto ao selecionar mesa
+            }}
+            onSelectPontoEntrega={(pontoId) => {
+              setPontoSelecionado(pontoId);
+              setTipoSelecionado('avulsa');
+              setMesaSelecionada(''); // Limpa mesa ao selecionar ponto
+            }}
+            onSelectComandaAvulsa={() => {
+              setTipoSelecionado('avulsa');
+              setMesaSelecionada(''); // Limpa mesa
+            }}
+            selectedMesaId={mesaSelecionada}
             selectedPontoId={pontoSelecionado}
-            onSelect={setPontoSelecionado}
+            tipoSelecionado={tipoSelecionado}
           />
 
-          {/* Formulário de Agregados */}
-          <AgregadosForm agregados={agregados} onChange={setAgregados} />
+          {/* Formulário de Agregados (só aparece se for comanda avulsa com ponto) */}
+          {tipoSelecionado === 'avulsa' && pontoSelecionado && (
+            <AgregadosForm agregados={agregados} onChange={setAgregados} />
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading || !pontoSelecionado}>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              isLoading ||
+              (tipoSelecionado === 'mesa' && !mesaSelecionada) ||
+              (tipoSelecionado === 'avulsa' && !pontoSelecionado && pontoSelecionado !== '')
+            }
+          >
             {isLoading ? (
               <>
                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -112,7 +174,7 @@ export const MudarLocalModal = ({
             ) : (
               <>
                 <MapPin className="w-4 h-4 mr-2" />
-                Confirmar Mudança
+                Confirmar {tipoSelecionado === 'mesa' ? 'Mesa' : 'Local'}
               </>
             )}
           </Button>

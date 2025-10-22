@@ -96,3 +96,26 @@ export const getPublicComandaById = async (id: string): Promise<Comanda | null> 
     return null;
   }
 };
+
+export const updateComanda = async (
+  id: string,
+  data: { mesaId?: string | null; pontoEntregaId?: string | null }
+): Promise<Comanda> => {
+  try {
+    logger.log('🔄 Atualizando comanda', {
+      module: 'ComandaService',
+      data: { id, ...data },
+    });
+
+    const response = await api.patch<Comanda>(`/comandas/${id}`, data);
+
+    logger.log('✅ Comanda atualizada', { module: 'ComandaService' });
+    return response.data;
+  } catch (error) {
+    logger.error('❌ Erro ao atualizar comanda', {
+      module: 'ComandaService',
+      error: error as Error,
+    });
+    throw error;
+  }
+};

@@ -46,8 +46,37 @@ export const createPedidoFromCliente = async (payload: CreatePedidoDto): Promise
   }
 };
 
+export const getPedidos = async (): Promise<Pedido[]> => {
+  try {
+    logger.debug('🔍 Buscando todos os pedidos', { 
+      module: 'PedidoService'
+    });
+    const response = await api.get<Pedido[]>(`/pedidos`);
+    logger.debug(`✅ ${response.data.length} pedidos encontrados`, { 
+      module: 'PedidoService' 
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Erro ao buscar pedidos', { 
+      module: 'PedidoService',
+      error: error as Error 
+    });
+    throw error;
+  }
+};
+
 export const getPedidosPorAmbiente = async (ambienteId: string): Promise<Pedido[]> => {
   try {
+    // Validação: verificar se ambienteId é um UUID válido
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(ambienteId)) {
+      logger.warn('⚠️ ambienteId inválido, retornando array vazio', {
+        module: 'PedidoService',
+        data: { ambienteId }
+      });
+      return [];
+    }
+
     logger.debug('🔍 Buscando pedidos por ambiente', { 
       module: 'PedidoService',
       data: { ambienteId } 
