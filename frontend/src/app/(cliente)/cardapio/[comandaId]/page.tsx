@@ -3,6 +3,8 @@
 import { notFound } from 'next/navigation';
 import { getPublicComandaById } from '@/services/comandaService';
 import { getProdutos } from '@/services/produtoService';
+import { ComandaGuard } from '@/components/guards/ComandaGuard';
+import { ComandaStatus } from '@/types/comanda';
 import CardapioClientPage from './CardapioClientPage';
 
 // 1. O tipo agora espera 'comandaId' nos parâmetros da página.
@@ -26,8 +28,16 @@ export default async function CardapioPage({ params }: CardapioPageProps) {
       notFound();
     }
 
-    // Passamos os dados buscados como props para o componente de cliente
-    return <CardapioClientPage comanda={comanda} produtos={produtos} />;
+    // Protege acesso: apenas comandas ABERTAS podem acessar o cardápio
+    return (
+      <ComandaGuard 
+        comandaId={comandaId} 
+        allowedStatuses={[ComandaStatus.ABERTA]}
+        redirectOnInvalid={false}
+      >
+        <CardapioClientPage comanda={comanda} produtos={produtos} />
+      </ComandaGuard>
+    );
 
   } catch (error) {
     // Em caso de erro na busca dos dados, renderizamos uma mensagem de erro

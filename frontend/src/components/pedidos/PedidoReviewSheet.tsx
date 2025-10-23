@@ -216,7 +216,7 @@ export function PedidoReviewSheet({
                 disabled={itens.length === 0 || isLoading}
               >
                 <Send className="mr-2 h-5 w-5" />
-                {isLoading ? 'Enviando...' : 'Enviar para Cozinha'}
+                {isLoading ? 'Enviando...' : 'Enviar para Preparo'}
               </Button>
               
               <Button

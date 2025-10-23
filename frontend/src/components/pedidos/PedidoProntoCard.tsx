@@ -37,6 +37,7 @@ interface PedidoProntoCardProps {
   tempoEspera: string;
   data: Date;
   onDeixarNoAmbiente: (itemId: string) => void;
+  isDestacado?: boolean;
 }
 
 export const PedidoProntoCard = ({
@@ -48,13 +49,19 @@ export const PedidoProntoCard = ({
   tempoEspera,
   data,
   onDeixarNoAmbiente,
+  isDestacado = false,
 }: PedidoProntoCardProps) => {
   const isMesa = local.tipo === 'MESA';
   const isPontoEntrega = local.tipo === 'PONTO_ENTREGA';
 
   return (
-    <Card className="overflow-hidden border-l-4 border-l-green-500">
+    <Card className={`overflow-hidden border-l-4 ${isDestacado ? 'border-l-blue-500 bg-blue-50' : 'border-l-green-500'}`}>
       <CardHeader className="pb-3">
+        {isDestacado && (
+          <Badge className="mb-2 bg-blue-500 animate-pulse">
+            📍 Local Atualizado!
+          </Badge>
+        )}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <CardTitle className="text-lg">

@@ -17,6 +17,7 @@ import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class PedidoService {
@@ -68,12 +69,17 @@ export class PedidoService {
     });
 
     const itensPedido = await Promise.all(itensPedidoPromise);
-    const total = itensPedido.reduce((sum, item) => sum + item.quantidade * Number(item.precoUnitario), 0);
+    
+    // Usar Decimal.js para cálculos monetários precisos
+    const total = itensPedido.reduce((sum, item) => {
+      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      return sum.plus(itemTotal);
+    }, new Decimal(0));
     
     const pedido = this.pedidoRepository.create({
       comanda,
       itens: itensPedido,
-      total,
+      total: total.toNumber(),
       status: PedidoStatus.FEITO,
     });
 

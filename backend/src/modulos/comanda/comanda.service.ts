@@ -21,6 +21,7 @@ import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 
 // Gateways
 import { PedidosGateway } from '../pedido/pedidos.gateway';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class ComandaService {
@@ -61,116 +62,122 @@ export class ComandaService {
       throw new BadRequestException('Comandas sem mesa precisam estar associadas a um cliente.');
     }
 
-    let mesa: Mesa | null = null;
-    if (mesaId) {
-      mesa = await this.mesaRepository.findOne({ where: { id: mesaId } });
-      if (!mesa) throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
-      if (!clienteId && mesa.status !== MesaStatus.LIVRE) {
-        throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
+    // ✅ USAR TRANSAÇÃO COM LOCK PESSIMISTA PARA EVITAR RACE CONDITION
+    return await this.comandaRepository.manager.transaction(async (transactionalEntityManager) => {
+      let mesa: Mesa | null = null;
+      if (mesaId) {
+        // Lock pessimista para evitar que duas requisições simultâneas ocupem a mesma mesa
+        mesa = await transactionalEntityManager.findOne(Mesa, {
+          where: { id: mesaId },
+          lock: { mode: 'pessimistic_write' }
+        });
+        if (!mesa) throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
+        if (!clienteId && mesa.status !== MesaStatus.LIVRE) {
+          throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
+        }
       }
-    }
 
-    let cliente: Cliente | null = null;
-    if (clienteId) {
-      cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
-      if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
-      
-      // ✅ REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
-      const comandaAbertaExistente = await this.comandaRepository.findOne({
+      let cliente: Cliente | null = null;
+      if (clienteId) {
+        cliente = await transactionalEntityManager.findOne(Cliente, { where: { id: clienteId } });
+        if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
+        
+        // ✅ REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
+        const comandaAbertaExistente = await transactionalEntityManager.findOne(Comanda, {
           where: { cliente: { id: clienteId }, status: ComandaStatus.ABERTA }
-      });
+        });
       
-      if (comandaAbertaExistente) {
+        if (comandaAbertaExistente) {
           this.logger.warn(`BLOQUEIO: Cliente ${clienteId} tentou criar nova comanda, mas já possui comanda aberta: ${comandaAbertaExistente.id}.`);
           throw new BadRequestException(
-              `O Cliente "${cliente.nome}" já possui uma comanda aberta (ID: ${comandaAbertaExistente.id}). Por favor, feche a comanda anterior.`
+            `O Cliente "${cliente.nome}" já possui uma comanda aberta (ID: ${comandaAbertaExistente.id}). Por favor, feche a comanda anterior.`
           );
-      }
-    }
-
-    let paginaEvento: PaginaEvento | null = null;
-    if (paginaEventoId) {
-      paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
-      if (!paginaEvento) {
-        this.logger.warn(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
-      }
-    }
-
-    // Validar Ponto de Entrega
-    let pontoEntrega: PontoEntrega | null = null;
-    if (pontoEntregaId) {
-      pontoEntrega = await this.pontoEntregaRepository.findOne({ 
-        where: { id: pontoEntregaId } 
-      });
-      if (!pontoEntrega) {
-        throw new NotFoundException(`Ponto de entrega com ID "${pontoEntregaId}" não encontrado.`);
-      }
-      if (!pontoEntrega.ativo) {
-        throw new BadRequestException(`O ponto de entrega "${pontoEntrega.nome}" está desativado.`);
-      }
-      this.logger.log(`📍 Comanda será criada no ponto: ${pontoEntrega.nome}`);
-    }
-
-    const comanda = this.comandaRepository.create({
-      mesa,
-      cliente,
-      pontoEntrega,
-      paginaEvento,
-      status: ComandaStatus.ABERTA,
-    });
-
-    const novaComanda = await this.comandaRepository.save(comanda);
-
-    // Criar agregados se fornecidos
-    if (agregados && agregados.length > 0) {
-      const agregadosEntities = agregados.map((agr, index) =>
-        this.comandaAgregadoRepository.create({
-          comandaId: novaComanda.id,
-          nome: agr.nome,
-          cpf: agr.cpf,
-          ordem: index + 1,
-        })
-      );
-      await this.comandaAgregadoRepository.save(agregadosEntities);
-      this.logger.log(`✅ ${agregados.length} agregado(s) adicionado(s) à comanda ${novaComanda.id}`);
-    }
-
-    // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
-    if (eventoId) {
-        // Buscamos o evento para obter o valor (Assumindo que o campo é 'valor' conforme a entidade)
-        const evento = await this.eventoRepository.findOne({ where: { id: eventoId } });
-        if (evento && evento.valor > 0) {
-            this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
-          
-            // 1. Cria o Item de Pedido (que representa a entrada)
-            const itemEntrada = this.itemPedidoRepository.create({
-                produto: null, // Não é um produto de inventário
-                quantidade: 1,
-                precoUnitario: evento.valor,
-                observacao: `Couvert Artístico - ${evento.titulo}`, 
-                status: PedidoStatus.ENTREGUE, // Entregue/Concluído, pois a entrada é paga na hora
-            });
-
-            // 2. Cria o Pedido (que contém o item)
-            const pedidoEntrada = this.pedidoRepository.create({
-                comanda: novaComanda,
-                itens: [itemEntrada],
-                total: evento.valor,
-                status: PedidoStatus.ENTREGUE,
-            });
-          
-            await this.itemPedidoRepository.save(itemEntrada);
-            await this.pedidoRepository.save(pedidoEntrada);
         }
-    }
+      }
 
-    if (mesa) {
-      mesa.status = MesaStatus.OCUPADA;
-      await this.mesaRepository.save(mesa);
-    }
-    
-    // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
-    return this.findOne(novaComanda.id);
+      let paginaEvento: PaginaEvento | null = null;
+      if (paginaEventoId) {
+        paginaEvento = await transactionalEntityManager.findOne(PaginaEvento, { where: { id: paginaEventoId } });
+        if (!paginaEvento) {
+          this.logger.warn(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
+        }
+      }
+
+      // Validar Ponto de Entrega
+      let pontoEntrega: PontoEntrega | null = null;
+      if (pontoEntregaId) {
+        pontoEntrega = await transactionalEntityManager.findOne(PontoEntrega, { 
+          where: { id: pontoEntregaId } 
+        });
+        if (!pontoEntrega) {
+          throw new NotFoundException(`Ponto de entrega com ID "${pontoEntregaId}" não encontrado.`);
+        }
+        if (!pontoEntrega.ativo) {
+          throw new BadRequestException(`O ponto de entrega "${pontoEntrega.nome}" está desativado.`);
+        }
+        this.logger.log(`📍 Comanda será criada no ponto: ${pontoEntrega.nome}`);
+      }
+
+      const comanda = transactionalEntityManager.create(Comanda, {
+        mesa,
+        cliente,
+        pontoEntrega,
+        paginaEvento,
+        status: ComandaStatus.ABERTA,
+      });
+
+      const novaComanda = await transactionalEntityManager.save(comanda);
+
+      // Criar agregados se fornecidos
+      if (agregados && agregados.length > 0) {
+        const agregadosEntities = agregados.map((agr, index) =>
+          transactionalEntityManager.create(ComandaAgregado, {
+            comandaId: novaComanda.id,
+            nome: agr.nome,
+            cpf: agr.cpf,
+            ordem: index + 1,
+          })
+        );
+        await transactionalEntityManager.save(agregadosEntities);
+        this.logger.log(`✅ ${agregados.length} agregado(s) adicionado(s) à comanda ${novaComanda.id}`);
+      }
+
+      // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
+      if (eventoId) {
+        const evento = await transactionalEntityManager.findOne(Evento, { where: { id: eventoId } });
+        if (evento && evento.valor > 0) {
+          this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
+          
+          const itemEntrada = transactionalEntityManager.create(ItemPedido, {
+            produto: null,
+            quantidade: 1,
+            precoUnitario: evento.valor,
+            observacao: `Couvert Artístico - ${evento.titulo}`,
+            status: PedidoStatus.ENTREGUE,
+          });
+
+          const pedidoEntrada = transactionalEntityManager.create(Pedido, {
+            comanda: novaComanda,
+            itens: [itemEntrada],
+            total: evento.valor,
+            status: PedidoStatus.ENTREGUE,
+          });
+          
+          await transactionalEntityManager.save(itemEntrada);
+          await transactionalEntityManager.save(pedidoEntrada);
+        }
+      }
+
+      if (mesa) {
+        mesa.status = MesaStatus.OCUPADA;
+        await transactionalEntityManager.save(mesa);
+      }
+      
+      return novaComanda;
+    }).then(async (novaComanda) => {
+      // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
+      return this.findOne(novaComanda.id);
+    });
   }
 
   findAll(): Promise<Comanda[]> {
@@ -223,7 +230,8 @@ export class ComandaService {
             'agregados',
             'pedidos', 
             'pedidos.itens', 
-            'pedidos.itens.produto'
+            'pedidos.itens.produto',
+            'pedidos.itens.ambienteRetirada' // Carrega ambiente onde item foi deixado
         ],
         order: {
             agregados: {
@@ -239,22 +247,23 @@ export class ComandaService {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
 
-    let totalComandaCalculado = 0;
+    let totalComandaCalculado = new Decimal(0);
     if (comanda.pedidos) {
       comanda.pedidos.forEach(pedido => {
         const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
           // Itens de entrada (sem produto) também devem ser somados
           if (item.status !== PedidoStatus.CANCELADO) {
-            return sum + (Number(item.precoUnitario) * item.quantidade);
+            const itemTotal = new Decimal(item.precoUnitario).times(new Decimal(item.quantidade));
+            return sum.plus(itemTotal);
           }
           return sum;
-        }, 0);
+        }, new Decimal(0));
         
-        pedido.total = totalPedidoCalculado;
-        totalComandaCalculado += totalPedidoCalculado;
+        pedido.total = totalPedidoCalculado.toNumber();
+        totalComandaCalculado = totalComandaCalculado.plus(totalPedidoCalculado);
       });
     }
-    (comanda as any).total = totalComandaCalculado;
+    (comanda as any).total = totalComandaCalculado.toNumber();
     
     return comanda;
   }
@@ -280,6 +289,10 @@ export class ComandaService {
         itens: p.itens.map(i => ({
             ...i,
             produto: i.produto ? { nome: i.produto.nome } : null, // Envia só o nome do produto
+            ambienteRetirada: i.ambienteRetirada ? { 
+              id: i.ambienteRetirada.id, 
+              nome: i.ambienteRetirada.nome 
+            } : null, // Inclui ambiente de retirada quando item foi deixado no ambiente
         }))
     }));
 
@@ -369,11 +382,15 @@ export class ComandaService {
     comanda.pontoEntrega = novoPonto;
     comanda.pontoEntregaId = dto.pontoEntregaId;
 
-    await this.comandaRepository.save(comanda);
+    const comandaAtualizada = await this.comandaRepository.save(comanda);
 
     this.logger.log(
       `🔄 Ponto de entrega alterado: Comanda ${comandaId} → ${novoPonto.nome}`
     );
+
+    // Emite evento WebSocket para notificar mudança de local
+    this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
+    this.logger.log(`📡 Evento 'comanda_atualizada' emitido para comanda ${comandaId}`);
 
     return this.findOne(comandaId);
   }

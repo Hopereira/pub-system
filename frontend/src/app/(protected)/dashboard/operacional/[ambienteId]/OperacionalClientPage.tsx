@@ -22,7 +22,8 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const { 
     novoPedidoId, 
     audioConsentNeeded, 
-    handleAllowAudio 
+    handleAllowAudio,
+    isConnected
   } = useAmbienteNotification(ambienteId);
 
   const fetchDados = async () => {
@@ -43,10 +44,13 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
   useEffect(() => {
     fetchDados();
-    // Adicionamos um polling para atualizar os pedidos a cada 30 segundos
-    const intervalId = setInterval(fetchDados, 30000);
-    return () => clearInterval(intervalId); // Limpa o intervalo ao desmontar o componente
-  }, [ambienteId]);
+    
+    // Polling apenas se WebSocket desconectado (fallback)
+    if (!isConnected) {
+      const intervalId = setInterval(fetchDados, 30000);
+      return () => clearInterval(intervalId);
+    }
+  }, [ambienteId, isConnected]);
 
   const handleUpdateStatus = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
     try {

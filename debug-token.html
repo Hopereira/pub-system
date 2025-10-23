@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Token JWT</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .token-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            color: #856404;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        pre {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .logout-btn {
+            background: #dc3545;
+        }
+        .logout-btn:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Token JWT - Pub System</h1>
+        
+        <div id="result"></div>
+        
+        <button onclick="checkToken()">Verificar Token</button>
+        <button onclick="clearToken()" class="logout-btn">Limpar Token</button>
+        <button onclick="location.href='http://localhost:3001'">Ir para App</button>
+    </div>
+
+    <script>
+        function checkToken() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const token = localStorage.getItem('authToken');
+                
+                if (!token) {
+                    resultDiv.innerHTML = `
+                        <div class="token-info error">
+                            <strong>❌ Token não encontrado</strong>
+                            <p>Não há token no localStorage. Faça login primeiro.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Decodificar token (base64)
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Token JWT inválido');
+                }
+
+                const payload = JSON.parse(atob(parts[1]));
+                
+                // Verificar expiração
+                const now = Math.floor(Date.now() / 1000);
+                const isExpired = payload.exp && payload.exp < now;
+                
+                // Calcular tempo restante
+                let timeRemaining = '';
+                if (payload.exp) {
+                    const seconds = payload.exp - now;
+                    if (seconds > 0) {
+                        const hours = Math.floor(seconds / 3600);
+                        const minutes = Math.floor((seconds % 3600) / 60);
+                        timeRemaining = `${hours}h ${minutes}m`;
+                    }
+                }
+
+                resultDiv.innerHTML = `
+                    <div class="token-info ${isExpired ? 'error' : 'success'}">
+                        <strong>${isExpired ? '⚠️ Token EXPIRADO' : '✅ Token VÁLIDO'}</strong>
+                        ${!isExpired ? `<p>Tempo restante: ${timeRemaining}</p>` : ''}
+                    </div>
+                    
+                    <div class="token-info">
+                        <strong>📋 Informações do Usuário:</strong>
+                        <pre>${JSON.stringify(payload, null, 2)}</pre>
+                    </div>
+                    
+                    <div class="token-info">
+                        <strong>🔑 Token Completo:</strong>
+                        <pre style="word-break: break-all; white-space: pre-wrap;">${token}</pre>
+                    </div>
+                    
+                    ${isExpired ? `
+                        <div class="token-info error">
+                            <strong>🔄 Ação Necessária:</strong>
+                            <p>Faça logout e login novamente para obter um novo token.</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${payload.role !== 'ADMIN' && payload.role !== 'GERENTE' ? `
+                        <div class="token-info error">
+                            <strong>⚠️ Permissão Insuficiente:</strong>
+                            <p>Seu role atual é: <strong>${payload.role}</strong></p>
+                            <p>Para acessar "Gestão de Pedidos", você precisa ser ADMIN ou GERENTE.</p>
+                        </div>
+                    ` : ''}
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="token-info error">
+                        <strong>❌ Erro ao decodificar token</strong>
+                        <p>${error.message}</p>
+                        <p>Limpe o token e faça login novamente.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('authToken');
+            document.getElementById('result').innerHTML = `
+                <div class="token-info success">
+                    <strong>✅ Token removido</strong>
+                    <p>Faça login novamente no sistema.</p>
+                </div>
+            `;
+        }
+
+        // Verificar automaticamente ao carregar
+        window.onload = checkToken;
+    </script>
+</body>
+</html>

@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { adicionarItensAoPedido } from "@/services/pedidoService";
 import { getProdutos } from "@/services/produtoService";
 import { Produto } from "@/types/produto";
-import { MinusCircle, PlusCircle, Search } from "lucide-react";
+import { MinusCircle, PlusCircle, Search, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 // Representa um item no nosso carrinho temporário
 type ItemCarrinho = {
@@ -28,11 +29,23 @@ export function AddItemDrawer({ isOpen, onClose, comandaId, onItensAdicionados }
   const [searchTerm, setSearchTerm] = useState('');
   const [carrinho, setCarrinho] = useState<Map<string, ItemCarrinho>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
+  const [errorProdutos, setErrorProdutos] = useState<string | null>(null);
 
   // Busca os produtos quando o drawer é aberto
   useEffect(() => {
     if (isOpen) {
-      getProdutos().then(setProdutos).catch(err => console.error("Erro ao carregar produtos", err));
+      setLoadingProdutos(true);
+      setErrorProdutos(null);
+      
+      getProdutos()
+        .then(setProdutos)
+        .catch(err => {
+          console.error("Erro ao carregar produtos", err);
+          setErrorProdutos('Falha ao carregar produtos. Tente novamente.');
+          toast.error('Falha ao carregar produtos');
+        })
+        .finally(() => setLoadingProdutos(false));
     }
   }, [isOpen]);
 
@@ -60,10 +73,8 @@ export function AddItemDrawer({ isOpen, onClose, comandaId, onItensAdicionados }
     setCarrinho(novoCarrinho);
   };
 
-  // --- FUNÇÃO handleSubmit ATUALIZADA COM DIAGNÓSTICOS ---
   const handleSubmit = async () => {
     setIsLoading(true);
-    console.log("--- Iniciando handleSubmit ---"); // Ponto de escuta 1
     try {
       const itensParaAdicionar = Array.from(carrinho.values()).map(item => ({
         produtoId: item.produto.id,
@@ -71,23 +82,17 @@ export function AddItemDrawer({ isOpen, onClose, comandaId, onItensAdicionados }
       }));
 
       const dtoParaEnviar = { comandaId, itens: itensParaAdicionar };
-
-      // Ponto de escuta 2: Vamos ver o que está a ser preparado para envio
-      console.log("DTO que será enviado para a API:", JSON.stringify(dtoParaEnviar, null, 2));
-
-      // Ponto de escuta 3: Confirmar que estamos prestes a chamar a API
-      console.log("A chamar a API agora...");
       await adicionarItensAoPedido(dtoParaEnviar);
-      console.log("Chamada da API bem-sucedida!");
-
+      
       // Limpa tudo e notifica a página pai
       setCarrinho(new Map());
       setSearchTerm('');
+      toast.success(`${itensParaAdicionar.length} item(ns) adicionado(s) com sucesso!`);
       onItensAdicionados();
-    } catch (error) {
-      // Ponto de escuta 4: Se algo falhar, vamos ver o erro exato
-      console.error("--- ERRO CAPTURADO no handleSubmit ---", error);
-      alert('Falha ao adicionar itens. Verifique o console para mais detalhes.');
+      onClose();
+    } catch (error: any) {
+      console.error("Erro ao adicionar itens", error);
+      toast.error(error.message || 'Falha ao adicionar itens. Tente novamente.');
     } finally {
       setIsLoading(false);
     }

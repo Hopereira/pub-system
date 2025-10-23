@@ -1,12 +1,13 @@
 // Roles disponíveis no sistema
-export type UserRole = 'ADMIN' | 'GERENTE' | 'CAIXA' | 'GARCOM' | 'COZINHEIRO';
+export type UserRole = 'ADMIN' | 'GERENTE' | 'CAIXA' | 'GARCOM' | 'COZINHEIRO' | 'COZINHA';
 
 // Usuário decodificado do JWT
 export interface User {
   id: string;
   email: string;
   nome: string;
-  role: UserRole;
+  cargo: UserRole; // Backend usa 'cargo' não 'role'
+  role: UserRole; // Alias para compatibilidade
   empresaId: string;
   ambienteId?: string; // Ambiente específico para cozinheiros
   iat?: number;
@@ -26,12 +27,15 @@ export interface LoginResponse {
 
 // Helper para verificar permissões
 export const hasRole = (user: User | null, roles: UserRole[]): boolean => {
-  return user ? roles.includes(user.role) : false;
+  if (!user) return false;
+  // Verifica tanto 'cargo' (backend) quanto 'role' (compatibilidade)
+  const userRole = user.cargo || user.role;
+  return roles.includes(userRole);
 };
 
 // Helper para verificar se é role de preparo
 export const isPreparoRole = (user: User | null): boolean => {
-  return hasRole(user, ['COZINHEIRO']);
+  return hasRole(user, ['COZINHEIRO', 'COZINHA']);
 };
 
 // Helper para verificar se é role gerencial

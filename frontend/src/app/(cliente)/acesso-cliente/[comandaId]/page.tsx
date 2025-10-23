@@ -90,7 +90,14 @@ export default function ComandaClientePage() {
                 <Card>
                     <CardHeader className="text-center">
                         <CardTitle className="text-2xl">
-                            Sua Comanda - {comanda.mesa ? `Mesa ${comanda.mesa.numero}` : 'Balcão'}
+                            {comanda.cliente ? (
+                                <>
+                                    {comanda.cliente.nome}
+                                    {comanda.mesa && <span className="text-muted-foreground"> - Mesa {comanda.mesa.numero}</span>}
+                                </>
+                            ) : (
+                                `Sua Comanda - ${comanda.mesa ? `Mesa ${comanda.mesa.numero}` : 'Balcão'}`
+                            )}
                         </CardTitle>
                         <CardDescription>Acompanhe seus pedidos e o total da sua conta.</CardDescription>
                     </CardHeader>
@@ -109,13 +116,18 @@ export default function ComandaClientePage() {
                                         </p>
                                         <div className="bg-white rounded-md p-3 border border-amber-300">
                                             {itensDeixadosNoAmbiente.map((item, idx) => (
-                                                <div key={idx} className="mb-2 last:mb-0">
-                                                    <p className="font-semibold text-gray-900">
-                                                        📍 {item.ambienteRetirada?.nome || 'Ambiente de Preparo'}
-                                                    </p>
-                                                    <p className="text-sm text-gray-600">
-                                                        {item.quantidade}x {item.produto?.nome ?? item.observacao}
-                                                    </p>
+                                                <div key={idx} className="mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-b-0 border-amber-200">
+                                                    <div className="flex items-start gap-2 mb-1">
+                                                        <span className="text-lg">📍</span>
+                                                        <div className="flex-1">
+                                                            <p className="font-bold text-amber-900 text-base">
+                                                                {item.ambienteRetirada?.nome || 'Ambiente de Preparo'}
+                                                            </p>
+                                                            <p className="text-sm text-gray-700 font-medium mt-1">
+                                                                {item.quantidade}x {item.produto?.nome ?? item.observacao}
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

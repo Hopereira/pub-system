@@ -3,6 +3,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
@@ -12,7 +13,8 @@ import { Comanda } from '../comanda/entities/comanda.entity'; // Importamos a Co
 
 @WebSocketGateway({
   cors: {
-    origin: '*', 
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    credentials: true,
   },
 })
 export class PedidosGateway
@@ -33,6 +35,29 @@ export class PedidosGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Cliente desconectado: ${client.id}`);
+  }
+
+  /**
+   * Handler para cliente entrar no room de uma comanda específica
+   * Permite receber notificações direcionadas
+   */
+  @SubscribeMessage('join_comanda')
+  handleJoinComanda(client: Socket, comandaId: string) {
+    const roomName = `comanda_${comandaId}`;
+    client.join(roomName);
+    this.logger.log(`Cliente ${client.id} entrou no room: ${roomName}`);
+    return { success: true, room: roomName };
+  }
+
+  /**
+   * Handler para cliente sair do room de uma comanda
+   */
+  @SubscribeMessage('leave_comanda')
+  handleLeaveComanda(client: Socket, comandaId: string) {
+    const roomName = `comanda_${comandaId}`;
+    client.leave(roomName);
+    this.logger.log(`Cliente ${client.id} saiu do room: ${roomName}`);
+    return { success: true, room: roomName };
   }
 
   emitNovoPedido(pedido: Pedido) {
