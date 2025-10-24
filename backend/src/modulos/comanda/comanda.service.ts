@@ -299,7 +299,13 @@ export class ComandaService {
     return {
       id: comanda.id,
       status: comanda.status,
-      mesa: comanda.mesa ? { numero: comanda.mesa.numero } : null,
+      mesa: comanda.mesa ? { id: comanda.mesa.id, numero: comanda.mesa.numero } : null,
+      pontoEntrega: comanda.pontoEntrega ? {
+        id: comanda.pontoEntrega.id,
+        nome: comanda.pontoEntrega.nome,
+        descricao: comanda.pontoEntrega.descricao
+      } : null,
+      agregados: comanda.agregados || [],
       cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
       pedidos: pedidosSimplificados, // Usa a versão simplificada
       totalComanda: (comanda as any).total,

@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EventosPubModal from '@/components/cliente/EventosPubModal'; 
 import { Comanda } from '@/types/comanda';
-import { cn } from '@/lib/utils'; 
 import { MapPin, ShoppingBag, Receipt, Calendar, User } from 'lucide-react';
 import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
+import { getPublicComandaById } from '@/services/comandaService';
 
 interface ClienteHubPageProps {
   comanda: Comanda;
@@ -22,6 +22,15 @@ export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
   const [comandaAtualizada, setComandaAtualizada] = useState(comanda); 
   
   const comandaId = comanda.id;
+
+  // Debug: verificar estado da comanda
+  console.log('🔍 ClienteHubPage - Estado da comanda:', {
+    temPontoEntrega: !!comandaAtualizada.pontoEntrega,
+    temMesa: !!comandaAtualizada.mesa,
+    pontoEntrega: comandaAtualizada.pontoEntrega,
+    mesa: comandaAtualizada.mesa,
+    deveriaMostrarBotoes: !!(comandaAtualizada.pontoEntrega || comandaAtualizada.mesa)
+  });
 
   const nomeAmigavel = comanda.cliente?.nome 
     ? comanda.cliente.nome 
@@ -75,15 +84,15 @@ export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <MapPin className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold">Mesa ou Comanda Avulsa?</h3>
+                <h3 className="text-xl font-bold">Onde Você Está?</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Escolha se está em uma mesa ou prefere comanda avulsa
+                Informe sua localização para começar a fazer pedidos
               </p>
             </div>
             
             <div className="p-6">
-              {comandaAtualizada.pontoEntrega ? (
+              {(comandaAtualizada.pontoEntrega || comandaAtualizada.mesa) ? (
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -93,9 +102,12 @@ export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
                       </Badge>
                     </div>
                     <p className="text-lg font-semibold">
-                      {comandaAtualizada.pontoEntrega.nome}
+                      {comandaAtualizada.pontoEntrega 
+                        ? comandaAtualizada.pontoEntrega.nome 
+                        : `Mesa ${comandaAtualizada.mesa?.numero}`
+                      }
                     </p>
-                    {comandaAtualizada.pontoEntrega.descricao && (
+                    {comandaAtualizada.pontoEntrega?.descricao && (
                       <p className="text-sm text-muted-foreground mt-1">
                         {comandaAtualizada.pontoEntrega.descricao}
                       </p>
@@ -110,40 +122,72 @@ export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  onClick={() => setIsLocalModalOpen(true)}
-                  size="lg"
-                  className="w-full h-14"
-                >
-                  <MapPin className="w-5 h-5 mr-2" />
-                  Escolher Local
-                </Button>
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => setIsLocalModalOpen(true)}
+                    size="lg"
+                    className="w-full h-14"
+                  >
+                    <MapPin className="w-5 h-5 mr-2" />
+                    Informar Minha Localização
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    ⚠️ Escolha seu local para habilitar o cardápio e pedidos
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Botões de Ação Principais */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Link href={`/cardapio/${comandaId}`} className="group">
-              <div className="bg-primary text-primary-foreground rounded-xl p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95">
-                <ShoppingBag className="h-10 w-10 mb-3 mx-auto" />
-                <p className="text-center font-semibold text-lg">Cardápio</p>
-                <p className="text-center text-xs opacity-90 mt-1">
-                  Faça seu pedido
-                </p>
+            {/* Cardápio - Desabilitado se não tiver local (mesa OU ponto de entrega) */}
+            {(comandaAtualizada.pontoEntrega || comandaAtualizada.mesa) ? (
+              <Link href={`/cardapio/${comandaId}`} className="group">
+                <div className="bg-primary text-primary-foreground rounded-xl p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95">
+                  <ShoppingBag className="h-10 w-10 mb-3 mx-auto" />
+                  <p className="text-center font-semibold text-lg">Cardápio</p>
+                  <p className="text-center text-xs opacity-90 mt-1">
+                    Faça seu pedido
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <div className="opacity-40 cursor-not-allowed">
+                <div className="bg-gray-200 text-gray-500 rounded-xl p-6 shadow-lg pointer-events-none">
+                  <ShoppingBag className="h-10 w-10 mb-3 mx-auto" />
+                  <p className="text-center font-semibold text-lg">Cardápio</p>
+                  <p className="text-center text-xs mt-1">
+                    Informe seu local primeiro
+                  </p>
+                </div>
               </div>
-            </Link>
+            )}
 
-            <Link href={`/acesso-cliente/${comandaId}`} className="group">
-              <div className="bg-card border-2 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95">
-                <Receipt className="h-10 w-10 mb-3 mx-auto text-primary" />
-                <p className="text-center font-semibold text-lg">Meus Pedidos</p>
-                <p className="text-center text-xs text-muted-foreground mt-1">
-                  Acompanhe sua conta
-                </p>
+            {/* Meus Pedidos - Desabilitado se não tiver local (mesa OU ponto de entrega) */}
+            {(comandaAtualizada.pontoEntrega || comandaAtualizada.mesa) ? (
+              <Link href={`/acesso-cliente/${comandaId}`} className="group">
+                <div className="bg-card border-2 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95">
+                  <Receipt className="h-10 w-10 mb-3 mx-auto text-primary" />
+                  <p className="text-center font-semibold text-lg">Meus Pedidos</p>
+                  <p className="text-center text-xs text-muted-foreground mt-1">
+                    Acompanhe sua conta
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <div className="opacity-40 cursor-not-allowed">
+                <div className="bg-gray-200 text-gray-500 rounded-xl p-6 shadow-lg pointer-events-none">
+                  <Receipt className="h-10 w-10 mb-3 mx-auto" />
+                  <p className="text-center font-semibold text-lg">Meus Pedidos</p>
+                  <p className="text-center text-xs mt-1">
+                    Informe seu local primeiro
+                  </p>
+                </div>
               </div>
-            </Link>
+            )}
 
+            {/* Eventos - Sempre habilitado */}
             <button
               onClick={() => setIsEventosModalOpen(true)}
               className="group"
@@ -168,12 +212,30 @@ export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
       <MudarLocalModal
         comandaId={comandaId}
         pontoAtualId={comandaAtualizada.pontoEntrega?.id}
+        mesaAtualId={comandaAtualizada.mesa?.id}
         agregadosAtuais={comandaAtualizada.agregados}
         open={isLocalModalOpen}
         onOpenChange={setIsLocalModalOpen}
-        onSuccess={() => {
-          // Recarregar a página para pegar dados atualizados
-          window.location.reload();
+        onSuccess={async () => {
+          // Recarregar dados da comanda
+          console.log('✅ Modal fechado com sucesso, recarregando dados...');
+          try {
+            const comandaNova = await getPublicComandaById(comandaId);
+            console.log('📦 Dados recarregados:', {
+              temPontoEntrega: !!comandaNova?.pontoEntrega,
+              temMesa: !!comandaNova?.mesa,
+              pontoEntrega: comandaNova?.pontoEntrega,
+              mesa: comandaNova?.mesa
+            });
+            if (comandaNova) {
+              setComandaAtualizada(comandaNova);
+              console.log('✅ Estado atualizado!');
+            }
+          } catch (error) {
+            console.error('❌ Erro ao recarregar comanda:', error);
+            // Fallback: recarrega a página
+            window.location.reload();
+          }
         }}
       />
     </div>

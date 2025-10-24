@@ -2,13 +2,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Home, Beer, ReceiptText } from 'lucide-react';
-import { getPublicComandaById } from '@/services/comandaService';
-import { ComandaStatus } from '@/types/comanda';
+import { Home } from 'lucide-react';
 
 // Define a estrutura de cada link de navegação
 type NavLink = {
@@ -18,71 +15,38 @@ type NavLink = {
   activePath: string; // Padrão de rota para verificar se está ativa
 };
 
-// Array com os links da navegação
-const navLinks: NavLink[] = [
-  { href: (id) => `/portal-cliente/${id}`, label: 'Portal', icon: <Home className="h-4 w-4" />, activePath: '/portal-cliente' },
-  { href: (id) => `/cardapio/${id}`, label: 'Cardápio', icon: <Beer className="h-4 w-4" />, activePath: '/cardapio' },
-  { href: (id) => `/acesso-cliente/${id}`, label: 'Pedidos', icon: <ReceiptText className="h-4 w-4" />, activePath: '/acesso-cliente' },
-];
+// Link único para voltar ao portal
+const portalLink: NavLink = {
+  href: (id) => `/portal-cliente/${id}`,
+  label: 'Portal do Cliente',
+  icon: <Home className="h-5 w-5" />,
+  activePath: '/portal-cliente'
+};
 
 export function FloatingNav() {
   const params = useParams();
   const pathname = usePathname();
-  const [comandaStatus, setComandaStatus] = useState<ComandaStatus | null>(null);
 
-  // ==================================================================
-  // ## A CORREÇÃO ESTÁ AQUI ##
-  // 1. Buscamos o parâmetro da URL, seja ele 'comandaId' ou 'id'.
   const idParam = params.comandaId || params.id;
-  
-  // 2. Criamos (declaramos) a variável 'comandaId' que será usada logo abaixo.
   const comandaId = Array.isArray(idParam) ? idParam[0] : idParam;
-  // ==================================================================
 
-  // Verifica status da comanda
-  useEffect(() => {
-    const verificarStatus = async () => {
-      if (!comandaId) return;
-      
-      try {
-        const comanda = await getPublicComandaById(comandaId as string);
-        setComandaStatus(comanda.status);
-      } catch (error) {
-        console.error('Erro ao verificar status da comanda:', error);
-      }
-    };
-
-    verificarStatus();
-  }, [comandaId]);
-
-  // Agora esta verificação funcionará, pois a variável 'comandaId' existe.
-  if (!comandaId) {
+  // Não mostra nada se já estiver no portal ou não tiver comandaId
+  if (!comandaId || pathname.startsWith('/portal-cliente')) {
     return null;
   }
 
-  // Se comanda está paga/fechada, esconde botão Cardápio
-  const comandaPaga = comandaStatus === ComandaStatus.PAGA || comandaStatus === ComandaStatus.FECHADA;
-  const linksVisiveis = comandaPaga 
-    ? navLinks.filter(link => link.activePath !== '/cardapio')
-    : navLinks;
-
+  // Botão único e grande para voltar ao portal
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-background/80 backdrop-blur-sm border border-border rounded-full shadow-lg z-50">
-      {linksVisiveis.map((link) => {
-        const isActive = pathname.startsWith(link.activePath);
-
-        return (
-          <Link href={link.href(comandaId)} key={link.label} passHref aria-label={link.label}>
-            <Button
-              variant={isActive ? 'secondary' : 'ghost'}
-              className="flex flex-col h-auto p-2 sm:flex-row sm:h-9 sm:px-4 sm:py-2 gap-1"
-            >
-              {link.icon}
-              <span className="text-xs sm:text-sm">{link.label}</span>
-            </Button>
-          </Link>
-        );
-      })}
-    </nav>
+    <Link href={portalLink.href(comandaId)} passHref aria-label={portalLink.label}>
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <Button
+          size="lg"
+          className="h-14 px-6 rounded-full shadow-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-base gap-3 transition-all hover:scale-105 active:scale-95"
+        >
+          {portalLink.icon}
+          <span>{portalLink.label}</span>
+        </Button>
+      </nav>
+    </Link>
   );
 }
