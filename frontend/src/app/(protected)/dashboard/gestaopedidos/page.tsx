@@ -54,25 +54,34 @@ export default function PedidosPage() {
   }
 
   // Renderiza view apropriada baseada no role
+  // ADMIN e GERENTE veem supervisão completa
   if (isGerencialRole(user)) {
     return <SupervisaoPedidos />;
   }
 
-  if (user.role === 'GARCOM') {
+  // GARÇOM vê mapa de mesas
+  const userRole = user.cargo || user.role;
+  if (userRole === 'GARCOM') {
     return <MapaPedidos />;
   }
 
+  // COZINHA vê preparo de pedidos
   if (isPreparoRole(user)) {
     return <PreparoPedidos ambienteIdInicial={user.ambienteId} />;
   }
 
-  // Role não tem acesso (CAIXA)
+  // CAIXA também pode ver supervisão (somente leitura)
+  if (userRole === 'CAIXA') {
+    return <SupervisaoPedidos />;
+  }
+
+  // Outros roles não têm acesso
   return (
     <div className="flex items-center justify-center h-[calc(100vh-200px)]">
       <div className="text-center space-y-4">
         <p className="text-destructive font-medium">Acesso não autorizado</p>
         <p className="text-sm text-muted-foreground">
-          Seu perfil ({user.role}) não tem permissão para acessar esta página
+          Seu perfil ({userRole}) não tem permissão para acessar esta página
         </p>
       </div>
     </div>

@@ -1,4 +1,4 @@
-;import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -8,6 +8,7 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  Max,
   ValidateNested,
 } from 'class-validator';
 
@@ -16,9 +17,14 @@ export class CreateItemPedidoDto {
   @IsUUID()
   produtoId: string;
 
-  @ApiProperty({ description: 'Quantidade do produto a ser pedida.' })
+  @ApiProperty({ 
+    description: 'Quantidade do produto a ser pedida.',
+    minimum: 1,
+    maximum: 100
+  })
   @IsNumber()
   @IsPositive()
+  @Max(100, { message: 'Quantidade máxima é 100 unidades por item' })
   quantidade: number;
 
   @ApiProperty({ description: 'Observação opcional para o item.', required: false })

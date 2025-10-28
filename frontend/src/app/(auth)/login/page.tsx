@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-// O useRouter não é mais necessário aqui para o redirect de login
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,14 +14,35 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
+import { checkFirstAccess } from "@/services/firstAccessService";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const router = useRouter();
+  const [checkingFirstAccess, setCheckingFirstAccess] = useState(true);
 
   const [email, setEmail] = useState("admin@admin.com");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Verifica se é o primeiro acesso ao carregar a página
+  useEffect(() => {
+    async function checkFirst() {
+      try {
+        const isFirst = await checkFirstAccess();
+        if (isFirst) {
+          router.push('/primeiro-acesso');
+        }
+      } catch (error) {
+        console.error('Erro ao verificar primeiro acesso:', error);
+      } finally {
+        setCheckingFirstAccess(false);
+      }
+    }
+    checkFirst();
+  }, [router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -40,7 +61,18 @@ export default function LoginPage() {
     }
   };
 
-  // O JSX (a parte visual) permanece exatamente o mesmo
+  // Mostra loading enquanto verifica primeiro acesso
+  if (checkingFirstAccess) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Verificando sistema...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center">
       <Card className="w-full max-w-sm">

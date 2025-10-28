@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { RefreshCw, Package, Filter } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
 import { getPedidosProntos } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
@@ -44,6 +45,9 @@ const PedidosProntosPage = () => {
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string>('todos');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [comandasDestacadas, setComandasDestacadas] = useState<Set<string>>(new Set());
+  const socketRef = useRef<Socket | null>(null);
+  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Estado do modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,6 +59,57 @@ const PedidosProntosPage = () => {
 
   useEffect(() => {
     loadInitialData();
+    
+    // Conectar ao WebSocket
+    const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    socketRef.current = io(SOCKET_URL);
+    
+    socketRef.current.on('connect', () => {
+      logger.log('🔌 WebSocket conectado', { module: 'PedidosProntosPage' });
+    });
+    
+    // Escuta mudanças de ponto de entrega
+    socketRef.current.on('comanda_atualizada', (comanda: any) => {
+      logger.log('📍 Comanda atualizada - local mudou', { 
+        module: 'PedidosProntosPage',
+        comandaId: comanda.id 
+      });
+      
+      // Destaca o card por 5 segundos
+      setComandasDestacadas(prev => new Set(prev).add(comanda.id));
+      
+      // Remove destaque anterior se existir
+      const timeoutAnterior = timeoutsRef.current.get(comanda.id);
+      if (timeoutAnterior) {
+        clearTimeout(timeoutAnterior);
+      }
+      
+      // Remove destaque após 5 segundos
+      const novoTimeout = setTimeout(() => {
+        setComandasDestacadas(prev => {
+          const novo = new Set(prev);
+          novo.delete(comanda.id);
+          return novo;
+        });
+        timeoutsRef.current.delete(comanda.id);
+      }, 5000);
+      
+      timeoutsRef.current.set(comanda.id, novoTimeout);
+      
+      // Recarrega pedidos para mostrar novo local
+      loadPedidos();
+    });
+    
+    return () => {
+      // Limpa todos os timeouts
+      timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      timeoutsRef.current.clear();
+      
+      // Desconecta WebSocket
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -190,17 +245,26 @@ const PedidosProntosPage = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {pedidos.map((pedido) => (
-            <PedidoProntoCard
+            <div
               key={pedido.pedidoId}
-              pedidoId={pedido.pedidoId}
-              comandaId={pedido.comandaId}
-              cliente={pedido.cliente}
-              local={pedido.local}
-              itens={pedido.itens}
-              tempoEspera={pedido.tempoEspera}
-              data={pedido.data}
-              onDeixarNoAmbiente={(itemId) => handleDeixarNoAmbiente(itemId, pedido)}
-            />
+              className={`transition-all duration-500 ${
+                comandasDestacadas.has(pedido.comandaId)
+                  ? 'ring-4 ring-blue-500 ring-offset-2 shadow-2xl scale-105'
+                  : ''
+              }`}
+            >
+              <PedidoProntoCard
+                pedidoId={pedido.pedidoId}
+                comandaId={pedido.comandaId}
+                cliente={pedido.cliente}
+                local={pedido.local}
+                itens={pedido.itens}
+                tempoEspera={pedido.tempoEspera}
+                data={pedido.data}
+                onDeixarNoAmbiente={(itemId) => handleDeixarNoAmbiente(itemId, pedido)}
+                isDestacado={comandasDestacadas.has(pedido.comandaId)}
+              />
+            </div>
           ))}
         </div>
       )}

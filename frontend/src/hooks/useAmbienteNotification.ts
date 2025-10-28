@@ -11,6 +11,7 @@ interface UseAmbienteNotificationReturn {
   audioConsentNeeded: boolean;
   handleAllowAudio: () => void;
   clearNotification: () => void;
+  isConnected: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
   const [novoPedidoId, setNovoPedidoId] = useState<string | null>(null);
   const [audioConsentNeeded, setAudioConsentNeeded] = useState(true);
   const [isAudioAllowed, setIsAudioAllowed] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -89,12 +91,14 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     socketRef.current = io(SOCKET_URL);
 
     socketRef.current.on('connect', () => {
+      setIsConnected(true);
       logger.socket(`Conectado ao ambiente ${ambienteId}`, {
         socketId: socketRef.current?.id,
       });
     });
 
     socketRef.current.on('disconnect', (reason) => {
+      setIsConnected(false);
       logger.warn(`Desconectado do WebSocket`, {
         module: 'WebSocket',
         data: { ambienteId, reason },
@@ -180,5 +184,6 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     audioConsentNeeded,
     handleAllowAudio,
     clearNotification,
+    isConnected,
   };
 };

@@ -92,7 +92,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
 
     try {
       await createPedidoFromCliente({ comandaId: comanda.id, itens });
-      toast.success("Pedido enviado para a cozinha!");
+      toast.success("Pedido enviado para preparo!");
       setCarrinho([]);
       setIsCarrinhoOpen(false);
       router.push(`/acesso-cliente/${comanda.id}`);
