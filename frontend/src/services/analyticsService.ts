@@ -1,4 +1,4 @@
-import { api } from '@/lib/api';
+import api from './api';
 import { RelatorioGeral, FiltroRelatorio, PedidoTempo } from '@/types/analytics';
 import { logger } from '@/lib/logger';
 

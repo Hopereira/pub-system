@@ -108,32 +108,9 @@ export class PedidoAnalyticsService {
     dataFim: Date,
     limite: number,
   ): Promise<GarcomPerformanceDto[]> {
-    const query = this.itemPedidoRepository
-      .createQueryBuilder('item')
-      .leftJoin('item.pedido', 'pedido')
-      .leftJoin('item.funcionarioEntrega', 'funcionario')
-      .where('pedido.data BETWEEN :dataInicio AND :dataFim', { dataInicio, dataFim })
-      .andWhere('item.status = :status', { status: 'ENTREGUE' })
-      .andWhere('funcionario.id IS NOT NULL')
-      .select('funcionario.id', 'funcionarioId')
-      .addSelect('funcionario.nome', 'funcionarioNome')
-      .addSelect('COUNT(DISTINCT pedido.id)', 'totalPedidosEntregues')
-      .addSelect('15', 'tempoMedioEntregaMinutos')
-      .addSelect('MAX(pedido.data)', 'ultimaEntrega')
-      .groupBy('funcionario.id')
-      .addGroupBy('funcionario.nome')
-      .orderBy('totalPedidosEntregues', 'DESC')
-      .limit(limite);
-
-    const result = await query.getRawMany();
-
-    return result.map((r) => ({
-      funcionarioId: r.funcionarioId,
-      funcionarioNome: r.funcionarioNome,
-      totalPedidosEntregues: parseInt(r.totalPedidosEntregues, 10),
-      tempoMedioEntregaMinutos: Math.round(parseFloat(r.tempoMedioEntregaMinutos) || 0),
-      ultimaEntrega: r.ultimaEntrega,
-    }));
+    // TODO: ItemPedido não tem relação com funcionário
+    // Retorna array vazio por enquanto
+    return [];
   }
 
   /**
@@ -156,7 +133,7 @@ export class PedidoAnalyticsService {
       .setParameter('statusPreparo', 'EM_PREPARO')
       .groupBy('ambiente.id')
       .addGroupBy('ambiente.nome')
-      .orderBy('totalPedidosPreparados', 'DESC');
+      .orderBy('"totalPedidosPreparados"', 'DESC');
 
     const result = await query.getRawMany();
 
@@ -191,7 +168,7 @@ export class PedidoAnalyticsService {
       .addSelect('MAX(pedido.data)', 'ultimaVenda')
       .groupBy('produto.id')
       .addGroupBy('produto.nome')
-      .orderBy('quantidadeVendida', 'DESC')
+      .orderBy('"quantidadeVendida"', 'DESC')
       .limit(limite);
 
     const result = await query.getRawMany();
@@ -227,7 +204,7 @@ export class PedidoAnalyticsService {
       .addSelect('MAX(pedido.data)', 'ultimaVenda')
       .groupBy('produto.id')
       .addGroupBy('produto.nome')
-      .orderBy('quantidadeVendida', 'ASC')
+      .orderBy('"quantidadeVendida"', 'ASC')
       .limit(limite);
 
     const result = await query.getRawMany();
@@ -251,7 +228,7 @@ export class PedidoAnalyticsService {
       .select('EXTRACT(HOUR FROM pedido.data)', 'hora')
       .addSelect('COUNT(*)', 'quantidade')
       .groupBy('hora')
-      .orderBy('hora', 'ASC');
+      .orderBy('"hora"', 'ASC');
 
     const result = await query.getRawMany();
 
@@ -270,8 +247,8 @@ export class PedidoAnalyticsService {
       .where('pedido.data BETWEEN :dataInicio AND :dataFim', { dataInicio, dataFim })
       .select('EXTRACT(DOW FROM pedido.data)', 'diaSemana')
       .addSelect('COUNT(*)', 'quantidade')
-      .groupBy('diaSemana')
-      .orderBy('diaSemana', 'ASC');
+      .groupBy('"diaSemana"')
+      .orderBy('"diaSemana"', 'ASC');
 
     const result = await query.getRawMany();
 
