@@ -14,27 +14,68 @@ import {
   AlertCircle,
   CheckCircle2
 } from "lucide-react";
+import { getRelatorioGeral } from "@/services/analyticsService";
+import { logger } from "@/lib/logger";
 
-// Mock data - substituir por dados reais da API
 export default function DashboardPage() {
   const [metricas, setMetricas] = useState({
-    vendasDia: 4250.00,
-    vendasTrend: 12,
-    mesasOcupadas: 18,
-    totalMesas: 22,
-    tempoMedioPreparo: 15,
-    tempoPreparoStatus: 'success' as const,
-    pedidosPendentes: 7,
-    comandasAbertas: 12,
+    vendasDia: 0,
+    vendasTrend: 0,
+    mesasOcupadas: 0,
+    totalMesas: 0,
+    tempoMedioPreparo: 0,
+    tempoPreparoStatus: 'neutral' as const,
+    pedidosPendentes: 0,
+    comandasAbertas: 0,
   });
 
-  const [produtosMaisVendidos, setProdutosMaisVendidos] = useState([
-    { label: 'Picanha ao Molho', value: 24, color: 'bg-emerald-500' },
-    { label: 'Cerveja Artesanal', value: 18, color: 'bg-blue-500' },
-    { label: 'Caipirinha', value: 15, color: 'bg-amber-500' },
-    { label: 'Contra-Filé', value: 12, color: 'bg-orange-500' },
-    { label: 'Batata Rústica', value: 10, color: 'bg-purple-500' },
-  ]);
+  const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<Array<{label: string, value: number, color: string}>>([]);
+
+  // Carrega dados reais da API
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        // Busca dados do dia atual
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        const relatorio = await getRelatorioGeral({
+          dataInicio: hoje,
+          dataFim: new Date(),
+          limite: 5,
+        });
+
+        // Atualiza métricas com dados reais
+        setMetricas(prev => ({
+          ...prev,
+          vendasDia: relatorio.resumo.valorTotal,
+          tempoMedioPreparo: relatorio.resumo.tempoMedioPreparo,
+        }));
+
+        // Atualiza produtos mais vendidos
+        if (relatorio.produtosMaisVendidos.length > 0) {
+          const cores = ['bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'bg-orange-500', 'bg-purple-500'];
+          setProdutosMaisVendidos(
+            relatorio.produtosMaisVendidos.slice(0, 5).map((p, i) => ({
+              label: p.produtoNome,
+              value: p.quantidadeVendida,
+              color: cores[i] || 'bg-gray-500',
+            }))
+          );
+        }
+
+        logger.log('✅ Dados do dashboard carregados', { module: 'Dashboard' });
+      } catch (error) {
+        logger.error('❌ Erro ao carregar dados do dashboard', {
+          module: 'Dashboard',
+          error: error as Error,
+        });
+        // Mantém dados mock em caso de erro
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   const mesasPercentual = ((metricas.mesasOcupadas / metricas.totalMesas) * 100).toFixed(0);
   const mesasStatus = 
@@ -74,6 +115,7 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
+          {/* TODO: Integrar com API de mesas quando disponível */}
           <MetricCard
             title="Ocupação de Mesas"
             value={`${metricas.mesasOcupadas}/${metricas.totalMesas}`}
@@ -94,6 +136,7 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
+          {/* TODO: Integrar com API de pedidos quando disponível */}
           <MetricCard
             title="Pedidos Pendentes"
             value={metricas.pedidosPendentes}
@@ -104,6 +147,7 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
+          {/* TODO: Integrar com API de comandas quando disponível */}
           <MetricCard
             title="Comandas Abertas"
             value={metricas.comandasAbertas}
@@ -114,16 +158,13 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
+          {/* TODO: Implementar sistema de avaliações */}
           <MetricCard
             title="Taxa de Satisfação"
-            value="94%"
-            subtitle="Baseado em 48 avaliações"
+            value="-"
+            subtitle="Sistema em desenvolvimento"
             icon={CheckCircle2}
-            status="success"
-            trend={{
-              value: 3,
-              label: 'vs. semana passada',
-            }}
+            status="neutral"
           />
         </BentoGridItem>
 

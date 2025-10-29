@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { usePedidosSubscription } from '@/hooks/usePedidosSubscription';
 
 /**
  * Componente de Supervisão de Pedidos para ADMIN/GERENTE
@@ -40,9 +41,40 @@ export default function SupervisaoPedidos() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Hook de WebSocket para atualizações em tempo real
+  const { novoPedido, pedidoAtualizado, isConnected } = usePedidosSubscription();
+
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Recarrega quando recebe novo pedido
+  useEffect(() => {
+    if (novoPedido) {
+      console.log('🆕 Novo pedido recebido, recarregando...');
+      loadPedidos();
+    }
+  }, [novoPedido]);
+
+  // Recarrega quando pedido é atualizado
+  useEffect(() => {
+    if (pedidoAtualizado) {
+      console.log('🔄 Pedido atualizado, recarregando...');
+      loadPedidos();
+    }
+  }, [pedidoAtualizado]);
+
+  // Polling de fallback se WebSocket desconectar
+  useEffect(() => {
+    if (!isConnected && !isLoading) {
+      const intervalId = setInterval(() => {
+        console.log('🔄 Polling de fallback...');
+        loadPedidos();
+      }, 30000); // 30 segundos
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [isConnected, isLoading]);
 
   const loadInitialData = async () => {
     try {

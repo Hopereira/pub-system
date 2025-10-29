@@ -130,6 +130,27 @@ cd pub-system
 .\verify-setup.ps1
 ```
 
+### 🐳 Scripts Docker Disponíveis
+
+```powershell
+# Iniciar containers (uso diário)
+.\docker-start.ps1
+
+# Reconstruir containers do zero (quando houver problemas)
+.\docker-rebuild.ps1
+
+# Parar containers
+docker-compose down
+
+# Ver logs em tempo real
+docker-compose logs -f
+```
+
+> **💡 Dica:** Use `docker-start.ps1` no dia a dia. Use `docker-rebuild.ps1` apenas quando:
+> - Instalar novas dependências nativas (bcrypt, sharp, etc.)
+> - Mudar versões do Node.js
+> - Ter problemas com módulos compilados
+
 ### Pré-requisitos
 
 - **[Node.js](https://nodejs.org/) v16 ou superior**

@@ -12,6 +12,7 @@ interface UseAmbienteNotificationReturn {
   handleAllowAudio: () => void;
   clearNotification: () => void;
   isConnected: boolean;
+  novoPedidoRecebido: Pedido | null; // Novo pedido completo recebido
 }
 
 /**
@@ -23,6 +24,7 @@ interface UseAmbienteNotificationReturn {
  */
 export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteNotificationReturn => {
   const [novoPedidoId, setNovoPedidoId] = useState<string | null>(null);
+  const [novoPedidoRecebido, setNovoPedidoRecebido] = useState<Pedido | null>(null);
   const [audioConsentNeeded, setAudioConsentNeeded] = useState(true);
   const [isAudioAllowed, setIsAudioAllowed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -129,9 +131,13 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
       // Define o ID do novo pedido para destacar na UI
       setNovoPedidoId(pedido.id);
       
+      // Armazena o pedido completo para a página poder atualizar
+      setNovoPedidoRecebido(pedido);
+      
       // Remove o destaque após 5 segundos
       setTimeout(() => {
         setNovoPedidoId(null);
+        setNovoPedidoRecebido(null);
       }, 5000);
     });
 
@@ -185,5 +191,6 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     handleAllowAudio,
     clearNotification,
     isConnected,
+    novoPedidoRecebido,
   };
 };

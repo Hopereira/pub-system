@@ -2,15 +2,17 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useComandaSubscription } from '@/hooks/useComandaSubscription';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Volume2, AlertCircle } from 'lucide-react';
+import { CheckCircle, Volume2, AlertCircle, MapPin, RefreshCw } from 'lucide-react';
 import { ComandaStatus } from '@/types/comanda';
 import { ItemPedido, Pedido } from '@/types/pedido';
+import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
 
 // Interface para garantir que nosso item processado tem a referência ao pedido pai
 interface EnrichedItemPedido extends ItemPedido {
@@ -32,6 +34,7 @@ export default function ComandaClientePage() {
     // ==================================================================
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
+    const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
     
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Carregando comanda...</div>;
@@ -102,6 +105,44 @@ export default function ComandaClientePage() {
                         <CardDescription>Acompanhe seus pedidos e o total da sua conta.</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* Seção de Local de Entrega */}
+                        {(comanda.mesa || comanda.pontoEntrega) && (
+                            <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                    <MapPin className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-blue-900 text-base mb-1">
+                                            📦 Local de Entrega
+                                        </h4>
+                                        <p className="text-blue-800 text-sm mb-2">
+                                            Seus pedidos serão entregues em:
+                                        </p>
+                                        <div className="bg-white rounded-md p-3 border border-blue-300 mb-3">
+                                            <p className="font-bold text-blue-900 text-lg">
+                                                {comanda.mesa 
+                                                    ? `Mesa ${comanda.mesa.numero}` 
+                                                    : comanda.pontoEntrega?.nome
+                                                }
+                                            </p>
+                                            {comanda.pontoEntrega?.descricao && (
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    {comanda.pontoEntrega.descricao}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsLocalModalOpen(true)}
+                                            className="w-full"
+                                        >
+                                            <RefreshCw className="w-4 h-4 mr-2" />
+                                            Mudar Local de Entrega
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {/* Alerta de Pedidos Deixados no Ambiente */}
                         {itensDeixadosNoAmbiente.length > 0 && (
                             <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-400 rounded-lg animate-pulse">
@@ -188,6 +229,21 @@ export default function ComandaClientePage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {comandaId && (
+                <MudarLocalModal
+                    comandaId={comandaId}
+                    pontoAtualId={comanda.pontoEntrega?.id}
+                    mesaAtualId={comanda.mesa?.id}
+                    agregadosAtuais={comanda.agregados}
+                    open={isLocalModalOpen}
+                    onOpenChange={setIsLocalModalOpen}
+                    onSuccess={async () => {
+                        console.log('✅ Local alterado, recarregando...');
+                        window.location.reload();
+                    }}
+                />
+            )}
         </div>
     );
 }

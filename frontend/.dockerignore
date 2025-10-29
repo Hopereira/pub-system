@@ -1,0 +1,39 @@
+# Ignorar node_modules do host (Windows)
+# Docker vai instalar as dependências dentro do container (Linux)
+node_modules
+
+# Ignorar arquivos de build do Next.js
+.next
+out
+
+# Ignorar arquivos de ambiente local
+.env.local
+.env.*.local
+
+# Ignorar arquivos de log
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignorar arquivos de teste
+coverage
+.nyc_output
+
+# Ignorar arquivos do Git
+.git
+.gitignore
+
+# Ignorar arquivos do editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Ignorar arquivos temporários
+.DS_Store
+Thumbs.db
+
+# Ignorar cache do Next.js
+.next/cache

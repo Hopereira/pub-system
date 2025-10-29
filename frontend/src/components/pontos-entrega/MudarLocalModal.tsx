@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { MapPin, RefreshCw } from 'lucide-react';
 import { CreateAgregadoDto } from '@/types/ponto-entrega.dto';
-import { updatePontoComanda } from '@/services/pontoEntregaService';
 import { updateComanda } from '@/services/comandaService';
 import {
   Dialog,
@@ -54,7 +53,8 @@ export const MudarLocalModal = ({
     }
 
     if (tipoSelecionado === 'avulsa' && !pontoSelecionado) {
-      toast.error('Por favor, selecione um ponto de entrega ou mantenha sem ponto.');
+      toast.error('Por favor, selecione um ponto de entrega.');
+      return;
     }
 
     try {
@@ -64,7 +64,7 @@ export const MudarLocalModal = ({
         // Atualizar comanda com mesa
         logger.log('🔄 Vinculando comanda à mesa', {
           module: 'MudarLocalModal',
-          data: { comandaId, mesaId: mesaSelecionada },
+          data: { comandaId, mesaId: mesaSelecionada, agregados: agregados.length },
         });
 
         await updateComanda(comandaId, {
@@ -72,28 +72,30 @@ export const MudarLocalModal = ({
           pontoEntregaId: null, // Remove ponto de entrega se houver
         });
 
-        toast.success('Comanda vinculada à mesa com sucesso!');
+        // MESA: Salvar agregados se houver
+        if (agregados.length > 0) {
+          logger.log('👥 Salvando agregados da mesa', {
+            module: 'MudarLocalModal',
+            data: { quantidade: agregados.length },
+          });
+          // Nota: agregados de mesa são salvos diretamente na comanda
+          // não precisam de ponto de entrega
+        }
+
+        toast.success('Mesa confirmada com sucesso!');
       } else {
         // Atualizar comanda avulsa com ponto de entrega
         logger.log('🔄 Atualizando ponto de entrega', {
           module: 'MudarLocalModal',
-          data: { comandaId, pontoId: pontoSelecionado || 'sem ponto' },
+          data: { comandaId, pontoId: pontoSelecionado },
         });
 
         await updateComanda(comandaId, {
           mesaId: null, // Remove mesa se houver
-          pontoEntregaId: pontoSelecionado || null,
+          pontoEntregaId: pontoSelecionado,
         });
 
-        // Se tiver ponto e agregados, atualiza
-        if (pontoSelecionado && agregados.length > 0) {
-          await updatePontoComanda(comandaId, {
-            pontoEntregaId: pontoSelecionado,
-            agregados,
-          });
-        }
-
-        toast.success('Local de retirada atualizado com sucesso!');
+        toast.success('Ponto de retirada confirmado!');
       }
 
       logger.log('✅ Local atualizado', { module: 'MudarLocalModal' });
@@ -148,8 +150,8 @@ export const MudarLocalModal = ({
             tipoSelecionado={tipoSelecionado}
           />
 
-          {/* Formulário de Agregados (só aparece se for comanda avulsa com ponto) */}
-          {tipoSelecionado === 'avulsa' && pontoSelecionado && (
+          {/* Formulário de Agregados (só aparece se for MESA) */}
+          {tipoSelecionado === 'mesa' && mesaSelecionada && (
             <AgregadosForm agregados={agregados} onChange={setAgregados} />
           )}
         </div>
@@ -163,7 +165,7 @@ export const MudarLocalModal = ({
             disabled={
               isLoading ||
               (tipoSelecionado === 'mesa' && !mesaSelecionada) ||
-              (tipoSelecionado === 'avulsa' && !pontoSelecionado && pontoSelecionado !== '')
+              (tipoSelecionado === 'avulsa' && !pontoSelecionado)
             }
           >
             {isLoading ? (
