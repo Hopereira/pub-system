@@ -102,17 +102,18 @@ export const updateComanda = async (
   data: { mesaId?: string | null; pontoEntregaId?: string | null }
 ): Promise<Comanda> => {
   try {
-    logger.log('🔄 Atualizando comanda', {
+    logger.log('🔄 Atualizando local da comanda (público)', {
       module: 'ComandaService',
       data: { id, ...data },
     });
 
-    const response = await api.patch<Comanda>(`/comandas/${id}`, data);
+    // Usar publicApi para endpoint público
+    const response = await publicApi.patch<Comanda>(`/comandas/${id}/local`, data);
 
-    logger.log('✅ Comanda atualizada', { module: 'ComandaService' });
+    logger.log('✅ Local da comanda atualizado', { module: 'ComandaService' });
     return response.data;
   } catch (error) {
-    logger.error('❌ Erro ao atualizar comanda', {
+    logger.error('❌ Erro ao atualizar local da comanda', {
       module: 'ComandaService',
       error: error as Error,
     });

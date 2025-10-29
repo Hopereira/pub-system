@@ -348,6 +348,55 @@ export class ComandaService {
     await this.comandaRepository.remove(comanda);
   }
 
+  async updateLocal(
+    comandaId: string,
+    dto: { mesaId?: string | null; pontoEntregaId?: string | null },
+  ): Promise<Comanda> {
+    const comanda = await this.findOne(comandaId);
+
+    if (comanda.status !== ComandaStatus.ABERTA) {
+      throw new BadRequestException('Apenas comandas abertas podem ter o local alterado.');
+    }
+
+    // Se for mesa
+    if (dto.mesaId) {
+      const mesa = await this.mesaRepository.findOne({ where: { id: dto.mesaId } });
+      if (!mesa) {
+        throw new NotFoundException(`Mesa com ID "${dto.mesaId}" não encontrada.`);
+      }
+      comanda.mesa = mesa;
+      comanda.pontoEntrega = null;
+      comanda.pontoEntregaId = null;
+      this.logger.log(`🔄 Comanda ${comandaId} vinculada à Mesa ${mesa.numero}`);
+    }
+    // Se for ponto de entrega
+    else if (dto.pontoEntregaId) {
+      const ponto = await this.pontoEntregaRepository.findOne({ where: { id: dto.pontoEntregaId } });
+      if (!ponto) {
+        throw new NotFoundException(`Ponto de entrega com ID "${dto.pontoEntregaId}" não encontrado.`);
+      }
+      if (!ponto.ativo) {
+        throw new BadRequestException(`O ponto de entrega "${ponto.nome}" está desativado.`);
+      }
+      comanda.pontoEntrega = ponto;
+      comanda.pontoEntregaId = dto.pontoEntregaId;
+      comanda.mesa = null;
+      this.logger.log(`🔄 Comanda ${comandaId} vinculada ao Ponto ${ponto.nome}`);
+    }
+    // Se for remover ambos
+    else {
+      comanda.mesa = null;
+      comanda.pontoEntrega = null;
+      comanda.pontoEntregaId = null;
+      this.logger.log(`🔄 Comanda ${comandaId} sem local definido`);
+    }
+
+    const comandaAtualizada = await this.comandaRepository.save(comanda);
+    this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
+    
+    return comandaAtualizada;
+  }
+
   async updatePontoEntrega(
     comandaId: string,
     dto: UpdatePontoEntregaComandaDto,

@@ -104,6 +104,19 @@ export class ComandaController {
   }
 
   @Public()
+  @Patch(':id/local')
+  @ApiOperation({ summary: 'Atualizar local da comanda - mesa ou ponto de entrega (Rota Pública)' })
+  @ApiResponse({ status: 200, description: 'Local atualizado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Comanda não está aberta ou dados inválidos' })
+  @ApiResponse({ status: 404, description: 'Comanda, mesa ou ponto de entrega não encontrado' })
+  updateLocal(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { mesaId?: string | null; pontoEntregaId?: string | null },
+  ) {
+    return this.comandaService.updateLocal(id, dto);
+  }
+
+  @Public()
   @Patch(':id/ponto-entrega')
   @ApiOperation({ summary: 'Atualizar ponto de entrega da comanda (cliente pode mudar de local)' })
   @ApiResponse({ status: 200, description: 'Ponto de entrega atualizado com sucesso' })

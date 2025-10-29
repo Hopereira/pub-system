@@ -23,7 +23,8 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     novoPedidoId, 
     audioConsentNeeded, 
     handleAllowAudio,
-    isConnected
+    isConnected,
+    novoPedidoRecebido
   } = useAmbienteNotification(ambienteId);
 
   const fetchDados = async () => {
@@ -51,6 +52,14 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
       return () => clearInterval(intervalId);
     }
   }, [ambienteId, isConnected]);
+
+  // Recarrega dados quando recebe novo pedido via WebSocket
+  useEffect(() => {
+    if (novoPedidoRecebido) {
+      console.log('🆕 Novo pedido recebido, recarregando dados...');
+      fetchDados();
+    }
+  }, [novoPedidoRecebido]);
 
   const handleUpdateStatus = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
     try {

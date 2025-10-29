@@ -16,6 +16,7 @@ import { createPedidoFromCliente } from '@/services/pedidoService';
 import { CreateItemPedidoDto } from '@/types/pedido.dto';
 import { PedidoReviewSheet } from '@/components/pedidos/PedidoReviewSheet';
 import { PedidoStatus } from '@/types/pedido-status.enum';
+import { AddProdutoDialog } from '@/components/cardapio/AddProdutoDialog';
 
 interface CarrinhoItem {
   id?: string;
@@ -46,23 +47,31 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
   const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
   const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const router = useRouter();
 
   const [termoBusca, setTermoBusca] = useState('');
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todos');
 
   const handleAddToCart = (produto: Produto) => {
-    toast.success(`${produto.nome} adicionado ao carrinho!`);
+    setProdutoSelecionado(produto);
+  };
+
+  const handleConfirmAdd = (quantidade: number, observacao: string) => {
+    if (!produtoSelecionado) return;
+    
+    toast.success(`${produtoSelecionado.nome} adicionado ao carrinho!`);
     setCarrinho(prevCarrinho => [
       ...prevCarrinho,
       { 
-        produtoId: produto.id, 
-        produtoNome: produto.nome, 
-        preco: produto.preco, 
-        quantidade: 1, 
-        observacao: '' 
+        produtoId: produtoSelecionado.id, 
+        produtoNome: produtoSelecionado.nome, 
+        preco: produtoSelecionado.preco, 
+        quantidade, 
+        observacao 
       }
     ]);
+    setProdutoSelecionado(null);
   };
 
   const handleUpdateQuantidade = (index: number, quantidade: number) => {
@@ -192,6 +201,13 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
           <p className="text-muted-foreground">Nenhum produto encontrado com os filtros selecionados.</p>
         </div>
       )}
+
+      <AddProdutoDialog
+        produto={produtoSelecionado}
+        open={!!produtoSelecionado}
+        onClose={() => setProdutoSelecionado(null)}
+        onAdd={handleConfirmAdd}
+      />
     </div>
   );
 }
