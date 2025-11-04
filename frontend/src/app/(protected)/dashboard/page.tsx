@@ -5,7 +5,6 @@ import { BentoGrid, BentoGridItem } from "@/components/dashboard/BentoGrid";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard, MiniBarChart } from "@/components/dashboard/ChartCard";
 import { 
-  TrendingUp, 
   Users, 
   UtensilsCrossed, 
   Clock, 
@@ -15,7 +14,15 @@ import {
   CheckCircle2
 } from "lucide-react";
 import { getRelatorioGeral } from "@/services/analyticsService";
+import { getComandasAbertas } from "@/services/comandaService";
+import { getMesas } from "@/services/mesaService";
+import { getPedidos } from "@/services/pedidoService";
+import { Comanda } from "@/types/comanda";
+import { Mesa } from "@/types/mesa";
+import { Pedido } from "@/types/pedido";
 import { logger } from "@/lib/logger";
+import { socket } from "@/lib/socket";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const [metricas, setMetricas] = useState({
@@ -39,24 +46,43 @@ export default function DashboardPage() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
-        const relatorio = await getRelatorioGeral({
-          dataInicio: hoje,
-          dataFim: new Date(),
-          limite: 5,
-        });
+        const [relatorio, comandas, mesas, pedidos] = await Promise.all([
+          getRelatorioGeral({
+            dataInicio: hoje,
+            dataFim: new Date(),
+            limite: 5,
+          }),
+          getComandasAbertas(),
+          getMesas(),
+          getPedidos(),
+        ]);
+
+        // Conta mesas ocupadas (com comanda aberta)
+        const mesasOcupadas = mesas.filter((m: Mesa) => 
+          comandas.some((c: Comanda) => c.mesa?.id === m.id && c.status === 'ABERTA')
+        ).length;
+
+        // Conta pedidos pendentes (FEITO ou EM_PREPARO)
+        const pedidosPendentes = pedidos.filter((p: Pedido) => 
+          p.itens.some((i) => i.status === 'FEITO' || i.status === 'EM_PREPARO')
+        ).length;
 
         // Atualiza métricas com dados reais
         setMetricas(prev => ({
           ...prev,
           vendasDia: relatorio.resumo.valorTotal,
           tempoMedioPreparo: relatorio.resumo.tempoMedioPreparo,
+          mesasOcupadas,
+          totalMesas: mesas.length,
+          pedidosPendentes,
+          comandasAbertas: comandas.length,
         }));
 
         // Atualiza produtos mais vendidos
         if (relatorio.produtosMaisVendidos.length > 0) {
           const cores = ['bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'bg-orange-500', 'bg-purple-500'];
           setProdutosMaisVendidos(
-            relatorio.produtosMaisVendidos.slice(0, 5).map((p, i) => ({
+            relatorio.produtosMaisVendidos.slice(0, 5).map((p: any, i: number) => ({
               label: p.produtoNome,
               value: p.quantidadeVendida,
               color: cores[i] || 'bg-gray-500',
@@ -70,11 +96,43 @@ export default function DashboardPage() {
           module: 'Dashboard',
           error: error as Error,
         });
-        // Mantém dados mock em caso de erro
+        toast.error('Erro ao carregar dados do dashboard');
       }
     };
 
     loadDashboardData();
+
+    // Atualiza a cada 30 segundos
+    const interval = setInterval(loadDashboardData, 30000);
+
+    // WebSocket - atualiza em tempo real
+    socket.on('novo_pedido', () => {
+      logger.debug('Novo pedido recebido, atualizando dashboard', { module: 'Dashboard' });
+      loadDashboardData();
+    });
+
+    socket.on('status_atualizado', () => {
+      logger.debug('Status atualizado, atualizando dashboard', { module: 'Dashboard' });
+      loadDashboardData();
+    });
+
+    socket.on('comanda_aberta', () => {
+      logger.debug('Comanda aberta, atualizando dashboard', { module: 'Dashboard' });
+      loadDashboardData();
+    });
+
+    socket.on('comanda_fechada', () => {
+      logger.debug('Comanda fechada, atualizando dashboard', { module: 'Dashboard' });
+      loadDashboardData();
+    });
+
+    return () => {
+      clearInterval(interval);
+      socket.off('novo_pedido');
+      socket.off('status_atualizado');
+      socket.off('comanda_aberta');
+      socket.off('comanda_fechada');
+    };
   }, []);
 
   const mesasPercentual = ((metricas.mesasOcupadas / metricas.totalMesas) * 100).toFixed(0);
@@ -115,7 +173,6 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
-          {/* TODO: Integrar com API de mesas quando disponível */}
           <MetricCard
             title="Ocupação de Mesas"
             value={`${metricas.mesasOcupadas}/${metricas.totalMesas}`}
@@ -136,7 +193,6 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
-          {/* TODO: Integrar com API de pedidos quando disponível */}
           <MetricCard
             title="Pedidos Pendentes"
             value={metricas.pedidosPendentes}
@@ -147,7 +203,6 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
-          {/* TODO: Integrar com API de comandas quando disponível */}
           <MetricCard
             title="Comandas Abertas"
             value={metricas.comandasAbertas}
