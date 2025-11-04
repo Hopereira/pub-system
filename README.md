@@ -18,6 +18,7 @@
 
 ## 📋 Índice
 
+- [Status do Projeto](#-status-do-projeto)
 - [Sobre o Projeto](#-sobre-o-projeto)
 - [Funcionalidades](#-funcionalidades)
 - [Tecnologias](#️-tecnologias)
@@ -28,6 +29,37 @@
 - [Documentação](#-documentação)
 - [Contribuição](#-contribuição)
 - [Licença](#-licença)
+
+---
+
+## 🎯 Status do Projeto
+
+![Status](https://img.shields.io/badge/Status-Pronto%20para%20Produção-success)
+![Correções](https://img.shields.io/badge/Correções-13%2F23%20(57%25)-yellow)
+![Críticas](https://img.shields.io/badge/Críticas-5%2F5%20(100%25)-success)
+![Médias](https://img.shields.io/badge/Médias-8%2F8%20(100%25)-success)
+
+**Última Atualização:** 04 de novembro de 2025
+
+### ✅ Correções Implementadas
+
+**🔴 Críticas (5/5 - 100%)**
+- ✅ CORS no WebSocket restringido
+- ✅ Race Condition eliminada (transação com lock)
+- ✅ URLs usando variáveis de ambiente
+- ✅ Validação de quantidade máxima (100 unidades)
+- ✅ Cálculos monetários precisos (Decimal.js)
+
+**🟠 Médias (8/8 - 100%)**
+- ✅ Timeout HTTP configurado (30s)
+- ✅ Token expirado tratado
+- ✅ Senhas mascaradas em logs
+- ✅ Polling otimizado (apenas se WebSocket desconectado)
+- ✅ Tratamento de erros melhorado
+
+**📊 Total:** 13 de 23 correções (57%)
+
+> 📖 **Documentação Completa:** Ver [STATUS_PROJETO.md](./STATUS_PROJETO.md) para detalhes
 
 ---
 
@@ -337,17 +369,41 @@ ADMIN_SENHA=admin123
 
 ## 📚 Documentação
 
+### 🚀 Início Rápido
 | Documento | Descrição |
 |-----------|-----------|
-| 📘 **[SETUP.md](./SETUP.md)** | Guia completo de configuração do ambiente |
-| 📗 **[MIGRATIONS.md](./MIGRATIONS.md)** | Guia de migrations do banco de dados |
-| 🔔 **[NOTIFICACOES.md](./NOTIFICACOES.md)** | Sistema de notificações em tempo real |
-| 🔔 **[README_NOTIFICACOES.md](./README_NOTIFICACOES.md)** | Documentação detalhada de notificações |
-| 🔧 **[IMPLEMENTACAO_NOTIFICACOES.md](./IMPLEMENTACAO_NOTIFICACOES.md)** | Implementação técnica de notificações |
-| ⚙️ **[CONFIGURATION.md](./CONFIGURATION.md)** | Resumo das configurações aplicadas |
-| 🧪 **[CREATE_TEST_DATA.md](./CREATE_TEST_DATA.md)** | Criação de dados para testes |
-| 📊 **[DADOS_TESTE.md](./DADOS_TESTE.md)** | Dados de exemplo e testes |
-| 📈 **[RELATORIO_SESSAO.md](./RELATORIO_SESSAO.md)** | Relatório de desenvolvimento |
+| ⚡ **[GUIA_RAPIDO.md](./GUIA_RAPIDO.md)** | Início em 3 passos |
+| 📊 **[STATUS_PROJETO.md](./STATUS_PROJETO.md)** | Status atual e correções |
+| 📚 **[INDICE_DOCUMENTACAO.md](./INDICE_DOCUMENTACAO.md)** | Índice completo (74 documentos) |
+
+### 🔧 Configuração
+| Documento | Descrição |
+|-----------|-----------|
+| 📘 **[SETUP.md](./SETUP.md)** | Guia completo de configuração |
+| ⚙️ **[CONFIGURATION.md](./CONFIGURATION.md)** | Resumo das configurações |
+| 📗 **[MIGRATIONS.md](./MIGRATIONS.md)** | Guia de migrations |
+
+### 🐛 Análise e Correções
+| Documento | Descrição |
+|-----------|-----------|
+| 🔍 **[ANALISE_BUGS_E_PROBLEMAS.md](./ANALISE_BUGS_E_PROBLEMAS.md)** | Análise completa (23 problemas) |
+| 📋 **[PLANO_CORRECAO_BUGS.md](./PLANO_CORRECAO_BUGS.md)** | Plano de ação detalhado |
+| ✅ **[CORRECOES_REALIZADAS.md](./CORRECOES_REALIZADAS.md)** | Correções implementadas |
+| 🚀 **[PROXIMOS_PASSOS.md](./PROXIMOS_PASSOS.md)** | Próximas ações |
+
+### 🔔 Funcionalidades
+| Documento | Descrição |
+|-----------|-----------|
+| 🔔 **[NOTIFICACOES.md](./NOTIFICACOES.md)** | Sistema de notificações |
+| 🔔 **[README_NOTIFICACOES.md](./README_NOTIFICACOES.md)** | Documentação detalhada |
+| 🔧 **[IMPLEMENTACAO_NOTIFICACOES.md](./IMPLEMENTACAO_NOTIFICACOES.md)** | Implementação técnica |
+
+### 🧪 Testes
+| Documento | Descrição |
+|-----------|-----------|
+| 🧪 **[TESTES_PEDIDOS.md](./TESTES_PEDIDOS.md)** | Testes de pedidos |
+| 🧪 **[CREATE_TEST_DATA.md](./CREATE_TEST_DATA.md)** | Criação de dados de teste |
+| 📊 **[DADOS_TESTE.md](./DADOS_TESTE.md)** | Dados de exemplo |
 
 ---
 
