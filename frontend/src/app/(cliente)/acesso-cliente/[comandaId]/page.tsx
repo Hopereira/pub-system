@@ -2,8 +2,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,6 +13,7 @@ import { CheckCircle, Volume2, AlertCircle, MapPin, RefreshCw } from 'lucide-rea
 import { ComandaStatus } from '@/types/comanda';
 import { ItemPedido, Pedido } from '@/types/pedido';
 import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
+import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao';
 
 // Interface para garantir que nosso item processado tem a referência ao pedido pai
 interface EnrichedItemPedido extends ItemPedido {
@@ -26,6 +27,7 @@ const formatCurrency = (value: number) => {
 
 export default function ComandaClientePage() {
     const params = useParams();
+    const router = useRouter();
     
     // ==================================================================
     // ## A CORREÇÃO ESTÁ AQUI ##
@@ -35,6 +37,20 @@ export default function ComandaClientePage() {
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
     const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+    const [isAvaliacaoModalOpen, setIsAvaliacaoModalOpen] = useState(false);
+    const [avaliacaoJaExibida, setAvaliacaoJaExibida] = useState(false);
+
+    // Abre modal de avaliação quando comanda é paga/fechada
+    useEffect(() => {
+        if (comanda && (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) && !avaliacaoJaExibida) {
+            // Aguarda 1 segundo para exibir o modal
+            const timer = setTimeout(() => {
+                setIsAvaliacaoModalOpen(true);
+                setAvaliacaoJaExibida(true);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [comanda, avaliacaoJaExibida]);
     
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Carregando comanda...</div>;
@@ -54,17 +70,38 @@ export default function ComandaClientePage() {
 
     if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
         return (
-            <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
-                <Card className="max-w-md w-full text-center p-6 animate-fade-in">
-                    <CardHeader>
-                        <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-                        <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">Sua comanda foi paga com sucesso. Agradecemos a sua visita!</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <>
+                <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
+                    <Card className="max-w-md w-full text-center p-6 animate-fade-in">
+                        <CardHeader>
+                            <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+                            <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground mb-4">Sua comanda foi paga com sucesso. Agradecemos a sua visita!</p>
+                            <Button 
+                                onClick={() => router.push('/')} 
+                                variant="outline"
+                                className="mt-4"
+                            >
+                                Portal do Cliente
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+                
+                {/* Modal de Avaliação */}
+                {comandaId && (
+                    <ModalAvaliacao
+                        isOpen={isAvaliacaoModalOpen}
+                        onClose={() => setIsAvaliacaoModalOpen(false)}
+                        comandaId={comandaId}
+                        onSuccess={() => {
+                            // Opcional: redirecionar após avaliação
+                        }}
+                    />
+                )}
+            </>
         )
     }
 

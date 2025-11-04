@@ -8,7 +8,6 @@ import { Ambiente } from '@/types/ambiente';
 import { Pedido } from '@/types/pedido';
 import { PedidoStatus } from '@/types/pedido-status.enum';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -37,7 +36,7 @@ export default function SupervisaoPedidos() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string>('todos');
-  const [statusFiltro, setStatusFiltro] = useState<PedidoStatus | 'todos'>('todos');
+  const [statusFiltro, setStatusFiltro] = useState<PedidoStatus | 'todos' | 'ENTREGUES'>('todos');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -133,23 +132,35 @@ export default function SupervisaoPedidos() {
   };
 
   // Filtra pedidos por ambiente e status
-  const pedidosFiltrados = pedidos.filter((pedido) => {
-    // Filtro por ambiente
-    if (ambienteSelecionado !== 'todos') {
-      const temItemDoAmbiente = pedido.itens.some(
-        (item) => item.produto?.ambiente?.id === ambienteSelecionado
-      );
-      if (!temItemDoAmbiente) return false;
-    }
+  const pedidosFiltrados = pedidos
+    .filter((pedido) => {
+      // Filtro por ambiente
+      if (ambienteSelecionado !== 'todos') {
+        const temItemDoAmbiente = pedido.itens.some(
+          (item) => item.produto?.ambiente?.id === ambienteSelecionado
+        );
+        if (!temItemDoAmbiente) return false;
+      }
 
-    // Filtro por status
-    if (statusFiltro !== 'todos') {
-      const temItemComStatus = pedido.itens.some((item) => item.status === statusFiltro);
-      if (!temItemComStatus) return false;
-    }
+      // Filtro por status
+      if (statusFiltro !== 'todos') {
+        if (statusFiltro === 'ENTREGUES') {
+          // Filtra por todos os tipos de entrega
+          const temItemEntregue = pedido.itens.some((item) => 
+            item.status === PedidoStatus.ENTREGUE || item.status === PedidoStatus.DEIXADO_NO_AMBIENTE
+          );
+          if (!temItemEntregue) return false;
+        } else {
+          // Filtra por status específico
+          const temItemComStatus = pedido.itens.some((item) => item.status === statusFiltro);
+          if (!temItemComStatus) return false;
+        }
+      }
 
-    return true;
-  });
+      return true;
+    })
+    // Ordena do mais recente para o mais antigo
+    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
   // Métricas
   const metricas = {
@@ -157,7 +168,9 @@ export default function SupervisaoPedidos() {
     feito: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.FEITO)).length,
     emPreparo: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.EM_PREPARO)).length,
     pronto: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.PRONTO)).length,
-    entregue: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.ENTREGUE)).length,
+    entregue: pedidosFiltrados.filter((p) => p.itens.some((i) => 
+      i.status === PedidoStatus.ENTREGUE || i.status === PedidoStatus.DEIXADO_NO_AMBIENTE
+    )).length,
   };
 
   const getStatusIcon = (status: PedidoStatus) => {
@@ -169,6 +182,8 @@ export default function SupervisaoPedidos() {
       case PedidoStatus.PRONTO:
         return <CheckCircle className="h-4 w-4" />;
       case PedidoStatus.ENTREGUE:
+        return <Package className="h-4 w-4" />;
+      case PedidoStatus.DEIXADO_NO_AMBIENTE:
         return <Package className="h-4 w-4" />;
       case PedidoStatus.CANCELADO:
         return <Ban className="h-4 w-4" />;
@@ -186,6 +201,8 @@ export default function SupervisaoPedidos() {
       case PedidoStatus.PRONTO:
         return 'bg-green-100 text-green-800 border-green-300';
       case PedidoStatus.ENTREGUE:
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case PedidoStatus.DEIXADO_NO_AMBIENTE:
         return 'bg-blue-100 text-blue-800 border-blue-300';
       case PedidoStatus.CANCELADO:
         return 'bg-red-100 text-red-800 border-red-300';
@@ -261,26 +278,33 @@ export default function SupervisaoPedidos() {
             <label className="text-sm font-medium mb-2 block">Status</label>
             <Select
               value={statusFiltro}
-              onValueChange={(value) => setStatusFiltro(value as PedidoStatus | 'todos')}
+              onValueChange={(value) => setStatusFiltro(value as PedidoStatus | 'todos' | 'ENTREGUES')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os Status</SelectItem>
-                <SelectItem value={PedidoStatus.FEITO}>Feito</SelectItem>
+                <SelectItem value={PedidoStatus.FEITO}>Aguardando</SelectItem>
                 <SelectItem value={PedidoStatus.EM_PREPARO}>Em Preparo</SelectItem>
                 <SelectItem value={PedidoStatus.PRONTO}>Pronto</SelectItem>
-                <SelectItem value={PedidoStatus.ENTREGUE}>Entregue</SelectItem>
+                <SelectItem value="ENTREGUES">Entregues (Todos)</SelectItem>
+                <SelectItem value={PedidoStatus.ENTREGUE}>Entregue (Garçom)</SelectItem>
+                <SelectItem value={PedidoStatus.DEIXADO_NO_AMBIENTE}>Retirado (Cliente)</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Métricas */}
+      {/* Métricas - Clicáveis como Filtros */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === 'todos' ? 'ring-2 ring-primary' : ''
+          }`}
+          onClick={() => setStatusFiltro('todos')}
+        >
           <CardHeader className="pb-2">
             <CardDescription>Total</CardDescription>
           </CardHeader>
@@ -289,7 +313,12 @@ export default function SupervisaoPedidos() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === PedidoStatus.FEITO ? 'ring-2 ring-gray-500' : ''
+          }`}
+          onClick={() => setStatusFiltro(PedidoStatus.FEITO)}
+        >
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
               <Clock className="h-3 w-3" /> Aguardando
@@ -300,7 +329,12 @@ export default function SupervisaoPedidos() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === PedidoStatus.EM_PREPARO ? 'ring-2 ring-orange-500' : ''
+          }`}
+          onClick={() => setStatusFiltro(PedidoStatus.EM_PREPARO)}
+        >
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
               <Flame className="h-3 w-3" /> Em Preparo
@@ -311,7 +345,12 @@ export default function SupervisaoPedidos() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === PedidoStatus.PRONTO ? 'ring-2 ring-green-500' : ''
+          }`}
+          onClick={() => setStatusFiltro(PedidoStatus.PRONTO)}
+        >
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
               <CheckCircle className="h-3 w-3" /> Prontos
@@ -322,7 +361,12 @@ export default function SupervisaoPedidos() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === 'ENTREGUES' ? 'ring-2 ring-blue-500' : ''
+          }`}
+          onClick={() => setStatusFiltro('ENTREGUES')}
+        >
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
               <Package className="h-3 w-3" /> Entregues
