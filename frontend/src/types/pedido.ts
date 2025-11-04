@@ -26,6 +26,10 @@ export interface ItemPedido {
     id: string;
     nome: string;
   } | null;
+  // Timestamps para cálculo de tempo de preparo
+  iniciadoEm?: string | null;
+  prontoEm?: string | null;
+  entregueEm?: string | null;
 }
 
 // Interface simplificada para Comanda (evita import circular)

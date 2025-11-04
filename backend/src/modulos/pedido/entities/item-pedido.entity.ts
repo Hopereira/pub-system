@@ -51,4 +51,14 @@ export class ItemPedido {
   @ManyToOne(() => Ambiente, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'ambiente_retirada_id' })
   ambienteRetirada: Ambiente;
+
+  // Timestamps para cálculo de tempo de preparo
+  @Column({ type: 'timestamp', nullable: true })
+  iniciadoEm: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  prontoEm: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  entregueEm: Date;
 }

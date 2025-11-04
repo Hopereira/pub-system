@@ -15,6 +15,7 @@ import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module
 import { EventoModule } from './modulos/evento/evento.module';
 import { StorageModule } from './shared/storage/storage.module';
 import { PontoEntregaModule } from './modulos/ponto-entrega/ponto-entrega.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { PontoEntregaModule } from './modulos/ponto-entrega/ponto-entrega.module
     PaginaEventoModule,
     EventoModule,
     StorageModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [],

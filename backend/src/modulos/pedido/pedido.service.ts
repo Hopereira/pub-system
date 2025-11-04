@@ -158,6 +158,25 @@ export class PedidoService {
     const statusAnterior = itemPedido.status;
     itemPedido.status = updateDto.status;
     
+    // Registra timestamps para cálculo de tempo de preparo
+    const agora = new Date();
+    if (updateDto.status === PedidoStatus.EM_PREPARO && !itemPedido.iniciadoEm) {
+      itemPedido.iniciadoEm = agora;
+      this.logger.log(`⏱️ Preparo iniciado: ${itemPedido.produto?.nome || 'Produto'}`);
+    } else if (updateDto.status === PedidoStatus.PRONTO && !itemPedido.prontoEm) {
+      itemPedido.prontoEm = agora;
+      const tempoPreparo = itemPedido.iniciadoEm 
+        ? Math.round((agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000)
+        : null;
+      this.logger.log(`✅ Item pronto: ${itemPedido.produto?.nome || 'Produto'} | Tempo: ${tempoPreparo || '?'} min`);
+    } else if (updateDto.status === PedidoStatus.ENTREGUE && !itemPedido.entregueEm) {
+      itemPedido.entregueEm = agora;
+      const tempoTotal = itemPedido.iniciadoEm
+        ? Math.round((agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000)
+        : null;
+      this.logger.log(`🎉 Item entregue: ${itemPedido.produto?.nome || 'Produto'} | Tempo total: ${tempoTotal || '?'} min`);
+    }
+    
     if (updateDto.status === PedidoStatus.CANCELADO) {
       itemPedido.motivoCancelamento = updateDto.motivoCancelamento;
       this.logger.warn(`🚫 Item cancelado: ${itemPedido.produto?.nome || 'Produto'} | Motivo: ${updateDto.motivoCancelamento}`);

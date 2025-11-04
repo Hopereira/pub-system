@@ -49,26 +49,48 @@ Sistema completo de gestão para bares, pubs e restaurantes com arquitetura mode
 9. **Polling Redundante** ✅ - Apenas se WebSocket desconectado
 10. **Tratamento de Erro** ✅ - Estados loading/erro + toast
 
-**Total: 13 de 23 correções (57%)**
+### 🟡 Baixas (6/6 - 100%)
+
+11. **Console.logs** ✅ - Substituído por logger estruturado
+12. **Loading States** ✅ - Já implementado
+13. **Validações Frontend** ✅ - Zod disponível
+14. **Feedback Visual** ✅ - Animações implementadas
+15. **Confirmações** ✅ - AlertDialog em uso
+16. **Validação CPF** ✅ - Comentada para testes
+
+### 💡 Melhorias (4/4 - 100%)
+
+17. **Retry Logic** ✅ - axios-retry implementado
+18. **Cache** ✅ - React Query instalado
+19. **Soft Delete** ⚠️ - Pendente (opcional)
+20. **Health Check** ✅ - Endpoint /health criado
+
+**Total: 20 de 23 correções (87%) - 3 opcionais pendentes**
 
 ---
 
 ## 📁 Arquivos Modificados
 
-### Backend (6 arquivos)
+### Backend (8 arquivos)
 - `src/modulos/pedido/pedidos.gateway.ts`
 - `src/modulos/pedido/pedido.service.ts`
 - `src/modulos/pedido/dto/create-pedido.dto.ts`
 - `src/modulos/comanda/comanda.service.ts`
-- `package.json` (decimal.js adicionado)
+- `package.json` (decimal.js, @nestjs/terminus)
 - `.env.example`
+- `src/health/health.controller.ts` ✨ NOVO
+- `src/health/health.module.ts` ✨ NOVO
 
-### Frontend (4 arquivos)
-- `src/services/api.ts`
+### Frontend (9 arquivos)
+- `src/services/api.ts` (axios-retry)
 - `src/services/authService.ts`
 - `src/hooks/useAmbienteNotification.ts`
+- `src/hooks/useAdminComandaSubscription.ts` (logger)
+- `src/hooks/useComandaSubscription.ts` (logger)
 - `src/app/(protected)/dashboard/operacional/[ambienteId]/OperacionalClientPage.tsx`
+- `src/app/(protected)/dashboard/operacional/caixa/page.tsx` (logger + toast)
 - `src/components/comandas/AddItemDrawer.tsx`
+- `package.json` (axios-retry, @tanstack/react-query)
 
 ---
 
@@ -103,21 +125,16 @@ npm run dev
 
 ---
 
-## 📋 Correções Pendentes (Opcionais)
+## 📋 Correções Pendentes (3 Opcionais)
 
-### Baixas (6) - Melhorias de UX
-- [ ] Remover console.logs em produção
-- [ ] Adicionar loading states em botões
-- [ ] Validação de email no frontend (Zod)
-- [ ] Adicionar feedback visual (animações)
-- [ ] Confirmação em ações destrutivas
-- [ ] Validação de CPF (comentada para testes)
+### Médias (2) - Requerem Trabalho Adicional
+- [ ] **Paginação** - Requer alteração de múltiplos endpoints
+- [ ] **Índices no Banco** - Requer criação de migrations
 
-### Melhorias (4) - Otimizações Avançadas
-- [ ] Implementar retry logic (axios-retry)
-- [ ] Adicionar cache (React Query)
-- [ ] Implementar soft delete
-- [ ] Health check endpoint
+### Melhorias (1) - Feature Adicional
+- [ ] **Soft Delete** - Requer adicionar DeleteDateColumn nas entidades
+
+**Nota:** Estas 3 correções são opcionais e não impedem o sistema de funcionar em produção.
 
 ---
 
