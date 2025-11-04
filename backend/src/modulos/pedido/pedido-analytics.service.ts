@@ -74,6 +74,10 @@ export class PedidoAnalyticsService {
         data: Between(dataInicio, dataFim),
       },
       relations: ['itens', 'itens.produto'],
+      order: {
+        data: 'DESC',
+      },
+      take: 10, // Últimos 10 pedidos para tempo médio
     });
 
     const totalPedidos = pedidos.length;
@@ -86,10 +90,28 @@ export class PedidoAnalyticsService {
       return sum + valorPedido;
     }, 0);
 
-    // Calcula tempo médio de preparo e entrega
-    const tempos = this.calcularTemposPedidos(pedidos);
-    const tempoMedioPreparo = tempos.reduce((sum, t) => sum + (t.tempoPreparoMinutos || 0), 0) / tempos.length || 0;
-    const tempoMedioEntrega = tempos.reduce((sum, t) => sum + (t.tempoEntregaMinutos || 0), 0) / tempos.length || 0;
+    // Calcula tempo médio de preparo dos últimos 10 pedidos
+    const itensComTempo = pedidos.flatMap(p => p.itens).filter(item => 
+      item.iniciadoEm && item.prontoEm
+    );
+    
+    const tempoMedioPreparo = itensComTempo.length > 0
+      ? itensComTempo.reduce((sum, item) => {
+          const tempo = (item.prontoEm.getTime() - item.iniciadoEm.getTime()) / 60000;
+          return sum + tempo;
+        }, 0) / itensComTempo.length
+      : 0;
+
+    const itensComEntrega = pedidos.flatMap(p => p.itens).filter(item => 
+      item.iniciadoEm && item.entregueEm
+    );
+    
+    const tempoMedioEntrega = itensComEntrega.length > 0
+      ? itensComEntrega.reduce((sum, item) => {
+          const tempo = (item.entregueEm.getTime() - item.iniciadoEm.getTime()) / 60000;
+          return sum + tempo;
+        }, 0) / itensComEntrega.length
+      : 0;
 
     return {
       totalPedidos,
@@ -128,7 +150,10 @@ export class PedidoAnalyticsService {
       .addSelect('ambiente.nome', 'ambienteNome')
       .addSelect('COUNT(DISTINCT CASE WHEN item.status IN (:...statusConcluidos) THEN item.id END)', 'totalPedidosPreparados')
       .addSelect('COUNT(DISTINCT CASE WHEN item.status = :statusPreparo THEN item.id END)', 'pedidosEmPreparo')
-      .addSelect('15', 'tempoMedioPreparoMinutos')
+      .addSelect(
+        'AVG(CASE WHEN item.iniciadoEm IS NOT NULL AND item.prontoEm IS NOT NULL THEN EXTRACT(EPOCH FROM (item.prontoEm - item.iniciadoEm))/60 END)',
+        'tempoMedioPreparoMinutos'
+      )
       .setParameter('statusConcluidos', ['PRONTO', 'ENTREGUE', 'DEIXADO_NO_AMBIENTE'])
       .setParameter('statusPreparo', 'EM_PREPARO')
       .groupBy('ambiente.id')

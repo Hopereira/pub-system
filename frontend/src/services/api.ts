@@ -1,5 +1,6 @@
 // Caminho: frontend/src/services/api.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axiosRetry from 'axios-retry';
 import { logger } from '@/lib/logger';
 
 const isServer = typeof window === 'undefined';
@@ -10,6 +11,23 @@ const api = axios.create({
     ? process.env.API_URL_SERVER
     : process.env.NEXT_PUBLIC_API_URL,
   timeout: 30000, // 30 segundos
+});
+
+// Configurar retry logic
+axiosRetry(api, {
+  retries: 3, // Tentar até 3 vezes
+  retryDelay: axiosRetry.exponentialDelay, // Delay exponencial (1s, 2s, 4s)
+  retryCondition: (error) => {
+    // Retry apenas em erros de rede ou 5xx
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+           (error.response?.status ? error.response.status >= 500 : false);
+  },
+  onRetry: (retryCount, error, requestConfig) => {
+    logger.warn(`Tentativa ${retryCount} de retry`, {
+      module: 'API',
+      data: { url: requestConfig.url, error: error.message }
+    });
+  }
 });
 
 // Interceptor de Requisição - Log e autenticação

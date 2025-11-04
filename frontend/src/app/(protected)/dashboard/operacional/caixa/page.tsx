@@ -16,6 +16,8 @@ import Link from 'next/link';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Table2, X } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { toast } from 'sonner';
 
 const CaixaPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +38,8 @@ const CaixaPage = () => {
         const data = await getMesas();
         setMesas(data);
       } catch (error) {
-        console.error("Erro ao carregar mesas:", error);
+        logger.error('Erro ao carregar mesas', { module: 'CaixaPage', error: error as Error });
+        toast.error('Erro ao carregar mesas');
       }
     };
     carregarMesas();
@@ -52,7 +55,8 @@ const CaixaPage = () => {
         const comandasComCliente = comandasAbertas.filter(c => c.cliente);
         setClientesComComanda(comandasComCliente);
       } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
+        logger.error('Erro ao carregar clientes', { module: 'CaixaPage', error: error as Error });
+        toast.error('Erro ao carregar clientes');
       }
     };
     carregarClientesComComanda();
@@ -67,7 +71,8 @@ const CaixaPage = () => {
           const data = await searchComandas(debouncedSearchTerm);
           setResults(data);
         } catch (error) {
-          console.error("Erro na busca:", error);
+          logger.error('Erro na busca de comandas', { module: 'CaixaPage', error: error as Error });
+          toast.error('Erro ao buscar comandas');
           setResults([]);
         } finally {
           setIsLoading(false);

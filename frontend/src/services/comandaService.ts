@@ -5,6 +5,28 @@ import { UpdatePontoComandaDto } from "@/types/ponto-entrega.dto";
 import api, { publicApi } from "./api";
 import { logger } from "@/lib/logger";
 
+// Buscar todas as comandas
+export const getAllComandas = async (): Promise<Comanda[]> => {
+    try {
+        const response = await api.get<Comanda[]>('/comandas');
+        return response.data;
+    } catch (error) {
+        logger.error('Erro ao buscar todas as comandas', { module: 'ComandaService', error: error as Error });
+        throw error;
+    }
+}
+
+// Buscar comandas abertas (usa search sem termo para retornar todas abertas)
+export const getComandasAbertas = async (): Promise<Comanda[]> => {
+    try {
+        const response = await api.get<Comanda[]>('/comandas/search');
+        return response.data;
+    } catch (error) {
+        logger.error('Erro ao buscar comandas abertas', { module: 'ComandaService', error: error as Error });
+        throw error;
+    }
+}
+
 // Esta função é para uso interno, por funcionários já logados
 export const abrirComanda = async (data: CreateComandaDto): Promise<Comanda> => {
     try {
@@ -63,16 +85,6 @@ export const searchComandas = async (term: string): Promise<Comanda[]> => {
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar comandas:', error);
-    throw error;
-  }
-};
-
-export const getComandasAbertas = async (): Promise<Comanda[]> => {
-  try {
-    const response = await api.get('/comandas/search');
-    return response.data;
-  } catch (error) {
-    console.error('Erro ao buscar comandas abertas:', error);
     throw error;
   }
 };

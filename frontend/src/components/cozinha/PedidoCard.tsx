@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ItemPedido, Pedido, PedidoStatus } from '@/types/pedido'; // 1. ItemPedido importado
 import { Check, Play } from 'lucide-react';
 import { Badge } from '../ui/badge'; // 2. Badge importado para o status
@@ -22,6 +22,23 @@ export default function PedidoCard({ pedido, onItemStatusChange }: PedidoCardPro
         if (diffMins < 1) return 'Agora mesmo';
         return `${diffMins} min atrás`;
     }
+
+    const calcularTempoPreparo = (item: ItemPedido) => {
+        if (item.status === 'FEITO') return null;
+        
+        const agora = new Date();
+        const iniciado = item.iniciadoEm ? new Date(item.iniciadoEm) : null;
+        const pronto = item.prontoEm ? new Date(item.prontoEm) : null;
+        
+        if (pronto && iniciado) {
+            const tempo = Math.round((pronto.getTime() - iniciado.getTime()) / 60000);
+            return `✅ ${tempo} min`;
+        } else if (iniciado && item.status === 'EM_PREPARO') {
+            const tempo = Math.round((agora.getTime() - iniciado.getTime()) / 60000);
+            return `⏱️ ${tempo} min`;
+        }
+        return null;
+    };
 
   return (
     <Card className="flex flex-col">
@@ -43,9 +60,16 @@ export default function PedidoCard({ pedido, onItemStatusChange }: PedidoCardPro
                             {item.observacao && <p className='text-xs text-slate-500 italic ml-4'>- {item.observacao}</p>}
                         </div>
                         <div className='flex justify-between items-center mt-2'>
-                            <Badge variant={item.status === 'EM_PREPARO' ? 'destructive' : 'secondary'}>
-                               {item.status.replace('_', ' ')}
-                            </Badge>
+                            <div className='flex items-center gap-2'>
+                                <Badge variant={item.status === 'EM_PREPARO' ? 'destructive' : 'secondary'}>
+                                   {item.status.replace('_', ' ')}
+                                </Badge>
+                                {calcularTempoPreparo(item) && (
+                                    <span className='text-xs font-medium text-muted-foreground'>
+                                        {calcularTempoPreparo(item)}
+                                    </span>
+                                )}
+                            </div>
                             <div>
                                 {item.status === PedidoStatus.FEITO && (
                                     <Button size="sm" onClick={() => onItemStatusChange(item.id, PedidoStatus.EM_PREPARO)}>

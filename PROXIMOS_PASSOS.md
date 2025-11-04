@@ -7,23 +7,15 @@
 
 ## 📋 Checklist Imediato
 
-### 1. Instalar Dependências ⚠️ OBRIGATÓRIO
+### 1. Instalar Dependências ✅ CONCLUÍDO
 
 ```powershell
-# Opção 1: Usar o script automatizado
+# ✅ Executado com sucesso em 04/11/2025
 .\instalar-dependencias.ps1
-
-# Opção 2: Manual
-cd backend
-npm install
-cd ..
-
-cd frontend
-npm install
-cd ..
 ```
 
-**Por quê?** O `decimal.js` foi adicionado ao `package.json` e precisa ser instalado.
+**Status:** ✅ Backend e Frontend com dependências instaladas  
+**Resultado:** `decimal.js` e todas as dependências prontas
 
 ---
 
@@ -265,11 +257,12 @@ useEffect(() => {
 
 ## 🎯 Roadmap Sugerido
 
-### Hoje (23/10/2025)
+### Hoje (04/11/2025)
 - [x] ✅ Corrigir 5 problemas críticos
-- [x] ✅ Corrigir 3 problemas médios
+- [x] ✅ Corrigir 8 problemas médios
 - [x] ✅ Criar documentação completa
-- [ ] ⏳ Instalar dependências
+- [x] ✅ Instalar dependências
+- [ ] ⏳ Configurar FRONTEND_URL
 - [ ] ⏳ Testar correções
 
 ### Amanhã (24/10/2025)
