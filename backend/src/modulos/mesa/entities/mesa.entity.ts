@@ -35,6 +35,22 @@ export class Mesa {
   })
   status: MesaStatus;
 
+  // Campos de posição para mapa visual
+  @Column({ type: 'json', nullable: true })
+  posicao: {
+    x: number;
+    y: number;
+  };
+
+  @Column({ type: 'json', nullable: true })
+  tamanho: {
+    width: number;
+    height: number;
+  };
+
+  @Column({ type: 'int', nullable: true, default: 0 })
+  rotacao: number; // graus (0, 90, 180, 270)
+
   @ManyToOne(() => Ambiente, (ambiente) => ambiente.mesas)
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;

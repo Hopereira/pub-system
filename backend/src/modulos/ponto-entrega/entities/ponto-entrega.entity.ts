@@ -28,6 +28,19 @@ export class PontoEntrega {
   @Column({ type: 'boolean', default: true })
   ativo: boolean;
 
+  // Campos de posição para mapa visual
+  @Column({ type: 'json', nullable: true })
+  posicao: {
+    x: number;
+    y: number;
+  };
+
+  @Column({ type: 'json', nullable: true })
+  tamanho: {
+    width: number;
+    height: number;
+  };
+
   // Relação: Mesa Próxima (opcional)
   @Column({ name: 'mesa_proxima_id', type: 'uuid', nullable: true })
   mesaProximaId: string;
