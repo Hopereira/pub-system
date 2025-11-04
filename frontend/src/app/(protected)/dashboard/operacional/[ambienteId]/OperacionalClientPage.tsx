@@ -22,7 +22,9 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   const { 
     novoPedidoId, 
     audioConsentNeeded, 
-    handleAllowAudio 
+    handleAllowAudio,
+    isConnected,
+    novoPedidoRecebido
   } = useAmbienteNotification(ambienteId);
 
   const fetchDados = async () => {
@@ -43,10 +45,21 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
   useEffect(() => {
     fetchDados();
-    // Adicionamos um polling para atualizar os pedidos a cada 30 segundos
-    const intervalId = setInterval(fetchDados, 30000);
-    return () => clearInterval(intervalId); // Limpa o intervalo ao desmontar o componente
-  }, [ambienteId]);
+    
+    // Polling apenas se WebSocket desconectado (fallback)
+    if (!isConnected) {
+      const intervalId = setInterval(fetchDados, 30000);
+      return () => clearInterval(intervalId);
+    }
+  }, [ambienteId, isConnected]);
+
+  // Recarrega dados quando recebe novo pedido via WebSocket
+  useEffect(() => {
+    if (novoPedidoRecebido) {
+      console.log('🆕 Novo pedido recebido, recarregando dados...');
+      fetchDados();
+    }
+  }, [novoPedidoRecebido]);
 
   const handleUpdateStatus = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
     try {
@@ -78,6 +91,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
     'A Fazer': PedidoStatus.FEITO,
     'Em Preparo': PedidoStatus.EM_PREPARO,
     'Pronto': PedidoStatus.PRONTO,
+    'Aguardando Retirada': PedidoStatus.DEIXADO_NO_AMBIENTE,
   };
 
   return (
@@ -106,7 +120,7 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow h-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-grow h-full">
         {Object.entries(colunas).map(([titulo, status]) => (
           <div key={status} className="bg-card rounded-lg p-4 flex flex-col shadow">
             <h2 className="text-xl font-semibold mb-4 text-center">{titulo}</h2>

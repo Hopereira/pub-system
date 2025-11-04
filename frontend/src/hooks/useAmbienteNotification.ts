@@ -11,6 +11,8 @@ interface UseAmbienteNotificationReturn {
   audioConsentNeeded: boolean;
   handleAllowAudio: () => void;
   clearNotification: () => void;
+  isConnected: boolean;
+  novoPedidoRecebido: Pedido | null; // Novo pedido completo recebido
 }
 
 /**
@@ -22,8 +24,10 @@ interface UseAmbienteNotificationReturn {
  */
 export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteNotificationReturn => {
   const [novoPedidoId, setNovoPedidoId] = useState<string | null>(null);
+  const [novoPedidoRecebido, setNovoPedidoRecebido] = useState<Pedido | null>(null);
   const [audioConsentNeeded, setAudioConsentNeeded] = useState(true);
   const [isAudioAllowed, setIsAudioAllowed] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -89,12 +93,14 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     socketRef.current = io(SOCKET_URL);
 
     socketRef.current.on('connect', () => {
+      setIsConnected(true);
       logger.socket(`Conectado ao ambiente ${ambienteId}`, {
         socketId: socketRef.current?.id,
       });
     });
 
     socketRef.current.on('disconnect', (reason) => {
+      setIsConnected(false);
       logger.warn(`Desconectado do WebSocket`, {
         module: 'WebSocket',
         data: { ambienteId, reason },
@@ -125,9 +131,13 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
       // Define o ID do novo pedido para destacar na UI
       setNovoPedidoId(pedido.id);
       
+      // Armazena o pedido completo para a página poder atualizar
+      setNovoPedidoRecebido(pedido);
+      
       // Remove o destaque após 5 segundos
       setTimeout(() => {
         setNovoPedidoId(null);
+        setNovoPedidoRecebido(null);
       }, 5000);
     });
 
@@ -180,5 +190,7 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     audioConsentNeeded,
     handleAllowAudio,
     clearNotification,
+    isConnected,
+    novoPedidoRecebido,
   };
 };

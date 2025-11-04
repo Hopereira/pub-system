@@ -2,15 +2,18 @@
 
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useComandaSubscription } from '@/hooks/useComandaSubscription';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Volume2 } from 'lucide-react';
+import { CheckCircle, Volume2, AlertCircle, MapPin, RefreshCw } from 'lucide-react';
 import { ComandaStatus } from '@/types/comanda';
 import { ItemPedido, Pedido } from '@/types/pedido';
+import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
+import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao';
 
 // Interface para garantir que nosso item processado tem a referência ao pedido pai
 interface EnrichedItemPedido extends ItemPedido {
@@ -24,6 +27,7 @@ const formatCurrency = (value: number) => {
 
 export default function ComandaClientePage() {
     const params = useParams();
+    const router = useRouter();
     
     // ==================================================================
     // ## A CORREÇÃO ESTÁ AQUI ##
@@ -32,6 +36,21 @@ export default function ComandaClientePage() {
     // ==================================================================
 
     const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
+    const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
+    const [isAvaliacaoModalOpen, setIsAvaliacaoModalOpen] = useState(false);
+    const [avaliacaoJaExibida, setAvaliacaoJaExibida] = useState(false);
+
+    // Abre modal de avaliação quando comanda é paga/fechada
+    useEffect(() => {
+        if (comanda && (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) && !avaliacaoJaExibida) {
+            // Aguarda 1 segundo para exibir o modal
+            const timer = setTimeout(() => {
+                setIsAvaliacaoModalOpen(true);
+                setAvaliacaoJaExibida(true);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [comanda, avaliacaoJaExibida]);
     
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Carregando comanda...</div>;
@@ -51,17 +70,38 @@ export default function ComandaClientePage() {
 
     if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
         return (
-            <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
-                <Card className="max-w-md w-full text-center p-6 animate-fade-in">
-                    <CardHeader>
-                        <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-                        <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground">Sua comanda foi paga com sucesso. Agradecemos a sua visita!</p>
-                    </CardContent>
-                </Card>
-            </div>
+            <>
+                <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
+                    <Card className="max-w-md w-full text-center p-6 animate-fade-in">
+                        <CardHeader>
+                            <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
+                            <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground mb-4">Sua comanda foi paga com sucesso. Agradecemos a sua visita!</p>
+                            <Button 
+                                onClick={() => router.push('/')} 
+                                variant="outline"
+                                className="mt-4"
+                            >
+                                Portal do Cliente
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+                
+                {/* Modal de Avaliação */}
+                {comandaId && (
+                    <ModalAvaliacao
+                        isOpen={isAvaliacaoModalOpen}
+                        onClose={() => setIsAvaliacaoModalOpen(false)}
+                        comandaId={comandaId}
+                        onSuccess={() => {
+                            // Opcional: redirecionar após avaliação
+                        }}
+                    />
+                )}
+            </>
         )
     }
 
@@ -71,6 +111,7 @@ export default function ComandaClientePage() {
         ) ?? [];
 
     const itensValidos = todosOsItens.filter(item => item.status !== 'CANCELADO');
+    const itensDeixadosNoAmbiente = itensValidos.filter(item => item.status === 'DEIXADO_NO_AMBIENTE');
     const total = itensValidos.reduce((acc, item) => acc + (Number(item.precoUnitario) * item.quantidade), 0);
 
     return (
@@ -89,11 +130,93 @@ export default function ComandaClientePage() {
                 <Card>
                     <CardHeader className="text-center">
                         <CardTitle className="text-2xl">
-                            Sua Comanda - {comanda.mesa ? `Mesa ${comanda.mesa.numero}` : 'Balcão'}
+                            {comanda.cliente ? (
+                                <>
+                                    {comanda.cliente.nome}
+                                    {comanda.mesa && <span className="text-muted-foreground"> - Mesa {comanda.mesa.numero}</span>}
+                                </>
+                            ) : (
+                                `Sua Comanda - ${comanda.mesa ? `Mesa ${comanda.mesa.numero}` : 'Balcão'}`
+                            )}
                         </CardTitle>
                         <CardDescription>Acompanhe seus pedidos e o total da sua conta.</CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* Seção de Local de Entrega */}
+                        {(comanda.mesa || comanda.pontoEntrega) && (
+                            <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                    <MapPin className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-blue-900 text-base mb-1">
+                                            📦 Local de Entrega
+                                        </h4>
+                                        <p className="text-blue-800 text-sm mb-2">
+                                            Seus pedidos serão entregues em:
+                                        </p>
+                                        <div className="bg-white rounded-md p-3 border border-blue-300 mb-3">
+                                            <p className="font-bold text-blue-900 text-lg">
+                                                {comanda.mesa 
+                                                    ? `Mesa ${comanda.mesa.numero}` 
+                                                    : comanda.pontoEntrega?.nome
+                                                }
+                                            </p>
+                                            {comanda.pontoEntrega?.descricao && (
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    {comanda.pontoEntrega.descricao}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsLocalModalOpen(true)}
+                                            className="w-full"
+                                        >
+                                            <RefreshCw className="w-4 h-4 mr-2" />
+                                            Mudar Local de Entrega
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {/* Alerta de Pedidos Deixados no Ambiente */}
+                        {itensDeixadosNoAmbiente.length > 0 && (
+                            <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-400 rounded-lg animate-pulse">
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-6 h-6 text-amber-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-amber-900 text-lg mb-1">
+                                            🍽️ Seu Pedido Está Pronto!
+                                        </h4>
+                                        <p className="text-amber-800 text-sm mb-2">
+                                            O garçom não te encontrou no local indicado. Seu pedido foi deixado no seguinte ambiente:
+                                        </p>
+                                        <div className="bg-white rounded-md p-3 border border-amber-300">
+                                            {itensDeixadosNoAmbiente.map((item, idx) => (
+                                                <div key={idx} className="mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-b-0 border-amber-200">
+                                                    <div className="flex items-start gap-2 mb-1">
+                                                        <span className="text-lg">📍</span>
+                                                        <div className="flex-1">
+                                                            <p className="font-bold text-amber-900 text-base">
+                                                                {item.ambienteRetirada?.nome || 'Ambiente de Preparo'}
+                                                            </p>
+                                                            <p className="text-sm text-gray-700 font-medium mt-1">
+                                                                {item.quantidade}x {item.produto?.nome ?? item.observacao}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-amber-700 text-xs mt-3 font-medium">
+                                            💡 Por favor, retire seu pedido no local indicado acima.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         <h3 className="font-bold mb-2">Itens Consumidos</h3>
                         <Table>
                             <TableHeader>
@@ -110,10 +233,26 @@ export default function ComandaClientePage() {
                                     // Se não tem produto, é entrada/couvert artístico
                                     const nomeItem = item.produto?.nome ?? (item.observacao || 'Entrada/Couvert Artístico');
                                     return (
-                                        <TableRow key={`${item.pedido.id}-${item.id}-${index}`} className={ changedPedidos.has(item.pedido.id) ? 'bg-emerald-100 transition-all duration-500' : 'transition-all duration-500'}>
+                                        <TableRow 
+                                            key={`${item.pedido.id}-${item.id}-${index}`} 
+                                            className={
+                                                item.status === 'DEIXADO_NO_AMBIENTE' 
+                                                    ? 'bg-amber-50 border-l-4 border-amber-500 transition-all duration-500'
+                                                    : changedPedidos.has(item.pedido.id) 
+                                                        ? 'bg-emerald-100 transition-all duration-500' 
+                                                        : 'transition-all duration-500'
+                                            }
+                                        >
                                             <TableCell>{item.quantidade}x</TableCell>
                                             <TableCell className="font-medium">{nomeItem}</TableCell>
-                                            <TableCell><Badge variant="secondary">{(item.status || 'INDEFINIDO').replace('_', ' ')}</Badge></TableCell>
+                                            <TableCell>
+                                                <Badge 
+                                                    variant={item.status === 'DEIXADO_NO_AMBIENTE' ? 'destructive' : 'secondary'}
+                                                    className={item.status === 'DEIXADO_NO_AMBIENTE' ? 'animate-pulse' : ''}
+                                                >
+                                                    {item.status === 'DEIXADO_NO_AMBIENTE' ? '🔔 RETIRAR' : (item.status || 'INDEFINIDO').replace('_', ' ')}
+                                                </Badge>
+                                            </TableCell>
                                             <TableCell className="text-right">{formatCurrency(valorItem)}</TableCell>
                                         </TableRow>
                                     )
@@ -127,6 +266,21 @@ export default function ComandaClientePage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {comandaId && (
+                <MudarLocalModal
+                    comandaId={comandaId}
+                    pontoAtualId={comanda.pontoEntrega?.id}
+                    mesaAtualId={comanda.mesa?.id}
+                    agregadosAtuais={comanda.agregados}
+                    open={isLocalModalOpen}
+                    onOpenChange={setIsLocalModalOpen}
+                    onSuccess={async () => {
+                        console.log('✅ Local alterado, recarregando...');
+                        window.location.reload();
+                    }}
+                />
+            )}
         </div>
     );
 }

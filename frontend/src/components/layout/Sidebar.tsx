@@ -8,24 +8,24 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar // 1. ÍCONE CALENDAR IMPORTADO
+    Calendar, MapPin, Package // Ícones importados
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
-import { AmbienteData } from '@/types/ambiente';
+import { Ambiente } from '@/types/ambiente';
 
 const baseNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
-  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] }, // Rota corrigida para consistência
-  { href: '/dashboard/operacional/pedidos', label: 'Pedidos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] }, // Rota corrigida para consistência
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'COZINHA'] },
+  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
+  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
   { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] }, // Rota corrigida
-  { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] }, // Rota corrigida
-  
-  // 2. NOVO LINK: AGENDA DE EVENTOS ADICIONADO AQUI
+  { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
+  { href: '/dashboard/admin/pontos-entrega', label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'] },
   { 
     href: '/dashboard/admin/agenda-eventos', 
     label: 'Agenda de Eventos', 
@@ -87,7 +87,7 @@ export function Sidebar() {
     
     // Adiciona o link do caixa e os links operacionais dinâmicos
     const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
-    combinedLinks.splice(insertIndexOp, 0, caixaLink, ...operationalLinks);
+    combinedLinks.splice(insertIndexOp, 0, caixaLink as any, ...(operationalLinks as any[]));
 
     return combinedLinks;
   }, [operationalLinks]);

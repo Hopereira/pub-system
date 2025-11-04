@@ -1,5 +1,6 @@
 // Caminho: frontend/src/services/api.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axiosRetry from 'axios-retry';
 import { logger } from '@/lib/logger';
 
 const isServer = typeof window === 'undefined';
@@ -9,6 +10,24 @@ const api = axios.create({
   baseURL: isServer
     ? process.env.API_URL_SERVER
     : process.env.NEXT_PUBLIC_API_URL,
+  timeout: 30000, // 30 segundos
+});
+
+// Configurar retry logic
+axiosRetry(api, {
+  retries: 3, // Tentar até 3 vezes
+  retryDelay: axiosRetry.exponentialDelay, // Delay exponencial (1s, 2s, 4s)
+  retryCondition: (error) => {
+    // Retry apenas em erros de rede ou 5xx
+    return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+           (error.response?.status ? error.response.status >= 500 : false);
+  },
+  onRetry: (retryCount, error, requestConfig) => {
+    logger.warn(`Tentativa ${retryCount} de retry`, {
+      module: 'API',
+      data: { url: requestConfig.url, error: error.message }
+    });
+  }
 });
 
 // Interceptor de Requisição - Log e autenticação
@@ -74,6 +93,12 @@ api.interceptors.response.use(
       // Logs específicos por tipo de erro
       if (error.response.status === 401) {
         logger.warn('Sessão expirada - Token inválido', { module: 'API' });
+        
+        // Limpar token e redirecionar para login
+        if (!isServer) {
+          localStorage.removeItem('authToken');
+          window.location.href = '/login';
+        }
       } else if (error.response.status === 403) {
         logger.warn('Acesso negado - Permissão insuficiente', { module: 'API' });
       } else if (error.response.status >= 500) {
@@ -107,6 +132,7 @@ export const publicApi = axios.create({
   baseURL: isServer
     ? process.env.API_URL_SERVER
     : process.env.NEXT_PUBLIC_API_URL,
+  timeout: 30000, // 30 segundos
 });
 
 // Adiciona os mesmos interceptors de logging na API pública

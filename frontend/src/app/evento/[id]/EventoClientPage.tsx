@@ -98,76 +98,85 @@ export default function EventoClientPage({ evento, paginaEvento, mesaId }: Event
   const valorEntrada = evento?.valor || 0; // Pega o valor se o objeto evento existir
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="p-0">
-          <div className="relative w-full h-48">
-            <Image
-              src={paginaEvento.urlImagem || '/placeholder.png'}
-              alt={paginaEvento.titulo}
-              fill
-              className="rounded-t-lg object-cover"
-            />
-          </div>
-          <div className="p-6">
+    <div className="min-h-screen bg-background">
+      {/* Hero Section Moderna */}
+      <div className="mb-8">
+        <div className="relative w-full h-[50vh] min-h-[300px]">
+          <Image
+            src={paginaEvento.urlImagem || '/placeholder.png'}
+            alt={paginaEvento.titulo}
+            fill
+            className="object-cover"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          
+          {valorEntrada > 0 && (
+            <div className="absolute top-6 right-6">
+              <div className="bg-red-500 text-white px-4 py-2 rounded-full shadow-lg backdrop-blur-sm font-bold">
+                Entrada: R$ {valorEntrada.toFixed(2).replace('.', ',')}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Formulário */}
+      <div className="container max-w-md mx-auto px-4 -mt-24 relative z-10">
+        <Card className="shadow-2xl border-2">
+          <CardHeader>
             <CardTitle className="text-2xl">{paginaEvento.titulo}</CardTitle>
             <CardDescription>
-                Para começar, por favor, preencha os seus dados abaixo.
-                {valorEntrada > 0 && (
-                    <span className="block font-semibold text-red-600 mt-1">
-                        Taxa de Entrada/Cover: R$ {valorEntrada.toFixed(2).replace('.', ',')}
-                    </span>
-                )}
+              Para começar, por favor, preencha os seus dados abaixo.
             </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="nome"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo</FormLabel>
-                    <FormControl><Input placeholder="Seu nome" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cpf"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>CPF (apenas números)</FormLabel>
-                    <FormControl><Input type="text" placeholder="12345678900" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email (Opcional)</FormLabel>
-                    <FormControl><Input type="email" placeholder="seu.email@exemplo.com" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="celular"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Celular (Opcional)</FormLabel>
-                    <FormControl><Input type="text" placeholder="21999998888" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="nome"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Completo</FormLabel>
+                      <FormControl><Input placeholder="Seu nome" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF (apenas números)</FormLabel>
+                      <FormControl><Input type="text" placeholder="12345678900" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email (Opcional)</FormLabel>
+                      <FormControl><Input type="email" placeholder="seu.email@exemplo.com" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="celular"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Celular (Opcional)</FormLabel>
+                      <FormControl><Input type="text" placeholder="21999998888" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -176,7 +185,8 @@ export default function EventoClientPage({ evento, paginaEvento, mesaId }: Event
             </form>
           </Form>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

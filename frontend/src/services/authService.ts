@@ -1,13 +1,15 @@
-// src/services/authService.ts (Com depuração)
+// src/services/authService.ts
 
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const login = async (email: string, senha: string) => {
   try {
-    // A LINHA MÁGICA PARA DEPURAÇÃO:
-    console.log('Enviando para a API:', { email, senha });
+    // Log apenas em desenvolvimento e sem expor senha
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Enviando para a API:', { email, senha: '***' });
+    }
 
     const response = await axios.post(`${API_URL}/auth/login`, {
       email,

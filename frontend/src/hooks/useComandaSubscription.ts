@@ -4,6 +4,7 @@ import { Comanda, ComandaStatus } from '@/types/comanda';
 import { getPublicComandaById } from '@/services/comandaService';
 import { io, Socket } from 'socket.io-client';
 import { Pedido } from '@/types/pedido';
+import { logger } from '@/lib/logger';
 
 const SOCKET_URL = 'http://localhost:3000'; 
 
@@ -33,7 +34,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
     audioRef.current?.play().then(() => {
       audioRef.current?.pause();
       if(audioRef.current) audioRef.current.currentTime = 0;
-    }).catch(e => {});
+    }).catch(e => logger.error('Erro ao tocar áudio', { module: 'useComandaSubscription', error: e as Error }));
   }, []);
 
   const fetchComanda = useCallback(async () => {
@@ -55,7 +56,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
 
         if (novosPedidosAlterados.size > 0) {
           if (isAudioAllowed) {
-            audioRef.current.play().catch(e => console.error("Erro ao tocar áudio:", e));
+            audioRef.current.play().catch(e => logger.error('Erro ao tocar áudio', { module: 'useComandaSubscription', error: e as Error }));
           }
           setChangedPedidos(novosPedidosAlterados);
           setTimeout(() => setChangedPedidos(new Set()), 3000);
@@ -66,7 +67,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
 
     } catch (err) {
       setError('Comanda não encontrada ou inválida.');
-      console.error(err);
+      logger.error('Erro ao buscar comanda', { module: 'useComandaSubscription', error: err as Error });
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +86,15 @@ export const useComandaSubscription = (comandaId: string | null) => {
   useEffect(() => {
     if (!comandaId) return;
     const socket: Socket = io(SOCKET_URL);
-    socket.on('connect', () => console.log(`[Socket.IO] Conectado: ${socket.id}`));
-    socket.on('disconnect', () => console.log(`[Socket.IO] Desconectado.`));
+    
+    socket.on('connect', () => {
+      logger.socket(`Conectado: ${socket.id}`);
+      // Entra no room da comanda para receber notificações
+      socket.emit('join_comanda', comandaId);
+      logger.socket(`Entrou no room: comanda_${comandaId}`);
+    });
+    
+    socket.on('disconnect', () => logger.socket('Desconectado'));
     
     socket.on('status_atualizado', (pedidoAtualizado: Pedido) => {
       if (pedidoAtualizado.comanda?.id === comandaId) {
@@ -99,11 +107,22 @@ export const useComandaSubscription = (comandaId: string | null) => {
         fetchComanda();
       }
     });
+
+    // Escuta evento de item deixado no ambiente
+    socket.on('item_deixado_no_ambiente', (data: any) => {
+      logger.info('Item deixado no ambiente', { module: 'useComandaSubscription', data });
+      fetchComanda(); // Recarrega a comanda para mostrar o alerta
+      
+      // Toca som de notificação se permitido
+      if (isAudioAllowed && audioRef.current) {
+        audioRef.current.play().catch(e => logger.error('Erro ao tocar áudio', { module: 'useComandaSubscription', error: e as Error }));
+      }
+    });
     
     return () => {
       socket.disconnect();
     };
-  }, [comandaId, fetchComanda]);
+  }, [comandaId, fetchComanda, isAudioAllowed]);
 
   return { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio };
 };

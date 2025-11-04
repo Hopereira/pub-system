@@ -14,6 +14,10 @@ import { SeederModule } from './database/seeder.module';
 import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
 import { EventoModule } from './modulos/evento/evento.module';
 import { StorageModule } from './shared/storage/storage.module';
+import { PontoEntregaModule } from './modulos/ponto-entrega/ponto-entrega.module';
+import { HealthModule } from './health/health.module';
+import { AvaliacaoModule } from './modulos/avaliacao/avaliacao.module';
+import { TurnoModule } from './modulos/turno/turno.module';
 
 @Module({
   imports: [
@@ -42,10 +46,14 @@ import { StorageModule } from './shared/storage/storage.module';
     ClienteModule,
     PedidoModule,
     ProdutoModule,
+    PontoEntregaModule,
     SeederModule,
     PaginaEventoModule,
     EventoModule,
     StorageModule,
+    HealthModule,
+    AvaliacaoModule,
+    TurnoModule,
   ],
   controllers: [],
   providers: [],

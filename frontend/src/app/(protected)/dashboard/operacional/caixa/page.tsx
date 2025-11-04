@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Comanda } from '@/types/comanda';
 import { Mesa } from '@/types/mesa';
 import { Cliente } from '@/types/cliente';
-import { searchComandas } from '@/services/comandaService';
+import { searchComandas, getComandasAbertas } from '@/services/comandaService';
 import { getMesas } from '@/services/mesaService';
 import { getAllClientes } from '@/services/clienteService';
 import { useDebounce } from 'use-debounce';
@@ -16,6 +16,8 @@ import Link from 'next/link';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Users, Table2, X } from 'lucide-react';
+import { logger } from '@/lib/logger';
+import { toast } from 'sonner';
 
 const CaixaPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +25,7 @@ const CaixaPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientesComComanda, setClientesComComanda] = useState<Comanda[]>([]);
   const [activeTab, setActiveTab] = useState('busca');
 
   // O "debounced" searchTerm espera 300ms antes de atualizar.
@@ -35,23 +38,28 @@ const CaixaPage = () => {
         const data = await getMesas();
         setMesas(data);
       } catch (error) {
-        console.error("Erro ao carregar mesas:", error);
+        logger.error('Erro ao carregar mesas', { module: 'CaixaPage', error: error as Error });
+        toast.error('Erro ao carregar mesas');
       }
     };
     carregarMesas();
   }, []);
 
-  // Carrega clientes ao montar o componente
+  // Carrega clientes com comandas abertas ao montar o componente
   useEffect(() => {
-    const carregarClientes = async () => {
+    const carregarClientesComComanda = async () => {
       try {
-        const data = await getAllClientes();
-        setClientes(data);
+        // Buscar todas as comandas abertas
+        const comandasAbertas = await getComandasAbertas();
+        // Filtrar apenas comandas com cliente
+        const comandasComCliente = comandasAbertas.filter(c => c.cliente);
+        setClientesComComanda(comandasComCliente);
       } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
+        logger.error('Erro ao carregar clientes', { module: 'CaixaPage', error: error as Error });
+        toast.error('Erro ao carregar clientes');
       }
     };
-    carregarClientes();
+    carregarClientesComComanda();
   }, []);
 
   // Busca comandas quando o termo de busca muda
@@ -63,7 +71,8 @@ const CaixaPage = () => {
           const data = await searchComandas(debouncedSearchTerm);
           setResults(data);
         } catch (error) {
-          console.error("Erro na busca:", error);
+          logger.error('Erro na busca de comandas', { module: 'CaixaPage', error: error as Error });
+          toast.error('Erro ao buscar comandas');
           setResults([]);
         } finally {
           setIsLoading(false);
@@ -96,7 +105,7 @@ const CaixaPage = () => {
           </TabsTrigger>
           <TabsTrigger value="clientes" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Clientes ({clientes.length})
+            Clientes ({clientesComComanda.length})
           </TabsTrigger>
         </TabsList>
 
@@ -215,17 +224,27 @@ const CaixaPage = () => {
         {/* TAB: LISTAGEM DE CLIENTES */}
         <TabsContent value="clientes" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {clientes.map((cliente) => (
-              <Card key={cliente.id} className="hover:shadow-lg transition-all">
-                <CardHeader>
-                  <CardTitle className="text-lg">{cliente.nome}</CardTitle>
-                  <CardDescription className="space-y-1">
-                    <p>CPF: {cliente.cpf}</p>
-                    {cliente.email && <p>Email: {cliente.email}</p>}
-                    {cliente.celular && <p>Celular: {cliente.celular}</p>}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            {clientesComComanda.map((comanda) => (
+              <Link href={`/dashboard/comandas/${comanda.id}`} key={comanda.id}>
+                <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{comanda.cliente?.nome}</CardTitle>
+                      <Badge variant="secondary">{comanda.status}</Badge>
+                    </div>
+                    <CardDescription className="space-y-1">
+                      <p>CPF: {comanda.cliente?.cpf}</p>
+                      {comanda.cliente?.email && <p>Email: {comanda.cliente.email}</p>}
+                      {comanda.cliente?.celular && <p>Celular: {comanda.cliente.celular}</p>}
+                      {comanda.mesa && (
+                        <p className="text-sm font-semibold text-foreground mt-2">
+                          Mesa {comanda.mesa.numero}
+                        </p>
+                      )}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
             ))}
           </div>
         </TabsContent>

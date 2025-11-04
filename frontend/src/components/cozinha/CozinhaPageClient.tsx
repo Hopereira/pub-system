@@ -2,7 +2,8 @@
 'use client';
 
 // 1. Importamos o novo serviço e DTO
-import { getPedidos, updateItemStatus, UpdateItemStatusDto } from '@/services/pedidoService';
+import { getPedidos, updateItemStatus } from '@/services/pedidoService';
+import { UpdateItemPedidoStatusDto } from '@/types/pedido.dto';
 import { Pedido, PedidoStatus } from '@/types/pedido';
 import React, { useEffect, useState } from 'react';
 import PedidoCard from './PedidoCard';
@@ -97,7 +98,7 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
   // --- FUNÇÃO DE ATUALIZAÇÃO REFEITA ---
   const handleItemStatusChange = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
       try {
-        const data: UpdateItemStatusDto = { status: novoStatus };
+        const data: UpdateItemPedidoStatusDto = { status: novoStatus };
         // 2. Chamamos o novo serviço que atualiza um item específico
         await updateItemStatus(itemPedidoId, data);
         toast.success(`Item atualizado para ${novoStatus.replace('_', ' ')}!`);

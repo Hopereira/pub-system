@@ -13,8 +13,11 @@ import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
+import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
+import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class PedidoService {
@@ -30,12 +33,11 @@ export class PedidoService {
     private readonly comandaRepository: Repository<Comanda>,
     @InjectRepository(Produto)
     private readonly produtoRepository: Repository<Produto>,
+    @InjectRepository(Ambiente)
+    private readonly ambienteRepository: Repository<Ambiente>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
-  // ==================================================================
-  // ## MÉTODO CREATE COM DIAGNÓSTICO ##
-  // ==================================================================
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
     const { comandaId, itens } = createPedidoDto;
     
@@ -67,21 +69,24 @@ export class PedidoService {
     });
 
     const itensPedido = await Promise.all(itensPedidoPromise);
-    const total = itensPedido.reduce((sum, item) => sum + item.quantidade * Number(item.precoUnitario), 0);
+    
+    // Usar Decimal.js para cálculos monetários precisos
+    const total = itensPedido.reduce((sum, item) => {
+      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      return sum.plus(itemTotal);
+    }, new Decimal(0));
     
     const pedido = this.pedidoRepository.create({
       comanda,
       itens: itensPedido,
-      total,
+      total: total.toNumber(),
       status: PedidoStatus.FEITO,
     });
-    this.logger.debug('[DIAGNÓSTICO] - 2. Objeto Pedido criado em memória (antes de salvar)', JSON.stringify(pedido, null, 2));
 
     const novoPedido = await this.pedidoRepository.save(pedido);
-    this.logger.debug('[DIAGNÓSTICO] - 3. Objeto Pedido retornado pelo .save()', JSON.stringify(novoPedido, null, 2));
-    
     const pedidoCompleto = await this.findOne(novoPedido.id);
-    this.logger.debug('[DIAGNÓSTICO] - 4. Objeto Pedido recarregado do DB com findOne()', JSON.stringify(pedidoCompleto, null, 2));
+    
+    this.logger.log(`✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`);
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
     
@@ -95,16 +100,18 @@ export class PedidoService {
     .leftJoinAndSelect('pedido.itens', 'itemPedido')
     .leftJoinAndSelect('itemPedido.produto', 'produto')
     .leftJoinAndSelect('produto.ambiente', 'ambiente')
+    .leftJoinAndSelect('itemPedido.ambienteRetirada', 'ambienteRetirada')
     .select([ // ✅ A CORREÇÃO ESTÁ AQUI
       'pedido',
       'comanda',
       'mesa',
       'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
       'produto',
-      'ambiente'
+      'ambiente',
+      'ambienteRetirada'
     ])
     .where('itemPedido.status IN (:...statuses)', {
-      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO]
+      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO, PedidoStatus.ENTREGUE, PedidoStatus.DEIXADO_NO_AMBIENTE]
     })
     .orderBy('pedido.data', 'ASC');
 
@@ -120,13 +127,8 @@ export class PedidoService {
       ...pedido,
       itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
     })).filter(pedido => pedido.itens.length > 0);
+    this.logger.debug(`🔍 Filtro por ambiente aplicado | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length}`);
   }
-
-  // DIAGNÓSTICO DEFINITIVO NO BACKEND
-  console.log(
-    '[BACKEND DIAGNOSTIC] Dados que serão enviados para o frontend:',
-    JSON.stringify(pedidosFiltrados, null, 2)
-  );
 
   return pedidosFiltrados;
 }
@@ -156,6 +158,25 @@ export class PedidoService {
     const statusAnterior = itemPedido.status;
     itemPedido.status = updateDto.status;
     
+    // Registra timestamps para cálculo de tempo de preparo
+    const agora = new Date();
+    if (updateDto.status === PedidoStatus.EM_PREPARO && !itemPedido.iniciadoEm) {
+      itemPedido.iniciadoEm = agora;
+      this.logger.log(`⏱️ Preparo iniciado: ${itemPedido.produto?.nome || 'Produto'}`);
+    } else if (updateDto.status === PedidoStatus.PRONTO && !itemPedido.prontoEm) {
+      itemPedido.prontoEm = agora;
+      const tempoPreparo = itemPedido.iniciadoEm 
+        ? Math.round((agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000)
+        : null;
+      this.logger.log(`✅ Item pronto: ${itemPedido.produto?.nome || 'Produto'} | Tempo: ${tempoPreparo || '?'} min`);
+    } else if (updateDto.status === PedidoStatus.ENTREGUE && !itemPedido.entregueEm) {
+      itemPedido.entregueEm = agora;
+      const tempoTotal = itemPedido.iniciadoEm
+        ? Math.round((agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000)
+        : null;
+      this.logger.log(`🎉 Item entregue: ${itemPedido.produto?.nome || 'Produto'} | Tempo total: ${tempoTotal || '?'} min`);
+    }
+    
     if (updateDto.status === PedidoStatus.CANCELADO) {
       itemPedido.motivoCancelamento = updateDto.motivoCancelamento;
       this.logger.warn(`🚫 Item cancelado: ${itemPedido.produto?.nome || 'Produto'} | Motivo: ${updateDto.motivoCancelamento}`);
@@ -182,5 +203,137 @@ export class PedidoService {
   async remove(id: string): Promise<void> {
       const pedido = await this.findOne(id);
       await this.pedidoRepository.remove(pedido);
+  }
+
+  // ==================== NOVOS MÉTODOS ====================
+
+  /**
+   * Lista pedidos prontos para entrega (status PRONTO)
+   * Formatado com informações de localização (Mesa ou Ponto de Entrega)
+   */
+  async findProntos(ambienteId?: string): Promise<any[]> {
+    const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
+      .leftJoinAndSelect('pedido.comanda', 'comanda')
+      .leftJoinAndSelect('comanda.mesa', 'mesa')
+      .leftJoinAndSelect('mesa.ambiente', 'mesaAmbiente')
+      .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
+      .leftJoinAndSelect('pontoEntrega.mesaProxima', 'mesaProxima')
+      .leftJoinAndSelect('pontoEntrega.ambientePreparo', 'ambientePreparo')
+      .leftJoinAndSelect('comanda.cliente', 'cliente')
+      .leftJoinAndSelect('pedido.itens', 'itemPedido')
+      .leftJoinAndSelect('itemPedido.produto', 'produto')
+      .where('itemPedido.status = :status', { status: PedidoStatus.PRONTO })
+      .orderBy('pedido.data', 'ASC');
+
+    if (ambienteId) {
+      queryBuilder
+        .leftJoinAndSelect('produto.ambiente', 'produtoAmbiente')
+        .andWhere('produtoAmbiente.id = :ambienteId', { ambienteId });
+    }
+
+    const pedidos = await queryBuilder.getMany();
+
+    this.logger.log(`📋 Listando pedidos prontos | Ambiente: ${ambienteId || 'Todos'} | Quantidade: ${pedidos.length}`);
+
+    // Formata resposta com informações de localização
+    return pedidos.map(pedido => {
+      const tempoEspera = Math.floor((Date.now() - new Date(pedido.data).getTime()) / 60000);
+
+      return {
+        pedidoId: pedido.id,
+        comandaId: pedido.comanda.id,
+        cliente: pedido.comanda.cliente?.nome || 'Cliente Avulso',
+        local: pedido.comanda.mesa
+          ? {
+              tipo: 'MESA',
+              mesa: {
+                numero: pedido.comanda.mesa.numero,
+                ambiente: pedido.comanda.mesa.ambiente?.nome,
+              },
+            }
+          : {
+              tipo: 'PONTO_ENTREGA',
+              pontoEntrega: {
+                nome: pedido.comanda.pontoEntrega?.nome || 'N/A',
+                mesaProxima: pedido.comanda.pontoEntrega?.mesaProxima?.numero,
+                ambientePreparo: pedido.comanda.pontoEntrega?.ambientePreparo?.nome,
+              },
+            },
+        itens: pedido.itens.filter(item => item.status === PedidoStatus.PRONTO),
+        tempoEspera: `${tempoEspera} min`,
+        data: pedido.data,
+      };
+    });
+  }
+
+  /**
+   * Marca item como DEIXADO_NO_AMBIENTE quando cliente não é encontrado
+   * Notifica cliente via WebSocket
+   */
+  async deixarNoAmbiente(
+    itemPedidoId: string,
+    dto: DeixarNoAmbienteDto,
+  ): Promise<ItemPedido> {
+    const item = await this.itemPedidoRepository.findOne({
+      where: { id: itemPedidoId },
+      relations: [
+        'pedido',
+        'pedido.comanda',
+        'pedido.comanda.pontoEntrega',
+        'pedido.comanda.pontoEntrega.ambientePreparo',
+        'pedido.comanda.mesa',
+        'pedido.comanda.mesa.ambiente',
+        'produto',
+      ],
+    });
+
+    if (!item) {
+      this.logger.warn(`⚠️ Tentativa de deixar no ambiente - Item não encontrado: ${itemPedidoId}`);
+      throw new NotFoundException('Item de pedido não encontrado');
+    }
+
+    if (item.status !== PedidoStatus.PRONTO) {
+      throw new BadRequestException('Apenas itens com status PRONTO podem ser deixados no ambiente');
+    }
+
+    const { comanda } = item.pedido;
+    let ambienteRetirada: Ambiente;
+
+    // Busca ambiente de retirada baseado no tipo de comanda
+    if (comanda.pontoEntrega) {
+      ambienteRetirada = await this.ambienteRepository.findOne({
+        where: { id: comanda.pontoEntrega.ambientePreparoId },
+      });
+    } else if (comanda.mesa) {
+      // Mesa tem relação 'ambiente', não 'ambienteId'
+      ambienteRetirada = comanda.mesa.ambiente;
+    }
+
+    if (!ambienteRetirada) {
+      throw new NotFoundException('Ambiente de retirada não encontrado');
+    }
+
+    // Atualiza item
+    item.status = PedidoStatus.DEIXADO_NO_AMBIENTE;
+    item.ambienteRetiradaId = ambienteRetirada.id;
+    item.ambienteRetirada = ambienteRetirada;
+
+    await this.itemPedidoRepository.save(item);
+
+    this.logger.log(
+      `📦 Item deixado no ambiente | Produto: ${item.produto?.nome || 'Item'} → ${ambienteRetirada.nome} | Motivo: ${dto.motivo || 'Cliente não encontrado'}`,
+    );
+
+    // Notifica cliente via WebSocket
+    this.pedidosGateway.server
+      .to(`comanda_${comanda.id}`)
+      .emit('item_deixado_no_ambiente', {
+        itemId: item.id,
+        produtoNome: item.produto?.nome,
+        ambiente: ambienteRetirada.nome,
+        mensagem: `Seu pedido está pronto para retirada no ${ambienteRetirada.nome}`,
+      });
+
+    return item;
   }
 }

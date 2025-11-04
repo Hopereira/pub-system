@@ -1,6 +1,6 @@
 // Caminho: backend/src/modulos/funcionario/funcionario.service.ts
 
-import { Injectable, OnModuleInit, Logger, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -38,6 +38,50 @@ export class FuncionarioService implements OnModuleInit {
     }
   }
   
+  /**
+   * Verifica se é o primeiro acesso (não há usuários no sistema)
+   */
+  async isFirstAccess(): Promise<boolean> {
+    const count = await this.funcionarioRepository.count();
+    return count === 0;
+  }
+
+  /**
+   * Registro público - Primeiro usuário vira ADMIN automaticamente
+   * Depois do primeiro, bloqueia e exige que seja criado por ADMIN
+   */
+  async registroPrimeiroAcesso(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
+    // Verifica se já existe algum usuário
+    const contador = await this.funcionarioRepository.count();
+    
+    if (contador > 0) {
+      this.logger.warn('❌ Tentativa de registro bloqueada - já existe usuário no sistema');
+      throw new ForbiddenException(
+        'Já existe um usuário no sistema. Novos funcionários devem ser criados por um administrador.'
+      );
+    }
+
+    // Primeiro usuário - força cargo ADMIN
+    this.logger.log('🎉 Primeiro acesso! Criando usuário ADMIN...');
+    const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
+    const primeiroUsuario = this.funcionarioRepository.create({
+      ...createFuncionarioDto,
+      senha: senhaHash,
+      cargo: Cargo.ADMIN, // Força ADMIN independente do que foi enviado
+    });
+
+    try {
+      const usuarioCriado = await this.funcionarioRepository.save(primeiroUsuario);
+      this.logger.log(`✅ Primeiro usuário ADMIN criado: ${usuarioCriado.email}`);
+      return usuarioCriado;
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Este e-mail já está cadastrado.');
+      }
+      throw error;
+    }
+  }
+
   async create(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({

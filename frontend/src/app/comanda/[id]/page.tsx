@@ -3,14 +3,15 @@
 import { AddItemDrawer } from "@/components/comandas/AddItemDrawer";
 import { Button } from "@/components/ui/button";
 import { fecharComanda } from "@/services/comandaService";
-import { PlusCircle, Banknote, ShieldAlert } from "lucide-react";
+import { PlusCircle, Banknote, ShieldAlert, MapPin } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { PedidoStatus } from "@/types/pedido-status.enum";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { useAdminComandaSubscription } from "@/hooks/useAdminComandaSubscription"; // <-- MUDANÇA IMPORTANTE
+import { useAdminComandaSubscription } from "@/hooks/useAdminComandaSubscription";
+import { MudarLocalModal } from "@/components/pontos-entrega/MudarLocalModal";
 
 // Função para dar cor aos status (pode ser movida para um ficheiro de 'utils' no futuro)
 const getStatusVariant = (status: PedidoStatus) => {
@@ -39,6 +40,7 @@ export default function ComandaDetalhePage() {
   const { comanda, isLoading, error, fetchComanda } = useAdminComandaSubscription(comandaId);
   
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
 
   const isCaixa = user?.cargo === 'ADMIN' || user?.cargo === 'CAIXA';
   const isGarcom = user?.cargo === 'ADMIN' || user?.cargo === 'GARCOM';
@@ -84,8 +86,43 @@ export default function ComandaDetalhePage() {
 
   return (
     <div className="p-4 relative min-h-screen pb-40">
-      <h1 className="text-3xl font-bold">Comanda da Mesa {comanda.mesa?.numero ?? 'Avulsa'}</h1>
-      <p className="text-lg">Status: <span className="font-semibold">{comanda.status}</span></p>
+      <h1 className="text-3xl font-bold">
+        Sua Comanda - {comanda.mesa?.numero ? `Mesa ${comanda.mesa.numero}` : 'Balcão'}
+      </h1>
+      <p className="text-sm text-gray-600 mt-1">
+        Acompanhe seus pedidos e o total da sua conta.
+      </p>
+
+      {/* Seção: Local de Entrega */}
+      {comanda.status === 'ABERTA' && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <MapPin className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <p className="font-semibold text-gray-900">Local de Retirada</p>
+                <p className="text-sm text-gray-600">
+                  {comanda.pontoEntrega?.nome || 'Nenhum local definido'}
+                </p>
+                {comanda.pontoEntrega?.descricao && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {comanda.pontoEntrega.descricao}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsLocalModalOpen(true)}
+              className="whitespace-nowrap"
+            >
+              <MapPin className="w-4 h-4 mr-1" />
+              Mudar Local
+            </Button>
+          </div>
+        </div>
+      )}
       
       <div className="mt-6">
         <h2 className="text-2xl font-bold border-b pb-2 mb-4">Pedidos</h2>
@@ -157,6 +194,15 @@ export default function ComandaDetalhePage() {
         onClose={() => setIsDrawerOpen(false)}
         comandaId={comandaId}
         onItensAdicionados={handleItensAdicionados}
+      />
+
+      <MudarLocalModal
+        comandaId={comandaId}
+        pontoAtualId={comanda.pontoEntrega?.id}
+        agregadosAtuais={comanda.agregados}
+        open={isLocalModalOpen}
+        onOpenChange={setIsLocalModalOpen}
+        onSuccess={fetchComanda}
       />
     </div>
   );

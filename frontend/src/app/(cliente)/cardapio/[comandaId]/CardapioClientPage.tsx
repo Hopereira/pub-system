@@ -1,4 +1,4 @@
-;'use client';
+'use client';
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,25 +8,20 @@ import ProdutoCard from '@/components/cardapio/ProdutoCard';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ShoppingCart, Pencil, Check } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription, // Adicionado para acessibilidade
-  SheetTrigger,
-  SheetFooter, // Adicionado para o botão de finalizar
-} from '@/components/ui/sheet';
+import { ShoppingCart, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createPedidoFromCliente } from '@/services/pedidoService'; 
 import { CreateItemPedidoDto } from '@/types/pedido.dto';
-
+import { PedidoReviewSheet } from '@/components/pedidos/PedidoReviewSheet';
+import { PedidoStatus } from '@/types/pedido-status.enum';
+import { AddProdutoDialog } from '@/components/cardapio/AddProdutoDialog';
 
 interface CarrinhoItem {
+  id?: string;
   produtoId: string;
-  nome: string;
+  produtoNome: string;
   preco: number;
   quantidade: number;
   observacao?: string;
@@ -51,68 +46,53 @@ interface CardapioClientPageProps {
 export default function CardapioClientPage({ comanda, produtos }: CardapioClientPageProps) {
   const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
   const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [observacaoText, setObservacaoText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const router = useRouter();
 
   const [termoBusca, setTermoBusca] = useState('');
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todos');
 
-  const handleAddItemToCart = (produto: Produto, quantidade = 1) => {
-    toast.success(`${produto.nome} adicionado ao carrinho!`);
-    setCarrinho(prevCarrinho => {
-      const existingItem = prevCarrinho.find(item => item.produtoId === produto.id);
-      if (existingItem) {
-        return prevCarrinho.map(item =>
-          item.produtoId === produto.id
-            ? { ...item, quantidade: item.quantidade + quantidade }
-            : item
-        );
-      } else {
-        return [ ...prevCarrinho, { produtoId: produto.id, nome: produto.nome, preco: produto.preco, quantidade, observacao: '' }];
-      }
-    });
+  const handleAddToCart = (produto: Produto) => {
+    setProdutoSelecionado(produto);
   };
 
-  const handleRemoveItemFromCart = (produtoId: string) => {
-    setCarrinho(prevCarrinho => {
-      const existingItem = prevCarrinho.find(item => item.produtoId === produtoId);
-      if (!existingItem) return prevCarrinho;
-      if (existingItem.quantidade > 1) {
-        return prevCarrinho.map(item =>
-          item.produtoId === produtoId ? { ...item, quantidade: item.quantidade - 1 } : item
-        );
-      } else {
-        return prevCarrinho.filter(item => item.produtoId !== produtoId);
+  const handleConfirmAdd = (quantidade: number, observacao: string) => {
+    if (!produtoSelecionado) return;
+    
+    toast.success(`${produtoSelecionado.nome} adicionado ao carrinho!`);
+    setCarrinho(prevCarrinho => [
+      ...prevCarrinho,
+      { 
+        produtoId: produtoSelecionado.id, 
+        produtoNome: produtoSelecionado.nome, 
+        preco: produtoSelecionado.preco, 
+        quantidade, 
+        observacao 
       }
-    });
+    ]);
+    setProdutoSelecionado(null);
   };
 
-  const handleUpdateObservacao = (produtoId: string) => {
-    setCarrinho(prevCarrinho =>
-      prevCarrinho.map(item =>
-        item.produtoId === produtoId ? { ...item, observacao: observacaoText } : item
+  const handleUpdateQuantidade = (index: number, quantidade: number) => {
+    setCarrinho(prevCarrinho => 
+      prevCarrinho.map((item, i) => 
+        i === index ? { ...item, quantidade } : item
       )
     );
-    setEditingItemId(null);
-    setObservacaoText('');
-  };
-  
-  const handleStartEditing = (item: CarrinhoItem) => {
-    setEditingItemId(item.produtoId);
-    setObservacaoText(item.observacao || '');
   };
 
-  const calcularTotalCarrinho = () => {
-    return carrinho.reduce((total, item) => total + (item.preco * item.quantidade), 0);
+  const handleRemoveItem = (index: number) => {
+    setCarrinho(prevCarrinho => prevCarrinho.filter((_, i) => i !== index));
   };
-  
+
   const handleFinalizarPedido = async () => {
     if (carrinho.length === 0) {
       toast.info("O seu carrinho está vazio.");
       return;
     }
 
+    setIsLoading(true);
     const itens: CreateItemPedidoDto[] = carrinho.map(item => ({
       produtoId: item.produtoId,
       quantidade: item.quantidade,
@@ -121,12 +101,14 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
 
     try {
       await createPedidoFromCliente({ comandaId: comanda.id, itens });
-      toast.success("Pedido enviado para a cozinha!");
+      toast.success("Pedido enviado para preparo!");
       setCarrinho([]);
       setIsCarrinhoOpen(false);
       router.push(`/acesso-cliente/${comanda.id}`);
     } catch (error) {
       toast.error("Falha ao enviar o pedido. Tente novamente.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -152,95 +134,29 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
           </p>
         </div>
         
-        <Sheet open={isCarrinhoOpen} onOpenChange={setIsCarrinhoOpen}>
-          <SheetTrigger asChild>
-            <Button className="relative mt-4 sm:mt-0">
-              <ShoppingCart className="h-5 w-5" />
-              <span className="ml-2">Ver Carrinho</span>
-              {carrinho.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center text-xs font-bold">
-                  {carrinho.reduce((total, item) => total + item.quantidade, 0)}
-                </span>
-              )}
-            </Button>
-          </SheetTrigger>
-          {/* ==================================================================
-              ## CORREÇÃO: Estrutura completa do carrinho restaurada ##
-             ================================================================== */}
-          <SheetContent className="flex flex-col">
-            <SheetHeader>
-              <SheetTitle>Seu Carrinho</SheetTitle>
-              <SheetDescription>Revise os itens antes de enviar para o preparo.</SheetDescription>
-            </SheetHeader>
-            <div className="py-4 space-y-4 flex-1 overflow-y-auto">
-              {carrinho.length === 0 ? (
-                <p className="text-muted-foreground text-center pt-10">O seu carrinho está vazio.</p>
-              ) : (
-                carrinho.map(item => (
-                  <div key={item.produtoId} className="border-b pb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{item.nome}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {item.quantidade} x {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.preco)}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleRemoveItemFromCart(item.produtoId)}>-</Button>
-                        <span className="w-6 text-center">{item.quantidade}</span>
-                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleAddItemToCart(produtos.find(p => p.id === item.produtoId)!, 1)}>+</Button>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      {editingItemId === item.produtoId ? (
-                        <div className="space-y-2">
-                          <Textarea 
-                            placeholder="Ex: Sem cebola, ponto da carne..."
-                            value={observacaoText}
-                            onChange={(e) => setObservacaoText(e.target.value)}
-                          />
-                          <div className="flex justify-end space-x-2">
-                             <Button variant="ghost" size="sm" onClick={() => setEditingItemId(null)}>Cancelar</Button>
-                             <Button size="sm" onClick={() => handleUpdateObservacao(item.produtoId)}>
-                               <Check className="h-4 w-4 mr-1"/> Salvar
-                             </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          {item.observacao && (
-                             <p className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded-md">Obs: {item.observacao}</p>
-                          )}
-                          <Button variant="link" size="sm" className="p-0 h-auto text-sky-600" onClick={() => handleStartEditing(item)}>
-                            <Pencil className="h-3 w-3 mr-1"/>
-                            {item.observacao ? 'Editar observação' : 'Adicionar observação'}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            {carrinho.length > 0 && (
-                <SheetFooter className="mt-auto border-t pt-4">
-                    <div className='w-full space-y-4'>
-                        <div className="flex justify-between items-center text-lg font-bold">
-                            <span>Total:</span>
-                            <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calcularTotalCarrinho())}</span>
-                        </div>
-                        <Button 
-                            disabled={carrinho.length === 0} 
-                            className="w-full"
-                            onClick={handleFinalizarPedido}
-                        >
-                            Enviar Pedido para o preparo
-                        </Button>
-                    </div>
-                </SheetFooter>
-            )}
-          </SheetContent>
-        </Sheet>
+        <Button 
+          onClick={() => setIsCarrinhoOpen(true)}
+          className="relative mt-4 sm:mt-0"
+        >
+          <ShoppingCart className="h-5 w-5" />
+          <span className="ml-2">Ver Carrinho</span>
+          {carrinho.length > 0 && (
+            <Badge className="absolute -top-2 -right-2" variant="destructive">
+              {carrinho.reduce((total, item) => total + item.quantidade, 0)}
+            </Badge>
+          )}
+        </Button>
+        
+        <PedidoReviewSheet
+          open={isCarrinhoOpen}
+          onClose={() => setIsCarrinhoOpen(false)}
+          itens={carrinho}
+          onUpdateQuantidade={handleUpdateQuantidade}
+          onRemoveItem={handleRemoveItem}
+          onAssignPagador={() => {}}
+          onSubmit={handleFinalizarPedido}
+          isLoading={isLoading}
+        />
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-8 sticky top-4 bg-background/90 backdrop-blur-sm p-4 rounded-lg border z-10">
@@ -274,7 +190,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
                 <ProdutoCard
                   key={produto.id}
                   produto={produto}
-                  onAddToCart={() => handleAddItemToCart(produto)}
+                  onAddToCart={() => handleAddToCart(produto)}
                 />
               ))}
             </div>
@@ -285,6 +201,13 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
           <p className="text-muted-foreground">Nenhum produto encontrado com os filtros selecionados.</p>
         </div>
       )}
+
+      <AddProdutoDialog
+        produto={produtoSelecionado}
+        open={!!produtoSelecionado}
+        onClose={() => setProdutoSelecionado(null)}
+        onAdd={handleConfirmAdd}
+      />
     </div>
   );
 }

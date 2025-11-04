@@ -1,9 +1,31 @@
 // frontend/src/services/comandaService.ts
 import { Comanda } from "@/types/comanda";
-import { CreateComandaDto } from "@/types/comanda.dto"; // ✅ Usaremos um tipo daqui a pouco
+import { CreateComandaDto } from "@/types/comanda.dto";
+import { UpdatePontoComandaDto } from "@/types/ponto-entrega.dto";
 import api, { publicApi } from "./api";
+import { logger } from "@/lib/logger";
 
-// ... (suas funções getComandaById, getComandaAbertaPorMesa, searchComandas, fecharComanda continuam iguais)
+// Buscar todas as comandas
+export const getAllComandas = async (): Promise<Comanda[]> => {
+    try {
+        const response = await api.get<Comanda[]>('/comandas');
+        return response.data;
+    } catch (error) {
+        logger.error('Erro ao buscar todas as comandas', { module: 'ComandaService', error: error as Error });
+        throw error;
+    }
+}
+
+// Buscar comandas abertas (usa search sem termo para retornar todas abertas)
+export const getComandasAbertas = async (): Promise<Comanda[]> => {
+    try {
+        const response = await api.get<Comanda[]>('/comandas/search');
+        return response.data;
+    } catch (error) {
+        logger.error('Erro ao buscar comandas abertas', { module: 'ComandaService', error: error as Error });
+        throw error;
+    }
+}
 
 // Esta função é para uso interno, por funcionários já logados
 export const abrirComanda = async (data: CreateComandaDto): Promise<Comanda> => {
@@ -84,5 +106,29 @@ export const getPublicComandaById = async (id: string): Promise<Comanda | null> 
   } catch (error) {
     console.error(`Erro ao buscar comanda pública ${id}:`, error);
     return null;
+  }
+};
+
+export const updateComanda = async (
+  id: string,
+  data: { mesaId?: string | null; pontoEntregaId?: string | null }
+): Promise<Comanda> => {
+  try {
+    logger.log('🔄 Atualizando local da comanda (público)', {
+      module: 'ComandaService',
+      data: { id, ...data },
+    });
+
+    // Usar publicApi para endpoint público
+    const response = await publicApi.patch<Comanda>(`/comandas/${id}/local`, data);
+
+    logger.log('✅ Local da comanda atualizado', { module: 'ComandaService' });
+    return response.data;
+  } catch (error) {
+    logger.error('❌ Erro ao atualizar local da comanda', {
+      module: 'ComandaService',
+      error: error as Error,
+    });
+    throw error;
   }
 };
