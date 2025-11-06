@@ -72,3 +72,37 @@ export const getAllClientes = async (): Promise<Cliente[]> => {
     throw error;
   }
 };
+
+/**
+ * ✅ NOVO: Busca clientes por nome ou CPF
+ * Rota: GET /clientes/buscar?q=termo
+ */
+export const buscarClientes = async (termo: string): Promise<Cliente[]> => {
+  try {
+    const response = await publicApi.get<Cliente[]>('/clientes/buscar', {
+      params: { q: termo }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar clientes:', error);
+    throw error;
+  }
+};
+
+/**
+ * ✅ NOVO: Cria cliente rapidamente com campos mínimos
+ * Rota: POST /clientes/rapido
+ */
+export const criarClienteRapido = async (data: {
+  nome: string;
+  cpf?: string;
+  telefone?: string;
+}): Promise<Cliente> => {
+  try {
+    const response = await publicApi.post<Cliente>('/clientes/rapido', data);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao criar cliente rápido:', error);
+    throw error;
+  }
+};

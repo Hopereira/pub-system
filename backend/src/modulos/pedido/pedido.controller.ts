@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { PedidoService } from './pedido.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
+import { CreatePedidoGarcomDto } from './dto/create-pedido-garcom.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -49,6 +50,24 @@ export class PedidoController {
   @ApiResponse({ status: 404, description: 'Comanda ou produto não encontrado.' })
   createFromCliente(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidoService.create(createPedidoDto);
+  }
+
+  // ✅ NOVO: Endpoint para pedido pelo garçom
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
+  @Post('garcom')
+  @ApiOperation({ 
+    summary: 'Cria pedido pelo garçom (cria/busca comanda automaticamente)',
+    description: 'Garçom faz pedido para cliente. Sistema cria comanda automaticamente se não existir.'
+  })
+  @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos ou pedido sem itens.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
+  @ApiResponse({ status: 404, description: 'Cliente ou produto não encontrado.' })
+  createPedidoGarcom(@Body() dto: CreatePedidoGarcomDto) {
+    return this.pedidoService.createPedidoGarcom(dto);
   }
 
   @Patch('/item/:itemPedidoId/status')

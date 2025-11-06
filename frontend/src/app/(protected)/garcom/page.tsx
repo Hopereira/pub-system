@@ -3,15 +3,28 @@
 import { useEffect, useState } from 'react';
 import { CardCheckIn } from '@/components/turno/CardCheckIn';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Clock, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Users, Clock, TrendingUp, Bell, Package, Plus } from 'lucide-react';
 import turnoService from '@/services/turnoService';
+import * as pedidoService from '@/services/pedidoService';
 import { FuncionarioAtivo, EstatisticasTurno } from '@/types/turno';
+import { Pedido, PedidoStatus } from '@/types/pedido';
 import { useAuth } from '@/context/AuthContext';
+import { useGarcomNotification } from '@/hooks/useGarcomNotification';
 
 export default function GarcomPage() {
   const { user } = useAuth();
   const [funcionariosAtivos, setFuncionariosAtivos] = useState<FuncionarioAtivo[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasTurno | null>(null);
+  const [pedidosProntos, setPedidosProntos] = useState<Pedido[]>([]);
+
+  // WebSocket para notificações em tempo real
+  const { connected, novoPedido } = useGarcomNotification({
+    onNovoPedidoPronto: () => {
+      // Recarregar pedidos quando um novo ficar pronto
+      carregarDados();
+    },
+  });
 
   useEffect(() => {
     if (user?.id) {
@@ -22,8 +35,8 @@ export default function GarcomPage() {
 
   const carregarDados = async () => {
     try {
-      // Busca funcionários ativos e estatísticas em paralelo
-      const [ativos, stats] = await Promise.all([
+      // Busca funcionários ativos, estatísticas e pedidos prontos em paralelo
+      const [ativos, stats, pedidos] = await Promise.all([
         turnoService.getFuncionariosAtivos().catch(() => []),
         user?.id
           ? turnoService
@@ -33,10 +46,17 @@ export default function GarcomPage() {
               })
               .catch(() => null)
           : Promise.resolve(null),
+        pedidoService.getPedidos().catch(() => []),
       ]);
 
       setFuncionariosAtivos(ativos);
       setEstatisticas(stats);
+      
+      // Filtrar apenas pedidos com status PRONTO
+      const prontos = pedidos.filter(p => 
+        p.itens?.some(item => item.status === PedidoStatus.PRONTO)
+      );
+      setPedidosProntos(prontos);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     }
@@ -201,27 +221,109 @@ export default function GarcomPage() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             <a
-              href="/dashboard/gestaopedidos"
+              href="/garcom/novo-pedido"
+              className="p-4 border-2 border-primary rounded-lg hover:shadow-lg transition-all text-center group bg-primary/5"
+            >
+              <Plus className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <h3 className="font-semibold text-primary">Novo Pedido</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Fazer pedido para cliente
+              </p>
+            </a>
+
+            <a
+              href="/garcom/mapa"
+              className="p-4 border-2 rounded-lg hover:border-primary hover:shadow-md transition-all text-center group"
+            >
+              <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
+              <h3 className="font-semibold">Mapa de Mesas</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Visualizar layout
+              </p>
+            </a>
+
+            <a
+              href="/dashboard/operacional/gestao"
               className="p-4 border-2 rounded-lg hover:border-primary hover:shadow-md transition-all text-center group"
             >
               <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
               <h3 className="font-semibold">Gestão de Pedidos</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Ver pedidos prontos
-              </p>
-            </a>
-
-            <a
-              href="/dashboard"
-              className="p-4 border-2 rounded-lg hover:border-primary hover:shadow-md transition-all text-center group"
-            >
-              <TrendingUp className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
-              <h3 className="font-semibold">Dashboard</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Ver estatísticas
+                Gerenciar pedidos
               </p>
             </a>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Pedidos Prontos */}
+      <Card className={`${
+        pedidosProntos.length > 0 
+          ? 'border-2 border-yellow-500 shadow-lg' 
+          : ''
+      }`}>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className={`h-5 w-5 ${
+                pedidosProntos.length > 0 ? 'text-yellow-600 animate-pulse' : ''
+              }`} />
+              Pedidos Prontos
+            </div>
+            {pedidosProntos.length > 0 && (
+              <Badge variant="destructive" className="text-lg px-3 py-1">
+                {pedidosProntos.length}
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pedidosProntos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>Nenhum pedido pronto no momento</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pedidosProntos.slice(0, 3).map((pedido) => {
+                const itensProntos = pedido.itens?.filter(i => i.status === 'PRONTO') || [];
+                return (
+                  <div
+                    key={pedido.id}
+                    className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">
+                          {pedido.comanda?.mesa 
+                            ? `Mesa ${pedido.comanda.mesa.numero}`
+                            : 'Balcão'
+                          }
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {itensProntos.length} {itensProntos.length === 1 ? 'item pronto' : 'itens prontos'}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                        PRONTO
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+              {pedidosProntos.length > 3 && (
+                <p className="text-center text-sm text-muted-foreground">
+                  + {pedidosProntos.length - 3} pedidos
+                </p>
+              )}
+              <a
+                href="/dashboard/operacional/pedidos-prontos"
+                className="block w-full mt-4 p-3 bg-primary text-white text-center rounded-lg hover:bg-primary/90 transition-colors font-semibold"
+              >
+                Ver Todos os Pedidos Prontos
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

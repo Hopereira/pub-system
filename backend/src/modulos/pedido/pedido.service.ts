@@ -7,9 +7,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pedido } from './entities/pedido.entity';
-import { Comanda } from '../comanda/entities/comanda.entity';
+import { Comanda, ComandaStatus } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
+import { CreatePedidoGarcomDto } from './dto/create-pedido-garcom.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
@@ -87,6 +88,83 @@ export class PedidoService {
     const pedidoCompleto = await this.findOne(novoPedido.id);
     
     this.logger.log(`✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`);
+
+    this.pedidosGateway.emitNovoPedido(pedidoCompleto);
+    
+    return pedidoCompleto;
+  }
+
+  // ✅ NOVO: Criar pedido pelo garçom (com criação automática de comanda)
+  async createPedidoGarcom(dto: CreatePedidoGarcomDto): Promise<Pedido> {
+    const { clienteId, garcomId, mesaId, itens, observacao } = dto;
+    
+    this.logger.log(`👨‍🍳 Garçom criando pedido | Garçom: ${garcomId} | Cliente: ${clienteId} | ${itens.length} itens`);
+
+    // Busca ou cria comanda para o cliente
+    let comanda = await this.comandaRepository.findOne({
+      where: { 
+        cliente: { id: clienteId },
+        status: ComandaStatus.ABERTA 
+      },
+      relations: ['cliente', 'mesa'],
+    });
+
+    // Se não existe comanda aberta, cria uma nova
+    if (!comanda) {
+      this.logger.log(`📋 Criando nova comanda para cliente ${clienteId}`);
+      
+      const novaComanda = this.comandaRepository.create({
+        cliente: { id: clienteId } as any,
+        mesa: mesaId ? { id: mesaId } as any : null,
+        status: ComandaStatus.ABERTA,
+      });
+      
+      comanda = await this.comandaRepository.save(novaComanda);
+      this.logger.log(`✅ Comanda criada | ID: ${comanda.id}`);
+    } else {
+      this.logger.log(`📋 Usando comanda existente | ID: ${comanda.id}`);
+    }
+
+    // Valida itens
+    if (!itens || itens.length === 0) {
+      throw new BadRequestException('Um pedido não pode ser criado sem itens.');
+    }
+
+    // Cria itens do pedido
+    const itensPedidoPromise = itens.map(async (itemDto) => {
+      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
+      if (!produto) {
+        throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
+      }
+      return this.itemPedidoRepository.create({
+        produto,
+        quantidade: itemDto.quantidade,
+        precoUnitario: produto.preco,
+        observacao: itemDto.observacao,
+        status: PedidoStatus.FEITO,
+      });
+    });
+
+    const itensPedido = await Promise.all(itensPedidoPromise);
+    
+    // Calcula total
+    const total = itensPedido.reduce((sum, item) => {
+      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      return sum.plus(itemTotal);
+    }, new Decimal(0));
+    
+    // Cria pedido
+    const pedido = this.pedidoRepository.create({
+      comanda,
+      itens: itensPedido,
+      total: total.toNumber(),
+      status: PedidoStatus.FEITO,
+    });
+
+    const novoPedido = await this.pedidoRepository.save(pedido);
+    const pedidoCompleto = await this.findOne(novoPedido.id);
+    
+    this.logger.log(`✅ Pedido pelo garçom criado | ID: ${pedidoCompleto.id} | Garçom: ${garcomId} | Total: R$ ${total.toFixed(2)}`);
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
     
