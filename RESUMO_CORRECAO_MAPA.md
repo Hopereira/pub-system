@@ -36,7 +36,7 @@ Componente reutilizável para proteger rotas baseado no cargo do usuário.
 
 #### Rota de Visualização (Garçom)
 **Rota:** `/garcom/mapa`  
-**Acesso:** GARCOM, ADMIN, GERENTE  
+**Acesso:** GARCOM, ADMIN, GERENTE, caixa,  
 **Função:** Visualizar mapa operacional em tempo real
 
 #### Rota de Preview (Admin) - NOVA
