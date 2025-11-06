@@ -41,6 +41,48 @@ export const getPontosEntregaAtivos = async (): Promise<PontoEntrega[]> => {
 };
 
 /**
+ * Lista pontos de entrega de um ambiente específico
+ */
+export const getPontosByAmbiente = async (ambienteId: string): Promise<PontoEntrega[]> => {
+  try {
+    logger.debug(`🔍 Buscando pontos do ambiente ${ambienteId}`, { module: 'PontoEntregaService' });
+    const response = await api.get<PontoEntrega[]>(`/pontos-entrega/ambiente/${ambienteId}`);
+    logger.log(`✅ ${response.data.length} pontos encontrados no ambiente`, { module: 'PontoEntregaService' });
+    return response.data;
+  } catch (error) {
+    logger.error(`❌ Erro ao buscar pontos do ambiente ${ambienteId}`, {
+      module: 'PontoEntregaService',
+      error,
+    });
+    throw error;
+  }
+};
+
+/**
+ * Atualiza posição de um ponto no mapa
+ */
+export const updatePosicaoPonto = async (
+  id: string,
+  data: { posicao: { x: number; y: number }; tamanho?: { width: number; height: number } }
+): Promise<PontoEntrega> => {
+  try {
+    logger.log(`📍 Atualizando posição do ponto ${id}`, {
+      module: 'PontoEntregaService',
+      data,
+    });
+    const response = await api.put<PontoEntrega>(`/pontos-entrega/${id}/posicao`, data);
+    logger.log('✅ Posição do ponto atualizada', { module: 'PontoEntregaService' });
+    return response.data;
+  } catch (error) {
+    logger.error(`❌ Erro ao atualizar posição do ponto ${id}`, {
+      module: 'PontoEntregaService',
+      error,
+    });
+    throw error;
+  }
+};
+
+/**
  * Busca um ponto de entrega por ID
  */
 export const getPontoEntregaById = async (id: string): Promise<PontoEntrega> => {

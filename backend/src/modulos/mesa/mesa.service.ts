@@ -21,31 +21,40 @@ export class MesaService {
     private readonly ambienteRepository: Repository<Ambiente>,
   ) {}
 
-  // --- MÉTODO ATUALIZADO COM TRATAMENTO DE ERRO ---
+  // --- MÉTODO ATUALIZADO: Aceita posição, tamanho e rotação opcionais ---
   async create(createMesaDto: CreateMesaDto): Promise<Mesa> {
-    const { numero, ambienteId } = createMesaDto;
+    const { numero, ambienteId, posicao, tamanho, rotacao } = createMesaDto;
 
+    // Valida se ambiente existe
     const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
     if (!ambiente) {
       throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
     }
 
+    // Cria mesa com posição, tamanho e rotação (se fornecidos)
     const mesa = this.mesaRepository.create({
       numero,
       ambiente,
+      posicao: posicao || { x: 100, y: 100 }, // Posição padrão
+      tamanho: tamanho || { width: 80, height: 80 }, // Tamanho padrão
+      rotacao: rotacao !== undefined ? rotacao : 0, // Rotação padrão
     });
 
-    // ALTERAÇÃO 2: Envolvemos a operação de salvar em um bloco try...catch
     try {
-      return await this.mesaRepository.save(mesa);
+      const mesaSalva = await this.mesaRepository.save(mesa);
+      
+      Logger.log(
+        `✅ Mesa ${mesa.numero} criada no ambiente "${ambiente.nome}" com posição (${mesa.posicao.x}, ${mesa.posicao.y})`,
+        'MesaService'
+      );
+      
+      return mesaSalva;
     } catch (error) {
-      // ALTERAÇÃO 3: Verificamos se o código do erro é de duplicidade ('23505')
       if (error.code === '23505') {
         throw new ConflictException(
           'Já existe uma mesa com este número neste ambiente.',
         );
       }
-      // Se for qualquer outro tipo de erro, nós o relançamos para ser tratado por outra camada
       throw error;
     }
   }
@@ -55,6 +64,30 @@ export class MesaService {
       relations: ['ambiente', 'comandas'],
       order: { numero: 'ASC' },
     });
+    return mesas.map(mesa => {
+      const temComandaAberta = mesa.comandas?.some(comanda => comanda.status === 'ABERTA');
+      return {
+        ...mesa,
+        status: temComandaAberta ? MesaStatus.OCUPADA : MesaStatus.LIVRE,
+      };
+    });
+  }
+
+  // --- NOVO: Buscar mesas por ambiente ---
+  async findByAmbiente(ambienteId: string): Promise<Mesa[]> {
+    const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
+    if (!ambiente) {
+      throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
+    }
+
+    const mesas = await this.mesaRepository.find({
+      where: { ambiente: { id: ambienteId } },
+      relations: ['ambiente', 'comandas'],
+      order: { numero: 'ASC' },
+    });
+
+    Logger.log(`🔍 Buscadas ${mesas.length} mesas do ambiente "${ambiente.nome}"`, 'MesaService');
+
     return mesas.map(mesa => {
       const temComandaAberta = mesa.comandas?.some(comanda => comanda.status === 'ABERTA');
       return {

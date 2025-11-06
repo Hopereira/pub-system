@@ -109,6 +109,16 @@ export default function ComandaDetalhePage() {
                     {comanda.pontoEntrega.descricao}
                   </p>
                 )}
+                {comanda.pontoEntrega?.ambienteAtendimento && (
+                  <p className="text-xs text-blue-700 font-medium mt-2">
+                    📍 Você está em: {comanda.pontoEntrega.ambienteAtendimento.nome}
+                  </p>
+                )}
+                {comanda.pontoEntrega?.ambientePreparo && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    🍳 Pedido vem de: {comanda.pontoEntrega.ambientePreparo.nome}
+                  </p>
+                )}
               </div>
             </div>
             <Button

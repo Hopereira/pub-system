@@ -7,9 +7,19 @@ export interface PontoEntrega {
   descricao?: string;
   mesaProximaId?: string;
   mesaProxima?: Mesa;
+  ambienteAtendimentoId?: string;
+  ambienteAtendimento?: Ambiente;
   ambientePreparoId: string;
   ambientePreparo?: Ambiente;
   ativo: boolean;
+  posicao?: {
+    x: number;
+    y: number;
+  };
+  tamanho?: {
+    width: number;
+    height: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }

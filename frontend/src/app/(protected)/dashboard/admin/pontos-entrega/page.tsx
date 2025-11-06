@@ -49,6 +49,7 @@ const formSchema = z.object({
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
   descricao: z.string().optional(),
   mesaProximaId: z.string().optional(),
+  ambienteAtendimentoId: z.string().optional(),
   ambientePreparoId: z.string().min(1, { message: 'Por favor, selecione um ambiente de preparo.' }),
 });
 
@@ -71,6 +72,7 @@ const GestaoPontosEntregaPage = () => {
       nome: '',
       descricao: '',
       mesaProximaId: undefined,
+      ambienteAtendimentoId: undefined,
       ambientePreparoId: undefined,
     },
   });
@@ -84,9 +86,8 @@ const GestaoPontosEntregaPage = () => {
         getMesas(),
       ]);
       setPontos(pontosData || []);
-      // Filtrar apenas ambientes de preparo
-      const ambientesPreparo = ambientesData?.filter((amb) => amb.tipo === 'PREPARO') || [];
-      setAmbientes(ambientesPreparo);
+      // Carregar todos os ambientes (atendimento e preparo)
+      setAmbientes(ambientesData || []);
       setMesas(mesasData || []);
     } catch (err) {
       toast.error('Falha ao carregar dados da página.');
@@ -105,6 +106,7 @@ const GestaoPontosEntregaPage = () => {
       nome: '',
       descricao: '',
       mesaProximaId: undefined,
+      ambienteAtendimentoId: undefined,
       ambientePreparoId: undefined,
     });
     setIsModalOpen(true);
@@ -116,6 +118,7 @@ const GestaoPontosEntregaPage = () => {
       nome: ponto.nome,
       descricao: ponto.descricao || '',
       mesaProximaId: ponto.mesaProximaId || undefined,
+      ambienteAtendimentoId: ponto.ambienteAtendimentoId || undefined,
       ambientePreparoId: ponto.ambientePreparoId,
     });
     setIsModalOpen(true);
@@ -132,6 +135,7 @@ const GestaoPontosEntregaPage = () => {
         ...values,
         // Remove campos vazios
         mesaProximaId: values.mesaProximaId || undefined,
+        ambienteAtendimentoId: values.ambienteAtendimentoId || undefined,
         descricao: values.descricao || undefined,
       };
 
@@ -332,6 +336,32 @@ const GestaoPontosEntregaPage = () => {
 
               <FormField
                 control={form.control}
+                name="ambienteAtendimentoId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ambiente de Atendimento (Opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Onde o cliente está fisicamente" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {ambientes.filter(a => a.tipo === 'ATENDIMENTO').map((ambiente) => (
+                          <SelectItem key={ambiente.id} value={ambiente.id}>
+                            {ambiente.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="ambientePreparoId"
                 render={({ field }) => (
                   <FormItem>
@@ -339,11 +369,11 @@ const GestaoPontosEntregaPage = () => {
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecione o ambiente" />
+                          <SelectValue placeholder="De onde vem o pedido" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {ambientes.map((ambiente) => (
+                        {ambientes.filter(a => a.tipo === 'PREPARO').map((ambiente) => (
                           <SelectItem key={ambiente.id} value={ambiente.id}>
                             {ambiente.nome}
                           </SelectItem>

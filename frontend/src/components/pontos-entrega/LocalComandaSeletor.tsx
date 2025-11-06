@@ -194,9 +194,14 @@ export const LocalComandaSeletor = ({
                           {ponto.descricao && (
                             <p className="text-sm text-muted-foreground">{ponto.descricao}</p>
                           )}
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                            {ponto.ambienteAtendimento && (
+                              <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                                📍 {ponto.ambienteAtendimento.nome}
+                              </Badge>
+                            )}
                             <Badge variant="outline" className="text-xs">
-                              Preparo: {ponto.ambientePreparo?.nome || 'N/A'}
+                              🍳 Preparo: {ponto.ambientePreparo?.nome || 'N/A'}
                             </Badge>
                             {ponto.mesaProxima && (
                               <Badge variant="secondary" className="text-xs">

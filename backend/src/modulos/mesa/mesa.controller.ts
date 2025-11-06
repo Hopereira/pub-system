@@ -47,6 +47,15 @@ export class MesaController {
     return this.mesaService.findAll();
   }
 
+  @Get('ambiente/:ambienteId')
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiOperation({ summary: 'Lista mesas de um ambiente específico' })
+  @ApiResponse({ status: 200, description: 'Mesas do ambiente retornadas com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Ambiente não encontrado.' })
+  findByAmbiente(@Param('ambienteId', ParseUUIDPipe) ambienteId: string) {
+    return this.mesaService.findByAmbiente(ambienteId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Busca uma mesa específica por ID' })
   @ApiResponse({ status: 200, description: 'Dados da mesa retornados com sucesso.' })

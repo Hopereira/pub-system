@@ -52,6 +52,14 @@ export class PontoEntregaController {
     return this.pontoEntregaService.findAllAtivos();
   }
 
+  @Get('ambiente/:ambienteId')
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiOperation({ summary: 'Listar pontos de entrega de um ambiente específico' })
+  @ApiResponse({ status: 200, description: 'Lista de pontos do ambiente' })
+  findByAmbiente(@Param('ambienteId') ambienteId: string) {
+    return this.pontoEntregaService.findByAmbiente(ambienteId);
+  }
+
   @Get(':id')
   @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM)
   @ApiOperation({ summary: 'Buscar ponto específico por ID' })
