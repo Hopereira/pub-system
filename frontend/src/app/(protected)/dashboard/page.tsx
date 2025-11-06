@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BentoGrid, BentoGridItem } from "@/components/dashboard/BentoGrid";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard, MiniBarChart } from "@/components/dashboard/ChartCard";
+import { RoleGuard } from "@/components/guards/RoleGuard";
 import { 
   Users, 
   UtensilsCrossed, 
@@ -17,6 +18,7 @@ import { getRelatorioGeral } from "@/services/analyticsService";
 import { getComandasAbertas } from "@/services/comandaService";
 import { getMesas } from "@/services/mesaService";
 import { getPedidos } from "@/services/pedidoService";
+import { getEstatisticasDoDia } from "@/services/avaliacaoService";
 import { Comanda } from "@/types/comanda";
 import { Mesa } from "@/types/mesa";
 import { Pedido } from "@/types/pedido";
@@ -34,6 +36,9 @@ export default function DashboardPage() {
     tempoPreparoStatus: 'neutral' as const,
     pedidosPendentes: 0,
     comandasAbertas: 0,
+    taxaSatisfacao: 0,
+    mediaSatisfacao: 0,
+    totalAvaliacoes: 0,
   });
 
   const [produtosMaisVendidos, setProdutosMaisVendidos] = useState<Array<{label: string, value: number, color: string}>>([]);
@@ -46,7 +51,7 @@ export default function DashboardPage() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
-        const [relatorio, comandas, mesas, pedidos] = await Promise.all([
+        const [relatorio, comandas, mesas, pedidos, estatisticasSatisfacao] = await Promise.all([
           getRelatorioGeral({
             dataInicio: hoje,
             dataFim: new Date(),
@@ -55,6 +60,14 @@ export default function DashboardPage() {
           getComandasAbertas(),
           getMesas(),
           getPedidos(),
+          getEstatisticasDoDia().catch(() => ({
+            mediaSatisfacao: 0,
+            totalAvaliacoes: 0,
+            taxaSatisfacao: 0,
+            distribuicao: { nota1: 0, nota2: 0, nota3: 0, nota4: 0, nota5: 0 },
+            tempoMedioEstadia: 0,
+            valorMedioGasto: 0,
+          })),
         ]);
 
         // Conta mesas ocupadas (com comanda aberta)
@@ -76,6 +89,9 @@ export default function DashboardPage() {
           totalMesas: mesas.length,
           pedidosPendentes,
           comandasAbertas: comandas.length,
+          taxaSatisfacao: estatisticasSatisfacao.taxaSatisfacao,
+          mediaSatisfacao: estatisticasSatisfacao.mediaSatisfacao,
+          totalAvaliacoes: estatisticasSatisfacao.totalAvaliacoes,
         }));
 
         // Atualiza produtos mais vendidos
@@ -146,15 +162,22 @@ export default function DashboardPage() {
     metricas.tempoMedioPreparo > 15 ? 'warning' : 
     'success';
 
+  const satisfacaoStatus =
+    metricas.taxaSatisfacao >= 80 ? 'success' :
+    metricas.taxaSatisfacao >= 60 ? 'warning' :
+    metricas.taxaSatisfacao > 0 ? 'danger' :
+    'neutral';
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Visão geral das operações do estabelecimento
-        </p>
-      </div>
+    <RoleGuard allowedRoles={['ADMIN', 'GERENTE', 'CAIXA']}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Visão geral das operações do estabelecimento
+          </p>
+        </div>
 
       {/* Métricas Principais - Bento Grid */}
       <BentoGrid>
@@ -213,13 +236,12 @@ export default function DashboardPage() {
         </BentoGridItem>
 
         <BentoGridItem>
-          {/* TODO: Implementar sistema de avaliações */}
           <MetricCard
             title="Taxa de Satisfação"
-            value="-"
-            subtitle="Sistema em desenvolvimento"
+            value={metricas.totalAvaliacoes > 0 ? `${metricas.taxaSatisfacao}%` : '-'}
+            subtitle={metricas.totalAvaliacoes > 0 ? `${metricas.totalAvaliacoes} avaliações (⭐ ${metricas.mediaSatisfacao.toFixed(1)}/5)` : 'Nenhuma avaliação hoje'}
             icon={CheckCircle2}
-            status="neutral"
+            status={satisfacaoStatus}
           />
         </BentoGridItem>
 
@@ -269,6 +291,7 @@ export default function DashboardPage() {
           </p>
         </a>
       </div>
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

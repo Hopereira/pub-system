@@ -8,10 +8,13 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
+  Put,
+  Query,
 } from '@nestjs/common';
 import { MesaService } from './mesa.service';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
+import { AtualizarPosicaoMesaDto, MapaCompletoDto } from './dto/mapa.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -74,5 +77,28 @@ export class MesaController {
   @ApiResponse({ status: 404, description: 'Mesa não encontrada.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.mesaService.remove(id);
+  }
+
+  // ===== ENDPOINTS DE MAPA VISUAL =====
+
+  @Get('mapa/visualizar')
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
+  @ApiOperation({ summary: 'Obter mapa visual completo do estabelecimento' })
+  @ApiResponse({ status: 200, description: 'Mapa retornado com sucesso.', type: MapaCompletoDto })
+  getMapa(@Query('ambienteId') ambienteId: string): Promise<MapaCompletoDto> {
+    return this.mesaService.getMapa(ambienteId);
+  }
+
+  @Put(':id/posicao')
+  @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Atualizar posição da mesa no mapa (Admin)' })
+  @ApiResponse({ status: 200, description: 'Posição atualizada com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({ status: 404, description: 'Mesa não encontrada.' })
+  atualizarPosicao(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AtualizarPosicaoMesaDto,
+  ) {
+    return this.mesaService.atualizarPosicao(id, dto);
   }
 }

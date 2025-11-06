@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Settings } from 'lucide-react';
 
 import { Mesa } from '@/types/mesa';
 import { AmbienteData, getAmbientes } from '@/services/ambienteService';
@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   numero: z.coerce.number().min(1, { message: 'O número da mesa é obrigatório.' }),
@@ -27,6 +28,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const GestaoMesasPage = () => {
+  const router = useRouter();
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [ambientes, setAmbientes] = useState<AmbienteData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,7 +75,6 @@ const GestaoMesasPage = () => {
     setIsConfirmOpen(true);
   };
 
-  // --- FUNÇÃO onSubmit ATUALIZADA ---
   const onSubmit = async (values: FormValues) => {
     try {
       if (editingMesa) {
@@ -85,9 +86,7 @@ const GestaoMesasPage = () => {
       }
       setIsModalOpen(false);
       await loadData();
-    } catch (err: any) { // ALTERAÇÃO 1: Definimos 'err' como 'any' para acessar 'err.message'
-      // ALTERAÇÃO 2: Usamos 'err.message' para exibir o erro específico do backend.
-      // Se não houver, exibe uma mensagem genérica.
+    } catch (err: any) { 
       const errorMessage = err.message || (editingMesa ? 'Falha ao atualizar a mesa.' : 'Falha ao criar a mesa.');
       toast.error(errorMessage);
     }
@@ -113,7 +112,13 @@ const GestaoMesasPage = () => {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Gerenciamento de Mesas (Admin)</h1>
-        <Button onClick={handleOpenNewDialog}>Adicionar Nova Mesa</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.push('/dashboard/mapa/configurar')}>
+            <Settings className="h-4 w-4 mr-2" />
+            Configurar Layout
+          </Button>
+          <Button onClick={handleOpenNewDialog}>Adicionar Nova Mesa</Button>
+        </div>
       </div>
       
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
