@@ -227,3 +227,34 @@ export const criarPedidoGarcom = async (data: {
     throw error;
   }
 };
+
+/**
+ * ✅ NOVO: Marca item como entregue pelo garçom
+ * Rota: PATCH /pedidos/item/:id/marcar-entregue
+ */
+export const marcarComoEntregue = async (
+  itemPedidoId: string,
+  garcomId: string,
+): Promise<any> => {
+  try {
+    logger.log('🚚 Marcando item como entregue', {
+      module: 'PedidoService',
+      data: { itemPedidoId, garcomId }
+    });
+    const response = await api.patch(`/pedidos/item/${itemPedidoId}/marcar-entregue`, {
+      garcomId
+    });
+    logger.log('✅ Item marcado como entregue', {
+      module: 'PedidoService',
+      data: { itemPedidoId }
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Erro ao marcar item como entregue', {
+      module: 'PedidoService',
+      data: { itemPedidoId },
+      error: error as Error
+    });
+    throw error;
+  }
+};

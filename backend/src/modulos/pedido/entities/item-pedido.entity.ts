@@ -10,6 +10,7 @@ import { Pedido } from './pedido.entity';
 // --- CORREÇÃO APLICADA AQUI ---
 import { Produto } from '../../produto/entities/produto.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
 
 @Entity('itens_pedido')
@@ -61,4 +62,16 @@ export class ItemPedido {
 
   @Column({ type: 'timestamp', nullable: true })
   entregueEm: Date;
+
+  // ✅ NOVO: Garçom que entregou o item
+  @Column({ name: 'garcom_entrega_id', type: 'uuid', nullable: true })
+  garcomEntregaId: string;
+
+  @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'garcom_entrega_id' })
+  garcomEntrega: Funcionario;
+
+  // ✅ NOVO: Tempo de entrega em minutos (calculado automaticamente)
+  @Column({ type: 'int', nullable: true })
+  tempoEntregaMinutos: number;
 }

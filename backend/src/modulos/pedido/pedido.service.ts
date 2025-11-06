@@ -15,9 +15,11 @@ import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
+import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -36,6 +38,8 @@ export class PedidoService {
     private readonly produtoRepository: Repository<Produto>,
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
+    @InjectRepository(Funcionario)
+    private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
@@ -411,6 +415,76 @@ export class PedidoService {
         ambiente: ambienteRetirada.nome,
         mensagem: `Seu pedido está pronto para retirada no ${ambienteRetirada.nome}`,
       });
+
+    return item;
+  }
+
+  /**
+   * ✅ NOVO: Marca item como entregue pelo garçom
+   */
+  async marcarComoEntregue(
+    itemPedidoId: string,
+    dto: MarcarEntregueDto,
+  ): Promise<ItemPedido> {
+    // Busca o item
+    const item = await this.itemPedidoRepository.findOne({
+      where: { id: itemPedidoId },
+      relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+    }
+
+    // Verifica se o item está pronto
+    if (item.status !== PedidoStatus.PRONTO) {
+      throw new BadRequestException('Apenas itens com status PRONTO podem ser marcados como entregues.');
+    }
+
+    // Busca o garçom
+    const garcom = await this.funcionarioRepository.findOne({
+      where: { id: dto.garcomId },
+    });
+
+    if (!garcom) {
+      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+    }
+
+    // Calcula tempo de entrega (do momento que ficou pronto até agora)
+    const agora = new Date();
+    let tempoEntregaMinutos = null;
+
+    if (item.prontoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.prontoEm).getTime();
+      tempoEntregaMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+    }
+
+    // Atualiza o item
+    item.status = PedidoStatus.ENTREGUE;
+    item.entregueEm = agora;
+    item.garcomEntregaId = dto.garcomId;
+    item.tempoEntregaMinutos = tempoEntregaMinutos;
+
+    await this.itemPedidoRepository.save(item);
+
+    this.logger.log(
+      `✅ Item entregue | Produto: ${item.produto?.nome || 'Item'} | Garçom: ${garcom.nome} | Tempo: ${tempoEntregaMinutos || 'N/A'} min`,
+    );
+
+    // Emite evento WebSocket
+    const comanda = item.pedido?.comanda;
+    if (comanda) {
+      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      
+      // Notifica cliente
+      this.pedidosGateway.server
+        .to(`comanda_${comanda.id}`)
+        .emit('item_entregue', {
+          itemId: item.id,
+          produtoNome: item.produto?.nome,
+          garcomNome: garcom.nome,
+        });
+    }
 
     return item;
   }

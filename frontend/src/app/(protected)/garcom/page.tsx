@@ -17,6 +17,8 @@ export default function GarcomPage() {
   const [funcionariosAtivos, setFuncionariosAtivos] = useState<FuncionarioAtivo[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasTurno | null>(null);
   const [pedidosProntos, setPedidosProntos] = useState<Pedido[]>([]);
+  const [horaAtual, setHoraAtual] = useState<string>('');
+  const [dataAtual, setDataAtual] = useState<string>('');
 
   // WebSocket para notificações em tempo real
   const { connected, novoPedido } = useGarcomNotification({
@@ -33,24 +35,38 @@ export default function GarcomPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // Atualizar hora e data a cada segundo
+  useEffect(() => {
+    const atualizarHoraData = () => {
+      const now = new Date();
+      setHoraAtual(
+        now.toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
+      setDataAtual(
+        now.toLocaleDateString('pt-BR', {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        })
+      );
+    };
+
+    atualizarHoraData(); // Atualizar imediatamente
+    const interval = setInterval(atualizarHoraData, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const carregarDados = async () => {
     try {
-      // Busca funcionários ativos, estatísticas e pedidos prontos em paralelo
-      const [ativos, stats, pedidos] = await Promise.all([
-        turnoService.getFuncionariosAtivos().catch(() => []),
-        user?.id
-          ? turnoService
-              .getEstatisticasFuncionario(user.id, {
-                dataInicio: getInicioMes(),
-                dataFim: new Date().toISOString(),
-              })
-              .catch(() => null)
-          : Promise.resolve(null),
-        pedidoService.getPedidos().catch(() => []),
-      ]);
-
-      setFuncionariosAtivos(ativos);
-      setEstatisticas(stats);
+      // ⚠️ Sistema de turnos não implementado - removido temporariamente
+      // Busca apenas pedidos prontos
+      const pedidos = await pedidoService.getPedidos().catch(() => []);
       
       // Filtrar apenas pedidos com status PRONTO
       const prontos = pedidos.filter(p => 
@@ -107,21 +123,30 @@ export default function GarcomPage() {
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-4xl">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Olá, {user.nome}! 👋</h1>
-        <p className="text-muted-foreground mt-1">
-          Gerencie seu turno e veja suas estatísticas
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Olá, {user.nome}! 👋</h1>
+          <p className="text-muted-foreground mt-1">
+            Área do Garçom - Pedidos Prontos para Entrega
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground capitalize mb-1">{dataAtual}</p>
+          <div className="flex items-center gap-2 justify-end">
+            <Clock className="h-5 w-5 text-primary" />
+            <p className="text-3xl font-bold tabular-nums text-primary">{horaAtual}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Card de Check-in/Check-out */}
+      {/* Card de Check-In */}
       <CardCheckIn
         funcionarioId={user.id}
         funcionarioNome={user.nome}
       />
 
-      {/* Estatísticas do Mês */}
-      {estatisticas && estatisticas.totalTurnos > 0 && (
+      {/* Estatísticas do Mês - Desabilitado temporariamente */}
+      {false && estatisticas && estatisticas.totalTurnos > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -164,8 +189,8 @@ export default function GarcomPage() {
         </Card>
       )}
 
-      {/* Funcionários Ativos */}
-      {funcionariosAtivos.length > 0 && (
+      {/* Funcionários Ativos - Desabilitado temporariamente */}
+      {false && funcionariosAtivos.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -243,13 +268,24 @@ export default function GarcomPage() {
             </a>
 
             <a
-              href="/dashboard/operacional/gestao"
-              className="p-4 border-2 rounded-lg hover:border-primary hover:shadow-md transition-all text-center group"
+              href="/dashboard/operacional/pedidos-prontos"
+              className={`p-4 border-2 rounded-lg hover:shadow-md transition-all text-center group ${
+                pedidosProntos.length > 0 
+                  ? 'border-yellow-500 bg-yellow-50' 
+                  : 'hover:border-primary'
+              }`}
             >
-              <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
-              <h3 className="font-semibold">Gestão de Pedidos</h3>
+              <Bell className={`h-8 w-8 mx-auto mb-2 ${
+                pedidosProntos.length > 0 
+                  ? 'text-yellow-600 animate-pulse' 
+                  : 'text-muted-foreground group-hover:text-primary'
+              }`} />
+              <h3 className="font-semibold">Pedidos Prontos</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Gerenciar pedidos
+                {pedidosProntos.length > 0 
+                  ? `${pedidosProntos.length} aguardando` 
+                  : 'Nenhum no momento'
+                }
               </p>
             </a>
           </div>

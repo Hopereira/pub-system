@@ -1,5 +1,6 @@
 import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { Cargo } from '../enums/cargo.enum';
+import { FuncionarioStatus } from '../enums/funcionario-status.enum';
 import * as bcrypt from 'bcrypt';
 
 @Entity('funcionarios')
@@ -22,6 +23,13 @@ export class Funcionario {
     default: Cargo.GARCOM,
   })
   cargo: Cargo;
+
+  @Column({
+    type: 'enum',
+    enum: FuncionarioStatus,
+    default: FuncionarioStatus.INATIVO,
+  })
+  status: FuncionarioStatus;
 
   @Column({ type: 'uuid', nullable: true, name: 'empresa_id' })
   empresaId: string;

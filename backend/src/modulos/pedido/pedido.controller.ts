@@ -22,6 +22,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@ne
 import { Public } from 'src/auth/decorators/public.decorator';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
+import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
 
 @ApiTags('Pedidos')
 @Controller('pedidos')
@@ -193,5 +194,29 @@ export class PedidoController {
     @Body() dto: DeixarNoAmbienteDto,
   ) {
     return this.pedidoService.deixarNoAmbiente(id, dto);
+  }
+
+  // ✅ NOVO: Marcar item como entregue
+  @Patch('item/:id/marcar-entregue')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Marca item como entregue pelo garçom',
+    description: 'Registra a entrega do item, incluindo o garçom responsável e o tempo de entrega. Emite notificação via WebSocket.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Item marcado como entregue com sucesso.' 
+  })
+  @ApiResponse({ status: 400, description: 'UUID inválido ou item não está pronto.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão (apenas ADMIN e GARCOM).' })
+  @ApiResponse({ status: 404, description: 'Item ou garçom não encontrado.' })
+  marcarComoEntregue(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: MarcarEntregueDto,
+  ) {
+    return this.pedidoService.marcarComoEntregue(id, dto);
   }
 }
