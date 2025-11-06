@@ -37,7 +37,7 @@ O garçom precisa ser **cadastrado pelo administrador** antes de poder acessar o
 ```typescript
 // Após login bem-sucedido:
 if (user.cargo === 'GARCOM') {
-  redirect('/garcom')  // Página do garçom
+  redirect('56')  // Página do garçom
 } else if (user.cargo === 'ADMIN') {
   redirect('/dashboard')  // Dashboard admin
 } else if (user.cargo === 'CAIXA') {

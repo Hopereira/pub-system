@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BentoGrid, BentoGridItem } from "@/components/dashboard/BentoGrid";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard, MiniBarChart } from "@/components/dashboard/ChartCard";
+import { RoleGuard } from "@/components/guards/RoleGuard";
 import { 
   Users, 
   UtensilsCrossed, 
@@ -168,14 +169,15 @@ export default function DashboardPage() {
     'neutral';
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Visão geral das operações do estabelecimento
-        </p>
-      </div>
+    <RoleGuard allowedRoles={['ADMIN', 'GERENTE', 'CAIXA']}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Visão geral das operações do estabelecimento
+          </p>
+        </div>
 
       {/* Métricas Principais - Bento Grid */}
       <BentoGrid>
@@ -289,6 +291,7 @@ export default function DashboardPage() {
           </p>
         </a>
       </div>
-    </div>
+      </div>
+    </RoleGuard>
   );
 }

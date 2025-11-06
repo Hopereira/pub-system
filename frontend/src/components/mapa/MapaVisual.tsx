@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Filter, ZoomIn, ZoomOut } from 'lucide-react';
+import { RefreshCw, Filter, ZoomIn, ZoomOut, Move } from 'lucide-react';
 import { MapaCompleto, MesaMapa, PontoEntregaMapa } from '@/types/mapa';
 import mapaService from '@/services/mapaService';
 import { toast } from 'sonner';
@@ -20,6 +20,11 @@ export function MapaVisual({ ambienteId, onMesaClick, onPontoClick }: MapaVisual
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todos' | 'prontos'>('todos');
   const [zoom, setZoom] = useState(1);
+  
+  // Estado para Pan (arrastar o mapa)
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     carregarMapa();
@@ -68,6 +73,32 @@ export function MapaVisual({ ambienteId, onMesaClick, onPontoClick }: MapaVisual
     }
     return true;
   }) || [];
+
+  // Handlers para Pan (arrastar o mapa)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const resetPan = () => {
+    setPan({ x: 0, y: 0 });
+  };
 
   if (loading) {
     return (
@@ -119,7 +150,7 @@ export function MapaVisual({ ambienteId, onMesaClick, onPontoClick }: MapaVisual
         </div>
       </CardHeader>
       <CardContent>
-        {/* Controles de Zoom */}
+        {/* Controles de Zoom e Pan */}
         <div className="flex gap-2 mb-4">
           <Button
             variant="outline"
@@ -137,6 +168,18 @@ export function MapaVisual({ ambienteId, onMesaClick, onPontoClick }: MapaVisual
           </Button>
           <span className="text-sm text-muted-foreground self-center">
             {Math.round(zoom * 100)}%
+          </span>
+          <div className="border-l mx-2" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetPan}
+            title="Resetar posição do mapa"
+          >
+            <Move className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground self-center">
+            Arraste para mover
           </span>
         </div>
 
@@ -161,14 +204,22 @@ export function MapaVisual({ ambienteId, onMesaClick, onPontoClick }: MapaVisual
         </div>
 
         {/* Mapa */}
-        <div className="border rounded-lg overflow-auto bg-gray-50">
+        <div 
+          className="border rounded-lg overflow-hidden bg-gray-50"
+          style={{ height: '600px', position: 'relative' }}
+        >
           <div
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
             style={{
               width: mapa.layout.width,
               height: mapa.layout.height,
-              transform: `scale(${zoom})`,
+              transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
               transformOrigin: 'top left',
-              position: 'relative',
+              position: 'absolute',
+              cursor: isDragging ? 'grabbing' : 'grab',
             }}
           >
             {/* Renderizar Mesas */}

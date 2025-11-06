@@ -43,6 +43,12 @@ export function CardCheckIn({
   }, [turnoAtivo]);
 
   const verificarTurnoAtivo = async () => {
+    if (!funcionarioId) {
+      console.warn('funcionarioId não disponível, pulando verificação de turno');
+      setVerificando(false);
+      return;
+    }
+
     try {
       setVerificando(true);
       const turnos = await turnoService.getTurnosFuncionario(funcionarioId);
@@ -70,6 +76,11 @@ export function CardCheckIn({
   };
 
   const handleCheckIn = async () => {
+    if (!funcionarioId) {
+      toast.error('Erro: ID do funcionário não disponível. Faça logout e login novamente.');
+      return;
+    }
+
     try {
       setLoading(true);
 

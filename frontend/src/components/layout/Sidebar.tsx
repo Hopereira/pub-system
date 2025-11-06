@@ -16,10 +16,16 @@ import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 
 const baseNavLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
+  // --- Área do Garçom ---
+  { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
+  { href: '/garcom/mapa', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['GARCOM'] },
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
+  
+  // --- Dashboard Administrativo ---
+  { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
   { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'COZINHA'] },
-  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
+  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
+  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },

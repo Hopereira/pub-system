@@ -50,9 +50,35 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Agora apenas chamamos a função login. O contexto cuida do resto!
+      // Faz login e obtém o usuário
       await login({ email, senha: password });
-      console.log("Login bem-sucedido! O contexto está a redirecionar...");
+      
+      // Decodifica o token para obter o cargo
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        const decodedUser = JSON.parse(atob(token.split('.')[1]));
+        const cargo = decodedUser.cargo || decodedUser.role;
+        
+        // Redireciona baseado no cargo
+        switch (cargo) {
+          case 'GARCOM':
+            router.push('/garcom');
+            break;
+          case 'ADMIN':
+          case 'GERENTE':
+            router.push('/dashboard');
+            break;
+          case 'CAIXA':
+            router.push('/caixa');
+            break;
+          case 'COZINHA':
+          case 'COZINHEIRO':
+            router.push('/cozinha');
+            break;
+          default:
+            router.push('/');
+        }
+      }
     } catch (err) {
       setError("Credenciais inválidas. Verifique seu email e senha.");
       console.error(err);

@@ -6,6 +6,7 @@ import { PontoEntrega } from './entities/ponto-entrega.entity';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
 import { UpdatePontoEntregaDto } from './dto/update-ponto-entrega.dto';
+import { AtualizarPosicaoMesaDto } from '../mesa/dto/mapa.dto';
 
 @Injectable()
 export class PontoEntregaService {
@@ -145,5 +146,19 @@ export class PontoEntregaService {
     this.logger.log(`🔄 Ponto ${ponto.nome} ${ponto.ativo ? 'ativado' : 'desativado'}`);
 
     return ponto;
+  }
+
+  async atualizarPosicao(id: string, dto: AtualizarPosicaoMesaDto): Promise<PontoEntrega> {
+    const ponto = await this.findOne(id);
+
+    ponto.posicao = dto.posicao;
+    if (dto.tamanho) {
+      ponto.tamanho = dto.tamanho;
+    }
+
+    const pontoAtualizado = await this.pontoEntregaRepository.save(ponto);
+    this.logger.log(`📍 Ponto ${ponto.nome} posição atualizada: (${dto.posicao.x}, ${dto.posicao.y})`);
+    
+    return pontoAtualizado;
   }
 }

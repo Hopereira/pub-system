@@ -61,6 +61,29 @@ export default function GarcomPage() {
     );
   }
 
+  // Verifica se o user tem ID (novo token JWT)
+  if (!user.id) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 p-4">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-red-600">⚠️ Token Desatualizado</h2>
+          <p className="text-muted-foreground max-w-md">
+            Seu token de autenticação está desatualizado. Por favor, faça logout e login novamente para continuar.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+          }}
+          className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+        >
+          Fazer Logout
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-4xl">
       {/* Header */}

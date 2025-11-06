@@ -25,7 +25,16 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id, cargo: user.cargo };
+    const payload = {
+      id: user.id,
+      sub: user.id, // Mantém sub para compatibilidade
+      email: user.email,
+      nome: user.nome,
+      cargo: user.cargo,
+      role: user.cargo, // Alias para compatibilidade
+      empresaId: user.empresaId,
+      ambienteId: user.ambienteId,
+    };
     const token = this.jwtService.sign(payload);
     this.logger.log(` Token JWT gerado para: ${user.email} (ID: ${user.id})`);
     return {
