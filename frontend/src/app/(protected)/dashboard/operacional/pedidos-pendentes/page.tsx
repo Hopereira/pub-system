@@ -138,9 +138,9 @@ export default function PedidosPendentesPage() {
   const getTempoCorClass = (criadoEm: Date) => {
     const minutos = Math.floor((Date.now() - criadoEm.getTime()) / 60000);
     
-    if (minutos > 20) return 'text-red-600 dark:text-red-400 font-bold';
-    if (minutos > 15) return 'text-orange-600 dark:text-orange-400 font-semibold';
-    return 'text-gray-600 dark:text-gray-400';
+    if (minutos > 8) return 'text-red-600 dark:text-red-400 font-bold';
+    if (minutos > 5) return 'text-orange-600 dark:text-orange-400 font-semibold';
+    return 'text-green-600 dark:text-green-400';
   };
 
   if (isLoading) {
@@ -309,11 +309,11 @@ export default function PedidosPendentesPage() {
                 </div>
 
                 {/* Alerta de Tempo Crítico */}
-                {Math.floor((Date.now() - item.criadoEm.getTime()) / 60000) > 20 && (
+                {Math.floor((Date.now() - item.criadoEm.getTime()) / 60000) > 15 && (
                   <div className="mt-4 flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
                     <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                     <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                      Atenção: Este item está há mais de 20 minutos pendente!
+                      Atenção: Este item está há mais de 15 minutos pendente!
                     </p>
                   </div>
                 )}
