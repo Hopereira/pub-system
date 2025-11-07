@@ -67,7 +67,7 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
       ALTER TABLE "itens_pedido"
       ADD CONSTRAINT "FK_itens_pedido_retirado_por_garcom"
       FOREIGN KEY ("retirado_por_garcom_id")
-      REFERENCES "usuarios"("id")
+      REFERENCES "funcionarios"("id")
       ON DELETE SET NULL
     `);
 
