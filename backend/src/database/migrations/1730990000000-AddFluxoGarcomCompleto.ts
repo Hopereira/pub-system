@@ -5,6 +5,12 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1. Adicionar novos estados ao enum itens_pedido_status
+    // Primeiro remover o default
+    await queryRunner.query(`
+      ALTER TABLE "itens_pedido"
+      ALTER COLUMN "status" DROP DEFAULT
+    `);
+
     await queryRunner.query(`
       ALTER TYPE "public"."itens_pedido_status_enum" 
       RENAME TO "itens_pedido_status_enum_old"
@@ -27,6 +33,12 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
       ALTER TABLE "itens_pedido"
       ALTER COLUMN "status" TYPE "public"."itens_pedido_status_enum"
       USING "status"::text::"public"."itens_pedido_status_enum"
+    `);
+
+    // Restaurar o default
+    await queryRunner.query(`
+      ALTER TABLE "itens_pedido"
+      ALTER COLUMN "status" SET DEFAULT 'FEITO'
     `);
 
     await queryRunner.query(`
@@ -142,6 +154,11 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
 
     // Reverter enum
     await queryRunner.query(`
+      ALTER TABLE "itens_pedido"
+      ALTER COLUMN "status" DROP DEFAULT
+    `);
+
+    await queryRunner.query(`
       CREATE TYPE "public"."itens_pedido_status_enum_old" AS ENUM(
         'FEITO',
         'EM_PREPARO',
@@ -156,6 +173,11 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
       ALTER TABLE "itens_pedido"
       ALTER COLUMN "status" TYPE "public"."itens_pedido_status_enum_old"
       USING "status"::text::"public"."itens_pedido_status_enum_old"
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE "itens_pedido"
+      ALTER COLUMN "status" SET DEFAULT 'FEITO'
     `);
 
     await queryRunner.query(`DROP TYPE "public"."itens_pedido_status_enum"`);
