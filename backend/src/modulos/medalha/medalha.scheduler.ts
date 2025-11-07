@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
-import { TipoFuncionario } from '../funcionario/enums/tipo-funcionario.enum';
+import { Cargo } from '../funcionario/enums/cargo.enum';
 import { MedalhaService } from '../medalha/medalha.service';
 
 @Injectable()
@@ -24,8 +24,7 @@ export class MedalhaScheduler {
       // Buscar todos os garçons ativos
       const garcons = await this.funcionarioRepository.find({
         where: {
-          tipo: TipoFuncionario.GARCOM,
-          ativo: true,
+          cargo: Cargo.GARCOM,
         },
       });
 

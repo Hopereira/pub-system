@@ -6,7 +6,6 @@ import { MedalhaGarcom } from './entities/medalha-garcom.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { TipoMedalha } from './enums/tipo-medalha.enum';
 import { NivelMedalha } from './enums/nivel-medalha.enum';
-import { EventsGateway } from '../events/events.gateway';
 
 @Injectable()
 export class MedalhaService {
@@ -19,7 +18,6 @@ export class MedalhaService {
     private medalhaGarcomRepository: Repository<MedalhaGarcom>,
     @InjectRepository(ItemPedido)
     private itemPedidoRepository: Repository<ItemPedido>,
-    private eventsGateway: EventsGateway,
   ) {}
 
   async getMedalhasGarcom(garcomId: string) {
@@ -142,17 +140,10 @@ export class MedalhaService {
           nivel: medalha.nivel,
         });
 
-        // Emitir evento WebSocket
-        this.eventsGateway.server
-          .to(`user:${garcomId}`)
-          .emit('medalha_conquistada', {
-            medalha: {
-              id: medalha.id,
-              nome: medalha.nome,
-              icone: medalha.icone,
-              nivel: medalha.nivel,
-            },
-          });
+        // TODO: Emitir evento WebSocket quando EventsModule estiver disponível
+        // this.eventsGateway.server
+        //   .to(`user:${garcomId}`)
+        //   .emit('medalha_conquistada', { medalha: {...} });
 
         this.logger.log(
           `🏆 Nova medalha conquistada! ${medalha.nome} por ${garcomId}`
