@@ -304,7 +304,7 @@ export default function SupervisaoPedidos() {
       </Card>
 
       {/* Métricas - Clicáveis como Filtros */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${
             statusFiltro === 'todos' ? 'ring-2 ring-primary' : ''
