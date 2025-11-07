@@ -16,10 +16,12 @@ import { ItemPedido } from './entities/item-pedido.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
+import { RetirarItemDto } from './dto/retirar-item.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
+import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -40,6 +42,8 @@ export class PedidoService {
     private readonly ambienteRepository: Repository<Ambiente>,
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
+    @InjectRepository(TurnoFuncionario)
+    private readonly turnoRepository: Repository<TurnoFuncionario>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
@@ -419,6 +423,120 @@ export class PedidoService {
         ambiente: ambienteRetirada.nome,
         mensagem: `Seu pedido está pronto para retirada no ${ambienteRetirada.nome}`,
       });
+
+    return item;
+  }
+
+  /**
+   * ✅ NOVO: Marca item como retirado pelo garçom
+   */
+  async retirarItem(
+    itemPedidoId: string,
+    dto: RetirarItemDto,
+  ): Promise<ItemPedido> {
+    // Busca o item
+    const item = await this.itemPedidoRepository.findOne({
+      where: { id: itemPedidoId },
+      relations: ['pedido', 'pedido.comanda', 'produto'],
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+    }
+
+    // Verifica se o item está no estado PRONTO
+    if (item.status !== PedidoStatus.PRONTO) {
+      throw new BadRequestException(
+        'Apenas itens com status PRONTO podem ser retirados. ' +
+        `Status atual: ${item.status}`
+      );
+    }
+
+    // Verifica se o item já foi retirado ou entregue
+    if (item.status === PedidoStatus.RETIRADO || item.status === PedidoStatus.ENTREGUE) {
+      throw new BadRequestException(
+        `Item já foi ${item.status === PedidoStatus.RETIRADO ? 'retirado' : 'entregue'}.`,
+        { cause: 'CONFLICT', description: 'Conflito de estado' }
+      );
+    }
+
+    // Busca o garçom
+    const garcom = await this.funcionarioRepository.findOne({
+      where: { id: dto.garcomId },
+    });
+
+    if (!garcom) {
+      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+    }
+
+    // Valida se o garçom está em turno ativo
+    const turnoAtivo = await this.turnoRepository.findOne({
+      where: { 
+        funcionarioId: dto.garcomId,
+        ativo: true,
+        checkOut: null as any, // TypeORM IsNull workaround
+      },
+    });
+
+    if (!turnoAtivo) {
+      throw new BadRequestException(
+        `Garçom ${garcom.nome} não possui turno ativo. ` +
+        'Faça check-in antes de retirar pedidos.',
+        { cause: 'FORBIDDEN', description: 'Sem turno ativo' }
+      );
+    }
+
+    // Calcula tempo de reação (PRONTO -> RETIRADO)
+    const agora = new Date();
+    let tempoReacaoMinutos = null;
+
+    if (item.prontoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.prontoEm).getTime();
+      tempoReacaoMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+    }
+
+    // Atualiza o item
+    item.status = PedidoStatus.RETIRADO;
+    item.retiradoEm = agora;
+    item.retiradoPorGarcomId = dto.garcomId;
+    item.tempoReacaoMinutos = tempoReacaoMinutos;
+
+    await this.itemPedidoRepository.save(item);
+
+    this.logger.log(
+      `🎯 Item retirado | Produto: ${item.produto?.nome || 'Item'} | ` +
+      `Garçom: ${garcom.nome} | Tempo reação: ${tempoReacaoMinutos || 'N/A'} min`,
+    );
+
+    // Emite evento WebSocket para atualização em tempo real
+    const comanda = item.pedido?.comanda;
+    if (comanda) {
+      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      
+      // Evento específico de item retirado
+      this.pedidosGateway.server.emit('item_retirado', {
+        itemId: item.id,
+        pedidoId: item.pedido.id,
+        produtoNome: item.produto?.nome,
+        garcomId: dto.garcomId,
+        garcomNome: garcom.nome,
+        retiradoEm: agora,
+        tempoReacaoMinutos,
+        statusAnterior: PedidoStatus.PRONTO,
+        statusAtual: PedidoStatus.RETIRADO,
+      });
+
+      // Emite também para sala de gestão
+      this.pedidosGateway.server.to('gestao').emit('item_retirado', {
+        itemId: item.id,
+        pedidoId: item.pedido.id,
+        produtoNome: item.produto?.nome,
+        garcomId: dto.garcomId,
+        garcomNome: garcom.nome,
+        retiradoEm: agora,
+        tempoReacaoMinutos,
+      });
+    }
 
     return item;
   }
