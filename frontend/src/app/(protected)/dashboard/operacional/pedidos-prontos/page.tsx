@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { RefreshCw, Package, Filter } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
-import { getPedidosProntos, marcarComoEntregue } from '@/services/pedidoService';
+import { getPedidosProntos, marcarComoEntregue, retirarItem } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
 import { useAuth } from '@/context/AuthContext';
 import { Ambiente } from '@/types/ambiente';
@@ -188,16 +188,35 @@ const PedidosProntosPage = () => {
       return;
     }
 
+    // Verifica se é garçom
+    if (user.cargo !== 'GARCOM') {
+      toast.error('Apenas garçons podem entregar pedidos');
+      return;
+    }
+
     try {
+      // 1º Passo: RETIRAR (PRONTO → RETIRADO)
+      logger.log('🛍️ Retirando item...', {
+        module: 'PedidosProntosPage',
+        data: { itemId }
+      });
+      await retirarItem(itemId, user.id);
+      
+      // 2º Passo: ENTREGAR (RETIRADO → ENTREGUE)
+      logger.log('📦 Marcando como entregue...', {
+        module: 'PedidosProntosPage',
+        data: { itemId }
+      });
       await marcarComoEntregue(itemId, user.id);
-      toast.success('Item marcado como entregue!');
+      
+      toast.success('Item entregue com sucesso!');
       loadPedidos(); // Recarregar lista
-    } catch (error) {
-      logger.error('Erro ao marcar item como entregue', {
+    } catch (error: any) {
+      logger.error('Erro ao entregar item', {
         module: 'PedidosProntosPage',
         error: error as Error,
       });
-      toast.error('Erro ao marcar item como entregue');
+      toast.error(error.response?.data?.message || 'Erro ao entregar item');
     }
   };
 
