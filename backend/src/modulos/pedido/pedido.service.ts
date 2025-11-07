@@ -452,14 +452,6 @@ export class PedidoService {
       );
     }
 
-    // Verifica se o item já foi retirado ou entregue
-    if (item.status === PedidoStatus.RETIRADO || item.status === PedidoStatus.ENTREGUE) {
-      throw new BadRequestException(
-        `Item já foi ${item.status === PedidoStatus.RETIRADO ? 'retirado' : 'entregue'}.`,
-        { cause: 'CONFLICT', description: 'Conflito de estado' }
-      );
-    }
-
     // Busca o garçom
     const garcom = await this.funcionarioRepository.findOne({
       where: { id: dto.garcomId },
