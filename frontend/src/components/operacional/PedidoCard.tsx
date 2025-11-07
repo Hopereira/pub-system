@@ -62,6 +62,9 @@ export function PedidoCard({ pedido, onUpdateStatus, onCancel, filtroStatus }: P
               {item.status === PedidoStatus.EM_PREPARO && (
                 <Button size="sm" onClick={() => onUpdateStatus(item.id, PedidoStatus.PRONTO)}>Pronto</Button>
               )}
+              {item.status === PedidoStatus.QUASE_PRONTO && (
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-700" onClick={() => onUpdateStatus(item.id, PedidoStatus.PRONTO)}>✅ Finalizar</Button>
+              )}
               {item.status === PedidoStatus.PRONTO && (
                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => onUpdateStatus(item.id, PedidoStatus.ENTREGUE)}>Entregar</Button>
               )}

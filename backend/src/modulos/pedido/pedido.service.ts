@@ -221,11 +221,25 @@ export class PedidoService {
   let pedidosFiltrados = pedidos;
 
   if (ambienteId) {
+    // Log para debug: quantos itens ANTES do filtro
+    const totalItensAntesFiltro = pedidos.reduce((sum, p) => sum + p.itens.length, 0);
+    const statusAntes = pedidos.flatMap(p => p.itens).reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    this.logger.debug(`📊 ANTES do filtro JS | Pedidos: ${pedidos.length} | Total Itens: ${totalItensAntesFiltro} | Status: ${JSON.stringify(statusAntes)}`);
+    
     pedidosFiltrados = pedidos.map(pedido => ({
       ...pedido,
       itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
     })).filter(pedido => pedido.itens.length > 0);
-    this.logger.debug(`🔍 Filtro por ambiente aplicado | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length}`);
+    
+    const totalItensDepoisFiltro = pedidosFiltrados.reduce((sum, p) => sum + p.itens.length, 0);
+    const statusDepois = pedidosFiltrados.flatMap(p => p.itens).reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    this.logger.debug(`🔍 DEPOIS do filtro JS | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length} | Total Itens: ${totalItensDepoisFiltro} | Status: ${JSON.stringify(statusDepois)}`);
   }
 
   return pedidosFiltrados;
