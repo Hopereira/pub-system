@@ -202,6 +202,7 @@ export default function DashboardPage() {
             subtitle={`${mesasPercentual}% ocupado`}
             icon={UtensilsCrossed}
             status={mesasStatus}
+            href="/dashboard/operacional/mesas"
           />
         </BentoGridItem>
 
