@@ -39,6 +39,11 @@ export default function QRCodeComandaPage() {
     return `${window.location.origin}/acesso-cliente/${comandaId}`;
   };
 
+  // URL de recuperação de comanda
+  const getUrlRecuperacao = () => {
+    return `${window.location.origin}/recuperar-comanda`;
+  };
+
   // Buscar comandas ativas do garçom
   const buscarComandas = async () => {
     setCarregando(true);
@@ -165,6 +170,29 @@ export default function QRCodeComandaPage() {
               <Button onClick={buscarComandas} disabled={carregando}>
                 {carregando ? 'Carregando...' : 'Atualizar'}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Informação sobre Recuperação de Acesso */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <QrCode className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900 mb-2">
+                  💡 Cliente perdeu o QR Code?
+                </h3>
+                <p className="text-sm text-blue-800 mb-3">
+                  O cliente pode recuperar o acesso à comanda visitando:
+                </p>
+                <code className="block bg-white px-3 py-2 rounded border border-blue-300 text-sm font-mono text-blue-900 mb-2">
+                  {getUrlRecuperacao()}
+                </code>
+                <p className="text-xs text-blue-700">
+                  Basta digitar o <strong>código da comanda</strong> (ex: CMD-001) para acessar novamente.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
