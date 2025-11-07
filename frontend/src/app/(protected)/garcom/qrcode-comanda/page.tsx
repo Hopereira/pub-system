@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Search, QrCode, Download, Printer, ExternalLink } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Search, QrCode, Download, Printer, ExternalLink, Filter, ArrowUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
@@ -29,6 +30,8 @@ export default function QRCodeComandaPage() {
   const router = useRouter();
   const { user, token } = useAuth();
   const [busca, setBusca] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState<string>('TODAS');
+  const [ordenacao, setOrdenacao] = useState<string>('alfabetica');
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [comandaSelecionada, setComandaSelecionada] = useState<Comanda | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -43,7 +46,7 @@ export default function QRCodeComandaPage() {
     return `${window.location.origin}/recuperar-comanda`;
   };
 
-  // Buscar comandas ativas do garçom
+  // Buscar comandas do garçom
   const buscarComandas = async () => {
     setCarregando(true);
     try {
@@ -53,8 +56,9 @@ export default function QRCodeComandaPage() {
         return;
       }
 
+      // Buscar todas as comandas (sem filtro de status na API)
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/comandas?status=ABERTA`,
+        `${process.env.NEXT_PUBLIC_API_URL}/comandas`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -86,12 +90,38 @@ export default function QRCodeComandaPage() {
     buscarComandas();
   }, []);
 
-  const comandasFiltradas = comandas.filter(
-    (c) =>
-      c.cliente?.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      (c.mesa?.numero && c.mesa.numero.toString().includes(busca)) ||
-      c.id?.toLowerCase().includes(busca.toLowerCase())
-  );
+  // Aplicar filtros e ordenação
+  const comandasFiltradas = comandas
+    .filter((c) => {
+      // Filtro de busca
+      const matchBusca = 
+        c.cliente?.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+        (c.mesa?.numero && c.mesa.numero.toString().includes(busca)) ||
+        c.id?.toLowerCase().includes(busca.toLowerCase());
+      
+      if (!matchBusca) return false;
+
+      // Filtro de status
+      if (filtroStatus === 'TODAS') return true;
+      return c.status === filtroStatus;
+    })
+    .sort((a, b) => {
+      // Ordenação
+      if (ordenacao === 'alfabetica') {
+        const nomeA = a.cliente?.nome || '';
+        const nomeB = b.cliente?.nome || '';
+        return nomeA.localeCompare(nomeB);
+      } else if (ordenacao === 'mesa') {
+        const mesaA = a.mesa?.numero || 999;
+        const mesaB = b.mesa?.numero || 999;
+        return mesaA - mesaB;
+      } else if (ordenacao === 'recente') {
+        return new Date(b.dataAbertura).getTime() - new Date(a.dataAbertura).getTime();
+      } else if (ordenacao === 'antiga') {
+        return new Date(a.dataAbertura).getTime() - new Date(b.dataAbertura).getTime();
+      }
+      return 0;
+    });
 
   const downloadQRCode = (comandaId: string, nomeCliente: string) => {
     const canvas = document.getElementById(`qr-${comandaId}`) as HTMLCanvasElement;
@@ -162,22 +192,64 @@ export default function QRCodeComandaPage() {
           </div>
         </div>
 
-        {/* Busca */}
+        {/* Busca e Filtros */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por código, cliente ou mesa..."
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="space-y-4">
+              {/* Linha 1: Busca */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por cliente, mesa ou ID..."
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button onClick={buscarComandas} disabled={carregando}>
+                  {carregando ? 'Carregando...' : 'Atualizar'}
+                </Button>
               </div>
-              <Button onClick={buscarComandas} disabled={carregando}>
-                {carregando ? 'Carregando...' : 'Atualizar'}
-              </Button>
+
+              {/* Linha 2: Filtros */}
+              <div className="flex gap-3 items-center flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Status:</span>
+                </div>
+                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Filtrar por status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TODAS">Todas</SelectItem>
+                    <SelectItem value="ABERTA">Abertas</SelectItem>
+                    <SelectItem value="FECHADA">Fechadas</SelectItem>
+                    <SelectItem value="PAGA">Pagas</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-2 ml-4">
+                  <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Ordenar:</span>
+                </div>
+                <Select value={ordenacao} onValueChange={setOrdenacao}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Ordenar por" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="alfabetica">Alfabética (A-Z)</SelectItem>
+                    <SelectItem value="mesa">Número da Mesa</SelectItem>
+                    <SelectItem value="recente">Mais Recente</SelectItem>
+                    <SelectItem value="antiga">Mais Antiga</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="ml-auto text-sm text-muted-foreground">
+                  {comandasFiltradas.length} {comandasFiltradas.length === 1 ? 'comanda' : 'comandas'}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
