@@ -8,7 +8,7 @@ import React from 'react';
 // Ela simplesmente renderiza o nosso componente cliente que contém toda a lógica.
 export default function MapaDeMesasPage() {
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'GERENTE']}>
+    <RoleGuard allowedRoles={['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA']}>
       <MapaMesasClient />
     </RoleGuard>
   );

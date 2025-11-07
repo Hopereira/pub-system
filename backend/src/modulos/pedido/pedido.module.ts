@@ -9,10 +9,11 @@ import { ItemPedido } from './entities/item-pedido.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { PedidosGateway } from './pedidos.gateway';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda, Produto, Ambiente])],
+  imports: [TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda, Produto, Ambiente, Funcionario])],
   controllers: [PedidoController, PedidoAnalyticsController],
   providers: [PedidoService, PedidoAnalyticsService, PedidosGateway],
   // ==================================================================

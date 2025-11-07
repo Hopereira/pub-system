@@ -49,7 +49,15 @@ export class PontoEntrega {
   @JoinColumn({ name: 'mesa_proxima_id' })
   mesaProxima: Mesa;
 
-  // Relação: Ambiente de Preparo (obrigatório)
+  // Relação: Ambiente de Atendimento (onde o cliente está fisicamente)
+  @Column({ name: 'ambiente_atendimento_id', type: 'uuid', nullable: true })
+  ambienteAtendimentoId: string;
+
+  @ManyToOne(() => Ambiente, { nullable: true, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'ambiente_atendimento_id' })
+  ambienteAtendimento: Ambiente;
+
+  // Relação: Ambiente de Preparo (de onde vem o pedido)
   @Column({ name: 'ambiente_preparo_id', type: 'uuid' })
   ambientePreparoId: string;
 

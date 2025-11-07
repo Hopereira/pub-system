@@ -6,6 +6,7 @@ import { Pedido } from '../../pedido/entities/pedido.entity';
 import { PaginaEvento } from '../../pagina-evento/entities/pagina-evento.entity';
 import { PontoEntrega } from '../../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './comanda-agregado.entity';
+import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 
 export enum ComandaStatus {
   ABERTA = 'ABERTA',
@@ -47,4 +48,15 @@ export class Comanda {
 
   @ManyToOne(() => PaginaEvento, { nullable: true, eager: true })
   paginaEvento: PaginaEvento;
+
+  // Rastreamento: Quem criou a comanda
+  @Column({ name: 'criado_por_id', type: 'uuid', nullable: true })
+  criadoPorId: string;
+
+  @Column({ name: 'criado_por_tipo', type: 'varchar', length: 20, default: 'CLIENTE' })
+  criadoPorTipo: 'GARCOM' | 'CLIENTE';
+
+  @ManyToOne(() => Funcionario, { nullable: true })
+  @JoinColumn({ name: 'criado_por_id' })
+  criadoPor: Funcionario;
 }

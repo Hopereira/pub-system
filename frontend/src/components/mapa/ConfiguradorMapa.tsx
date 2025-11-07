@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Save, RotateCw, Plus, Trash2 } from 'lucide-react';
+import { Save, RotateCw, Plus, Trash2, MapPin } from 'lucide-react';
 import { MapaCompleto, Posicao } from '@/types/mapa';
 import mapaService from '@/services/mapaService';
+import { getPontosByAmbiente } from '@/services/pontoEntregaService';
 import { toast } from 'sonner';
 
 interface ConfiguradorMapaProps {
@@ -34,11 +35,30 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
   const carregarMapa = async () => {
     try {
       setLoading(true);
+      console.log('🗺️ Carregando mapa do ambiente:', ambienteId);
+      
       const dados = await mapaService.getMapa(ambienteId);
-      setMapa(dados);
+      console.log('✅ Dados do mapa carregados:', dados);
+      
+      // Buscar pontos de entrega do ambiente
+      console.log('📍 Buscando pontos de entrega...');
+      const pontos = await getPontosByAmbiente(ambienteId);
+      console.log('✅ Pontos encontrados:', pontos.length, pontos);
+      
+      // Mesclar pontos com dados do mapa
+      setMapa({
+        ...dados,
+        pontosEntrega: pontos.map(p => ({
+          ...p,
+          posicao: p.posicao || { x: 200, y: 200 },
+          tamanho: p.tamanho || { width: 100, height: 60 },
+        })),
+      });
+      
+      console.log('✅ Mapa configurado com sucesso');
     } catch (error) {
-      console.error('Erro ao carregar mapa:', error);
-      toast.error('Erro ao carregar mapa');
+      console.error('❌ Erro ao carregar mapa:', error);
+      toast.error('Erro ao carregar mapa: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -51,11 +71,21 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
     posicao: Posicao,
   ) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = mapaRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
     setArrastando(true);
     setItemSelecionado({ tipo, id });
+    
+    // Calcular offset correto relativo ao mapa
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
     setOffset({
-      x: e.clientX - posicao.x,
-      y: e.clientY - posicao.y,
+      x: mouseX - posicao.x,
+      y: mouseY - posicao.y,
     });
   };
 
@@ -133,6 +163,54 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
     });
   };
 
+  const moverMesa = (mesaId: string, eixo: 'x' | 'y', valor: number) => {
+    if (!mapa || isNaN(valor)) return;
+
+    // Limitar valores dentro do mapa
+    const valorLimitado = eixo === 'x' 
+      ? Math.max(0, Math.min(mapa.layout.width - 80, valor))
+      : Math.max(0, Math.min(mapa.layout.height - 80, valor));
+
+    setMapa({
+      ...mapa,
+      mesas: mapa.mesas.map((m) =>
+        m.id === mesaId
+          ? {
+              ...m,
+              posicao: {
+                x: eixo === 'x' ? valorLimitado : (m.posicao?.x || 0),
+                y: eixo === 'y' ? valorLimitado : (m.posicao?.y || 0),
+              },
+            }
+          : m,
+      ),
+    });
+  };
+
+  const moverPonto = (pontoId: string, eixo: 'x' | 'y', valor: number) => {
+    if (!mapa || isNaN(valor)) return;
+
+    // Limitar valores dentro do mapa
+    const valorLimitado = eixo === 'x' 
+      ? Math.max(0, Math.min(mapa.layout.width - 100, valor))
+      : Math.max(0, Math.min(mapa.layout.height - 60, valor));
+
+    setMapa({
+      ...mapa,
+      pontosEntrega: mapa.pontosEntrega.map((p) =>
+        p.id === pontoId
+          ? {
+              ...p,
+              posicao: {
+                x: eixo === 'x' ? valorLimitado : (p.posicao?.x || 0),
+                y: eixo === 'y' ? valorLimitado : (p.posicao?.y || 0),
+              },
+            }
+          : p,
+      ),
+    });
+  };
+
   const adicionarMesa = () => {
     if (!mapa) return;
 
@@ -141,11 +219,17 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
     const proximoNumero = Math.max(...numerosMesas, 0) + 1;
 
     // Criar nova mesa temporária (será salva no backend ao clicar em Salvar)
+    // Calcular posição inicial para evitar sobreposição
+    const posicaoInicial = {
+      x: 100 + (mapa.mesas.length % 5) * 120, // Espaçar horizontalmente
+      y: 100 + Math.floor(mapa.mesas.length / 5) * 120, // Espaçar verticalmente
+    };
+
     const novaMesa = {
       id: `temp-${Date.now()}`, // ID temporário
       numero: proximoNumero,
       status: 'LIVRE' as const,
-      posicao: { x: 100, y: 100 }, // Posição inicial
+      posicao: posicaoInicial,
       tamanho: { width: 80, height: 80 },
       rotacao: 0,
       comanda: undefined,
@@ -257,6 +341,10 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Mesa
               </Button>
+              <Button onClick={() => toast.info('Pontos de entrega são criados em Admin > Pontos de Entrega')} variant="outline" size="sm">
+                <MapPin className="h-4 w-4 mr-2" />
+                Pontos no Mapa
+              </Button>
               <Button onClick={carregarMapa} variant="outline" size="sm">
                 Resetar
               </Button>
@@ -276,23 +364,21 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-4 gap-4">
-        {/* Mapa */}
-        <div className="col-span-3">
-          <Card>
-            <CardContent className="pt-6">
-              <div
-                ref={mapaRef}
-                className="border rounded-lg overflow-hidden bg-gray-50 relative"
-                style={{
-                  width: mapa.layout.width,
-                  height: mapa.layout.height,
-                  backgroundImage: `repeating-linear-gradient(0deg, #e5e7eb 0px, #e5e7eb 1px, transparent 1px, transparent ${mapa.layout.gridSize}px), repeating-linear-gradient(90deg, #e5e7eb 0px, #e5e7eb 1px, transparent 1px, transparent ${mapa.layout.gridSize}px)`,
-                }}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              >
+      {/* Mapa em tela cheia */}
+      <Card>
+        <CardContent className="pt-6">
+          <div
+            ref={mapaRef}
+            className={`border rounded-lg overflow-hidden bg-gray-50 relative mx-auto ${arrastando ? 'cursor-grabbing' : 'cursor-default'}`}
+            style={{
+              width: mapa.layout.width,
+              height: mapa.layout.height,
+              backgroundImage: `repeating-linear-gradient(0deg, #e5e7eb 0px, #e5e7eb 1px, transparent 1px, transparent ${mapa.layout.gridSize}px), repeating-linear-gradient(90deg, #e5e7eb 0px, #e5e7eb 1px, transparent 1px, transparent ${mapa.layout.gridSize}px)`,
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
                 {/* Renderizar Mesas */}
                 {mapa.mesas.map((mesa) => {
                   const posicao = mesa.posicao || { x: 50, y: 50 };
@@ -303,16 +389,17 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
                     <div
                       key={mesa.id}
                       onMouseDown={(e) => handleMouseDown(e, 'mesa', mesa.id, posicao)}
-                      className={`absolute cursor-move bg-blue-500 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow-md hover:ring-2 hover:ring-primary transition-all ${selecionado ? 'ring-4 ring-primary' : ''}`}
+                      className={`absolute cursor-grab active:cursor-grabbing bg-blue-500 rounded-lg flex flex-col items-center justify-center text-white font-bold shadow-md hover:ring-2 hover:ring-primary hover:shadow-lg transition-all ${selecionado ? 'ring-4 ring-primary shadow-xl' : ''}`}
                       style={{
                         left: posicao.x,
                         top: posicao.y,
                         width: tamanho.width,
                         height: tamanho.height,
                         transform: `rotate(${mesa.rotacao || 0}deg)`,
+                        userSelect: 'none',
                       }}
                     >
-                      <span className="text-lg">M{mesa.numero}</span>
+                      <span className="text-lg pointer-events-none">M{mesa.numero}</span>
                     </div>
                   );
                 })}
@@ -320,160 +407,182 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
                 {/* Renderizar Pontos de Entrega */}
                 {mapa.pontosEntrega.map((ponto) => {
                   const posicao = ponto.posicao || { x: 100, y: 100 };
-                  const tamanho = ponto.tamanho || { width: 100, height: 60 };
                   const selecionado = itemSelecionado?.tipo === 'ponto' && itemSelecionado.id === ponto.id;
 
                   return (
                     <div
                       key={ponto.id}
                       onMouseDown={(e) => handleMouseDown(e, 'ponto', ponto.id, posicao)}
-                      className={`absolute cursor-move bg-purple-500 rounded-lg flex items-center justify-center text-white font-semibold shadow-md hover:ring-2 hover:ring-primary transition-all ${selecionado ? 'ring-4 ring-primary' : ''}`}
+                      className={`absolute cursor-move bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg hover:ring-4 hover:ring-red-300 hover:scale-110 transition-all group ${selecionado ? 'ring-4 ring-red-400 scale-110' : ''}`}
                       style={{
                         left: posicao.x,
                         top: posicao.y,
-                        width: tamanho.width,
-                        height: tamanho.height,
+                        width: 40,
+                        height: 40,
                       }}
+                      title={ponto.nome}
                     >
-                      <span className="text-sm text-center px-2">{ponto.nome}</span>
+                      <MapPin className="w-6 h-6 pointer-events-none" />
+                      
+                      {/* Tooltip com nome */}
+                      <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        {ponto.nome}
+                      </div>
                     </div>
                   );
                 })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Painel de Propriedades */}
-        <div className="col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Propriedades</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!itemSelecionado && (
-                <p className="text-sm text-muted-foreground">
-                  Selecione uma mesa ou ponto para editar
-                </p>
-              )}
+      {/* Painel de Propriedades - Compacto */}
+      {itemSelecionado && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">
+              {mesaSelecionada && `Mesa ${mesaSelecionada.numero} - ${mesaSelecionada.status}`}
+              {pontoSelecionado && pontoSelecionado.nome}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {mesaSelecionada && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Posição */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Posição X</Label>
+                  <Input
+                    type="number"
+                    value={mesaSelecionada.posicao?.x || 0}
+                    onChange={(e) => moverMesa(mesaSelecionada.id, 'x', parseInt(e.target.value))}
+                    min={0}
+                    max={mapa?.layout.width || 1000}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Posição Y</Label>
+                  <Input
+                    type="number"
+                    value={mesaSelecionada.posicao?.y || 0}
+                    onChange={(e) => moverMesa(mesaSelecionada.id, 'y', parseInt(e.target.value))}
+                    min={0}
+                    max={mapa?.layout.height || 800}
+                    className="h-8"
+                  />
+                </div>
 
-              {mesaSelecionada && (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Mesa {mesaSelecionada.numero}</Label>
-                  </div>
+                {/* Dimensões */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Largura</Label>
+                  <Input
+                    type="number"
+                    value={mesaSelecionada.tamanho?.width || 80}
+                    onChange={(e) => redimensionarMesa(mesaSelecionada.id, 'width', parseInt(e.target.value))}
+                    min={40}
+                    max={200}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Altura</Label>
+                  <Input
+                    type="number"
+                    value={mesaSelecionada.tamanho?.height || 80}
+                    onChange={(e) => redimensionarMesa(mesaSelecionada.id, 'height', parseInt(e.target.value))}
+                    min={40}
+                    max={200}
+                    className="h-8"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">X</Label>
-                      <Input
-                        type="number"
-                        value={mesaSelecionada.posicao?.x || 0}
-                        readOnly
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Y</Label>
-                      <Input
-                        type="number"
-                        value={mesaSelecionada.posicao?.y || 0}
-                        readOnly
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">Largura</Label>
-                      <Input
-                        type="number"
-                        value={mesaSelecionada.tamanho?.width || 80}
-                        onChange={(e) => redimensionarMesa(mesaSelecionada.id, 'width', parseInt(e.target.value))}
-                        min={40}
-                        max={200}
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Altura</Label>
-                      <Input
-                        type="number"
-                        value={mesaSelecionada.tamanho?.height || 80}
-                        onChange={(e) => redimensionarMesa(mesaSelecionada.id, 'height', parseInt(e.target.value))}
-                        min={40}
-                        max={200}
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-xs">Rotação: {mesaSelecionada.rotacao || 0}°</Label>
+                {/* Rotação */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Rotação</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={mesaSelecionada.rotacao || 0}
+                      readOnly
+                      className="h-8 w-16"
+                    />
                     <Button
                       onClick={() => rotacionarMesa(mesaSelecionada.id)}
                       variant="outline"
                       size="sm"
-                      className="w-full mt-2"
+                      className="h-8"
                     >
-                      <RotateCw className="h-4 w-4 mr-2" />
-                      Rotacionar 90°
+                      <RotateCw className="h-3 w-3" />
                     </Button>
                   </div>
-
-                  <div>
-                    <Button
-                      onClick={() => removerMesa(mesaSelecionada.id)}
-                      variant="destructive"
-                      size="sm"
-                      className="w-full"
-                      disabled={mesaSelecionada.status !== 'LIVRE'}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Remover Mesa
-                    </Button>
-                    {mesaSelecionada.status !== 'LIVRE' && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Apenas mesas livres podem ser removidas
-                      </p>
-                    )}
-                  </div>
                 </div>
-              )}
 
-              {pontoSelecionado && (
-                <div className="space-y-4">
-                  <div>
-                    <Label>{pontoSelecionado.nome}</Label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">X</Label>
-                      <Input
-                        type="number"
-                        value={pontoSelecionado.posicao?.x || 0}
-                        readOnly
-                        className="h-8"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Y</Label>
-                      <Input
-                        type="number"
-                        value={pontoSelecionado.posicao?.y || 0}
-                        readOnly
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
+                {/* Remover */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Ações</Label>
+                  <Button
+                    onClick={() => removerMesa(mesaSelecionada.id)}
+                    variant="destructive"
+                    size="sm"
+                    className="h-8 w-full"
+                    disabled={mesaSelecionada.status !== 'LIVRE'}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Remover
+                  </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              </div>
+            )}
+
+            {pontoSelecionado && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Posição */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Posição X</Label>
+                  <Input
+                    type="number"
+                    value={pontoSelecionado.posicao?.x || 0}
+                    onChange={(e) => moverPonto(pontoSelecionado.id, 'x', parseInt(e.target.value))}
+                    min={0}
+                    max={mapa?.layout.width || 1000}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Posição Y</Label>
+                  <Input
+                    type="number"
+                    value={pontoSelecionado.posicao?.y || 0}
+                    onChange={(e) => moverPonto(pontoSelecionado.id, 'y', parseInt(e.target.value))}
+                    min={0}
+                    max={mapa?.layout.height || 800}
+                    className="h-8"
+                  />
+                </div>
+
+                {/* Dimensões (somente leitura para pontos) */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Largura</Label>
+                  <Input
+                    type="number"
+                    value={pontoSelecionado.tamanho?.width || 100}
+                    readOnly
+                    className="h-8 bg-muted"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Altura</Label>
+                  <Input
+                    type="number"
+                    value={pontoSelecionado.tamanho?.height || 60}
+                    readOnly
+                    className="h-8 bg-muted"
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

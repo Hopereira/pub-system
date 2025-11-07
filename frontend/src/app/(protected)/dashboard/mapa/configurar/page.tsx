@@ -2,19 +2,42 @@
 
 import { ConfiguradorMapa } from '@/components/mapa/ConfiguradorMapa';
 import { RoleGuard } from '@/components/guards/RoleGuard';
-import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { getAmbientes, AmbienteData } from '@/services/ambienteService';
 
 export default function ConfigurarMapaPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const ambienteId = searchParams.get('ambienteId');
+  
+  const [ambiente, setAmbiente] = useState<AmbienteData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Pegar ambienteId do usuário autenticado
-  const ambienteId = user?.ambienteId || '';
+  useEffect(() => {
+    const carregarAmbiente = async () => {
+      if (!ambienteId) {
+        setIsLoading(false);
+        return;
+      }
 
-  // Mostrar loading enquanto carrega usuário
+      try {
+        const ambientes = await getAmbientes();
+        const ambienteEncontrado = ambientes.find(a => a.id === ambienteId);
+        setAmbiente(ambienteEncontrado || null);
+      } catch (error) {
+        console.error('Erro ao carregar ambiente:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    carregarAmbiente();
+  }, [ambienteId]);
+
+  // Mostrar loading enquanto carrega
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -24,20 +47,20 @@ export default function ConfigurarMapaPage() {
   }
 
   // Validar se tem ambienteId
-  if (!ambienteId) {
+  if (!ambienteId || !ambiente) {
     return (
       <div className="container mx-auto p-4">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-yellow-800">Ambiente não encontrado</h2>
           <p className="text-yellow-700 mt-2">
-            Seu usuário não está associado a nenhum ambiente. Entre em contato com o administrador.
+            Selecione um ambiente para configurar o layout.
           </p>
           <Button 
-            onClick={() => router.push('/dashboard')} 
+            onClick={() => router.push('/dashboard/admin/ambientes')} 
             className="mt-4"
             variant="outline"
           >
-            Voltar ao Dashboard
+            Ir para Ambientes
           </Button>
         </div>
       </div>
@@ -53,13 +76,13 @@ export default function ConfigurarMapaPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/dashboard/admin/ambientes')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Configurar Mapa</h1>
+              <h1 className="text-3xl font-bold">Configurar Layout: {ambiente.nome}</h1>
               <p className="text-muted-foreground">
                 Arraste mesas e pontos para organizar o layout
               </p>

@@ -12,6 +12,7 @@ import { Comanda } from '../../comanda/entities/comanda.entity';
 // --- CORREÇÃO APLICADA AQUI ---
 import { ItemPedido } from './item-pedido.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
+import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 
 @Entity('pedidos')
 export class Pedido {
@@ -43,4 +44,31 @@ export class Pedido {
     eager: true, // Adicionado para carregar os itens junto com o pedido
   })
   itens: ItemPedido[];
+
+  // Rastreamento: Quem criou o pedido
+  @Column({ name: 'criado_por_id', type: 'uuid', nullable: true })
+  criadoPorId: string;
+
+  @Column({ name: 'criado_por_tipo', type: 'varchar', length: 20, default: 'CLIENTE' })
+  criadoPorTipo: 'GARCOM' | 'CLIENTE';
+
+  @ManyToOne(() => Funcionario, { nullable: true })
+  @JoinColumn({ name: 'criado_por_id' })
+  criadoPor: Funcionario;
+
+  // Rastreamento: Quem entregou o pedido
+  @Column({ name: 'entregue_por_id', type: 'uuid', nullable: true })
+  entreguePorId: string;
+
+  @ManyToOne(() => Funcionario, { nullable: true })
+  @JoinColumn({ name: 'entregue_por_id' })
+  entreguePor: Funcionario;
+
+  // Timestamps de entrega
+  @Column({ name: 'entregue_em', type: 'timestamp', nullable: true })
+  entregueEm: Date;
+
+  // Tempo total em minutos (calculado automaticamente)
+  @Column({ name: 'tempo_total_minutos', type: 'integer', nullable: true })
+  tempoTotalMinutos: number;
 }

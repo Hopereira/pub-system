@@ -7,16 +7,19 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pedido } from './entities/pedido.entity';
-import { Comanda } from '../comanda/entities/comanda.entity';
+import { Comanda, ComandaStatus } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
+import { CreatePedidoGarcomDto } from './dto/create-pedido-garcom.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
+import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -35,6 +38,8 @@ export class PedidoService {
     private readonly produtoRepository: Repository<Produto>,
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
+    @InjectRepository(Funcionario)
+    private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
@@ -92,11 +97,90 @@ export class PedidoService {
     
     return pedidoCompleto;
   }
+
+  // ✅ NOVO: Criar pedido pelo garçom (com criação automática de comanda)
+  async createPedidoGarcom(dto: CreatePedidoGarcomDto): Promise<Pedido> {
+    const { clienteId, garcomId, mesaId, itens, observacao } = dto;
+    
+    this.logger.log(`👨‍🍳 Garçom criando pedido | Garçom: ${garcomId} | Cliente: ${clienteId} | ${itens.length} itens`);
+
+    // Busca ou cria comanda para o cliente
+    let comanda = await this.comandaRepository.findOne({
+      where: { 
+        cliente: { id: clienteId },
+        status: ComandaStatus.ABERTA 
+      },
+      relations: ['cliente', 'mesa'],
+    });
+
+    // Se não existe comanda aberta, cria uma nova
+    if (!comanda) {
+      this.logger.log(`📋 Criando nova comanda para cliente ${clienteId}`);
+      
+      const novaComanda = this.comandaRepository.create({
+        cliente: { id: clienteId } as any,
+        mesa: mesaId ? { id: mesaId } as any : null,
+        status: ComandaStatus.ABERTA,
+      });
+      
+      comanda = await this.comandaRepository.save(novaComanda);
+      this.logger.log(`✅ Comanda criada | ID: ${comanda.id}`);
+    } else {
+      this.logger.log(`📋 Usando comanda existente | ID: ${comanda.id}`);
+    }
+
+    // Valida itens
+    if (!itens || itens.length === 0) {
+      throw new BadRequestException('Um pedido não pode ser criado sem itens.');
+    }
+
+    // Cria itens do pedido
+    const itensPedidoPromise = itens.map(async (itemDto) => {
+      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
+      if (!produto) {
+        throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
+      }
+      return this.itemPedidoRepository.create({
+        produto,
+        quantidade: itemDto.quantidade,
+        precoUnitario: produto.preco,
+        observacao: itemDto.observacao,
+        status: PedidoStatus.FEITO,
+      });
+    });
+
+    const itensPedido = await Promise.all(itensPedidoPromise);
+    
+    // Calcula total
+    const total = itensPedido.reduce((sum, item) => {
+      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      return sum.plus(itemTotal);
+    }, new Decimal(0));
+    
+    // Cria pedido
+    const pedido = this.pedidoRepository.create({
+      comanda,
+      itens: itensPedido,
+      total: total.toNumber(),
+      status: PedidoStatus.FEITO,
+    });
+
+    const novoPedido = await this.pedidoRepository.save(pedido);
+    const pedidoCompleto = await this.findOne(novoPedido.id);
+    
+    this.logger.log(`✅ Pedido pelo garçom criado | ID: ${pedidoCompleto.id} | Garçom: ${garcomId} | Total: R$ ${total.toFixed(2)}`);
+
+    this.pedidosGateway.emitNovoPedido(pedidoCompleto);
+    
+    return pedidoCompleto;
+  }
   
  async findAll(ambienteId?: string): Promise<Pedido[]> {
   const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
     .leftJoinAndSelect('pedido.comanda', 'comanda')
     .leftJoinAndSelect('comanda.mesa', 'mesa')
+    .leftJoinAndSelect('comanda.cliente', 'cliente')
+    .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
     .leftJoinAndSelect('pedido.itens', 'itemPedido')
     .leftJoinAndSelect('itemPedido.produto', 'produto')
     .leftJoinAndSelect('produto.ambiente', 'ambiente')
@@ -105,6 +189,8 @@ export class PedidoService {
       'pedido',
       'comanda',
       'mesa',
+      'cliente',
+      'pontoEntrega',
       'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
       'produto',
       'ambiente',
@@ -136,7 +222,7 @@ export class PedidoService {
   async findOne(id: string): Promise<Pedido> {
       const pedido = await this.pedidoRepository.findOne({
         where: { id },
-        relations: ['comanda', 'comanda.mesa', 'itens', 'itens.produto', 'itens.produto.ambiente'],
+        relations: ['comanda', 'comanda.mesa', 'comanda.cliente', 'comanda.pontoEntrega', 'itens', 'itens.produto', 'itens.produto.ambiente'],
       });
       if (!pedido) {
         throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
@@ -333,6 +419,76 @@ export class PedidoService {
         ambiente: ambienteRetirada.nome,
         mensagem: `Seu pedido está pronto para retirada no ${ambienteRetirada.nome}`,
       });
+
+    return item;
+  }
+
+  /**
+   * ✅ NOVO: Marca item como entregue pelo garçom
+   */
+  async marcarComoEntregue(
+    itemPedidoId: string,
+    dto: MarcarEntregueDto,
+  ): Promise<ItemPedido> {
+    // Busca o item
+    const item = await this.itemPedidoRepository.findOne({
+      where: { id: itemPedidoId },
+      relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+    }
+
+    // Verifica se o item está pronto
+    if (item.status !== PedidoStatus.PRONTO) {
+      throw new BadRequestException('Apenas itens com status PRONTO podem ser marcados como entregues.');
+    }
+
+    // Busca o garçom
+    const garcom = await this.funcionarioRepository.findOne({
+      where: { id: dto.garcomId },
+    });
+
+    if (!garcom) {
+      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+    }
+
+    // Calcula tempo de entrega (do momento que ficou pronto até agora)
+    const agora = new Date();
+    let tempoEntregaMinutos = null;
+
+    if (item.prontoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.prontoEm).getTime();
+      tempoEntregaMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+    }
+
+    // Atualiza o item
+    item.status = PedidoStatus.ENTREGUE;
+    item.entregueEm = agora;
+    item.garcomEntregaId = dto.garcomId;
+    item.tempoEntregaMinutos = tempoEntregaMinutos;
+
+    await this.itemPedidoRepository.save(item);
+
+    this.logger.log(
+      `✅ Item entregue | Produto: ${item.produto?.nome || 'Item'} | Garçom: ${garcom.nome} | Tempo: ${tempoEntregaMinutos || 'N/A'} min`,
+    );
+
+    // Emite evento WebSocket
+    const comanda = item.pedido?.comanda;
+    if (comanda) {
+      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      
+      // Notifica cliente
+      this.pedidosGateway.server
+        .to(`comanda_${comanda.id}`)
+        .emit('item_entregue', {
+          itemId: item.id,
+          produtoNome: item.produto?.nome,
+          garcomNome: garcom.nome,
+        });
+    }
 
     return item;
   }

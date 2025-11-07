@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, MapPin, Table, Users, PackageX } from 'lucide-react';
+import { Clock, MapPin, Table, Users, PackageX, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ interface PedidoProntoCardProps {
   tempoEspera: string;
   data: Date;
   onDeixarNoAmbiente: (itemId: string) => void;
+  onMarcarEntregue: (itemId: string) => void;
   isDestacado?: boolean;
 }
 
@@ -49,6 +50,7 @@ export const PedidoProntoCard = ({
   tempoEspera,
   data,
   onDeixarNoAmbiente,
+  onMarcarEntregue,
   isDestacado = false,
 }: PedidoProntoCardProps) => {
   const isMesa = local.tipo === 'MESA';
@@ -141,15 +143,26 @@ export const PedidoProntoCard = ({
                     </p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDeixarNoAmbiente(item.id)}
-                  className="text-destructive hover:text-destructive"
-                  title="Cliente não encontrado"
-                >
-                  <PackageX className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => onMarcarEntregue(item.id)}
+                    className="bg-green-600 hover:bg-green-700"
+                    title="Marcar como entregue"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDeixarNoAmbiente(item.id)}
+                    className="text-destructive hover:text-destructive"
+                    title="Cliente não encontrado"
+                  >
+                    <PackageX className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

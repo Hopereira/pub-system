@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Between } from 'typeorm';
 import { TurnoFuncionario } from './entities/turno-funcionario.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
+import { FuncionarioStatus } from '../funcionario/enums/funcionario-status.enum';
 import { CheckInDto } from './dto/check-in.dto';
 import { CheckOutDto } from './dto/check-out.dto';
 import {
@@ -64,8 +65,12 @@ export class TurnoService {
 
     const turnoSalvo = await this.turnoRepository.save(turno);
 
+    // Atualiza status do funcionário para ATIVO
+    funcionario.status = FuncionarioStatus.ATIVO;
+    await this.funcionarioRepository.save(funcionario);
+
     this.logger.log(
-      `✅ Check-in realizado | Funcionário: ${funcionario.nome} | ${new Date().toLocaleTimeString('pt-BR')}`,
+      `✅ Check-in realizado | Funcionário: ${funcionario.nome} | Status: ATIVO | ${new Date().toLocaleTimeString('pt-BR')}`,
     );
 
     return turnoSalvo;
@@ -103,8 +108,12 @@ export class TurnoService {
 
     const turnoAtualizado = await this.turnoRepository.save(turno);
 
+    // Atualiza status do funcionário para INATIVO
+    turno.funcionario.status = FuncionarioStatus.INATIVO;
+    await this.funcionarioRepository.save(turno.funcionario);
+
     this.logger.log(
-      `⏹️ Check-out realizado | Funcionário: ${turno.funcionario.nome} | Tempo: ${this.formatarTempo(horasTrabalhadas)}`,
+      `⏹️ Check-out realizado | Funcionário: ${turno.funcionario.nome} | Status: INATIVO | Tempo: ${this.formatarTempo(horasTrabalhadas)}`,
     );
 
     return turnoAtualizado;
