@@ -57,9 +57,9 @@ export default function GestaoPedidosPage() {
     }
   };
 
-  const calcularTempoDecorrido = (criadoEm: string): string => {
+  const calcularTempoDecorrido = (data: string): string => {
     const agora = new Date();
-    const criacao = new Date(criadoEm);
+    const criacao = new Date(data);
     const diffMs = agora.getTime() - criacao.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     
@@ -108,13 +108,15 @@ export default function GestaoPedidosPage() {
                   ) : (
                     <>
                       <Package className="h-5 w-5 text-primary" />
-                      <span className="text-lg font-bold">Balcão</span>
+                      <span className="text-lg font-bold">
+                        {pedido.comanda?.cliente?.nome || 'Balcão'}
+                      </span>
                     </>
                   )}
                 </div>
 
-                {/* Cliente */}
-                {pedido.comanda?.cliente && (
+                {/* Cliente - Só mostra se tiver mesa, pois balcão já mostra o nome acima */}
+                {pedido.comanda?.mesa && pedido.comanda?.cliente && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="h-4 w-4" />
                     <span>{pedido.comanda.cliente.nome}</span>
@@ -172,7 +174,7 @@ export default function GestaoPedidosPage() {
             {/* Tempo */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="h-4 w-4" />
-              <span>{calcularTempoDecorrido(pedido.criadoEm)}</span>
+              <span>{calcularTempoDecorrido(pedido.data)}</span>
             </div>
 
             {/* Botão Entregar */}

@@ -351,9 +351,14 @@ export default function GarcomPage() {
                         <p className="font-semibold text-sm">
                           {pedido.comanda?.mesa 
                             ? `Mesa ${pedido.comanda.mesa.numero}`
-                            : 'Balcão'
+                            : pedido.comanda?.cliente?.nome || 'Balcão'
                           }
                         </p>
+                        {pedido.comanda?.mesa && pedido.comanda?.cliente && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {pedido.comanda.cliente.nome}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-1">
                           {itensProntos.length} {itensProntos.length === 1 ? 'item pronto' : 'itens prontos'}
                         </p>
