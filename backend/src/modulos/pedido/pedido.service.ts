@@ -201,7 +201,15 @@ export class PedidoService {
       'ambienteRetirada'
     ])
     .where('itemPedido.status IN (:...statuses)', {
-      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO, PedidoStatus.ENTREGUE, PedidoStatus.DEIXADO_NO_AMBIENTE]
+      statuses: [
+        PedidoStatus.FEITO, 
+        PedidoStatus.EM_PREPARO, 
+        PedidoStatus.QUASE_PRONTO,  // ✅ ADICIONADO
+        PedidoStatus.PRONTO, 
+        PedidoStatus.RETIRADO,      // ✅ ADICIONADO
+        PedidoStatus.ENTREGUE, 
+        PedidoStatus.DEIXADO_NO_AMBIENTE
+      ]
     })
     .orderBy('pedido.data', 'ASC');
 
