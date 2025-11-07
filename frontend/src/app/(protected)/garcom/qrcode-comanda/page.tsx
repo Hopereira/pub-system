@@ -14,16 +14,15 @@ import { QRCodeSVG } from 'qrcode.react';
 
 interface Comanda {
   id: string;
-  codigo: string;
-  cliente: {
+  status: string;
+  dataAbertura: string;
+  cliente?: {
     id: string;
     nome: string;
   };
   mesa?: {
     numero: number;
   };
-  status: string;
-  criadoEm: string;
 }
 
 export default function QRCodeComandaPage() {
@@ -89,9 +88,9 @@ export default function QRCodeComandaPage() {
 
   const comandasFiltradas = comandas.filter(
     (c) =>
-      c.codigo.toLowerCase().includes(busca.toLowerCase()) ||
-      c.cliente.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      c.mesa?.numero.toString().includes(busca)
+      c.cliente?.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+      (c.mesa?.numero && c.mesa.numero.toString().includes(busca)) ||
+      c.id?.toLowerCase().includes(busca.toLowerCase())
   );
 
   const downloadQRCode = (comandaId: string, nomeCliente: string) => {
@@ -219,11 +218,13 @@ export default function QRCodeComandaPage() {
               <Card key={comanda.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{comanda.cliente.nome}</CardTitle>
+                    <CardTitle className="text-lg">
+                      {comanda.cliente?.nome || 'Cliente'}
+                    </CardTitle>
                     <Badge>{comanda.status}</Badge>
                   </div>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>Código: {comanda.codigo}</p>
+                    <p>ID: {comanda.id.slice(0, 8)}...</p>
                     {comanda.mesa && <p>Mesa: {comanda.mesa.numero}</p>}
                   </div>
                 </CardHeader>
@@ -248,7 +249,7 @@ export default function QRCodeComandaPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => downloadQRCode(comanda.id, comanda.cliente.nome)}
+                      onClick={() => downloadQRCode(comanda.id, comanda.cliente?.nome || 'Cliente')}
                     >
                       <Download className="h-4 w-4 mr-1" />
                       Baixar
