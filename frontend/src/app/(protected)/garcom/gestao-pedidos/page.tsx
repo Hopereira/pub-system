@@ -46,16 +46,8 @@ export default function GestaoPedidosPage() {
     }
   };
 
-  const marcarComoEntregue = async (pedidoId: string) => {
-    try {
-      await pedidoService.atualizarStatusPedido(pedidoId, 'ENTREGUE');
-      toast.success('Pedido marcado como entregue!');
-      carregarPedidos();
-    } catch (error) {
-      console.error('Erro ao atualizar pedido:', error);
-      toast.error('Erro ao atualizar pedido');
-    }
-  };
+  // REMOVIDO: Função obsoleta que não existe no service
+  // O novo fluxo usa retirarItem() e marcarComoEntregue() por item individual
 
   const calcularTempoDecorrido = (data: string): string => {
     const agora = new Date();
@@ -108,15 +100,13 @@ export default function GestaoPedidosPage() {
                   ) : (
                     <>
                       <Package className="h-5 w-5 text-primary" />
-                      <span className="text-lg font-bold">
-                        {pedido.comanda?.cliente?.nome || 'Balcão'}
-                      </span>
+                      <span className="text-lg font-bold">Mesa Balcão</span>
                     </>
                   )}
                 </div>
 
-                {/* Cliente - Só mostra se tiver mesa, pois balcão já mostra o nome acima */}
-                {pedido.comanda?.mesa && pedido.comanda?.cliente && (
+                {/* Cliente */}
+                {pedido.comanda?.cliente && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="h-4 w-4" />
                     <span>{pedido.comanda.cliente.nome}</span>
@@ -177,17 +167,8 @@ export default function GestaoPedidosPage() {
               <span>{calcularTempoDecorrido(pedido.data)}</span>
             </div>
 
-            {/* Botão Entregar */}
-            {mostrarBotaoEntregar && pedido.status === 'PRONTO' && (
-              <Button
-                onClick={() => marcarComoEntregue(pedido.id)}
-                className="w-full mt-2"
-                size="lg"
-              >
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Marcar como Entregue
-              </Button>
-            )}
+            {/* TODO: Implementar novo fluxo de Retirar -> Entregar por item individual
+                Ver: /garcom (dashboard principal) que já usa o novo fluxo */}
           </div>
         </CardContent>
       </Card>

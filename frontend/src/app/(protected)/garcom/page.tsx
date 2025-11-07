@@ -351,10 +351,10 @@ export default function GarcomPage() {
                         <p className="font-semibold text-sm">
                           {pedido.comanda?.mesa 
                             ? `Mesa ${pedido.comanda.mesa.numero}`
-                            : pedido.comanda?.cliente?.nome || 'Balcão'
+                            : 'Mesa Balcão'
                           }
                         </p>
-                        {pedido.comanda?.mesa && pedido.comanda?.cliente && (
+                        {pedido.comanda?.cliente && (
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {pedido.comanda.cliente.nome}
                           </p>
