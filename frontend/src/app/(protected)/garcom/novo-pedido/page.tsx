@@ -12,9 +12,13 @@ import { buscarClientes, criarClienteRapido } from '@/services/clienteService';
 import { criarPedidoGarcom } from '@/services/pedidoService';
 import { getProdutos } from '@/services/produtoService';
 import { getMesas } from '@/services/mesaService';
+import { getAmbientes } from '@/services/ambienteService';
+import { getPontosEntregaAtivos } from '@/services/pontoEntregaService';
 import { Cliente } from '@/types/cliente';
 import { Produto } from '@/types/produto';
 import { Mesa } from '@/types/mesa';
+import { Ambiente } from '@/types/ambiente';
+import { PontoEntrega } from '@/types/ponto-entrega';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
 
@@ -39,6 +43,8 @@ export default function NovoPedidoPage() {
   const [mostrarFormRapido, setMostrarFormRapido] = useState(false);
   const [nomeRapido, setNomeRapido] = useState('');
   const [telefoneRapido, setTelefoneRapido] = useState('');
+  const [ambienteRapido, setAmbienteRapido] = useState('');
+  const [pontoEntregaRapido, setPontoEntregaRapido] = useState('');
 
   // Estados de produtos e carrinho
   const [produtos, setProdutos] = useState<Produto[]>([]);
@@ -48,6 +54,10 @@ export default function NovoPedidoPage() {
   // Estados de mesa
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [mesaSelecionada, setMesaSelecionada] = useState<string>('');
+
+  // Estados de ambientes e pontos de entrega
+  const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
+  const [pontosEntrega, setPontosEntrega] = useState<PontoEntrega[]>([]);
 
   // Estados de envio
   const [enviando, setEnviando] = useState(false);
@@ -86,12 +96,16 @@ export default function NovoPedidoPage() {
 
   const carregarDados = async () => {
     try {
-      const [produtosData, mesasData] = await Promise.all([
+      const [produtosData, mesasData, ambientesData, pontosEntregaData] = await Promise.all([
         getProdutos(),
         getMesas(),
+        getAmbientes(),
+        getPontosEntregaAtivos(),
       ]);
       setProdutos(produtosData);
       setMesas(mesasData.filter(m => m.status === 'LIVRE' || m.status === 'OCUPADA'));
+      setAmbientes(ambientesData);
+      setPontosEntrega(pontosEntregaData);
     } catch (error) {
       logger.error('Erro ao carregar dados', { module: 'NovoPedido', error: error as Error });
       toast.error('Erro ao carregar dados');
@@ -137,11 +151,15 @@ export default function NovoPedidoPage() {
       const novoCliente = await criarClienteRapido({
         nome: nomeRapido,
         telefone: telefoneRapido || undefined,
+        ambienteId: ambienteRapido || undefined,
+        pontoEntregaId: pontoEntregaRapido || undefined,
       });
       toast.success('Cliente criado!');
       selecionarCliente(novoCliente);
       setNomeRapido('');
       setTelefoneRapido('');
+      setAmbienteRapido('');
+      setPontoEntregaRapido('');
     } catch (error) {
       logger.error('Erro ao criar cliente rápido', { module: 'NovoPedido', error: error as Error });
       toast.error('Erro ao criar cliente');
@@ -299,6 +317,30 @@ export default function NovoPedidoPage() {
                         value={telefoneRapido}
                         onChange={(e) => setTelefoneRapido(e.target.value)}
                       />
+                      <select
+                        value={ambienteRapido}
+                        onChange={(e) => setAmbienteRapido(e.target.value)}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="">Ambiente (opcional)</option>
+                        {ambientes.map((ambiente) => (
+                          <option key={ambiente.id} value={ambiente.id}>
+                            {ambiente.nome}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={pontoEntregaRapido}
+                        onChange={(e) => setPontoEntregaRapido(e.target.value)}
+                        className="w-full p-2 border rounded-lg"
+                      >
+                        <option value="">Ponto de Entrega (opcional)</option>
+                        {pontosEntrega.map((ponto) => (
+                          <option key={ponto.id} value={ponto.id}>
+                            {ponto.nome}
+                          </option>
+                        ))}
+                      </select>
                       <div className="flex gap-2">
                         <Button onClick={criarClienteRapidoHandler} className="flex-1">
                           <Check className="h-4 w-4 mr-2" />
@@ -310,6 +352,8 @@ export default function NovoPedidoPage() {
                             setMostrarFormRapido(false);
                             setNomeRapido('');
                             setTelefoneRapido('');
+                            setAmbienteRapido('');
+                            setPontoEntregaRapido('');
                           }}
                         >
                           <X className="h-4 w-4" />

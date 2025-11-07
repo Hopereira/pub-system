@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin } from 'lucide-react';
-import { getPedidos } from '@/services/pedidoService';
+import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin, ShoppingBag, CheckCheck } from 'lucide-react';
+import { getPedidos, retirarItem, marcarComoEntregue } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
+import { useAuth } from '@/context/AuthContext';
 import { Pedido } from '@/types/pedido';
 import { PedidoStatus } from '@/types/pedido-status.enum';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { usePedidosSubscription } from '@/hooks/usePedidosSubscription';
  * - Métricas em tempo real
  */
 export default function MapaPedidos() {
+  const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string>('todos');
@@ -67,7 +69,7 @@ export default function MapaPedidos() {
   // Detecta novos pedidos prontos e toca som
   useEffect(() => {
     const pedidosProntos = pedidos.filter((pedido) =>
-      pedido.itens.some((item) => item.status === PedidoStatus.PRONTO)
+      pedido.itens.some((item) => item.status === PedidoStatus.PRONTO || item.status === PedidoStatus.QUASE_PRONTO)
     );
 
     const idsProntos = new Set(pedidosProntos.map((p) => p.id));
@@ -161,6 +163,58 @@ export default function MapaPedidos() {
     toast.success('Pedidos atualizados!');
   };
 
+  // Função para retirar item
+  const handleRetirarItem = async (itemId: string) => {
+    if (!user?.id) {
+      toast.error('Você precisa estar autenticado para retirar pedidos');
+      return;
+    }
+
+    // Verifica se é garçom
+    if (user.cargo !== 'GARCOM') {
+      toast.error('Apenas garçons podem retirar pedidos');
+      return;
+    }
+
+    try {
+      await retirarItem(itemId, user.id); // user.id É o funcionarioId
+      toast.success('Item retirado com sucesso!');
+      await loadPedidos();
+    } catch (error: any) {
+      logger.error('Erro ao retirar item', { 
+        module: 'MapaPedidos',
+        error: error as Error 
+      });
+      toast.error(error.response?.data?.message || 'Erro ao retirar item');
+    }
+  };
+
+  // Função para marcar como entregue
+  const handleMarcarEntregue = async (itemId: string) => {
+    if (!user?.id) {
+      toast.error('Você precisa estar autenticado para entregar pedidos');
+      return;
+    }
+
+    // Verifica se é garçom
+    if (user.cargo !== 'GARCOM') {
+      toast.error('Apenas garçons podem entregar pedidos');
+      return;
+    }
+
+    try {
+      await marcarComoEntregue(itemId, user.id); // user.id É o funcionarioId
+      toast.success('Item marcado como entregue!');
+      await loadPedidos();
+    } catch (error: any) {
+      logger.error('Erro ao marcar item como entregue', { 
+        module: 'MapaPedidos',
+        error: error as Error 
+      });
+      toast.error(error.response?.data?.message || 'Erro ao marcar como entregue');
+    }
+  };
+
   // Filtra pedidos por ambiente e status
   const pedidosFiltrados = pedidos
     .filter((pedido) => {
@@ -197,6 +251,7 @@ export default function MapaPedidos() {
     total: pedidosFiltrados.length,
     feito: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.FEITO)).length,
     emPreparo: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.EM_PREPARO)).length,
+    quasePronto: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.QUASE_PRONTO)).length,
     pronto: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.PRONTO)).length,
     entregue: pedidosFiltrados.filter((p) => p.itens.some((i) => 
       i.status === PedidoStatus.ENTREGUE || i.status === PedidoStatus.DEIXADO_NO_AMBIENTE
@@ -209,6 +264,8 @@ export default function MapaPedidos() {
         return <Clock className="h-4 w-4" />;
       case PedidoStatus.EM_PREPARO:
         return <Flame className="h-4 w-4" />;
+      case PedidoStatus.QUASE_PRONTO:
+        return <Clock className="h-4 w-4" />;
       case PedidoStatus.PRONTO:
         return <CheckCircle className="h-4 w-4" />;
       case PedidoStatus.ENTREGUE:
@@ -228,6 +285,8 @@ export default function MapaPedidos() {
         return 'bg-gray-100 text-gray-800 border-gray-300';
       case PedidoStatus.EM_PREPARO:
         return 'bg-orange-100 text-orange-800 border-orange-300';
+      case PedidoStatus.QUASE_PRONTO:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case PedidoStatus.PRONTO:
         return 'bg-green-100 text-green-800 border-green-300';
       case PedidoStatus.ENTREGUE:
@@ -337,6 +396,7 @@ export default function MapaPedidos() {
                 <SelectItem value="todos">Todos os Status</SelectItem>
                 <SelectItem value={PedidoStatus.FEITO}>Aguardando</SelectItem>
                 <SelectItem value={PedidoStatus.EM_PREPARO}>Em Preparo</SelectItem>
+                <SelectItem value={PedidoStatus.QUASE_PRONTO}>Quase Pronto</SelectItem>
                 <SelectItem value={PedidoStatus.PRONTO}>Pronto</SelectItem>
                 <SelectItem value="ENTREGUES">Entregues (Todos)</SelectItem>
                 <SelectItem value={PedidoStatus.ENTREGUE}>Entregue (Garçom)</SelectItem>
@@ -348,7 +408,7 @@ export default function MapaPedidos() {
       </Card>
 
       {/* Métricas - Clicáveis como Filtros */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card 
           className={`cursor-pointer transition-all hover:shadow-md ${
             statusFiltro === 'todos' ? 'ring-2 ring-primary' : ''
@@ -392,6 +452,22 @@ export default function MapaPedidos() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{metricas.emPreparo}</div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === PedidoStatus.QUASE_PRONTO ? 'ring-2 ring-yellow-500' : ''
+          }`}
+          onClick={() => setStatusFiltro(PedidoStatus.QUASE_PRONTO)}
+        >
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <Clock className="h-3 w-3" /> Quase Pronto
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{metricas.quasePronto}</div>
           </CardContent>
         </Card>
 
@@ -474,25 +550,54 @@ export default function MapaPedidos() {
                 {pedido.itens.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center text-sm border-b pb-2 last:border-0"
+                    className="flex flex-col gap-2 border-b pb-2 last:border-0"
                   >
-                    <div className="flex-1">
-                      <p className="font-medium">{item.produto?.nome || 'Produto removido'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Qtd: {item.quantidade} | {item.produto?.ambiente?.nome || 'N/A'}
-                      </p>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{item.produto?.nome || 'Produto removido'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Qtd: {item.quantidade} | {item.produto?.ambiente?.nome || 'N/A'}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs flex items-center gap-1 ${getStatusColor(item.status)}`}
+                      >
+                        {getStatusIcon(item.status)}
+                        {item.status.replace('_', ' ')}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs flex items-center gap-1 ${getStatusColor(item.status)}`}
-                    >
-                      {getStatusIcon(item.status)}
-                      {item.status.replace('_', ' ')}
-                    </Badge>
+                    
+                    {/* Botões de Ação */}
+                    <div className="flex gap-2">
+                      {item.status === PedidoStatus.PRONTO && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleRetirarItem(item.id)}
+                        >
+                          <ShoppingBag className="h-3 w-3 mr-1" />
+                          Retirar
+                        </Button>
+                      )}
+                      
+                      {item.status === PedidoStatus.RETIRADO && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          onClick={() => handleMarcarEntregue(item.id)}
+                        >
+                          <CheckCheck className="h-3 w-3 mr-1" />
+                          Entregar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
 
-                <Button asChild variant="default" size="sm" className="w-full mt-4">
+                <Button asChild variant="outline" size="sm" className="w-full mt-4">
                   <Link href="/dashboard/mapa/visualizar">
                     <MapPin className="h-4 w-4 mr-2" />
                     Localizar Cliente

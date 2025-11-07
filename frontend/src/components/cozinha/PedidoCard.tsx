@@ -83,7 +83,12 @@ export default function PedidoCard({ pedido, onItemStatusChange }: PedidoCardPro
 
                             {/* Status e Badges */}
                             <div className='flex items-center gap-2 mb-2 flex-wrap'>
-                                <Badge variant={item.status === 'EM_PREPARO' ? 'destructive' : item.status === 'PRONTO' ? 'default' : 'secondary'}>
+                                <Badge variant={
+                                    item.status === 'EM_PREPARO' ? 'destructive' : 
+                                    item.status === 'QUASE_PRONTO' ? 'default' :
+                                    item.status === 'PRONTO' ? 'default' : 
+                                    'secondary'
+                                }>
                                    {item.status.replace('_', ' ')}
                                 </Badge>
                             </div>
@@ -143,6 +148,12 @@ export default function PedidoCard({ pedido, onItemStatusChange }: PedidoCardPro
                                     <Button size="sm" className='bg-green-600 hover:bg-green-700' onClick={() => onItemStatusChange(item.id, PedidoStatus.PRONTO)}>
                                         <Check className='h-4 w-4 mr-2' />
                                         Pronto
+                                    </Button>
+                                )}
+                                {item.status === PedidoStatus.QUASE_PRONTO && (
+                                    <Button size="sm" className='bg-orange-600 hover:bg-orange-700' onClick={() => onItemStatusChange(item.id, PedidoStatus.PRONTO)}>
+                                        <CheckCircle2 className='h-4 w-4 mr-2' />
+                                        Finalizar
                                     </Button>
                                 )}
                             </div>

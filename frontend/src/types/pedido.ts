@@ -7,7 +7,9 @@ import { Mesa } from "./mesa";
 export enum PedidoStatus {
   FEITO = 'FEITO',
   EM_PREPARO = 'EM_PREPARO',
+  QUASE_PRONTO = 'QUASE_PRONTO', // Sinal antecipado 30-60s antes de pronto
   PRONTO = 'PRONTO',
+  RETIRADO = 'RETIRADO', // Garçom pegou o item no ambiente
   ENTREGUE = 'ENTREGUE',
   DEIXADO_NO_AMBIENTE = 'DEIXADO_NO_AMBIENTE',
   CANCELADO = 'CANCELADO',
@@ -29,7 +31,28 @@ export interface ItemPedido {
   // Timestamps para cálculo de tempo de preparo
   iniciadoEm?: string | null;
   prontoEm?: string | null;
+  quaseProntoEm?: string | null; // ✅ NOVO: quando foi marcado como quase pronto
+  retiradoEm?: string | null; // ✅ NOVO: quando o garçom retirou
   entregueEm?: string | null;
+  
+  // ✅ NOVO: Garçom que retirou o item
+  retiradoPorGarcomId?: string | null;
+  retiradoPorGarcom?: {
+    id: string;
+    nome: string;
+  } | null;
+  
+  // ✅ NOVO: Garçom que entregou o item
+  garcomEntregaId?: string | null;
+  garcomEntrega?: {
+    id: string;
+    nome: string;
+  } | null;
+  
+  // ✅ NOVO: Tempos calculados
+  tempoPreparoMinutos?: number | null;
+  tempoReacaoMinutos?: number | null; // PRONTO -> RETIRADO
+  tempoEntregaFinalMinutos?: number | null; // RETIRADO -> ENTREGUE
 }
 
 // Interface simplificada para Comanda (evita import circular)

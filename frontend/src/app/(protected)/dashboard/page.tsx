@@ -202,6 +202,7 @@ export default function DashboardPage() {
             subtitle={`${mesasPercentual}% ocupado`}
             icon={UtensilsCrossed}
             status={mesasStatus}
+            href="/dashboard/operacional/mesas"
           />
         </BentoGridItem>
 
@@ -222,6 +223,7 @@ export default function DashboardPage() {
             subtitle="Aguardando preparo"
             icon={AlertCircle}
             status={metricas.pedidosPendentes > 10 ? 'warning' : 'neutral'}
+            href="/dashboard/operacional/pedidos-pendentes"
           />
         </BentoGridItem>
 
@@ -232,6 +234,7 @@ export default function DashboardPage() {
             subtitle="Em atendimento"
             icon={ShoppingBag}
             status="neutral"
+            href="/dashboard/operacional/caixa?tab=clientes"
           />
         </BentoGridItem>
 

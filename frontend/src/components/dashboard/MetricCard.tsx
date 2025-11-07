@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export type MetricStatus = 'success' | 'warning' | 'danger' | 'neutral';
 
@@ -17,6 +18,7 @@ interface MetricCardProps {
     label: string;
   };
   className?: string;
+  href?: string;
 }
 
 const statusStyles: Record<MetricStatus, string> = {
@@ -46,11 +48,12 @@ export function MetricCard({
   status = 'neutral',
   trend,
   className,
+  href,
 }: MetricCardProps) {
   const trendIsPositive = trend && trend.value > 0;
 
-  return (
-    <Card className={cn('border-2 transition-all hover:shadow-md', statusStyles[status], className)}>
+  const cardContent = (
+    <>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -68,6 +71,22 @@ export function MetricCard({
           </div>
         )}
       </CardContent>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        <Card className={cn('border-2 transition-all hover:shadow-lg cursor-pointer', statusStyles[status], className)}>
+          {cardContent}
+        </Card>
+      </Link>
+    );
+  }
+
+  return (
+    <Card className={cn('border-2 transition-all hover:shadow-md', statusStyles[status], className)}>
+      {cardContent}
     </Card>
   );
 }

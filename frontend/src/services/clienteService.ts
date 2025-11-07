@@ -97,6 +97,8 @@ export const criarClienteRapido = async (data: {
   nome: string;
   cpf?: string;
   telefone?: string;
+  ambienteId?: string;
+  pontoEntregaId?: string;
 }): Promise<Cliente> => {
   try {
     const response = await publicApi.post<Cliente>('/clientes/rapido', data);

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
@@ -23,6 +24,7 @@ import { AnalyticsModule } from './modulos/analytics/analytics.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ScheduleModule.forRoot(), // Habilita jobs agendados
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

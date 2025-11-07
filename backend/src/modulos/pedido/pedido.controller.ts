@@ -23,6 +23,7 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
+import { RetirarItemDto } from './dto/retirar-item.dto';
 
 @ApiTags('Pedidos')
 @Controller('pedidos')
@@ -172,6 +173,31 @@ export class PedidoController {
   }
 
   // ==================== NOVOS ENDPOINTS ====================
+
+  // ✅ NOVO: Retirar item (garçom pega no ambiente)
+  @Patch('item/:id/retirar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Marca item como retirado pelo garçom',
+    description: 'Registra que o garçom pegou o item no ambiente de produção. Valida se o garçom está em turno ativo. Emite evento WebSocket.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Item marcado como retirado com sucesso.' 
+  })
+  @ApiResponse({ status: 400, description: 'UUID inválido ou item não está PRONTO.' })
+  @ApiResponse({ status: 401, description: 'Não autenticado.' })
+  @ApiResponse({ status: 403, description: 'Sem permissão ou garçom sem turno ativo.' })
+  @ApiResponse({ status: 404, description: 'Item não encontrado.' })
+  @ApiResponse({ status: 409, description: 'Item já foi retirado ou entregue.' })
+  retirarItem(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RetirarItemDto,
+  ) {
+    return this.pedidoService.retirarItem(id, dto);
+  }
 
   @Patch('item/:id/deixar-no-ambiente')
   @UseGuards(JwtAuthGuard, RolesGuard)

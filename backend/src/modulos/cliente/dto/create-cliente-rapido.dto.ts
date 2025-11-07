@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Length, IsUUID } from 'class-validator';
 
 export class CreateClienteRapidoDto {
   @ApiProperty({
@@ -28,4 +28,22 @@ export class CreateClienteRapidoDto {
   @IsOptional()
   @IsString()
   telefone?: string;
+
+  @ApiProperty({
+    description: 'ID do ambiente onde o cliente está',
+    example: 'uuid-do-ambiente',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID do ambiente deve ser um UUID válido' })
+  ambienteId?: string;
+
+  @ApiProperty({
+    description: 'ID do ponto de entrega preferido',
+    example: 'uuid-do-ponto-entrega',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'ID do ponto de entrega deve ser um UUID válido' })
+  pontoEntregaId?: string;
 }
