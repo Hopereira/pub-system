@@ -550,9 +550,9 @@ export class PedidoService {
       throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
     }
 
-    // Verifica se o item está pronto
-    if (item.status !== PedidoStatus.PRONTO) {
-      throw new BadRequestException('Apenas itens com status PRONTO podem ser marcados como entregues.');
+    // Verifica se o item está RETIRADO (não PRONTO)
+    if (item.status !== PedidoStatus.RETIRADO) {
+      throw new BadRequestException('Apenas itens com status RETIRADO podem ser marcados como entregues.');
     }
 
     // Busca o garçom
@@ -564,33 +564,52 @@ export class PedidoService {
       throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
     }
 
-    // Calcula tempo de entrega (do momento que ficou pronto até agora)
+    // Calcula tempo de entrega FINAL (do momento que foi RETIRADO até agora)
     const agora = new Date();
-    let tempoEntregaMinutos = null;
+    let tempoEntregaFinalMinutos = null;
 
+    if (item.retiradoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.retiradoEm).getTime();
+      tempoEntregaFinalMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+    }
+
+    // Calcula tempo TOTAL de entrega (do momento que ficou PRONTO até agora)
+    let tempoEntregaMinutos = null;
     if (item.prontoEm) {
       const diferencaMs = agora.getTime() - new Date(item.prontoEm).getTime();
-      tempoEntregaMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+      tempoEntregaMinutos = Math.round(diferencaMs / 60000);
     }
 
     // Atualiza o item
     item.status = PedidoStatus.ENTREGUE;
     item.entregueEm = agora;
     item.garcomEntregaId = dto.garcomId;
-    item.tempoEntregaMinutos = tempoEntregaMinutos;
+    item.tempoEntregaMinutos = tempoEntregaMinutos; // Tempo total (PRONTO -> ENTREGUE)
+    item.tempoEntregaFinalMinutos = tempoEntregaFinalMinutos; // Última milha (RETIRADO -> ENTREGUE)
 
     await this.itemPedidoRepository.save(item);
 
     this.logger.log(
-      `✅ Item entregue | Produto: ${item.produto?.nome || 'Item'} | Garçom: ${garcom.nome} | Tempo: ${tempoEntregaMinutos || 'N/A'} min`,
+      `✅ Item entregue | Produto: ${item.produto?.nome || 'Item'} | Garçom: ${garcom.nome} | Tempo total: ${tempoEntregaMinutos || 'N/A'} min | Última milha: ${tempoEntregaFinalMinutos || 'N/A'} min`,
     );
 
-    // Emite evento WebSocket
+    // Emite evento WebSocket para TODOS os clientes
     const comanda = item.pedido?.comanda;
     if (comanda) {
+      // Atualiza status geral do pedido
       this.pedidosGateway.emitStatusAtualizado(item.pedido);
       
-      // Notifica cliente
+      // Evento específico de item entregue (broadcast para todos)
+      this.pedidosGateway.server.emit('item_entregue', {
+        itemId: item.id,
+        pedidoId: item.pedido.id,
+        produtoNome: item.produto?.nome,
+        garcomNome: garcom.nome,
+        tempoEntregaFinalMinutos,
+        tempoEntregaMinutos,
+      });
+
+      // Notifica cliente específico da comanda
       this.pedidosGateway.server
         .to(`comanda_${comanda.id}`)
         .emit('item_entregue', {
