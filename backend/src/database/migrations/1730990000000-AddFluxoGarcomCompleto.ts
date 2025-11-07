@@ -4,14 +4,14 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
   name = 'AddFluxoGarcomCompleto1730990000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Adicionar novos estados ao enum PedidoStatus
+    // 1. Adicionar novos estados ao enum itens_pedido_status
     await queryRunner.query(`
-      ALTER TYPE "public"."pedido_status_enum" 
-      RENAME TO "pedido_status_enum_old"
+      ALTER TYPE "public"."itens_pedido_status_enum" 
+      RENAME TO "itens_pedido_status_enum_old"
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "public"."pedido_status_enum" AS ENUM(
+      CREATE TYPE "public"."itens_pedido_status_enum" AS ENUM(
         'FEITO',
         'EM_PREPARO',
         'QUASE_PRONTO',
@@ -25,12 +25,12 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
 
     await queryRunner.query(`
       ALTER TABLE "itens_pedido"
-      ALTER COLUMN "status" TYPE "public"."pedido_status_enum"
-      USING "status"::text::"public"."pedido_status_enum"
+      ALTER COLUMN "status" TYPE "public"."itens_pedido_status_enum"
+      USING "status"::text::"public"."itens_pedido_status_enum"
     `);
 
     await queryRunner.query(`
-      DROP TYPE "public"."pedido_status_enum_old"
+      DROP TYPE "public"."itens_pedido_status_enum_old"
     `);
 
     // 2. Adicionar novos campos de timestamps
@@ -142,7 +142,7 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
 
     // Reverter enum
     await queryRunner.query(`
-      CREATE TYPE "public"."pedido_status_enum_old" AS ENUM(
+      CREATE TYPE "public"."itens_pedido_status_enum_old" AS ENUM(
         'FEITO',
         'EM_PREPARO',
         'PRONTO',
@@ -154,14 +154,14 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
 
     await queryRunner.query(`
       ALTER TABLE "itens_pedido"
-      ALTER COLUMN "status" TYPE "public"."pedido_status_enum_old"
-      USING "status"::text::"public"."pedido_status_enum_old"
+      ALTER COLUMN "status" TYPE "public"."itens_pedido_status_enum_old"
+      USING "status"::text::"public"."itens_pedido_status_enum_old"
     `);
 
-    await queryRunner.query(`DROP TYPE "public"."pedido_status_enum"`);
+    await queryRunner.query(`DROP TYPE "public"."itens_pedido_status_enum"`);
     await queryRunner.query(`
-      ALTER TYPE "public"."pedido_status_enum_old" 
-      RENAME TO "pedido_status_enum"
+      ALTER TYPE "public"."itens_pedido_status_enum_old" 
+      RENAME TO "itens_pedido_status_enum"
     `);
   }
 }
