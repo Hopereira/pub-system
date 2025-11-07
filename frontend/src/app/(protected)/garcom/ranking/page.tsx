@@ -2,17 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getRanking, getEstatisticas } from '@/services/rankingService';
-import { RankingGarcom, EstatisticasGarcom } from '@/types/ranking';
+import { getRanking, getEstatisticas, getMedalhas, getProgressoMedalhas } from '@/services/rankingService';
+import { RankingGarcom, EstatisticasGarcom, Medalha } from '@/types/ranking';
 import PodiumCard from '@/components/ranking/PodiumCard';
 import RankingTable from '@/components/ranking/RankingTable';
+import { MedalhasBadge } from '@/components/ranking/MedalhasBadge';
+import { ProgressoMedalhaCard } from '@/components/ranking/ProgressoMedalha';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, Clock, Zap, Target, RefreshCw } from 'lucide-react';
+import { Trophy, TrendingUp, Clock, Zap, Target, RefreshCw, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type Periodo = 'hoje' | 'semana' | 'mes';
+
+interface ProgressoMedalhas {
+  medalhasConquistadas: number;
+  totalMedalhas: number;
+  proximasConquistas: any[];
+}
 
 export default function RankingPage() {
   const { user } = useAuth();
@@ -20,6 +28,8 @@ export default function RankingPage() {
   const [periodo, setPeriodo] = useState<Periodo>('hoje');
   const [ranking, setRanking] = useState<RankingGarcom[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasGarcom | null>(null);
+  const [medalhas, setMedalhas] = useState<Medalha[]>([]);
+  const [progresso, setProgresso] = useState<ProgressoMedalhas | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -31,10 +41,17 @@ export default function RankingPage() {
       const rankingData = await getRanking(periodo);
       setRanking(rankingData.ranking);
 
-      // Buscar estatísticas do garçom logado
+      // Buscar estatísticas e medalhas do garçom logado
       if (user?.id) {
-        const estatisticasData = await getEstatisticas(user.id, periodo);
+        const [estatisticasData, medalhasData, progressoData] = await Promise.all([
+          getEstatisticas(user.id, periodo),
+          getMedalhas(user.id),
+          getProgressoMedalhas(user.id),
+        ]);
+        
         setEstatisticas(estatisticasData);
+        setMedalhas(medalhasData);
+        setProgresso(progressoData);
       }
     } catch (error) {
       console.error('Erro ao carregar ranking:', error);
@@ -174,6 +191,44 @@ export default function RankingPage() {
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Medalhas */}
+      {medalhas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-yellow-500" />
+              Suas Medalhas
+              <Badge variant="secondary">{medalhas.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MedalhasBadge medalhas={medalhas} limite={10} tamanho="lg" />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Progresso de Medalhas */}
+      {progresso && progresso.proximasConquistas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5" />
+              Próximas Conquistas
+              <Badge variant="outline">
+                {progresso.medalhasConquistadas}/{progresso.totalMedalhas}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {progresso.proximasConquistas.map((p, index) => (
+                <ProgressoMedalhaCard key={index} progresso={p} />
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

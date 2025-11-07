@@ -1,5 +1,5 @@
 import api from '@/lib/axios';
-import { RankingResponse, EstatisticasGarcom } from '@/types/ranking';
+import { RankingResponse, EstatisticasGarcom, Medalha } from '@/types/ranking';
 
 /**
  * Busca o ranking de garçons
@@ -32,11 +32,25 @@ export async function getEstatisticas(
 }
 
 /**
- * Busca medalhas de um garçom (TODO: implementar no backend)
+ * Busca medalhas conquistadas por um garçom
  */
-export async function getMedalhas(garcomId: string) {
-  // TODO: Implementar endpoint no backend
-  // const response = await api.get(`/analytics/garcons/${garcomId}/medalhas`);
-  // return response.data;
-  return [];
+export async function getMedalhas(garcomId: string): Promise<Medalha[]> {
+  const response = await api.get(`/medalhas/garcom/${garcomId}`);
+  return response.data;
+}
+
+/**
+ * Busca progresso de medalhas de um garçom
+ */
+export async function getProgressoMedalhas(garcomId: string) {
+  const response = await api.get(`/medalhas/garcom/${garcomId}/progresso`);
+  return response.data;
+}
+
+/**
+ * Verifica se há novas medalhas conquistadas
+ */
+export async function verificarNovasMedalhas(garcomId: string): Promise<Medalha[]> {
+  const response = await api.get(`/medalhas/garcom/${garcomId}/verificar`);
+  return response.data;
 }

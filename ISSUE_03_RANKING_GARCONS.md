@@ -3,7 +3,7 @@
 **Branch:** `feature/ranking-garcons`  
 **Prioridade:** MÉDIA  
 **Estimativa:** 5 dias  
-**Status:** 🚧 EM DESENVOLVIMENTO (60% COMPLETO)
+**Status:** 🚧 EM DESENVOLVIMENTO (85% COMPLETO)
 
 ---
 
@@ -20,7 +20,7 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
 
 ## 📋 Checklist de Implementação
 
-### Backend (60% estimado) ✅ 70% COMPLETO
+### Backend (60% estimado) ✅ 90% COMPLETO
 
 #### Fase 1: Métricas Avançadas ✅ COMPLETO
 - [x] Service analytics básico já existe
@@ -41,10 +41,15 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - Histórico de performance
   - Evolução diária (últimos 7 dias)
   
-- [ ] `GET /analytics/garcons/:id/medalhas`
+- [x] `GET /medalhas/garcom/:id` ✅ NOVO
   - Lista de medalhas conquistadas
+  
+- [x] `GET /medalhas/garcom/:id/progresso` ✅ NOVO
   - Progresso de medalhas em andamento
   - Próximas conquistas disponíveis
+  
+- [x] `GET /medalhas/garcom/:id/verificar` ✅ NOVO
+  - Verifica e concede novas medalhas
 
 #### Fase 3: Sistema de Pontuação ✅ COMPLETO
 - [x] Criar lógica de pontuação em `getRankingGarcons()`
@@ -54,36 +59,56 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - Penalidade por atraso (>5min: -3 pontos por minuto extra)
   - Bônus de SLA (95%: +100 pontos, 90%: +50 pontos)
 
-#### Fase 4: Sistema de Medalhas ❌
-- [ ] Criar enum `TipoMedalha`
-  ```typescript
-  enum TipoMedalha {
-    VELOCISTA = 'VELOCISTA',           // 50 entregas <2min
-    MARATONISTA = 'MARATONISTA',       // 100+ entregas em um dia
-    PONTUAL = 'PONTUAL',               // 95% SLA por 7 dias
-    MVP = 'MVP',                       // #1 do ranking semanal
-    CONSISTENTE = 'CONSISTENTE',       // Top 3 por 30 dias
-    ROOKIE = 'ROOKIE',                 // Primeira entrega
-  }
-  ```
+#### Fase 4: Sistema de Medalhas ✅ 90% COMPLETO
+- [x] Criar enum `TipoMedalha` ✅
+  - VELOCISTA (entregas rápidas)
+  - MARATONISTA (volume de entregas)
+  - PONTUAL (consistência SLA)
+  - MVP (primeiro lugar)
+  - CONSISTENTE (top ranking)
+  - ROOKIE (primeira entrega)
   
-- [ ] Criar entity `Medalha`
-  - `id`, `tipo`, `nome`, `descricao`, `icone`, `requisitos`
+- [x] Criar enum `NivelMedalha` ✅
+  - BRONZE, PRATA, OURO
   
-- [ ] Criar entity `MedalhaGarcom`
+- [x] Criar entity `Medalha` ✅
+  - `id`, `tipo`, `nome`, `descricao`, `icone`, `nivel`
+  - `requisitos` (JSONB flexível)
+  - `ativo` (boolean)
+  
+- [x] Criar entity `MedalhaGarcom` ✅
   - Relação com Funcionario
-  - `conquistadaEm`, `nivel` (bronze/prata/ouro)
+  - `conquistadaEm`, `metadata` (JSONB)
+  - Unique constraint (funcionario_id, medalha_id)
+  
+- [x] Criar migration `CreateMedalhasTables` ✅
+  - 16 medalhas pré-configuradas
+  - 3 níveis × 5 tipos + ROOKIE
+  
+- [x] Criar `MedalhaService` ✅
+  - getMedalhasGarcom()
+  - getProgressoMedalhas()
+  - verificarNovasMedalhas()
+  - calcularEstatisticas()
+  - verificarRequisitos()
+  
+- [x] Criar `MedalhaController` ✅
+  - Rotas configuradas
+  
+- [x] Criar `MedalhaModule` ✅
+  - Registrado no AppModule
 
-#### Fase 5: Jobs Automáticos ❌
-- [ ] `AtualizarRankingScheduler`
+#### Fase 5: Jobs Automáticos ✅ 80% COMPLETO
+- [x] `MedalhaScheduler` criado ✅
   - Roda a cada 5 minutos
-  - Recalcula pontos e posições
+  - Verifica todos os garçons ativos
   - Detecta novas medalhas conquistadas
-  - Emite evento WebSocket `ranking_atualizado`
+  - Emite evento WebSocket `medalha_conquistada`
+- [ ] Implementar detecção completa de todos os tipos (PONTUAL, MVP, CONSISTENTE pendentes)
 
 ---
 
-### Frontend (40% estimado) ✅ 60% COMPLETO
+### Frontend (40% estimado) ✅ 80% COMPLETO
 
 #### Fase 1: Tipos e Services ✅ COMPLETO
 - [x] `src/types/ranking.ts`
@@ -91,12 +116,14 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - TipoMedalha, NivelMedalha enums
   - RankingResponse, EvolucaoDiaria
   
-- [x] `src/services/rankingService.ts`
+- [x] `src/services/rankingService.ts` ✅ COMPLETO
   - getRanking(periodo, ambienteId, limite)
   - getEstatisticas(garcomId, periodo)
-  - getMedalhas(garcomId) - pendente implementação backend
+  - getMedalhas(garcomId) ✅ IMPLEMENTADO
+  - getProgressoMedalhas(garcomId) ✅ IMPLEMENTADO
+  - verificarNovasMedalhas(garcomId) ✅ IMPLEMENTADO
 
-#### Fase 2: Componentes ✅ 80% COMPLETO
+#### Fase 2: Componentes ✅ COMPLETO
 - [x] `src/components/ranking/PodiumCard.tsx`
   - Top 3 com visual de pódio (🥇🥈🥉)
   - Animações de brilho (animate-pulse no 1º)
@@ -110,15 +137,17 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - Badges coloridos por SLA
   - Ícones de tendência (TrendingUp/Down/Minus)
   
-- [ ] `src/components/ranking/MedalhasBadge.tsx`
+- [x] `src/components/ranking/MedalhasBadge.tsx` ✅ NOVO
   - Badge visual de medalhas
   - Tooltip com detalhes
-  - Contador de medalhas por nível
+  - Efeito visual por nível (drop-shadow)
+  - Contador "+X" quando há muitas
   
-- [ ] `src/components/ranking/ProgressoMedalha.tsx`
+- [x] `src/components/ranking/ProgressoMedalha.tsx` ✅ NOVO
   - Card de progresso de conquista
-  - Barra de progresso
+  - Barra de progresso (Progress component)
   - "Faltam X entregas para conseguir VELOCISTA"
+  - Badge de nível colorido
   
 - [ ] `src/components/ranking/EstatisticasGarcom.tsx`
   - Gráfico de linha: evolução de pontos
@@ -126,10 +155,12 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - Histórico de medalhas conquistadas
 
 #### Fase 3: Páginas ✅ COMPLETO
-- [x] `src/app/(protected)/garcom/ranking/page.tsx`
+- [x] `src/app/(protected)/garcom/ranking/page.tsx` ✅ ATUALIZADO
   - Filtros de período (Hoje/Semana/Mês)
   - Pódio visual (PodiumCard)
   - Cards de estatísticas pessoais (4 métricas)
+  - **Seção "Suas Medalhas"** ✅ NOVO
+  - **Seção "Próximas Conquistas"** ✅ NOVO
   - Tabela de ranking completo
   - Comparação com próximo colocado
   - Highlight do garçom logado
@@ -142,11 +173,12 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - Comparação entre ambientes
   - Exportar relatório
 
-#### Fase 4: WebSocket e Tempo Real ❌
+#### Fase 4: WebSocket e Tempo Real ❌ PENDENTE
 - [ ] Escutar evento `ranking_atualizado`
 - [ ] Atualizar posições automaticamente
 - [ ] Notificação quando subir/descer no ranking
 - [ ] Notificação de medalha conquistada (confete 🎉)
+
 
 #### Fase 5: Animações e UX ❌
 - [ ] Animação de subida/descida no ranking (setas)
