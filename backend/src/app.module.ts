@@ -20,6 +20,7 @@ import { HealthModule } from './health/health.module';
 import { AvaliacaoModule } from './modulos/avaliacao/avaliacao.module';
 import { TurnoModule } from './modulos/turno/turno.module';
 import { AnalyticsModule } from './modulos/analytics/analytics.module';
+import { MedalhaModule } from './modulos/medalha/medalha.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { AnalyticsModule } from './modulos/analytics/analytics.module';
     AvaliacaoModule,
     TurnoModule,
     AnalyticsModule,
+    MedalhaModule,
   ],
   controllers: [],
   providers: [],

@@ -107,4 +107,37 @@ export class AnalyticsController {
       limite: limite ? parseInt(limite, 10) : 10,
     });
   }
+
+  @Get('garcons/ranking')
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiOperation({ summary: 'Ranking de garçons com pontuação e métricas' })
+  @ApiResponse({ status: 200, description: 'Ranking gerado com sucesso' })
+  @ApiQuery({ name: 'periodo', required: false, enum: ['hoje', 'semana', 'mes'], description: 'Período do ranking' })
+  @ApiQuery({ name: 'ambienteId', required: false, type: String, description: 'Filtrar por ambiente' })
+  @ApiQuery({ name: 'limite', required: false, type: Number, description: 'Limite de resultados' })
+  async getRankingGarcons(
+    @Query('periodo') periodo?: 'hoje' | 'semana' | 'mes',
+    @Query('ambienteId') ambienteId?: string,
+    @Query('limite') limite?: string,
+  ) {
+    return this.analyticsService.getRankingGarcons({
+      periodo: periodo || 'hoje',
+      ambienteId,
+      limite: limite ? parseInt(limite, 10) : undefined,
+    });
+  }
+
+  @Get('garcons/:id/estatisticas')
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiOperation({ summary: 'Estatísticas detalhadas de um garçom' })
+  @ApiResponse({ status: 200, description: 'Estatísticas carregadas com sucesso' })
+  @ApiQuery({ name: 'periodo', required: false, enum: ['hoje', 'semana', 'mes'], description: 'Período das estatísticas' })
+  async getEstatisticasGarcom(
+    @Query('id') garcomId: string,
+    @Query('periodo') periodo?: 'hoje' | 'semana' | 'mes',
+  ) {
+    return this.analyticsService.getEstatisticasGarcom(garcomId, {
+      periodo: periodo || 'hoje',
+    });
+  }
 }
