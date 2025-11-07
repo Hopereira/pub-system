@@ -1,56 +1,54 @@
-# 🔔 Sons de Notificação
+# Sons do Sistema
 
-## 📁 Arquivo Necessário:
+Este diretório contém os arquivos de áudio usados para notificações do sistema.
 
-Adicione um arquivo de som chamado `notification.mp3` nesta pasta.
+## Arquivos de Som
 
----
+### item-quase-pronto.mp3
+Som leve e curto para alertar que um item está quase pronto (30-60s antes).
+- Duração: ~1s
+- Volume: médio
+- Tom: agradável, não intrusivo
 
-## 🎵 Onde Baixar Sons Gratuitos:
+### item-pronto.mp3
+Som mais forte e chamativo para alertar que um item está pronto para retirada.
+- Duração: ~2s
+- Volume: alto
+- Tom: urgente, mas profissional
 
-### **Opção 1: Freesound.org**
-1. Acesse: https://freesound.org/
-2. Busque: "notification bell" ou "ding"
-3. Baixe um som curto (1-2 segundos)
-4. Converta para MP3 se necessário
-5. Renomeie para: `notification.mp3`
-6. Coloque nesta pasta
+### item-retirado.mp3
+Som de confirmação quando um item é retirado.
+- Duração: ~0.5s
+- Volume: médio-baixo
+- Tom: confirmação positiva
 
-### **Opção 2: Zapsplat**
-1. Acesse: https://www.zapsplat.com/
-2. Busque: "notification"
-3. Baixe gratuitamente
-4. Salve como: `notification.mp3`
+### item-entregue.mp3
+Som de sucesso quando um item é entregue ao cliente.
+- Duração: ~1s
+- Volume: médio
+- Tom: conclusão, satisfação
 
-### **Opção 3: Mixkit**
-1. Acesse: https://mixkit.co/free-sound-effects/notification/
-2. Escolha um som
-3. Baixe
-4. Salve como: `notification.mp3`
+## Uso
 
----
+Os sons são reproduzidos via API Web Audio ou HTMLAudioElement.
+Um hook `useNotificationSound` gerencia reprodução, volume e mute.
 
-## 🎯 Características Ideais:
+## Alternativa Temporária
 
-- **Duração:** 1-2 segundos
-- **Volume:** Médio (não muito alto)
-- **Tom:** Agradável, não irritante
-- **Formato:** MP3, WAV ou OGG
+Enquanto os arquivos de som reais não estiverem disponíveis, o sistema:
+1. Usa Web Audio API para gerar tons sintéticos
+2. Ou simplesmente vibra no mobile (navigator.vibrate)
+3. Ou reproduz sons do sistema via Notification API
 
----
+## Implementação
 
-## 🧪 Testar o Som:
+```typescript
+// Exemplo de uso
+const { playSound, toggleMute } = useNotificationSound();
 
-Após adicionar o arquivo, teste em:
+// Ao receber evento WebSocket
+socket.on('item_pronto', () => {
+  playSound('item-pronto');
+  showToast('Item pronto!');
+});
 ```
-http://localhost:3001/dashboard/gestaopedidos
-```
-
-Quando um pedido ficar pronto, você ouvirá o som! 🔔
-
----
-
-## 📝 Nota:
-
-Se o arquivo não existir, o sistema continuará funcionando normalmente, apenas sem o som.
-O toast de notificação visual sempre aparecerá.

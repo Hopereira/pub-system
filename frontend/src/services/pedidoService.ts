@@ -229,6 +229,37 @@ export const criarPedidoGarcom = async (data: {
 };
 
 /**
+ * ✅ NOVO: Marca item como retirado pelo garçom
+ * Rota: PATCH /pedidos/item/:id/retirar
+ */
+export const retirarItem = async (
+  itemPedidoId: string,
+  garcomId: string,
+): Promise<any> => {
+  try {
+    logger.log('🎯 Marcando item como retirado', {
+      module: 'PedidoService',
+      data: { itemPedidoId, garcomId }
+    });
+    const response = await api.patch(`/pedidos/item/${itemPedidoId}/retirar`, {
+      garcomId
+    });
+    logger.log('✅ Item marcado como retirado', {
+      module: 'PedidoService',
+      data: { itemPedidoId, tempoReacao: response.data.tempoReacaoMinutos }
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Erro ao marcar item como retirado', {
+      module: 'PedidoService',
+      data: { itemPedidoId },
+      error: error as Error
+    });
+    throw error;
+  }
+};
+
+/**
  * ✅ NOVO: Marca item como entregue pelo garçom
  * Rota: PATCH /pedidos/item/:id/marcar-entregue
  */
