@@ -223,6 +223,7 @@ export default function DashboardPage() {
             subtitle="Aguardando preparo"
             icon={AlertCircle}
             status={metricas.pedidosPendentes > 10 ? 'warning' : 'neutral'}
+            href="/dashboard/operacional/pedidos-pendentes"
           />
         </BentoGridItem>
 
