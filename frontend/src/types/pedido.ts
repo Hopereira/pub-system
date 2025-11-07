@@ -37,6 +37,10 @@ export interface ComandaSimples {
   id: string;
   status: string;
   mesa?: Mesa | null;
+  pontoEntrega?: {
+    id: string;
+    nome: string;
+  } | null;
   cliente?: {
     id: string;
     nome: string;

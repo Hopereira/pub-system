@@ -132,3 +132,25 @@ export const updateComanda = async (
     throw error;
   }
 };
+
+// Buscar comandas por ponto de entrega
+export const getComandasByPontoEntrega = async (pontoEntregaId: string): Promise<Comanda[]> => {
+  try {
+    logger.debug(`🔍 Buscando comandas do ponto de entrega ${pontoEntregaId}`, { module: 'ComandaService' });
+    
+    // Buscar todas as comandas e filtrar no frontend
+    const response = await api.get<Comanda[]>('/comandas');
+    const comandasFiltradas = response.data.filter(
+      (comanda) => comanda.pontoEntrega?.id === pontoEntregaId && comanda.status === 'ABERTA'
+    );
+    
+    logger.log(`✅ ${comandasFiltradas.length} comandas encontradas no ponto`, { module: 'ComandaService' });
+    return comandasFiltradas;
+  } catch (error) {
+    logger.error('❌ Erro ao buscar comandas do ponto de entrega', {
+      module: 'ComandaService',
+      error: error as Error,
+    });
+    throw error;
+  }
+};

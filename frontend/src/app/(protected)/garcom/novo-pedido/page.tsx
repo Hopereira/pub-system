@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,7 @@ interface ItemCarrinho {
 
 export default function NovoPedidoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
 
   // Estados de busca de cliente
@@ -56,6 +57,32 @@ export default function NovoPedidoPage() {
   useEffect(() => {
     carregarDados();
   }, []);
+
+  // Seleciona mesa automaticamente se vier da URL
+  useEffect(() => {
+    const mesaId = searchParams.get('mesaId');
+    if (mesaId && mesas.length > 0) {
+      const mesa = mesas.find(m => m.id === mesaId);
+      if (mesa) {
+        setMesaSelecionada(mesaId);
+        toast.success(`Mesa ${mesa.numero} selecionada automaticamente!`);
+        
+        // Se a mesa estiver ocupada e tiver cliente, seleciona o cliente também
+        if (mesa.status === 'OCUPADA' && mesa.comanda?.cliente) {
+          setClienteSelecionado({
+            id: mesa.comanda.cliente.id,
+            nome: mesa.comanda.cliente.nome,
+            cpf: '',
+            telefone: '',
+            email: '',
+            criadoEm: '',
+            atualizadoEm: '',
+          });
+          toast.success(`Cliente ${mesa.comanda.cliente.nome} selecionado!`);
+        }
+      }
+    }
+  }, [searchParams, mesas]);
 
   const carregarDados = async () => {
     try {
@@ -392,13 +419,29 @@ export default function NovoPedidoPage() {
                       className="mb-3"
                     />
 
+                    {/* Mensagens de validação */}
+                    {!clienteSelecionado && (
+                      <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800 font-medium">
+                          ⚠️ Selecione um cliente para continuar
+                        </p>
+                      </div>
+                    )}
+                    {clienteSelecionado && carrinho.length === 0 && (
+                      <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800 font-medium">
+                          ⚠️ Adicione pelo menos um produto ao carrinho
+                        </p>
+                      </div>
+                    )}
+
                     <Button
                       className="w-full"
                       size="lg"
                       onClick={enviarPedido}
-                      disabled={enviando || !clienteSelecionado}
+                      disabled={enviando || !clienteSelecionado || carrinho.length === 0}
                     >
-                      {enviando ? 'Enviando...' : 'Enviar para Cozinha'}
+                      {enviando ? 'Enviando...' : 'Enviar para Preparo'}
                     </Button>
                   </div>
                 </div>

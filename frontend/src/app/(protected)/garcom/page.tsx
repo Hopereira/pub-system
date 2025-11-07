@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { CardCheckIn } from '@/components/turno/CardCheckIn';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Clock, TrendingUp, Bell, Package, Plus } from 'lucide-react';
+import { Users, Clock, TrendingUp, Bell, Package, Plus, ClipboardList } from 'lucide-react';
 import turnoService from '@/services/turnoService';
 import * as pedidoService from '@/services/pedidoService';
 import { FuncionarioAtivo, EstatisticasTurno } from '@/types/turno';
@@ -257,13 +257,13 @@ export default function GarcomPage() {
             </a>
 
             <a
-              href="/garcom/mapa"
+              href="/dashboard/mapa/visualizar"
               className="p-4 border-2 rounded-lg hover:border-primary hover:shadow-md transition-all text-center group"
             >
               <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
-              <h3 className="font-semibold">Mapa de Mesas</h3>
+              <h3 className="font-semibold">Mapa Visual</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Visualizar layout
+                Layout do ambiente
               </p>
             </a>
 
@@ -271,21 +271,39 @@ export default function GarcomPage() {
               href="/dashboard/operacional/pedidos-prontos"
               className={`p-4 border-2 rounded-lg hover:shadow-md transition-all text-center group ${
                 pedidosProntos.length > 0 
-                  ? 'border-yellow-500 bg-yellow-50' 
+                  ? 'border-yellow-500 bg-yellow-50 animate-pulse' 
                   : 'hover:border-primary'
               }`}
             >
               <Bell className={`h-8 w-8 mx-auto mb-2 ${
                 pedidosProntos.length > 0 
-                  ? 'text-yellow-600 animate-pulse' 
+                  ? 'text-yellow-600' 
                   : 'text-muted-foreground group-hover:text-primary'
               }`} />
-              <h3 className="font-semibold">Pedidos Prontos</h3>
+              <h3 className={`font-semibold ${pedidosProntos.length > 0 ? 'text-yellow-800' : ''}`}>
+                Pedidos Prontos
+              </h3>
               <p className="text-sm text-muted-foreground mt-1">
                 {pedidosProntos.length > 0 
-                  ? `${pedidosProntos.length} aguardando` 
+                  ? `${pedidosProntos.length} aguardando entrega` 
                   : 'Nenhum no momento'
                 }
+              </p>
+              {pedidosProntos.length > 0 && (
+                <Badge variant="destructive" className="mt-2">
+                  {pedidosProntos.length}
+                </Badge>
+              )}
+            </a>
+
+            <a
+              href="/dashboard/gestaopedidos"
+              className="p-4 border-2 rounded-lg hover:border-primary hover:shadow-md transition-all text-center group"
+            >
+              <ClipboardList className="h-8 w-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary" />
+              <h3 className="font-semibold">Gestão de Pedidos</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Organizar entregas
               </p>
             </a>
           </div>

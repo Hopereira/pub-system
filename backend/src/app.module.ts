@@ -18,6 +18,7 @@ import { PontoEntregaModule } from './modulos/ponto-entrega/ponto-entrega.module
 import { HealthModule } from './health/health.module';
 import { AvaliacaoModule } from './modulos/avaliacao/avaliacao.module';
 import { TurnoModule } from './modulos/turno/turno.module';
+import { AnalyticsModule } from './modulos/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { TurnoModule } from './modulos/turno/turno.module';
     HealthModule,
     AvaliacaoModule,
     TurnoModule,
+    AnalyticsModule,
   ],
   controllers: [],
   providers: [],

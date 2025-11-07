@@ -74,4 +74,8 @@ export class ItemPedido {
   // ✅ NOVO: Tempo de entrega em minutos (calculado automaticamente)
   @Column({ type: 'int', nullable: true })
   tempoEntregaMinutos: number;
+
+  // Tempo de preparo em minutos (do início ao pronto)
+  @Column({ name: 'tempo_preparo_minutos', type: 'integer', nullable: true })
+  tempoPreparoMinutos: number;
 }

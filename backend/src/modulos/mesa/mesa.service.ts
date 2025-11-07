@@ -61,14 +61,22 @@ export class MesaService {
 
   async findAll(): Promise<Mesa[]> {
     const mesas = await this.mesaRepository.find({
-      relations: ['ambiente', 'comandas'],
+      relations: ['ambiente', 'comandas', 'comandas.cliente'],
       order: { numero: 'ASC' },
     });
     return mesas.map(mesa => {
-      const temComandaAberta = mesa.comandas?.some(comanda => comanda.status === 'ABERTA');
+      const comandaAberta = mesa.comandas?.find(comanda => comanda.status === 'ABERTA');
       return {
         ...mesa,
-        status: temComandaAberta ? MesaStatus.OCUPADA : MesaStatus.LIVRE,
+        status: comandaAberta ? MesaStatus.OCUPADA : MesaStatus.LIVRE,
+        comanda: comandaAberta ? {
+          id: comandaAberta.id,
+          cliente: comandaAberta.cliente ? {
+            id: comandaAberta.cliente.id,
+            nome: comandaAberta.cliente.nome,
+          } : undefined,
+          dataAbertura: comandaAberta.dataAbertura,
+        } : undefined,
       };
     });
   }
