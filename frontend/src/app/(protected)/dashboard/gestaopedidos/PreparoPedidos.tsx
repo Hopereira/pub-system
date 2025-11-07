@@ -166,6 +166,9 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
     emPreparo: pedidosFiltrados.filter((p) =>
       p.itens.some((i) => i.status === PedidoStatus.EM_PREPARO)
     ),
+    quasePronto: pedidosFiltrados.filter((p) =>
+      p.itens.some((i) => i.status === PedidoStatus.QUASE_PRONTO)
+    ),
     pronto: pedidosFiltrados.filter((p) =>
       p.itens.some((i) => i.status === PedidoStatus.PRONTO)
     ),
@@ -175,8 +178,8 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-12 bg-gray-200 rounded"></div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-64 bg-gray-200 rounded"></div>
           ))}
         </div>
@@ -260,7 +263,7 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
           </AlertDescription>
         </Alert>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Coluna: Aguardando */}
           <div className="space-y-3">
             <div className="bg-gray-100 p-3 rounded-lg">
@@ -299,6 +302,27 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
             </div>
             <div className="space-y-3">
               {colunas.emPreparo.map((pedido) => (
+                <PedidoCard
+                  key={pedido.id}
+                  pedido={pedido}
+                  onItemStatusChange={handleItemStatusChange}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Coluna: Quase Pronto */}
+          <div className="space-y-3">
+            <div className="bg-yellow-100 p-3 rounded-lg">
+              <h3 className="font-semibold text-yellow-700 flex items-center justify-between">
+                Quase Pronto
+                <span className="text-sm bg-yellow-200 px-2 py-1 rounded-full">
+                  {colunas.quasePronto.length}
+                </span>
+              </h3>
+            </div>
+            <div className="space-y-3">
+              {colunas.quasePronto.map((pedido) => (
                 <PedidoCard
                   key={pedido.id}
                   pedido={pedido}

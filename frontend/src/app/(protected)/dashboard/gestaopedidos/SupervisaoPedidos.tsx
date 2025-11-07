@@ -167,6 +167,7 @@ export default function SupervisaoPedidos() {
     total: pedidosFiltrados.length,
     feito: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.FEITO)).length,
     emPreparo: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.EM_PREPARO)).length,
+    quasePronto: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.QUASE_PRONTO)).length,
     pronto: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.PRONTO)).length,
     entregue: pedidosFiltrados.filter((p) => p.itens.some((i) => 
       i.status === PedidoStatus.ENTREGUE || i.status === PedidoStatus.DEIXADO_NO_AMBIENTE
@@ -179,6 +180,8 @@ export default function SupervisaoPedidos() {
         return <Clock className="h-4 w-4" />;
       case PedidoStatus.EM_PREPARO:
         return <Flame className="h-4 w-4" />;
+      case PedidoStatus.QUASE_PRONTO:
+        return <Clock className="h-4 w-4" />;
       case PedidoStatus.PRONTO:
         return <CheckCircle className="h-4 w-4" />;
       case PedidoStatus.ENTREGUE:
@@ -198,6 +201,8 @@ export default function SupervisaoPedidos() {
         return 'bg-gray-100 text-gray-800 border-gray-300';
       case PedidoStatus.EM_PREPARO:
         return 'bg-orange-100 text-orange-800 border-orange-300';
+      case PedidoStatus.QUASE_PRONTO:
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case PedidoStatus.PRONTO:
         return 'bg-green-100 text-green-800 border-green-300';
       case PedidoStatus.ENTREGUE:
@@ -287,6 +292,7 @@ export default function SupervisaoPedidos() {
                 <SelectItem value="todos">Todos os Status</SelectItem>
                 <SelectItem value={PedidoStatus.FEITO}>Aguardando</SelectItem>
                 <SelectItem value={PedidoStatus.EM_PREPARO}>Em Preparo</SelectItem>
+                <SelectItem value={PedidoStatus.QUASE_PRONTO}>Quase Pronto</SelectItem>
                 <SelectItem value={PedidoStatus.PRONTO}>Pronto</SelectItem>
                 <SelectItem value="ENTREGUES">Entregues (Todos)</SelectItem>
                 <SelectItem value={PedidoStatus.ENTREGUE}>Entregue (Garçom)</SelectItem>
@@ -342,6 +348,22 @@ export default function SupervisaoPedidos() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{metricas.emPreparo}</div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            statusFiltro === PedidoStatus.QUASE_PRONTO ? 'ring-2 ring-yellow-500' : ''
+          }`}
+          onClick={() => setStatusFiltro(PedidoStatus.QUASE_PRONTO)}
+        >
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <Clock className="h-3 w-3" /> Quase Pronto
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{metricas.quasePronto}</div>
           </CardContent>
         </Card>
 
