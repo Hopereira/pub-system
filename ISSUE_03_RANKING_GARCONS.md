@@ -3,7 +3,7 @@
 **Branch:** `feature/ranking-garcons`  
 **Prioridade:** MÉDIA  
 **Estimativa:** 5 dias  
-**Status:** 🚧 EM DESENVOLVIMENTO
+**Status:** 🚧 EM DESENVOLVIMENTO (60% COMPLETO)
 
 ---
 
@@ -20,38 +20,39 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
 
 ## 📋 Checklist de Implementação
 
-### Backend (60% estimado) 🚧
+### Backend (60% estimado) ✅ 70% COMPLETO
 
-#### Fase 1: Métricas Avançadas ✅
+#### Fase 1: Métricas Avançadas ✅ COMPLETO
 - [x] Service analytics básico já existe
 - [x] Performance de garçons já calculada
-- [ ] **Adicionar métricas de reação e entrega final**
+- [x] **Adicionar métricas de reação e entrega final**
   - `tempo_reacao_minutos` (PRONTO → RETIRADO)
   - `tempo_entrega_final_minutos` (RETIRADO → ENTREGUE)
   - Percentual SLA (<2min reação = ótimo)
   
-#### Fase 2: Novos Endpoints ❌
-- [ ] `GET /analytics/garcons/ranking`
+#### Fase 2: Novos Endpoints ✅ COMPLETO
+- [x] `GET /analytics/garcons/ranking`
   - Query params: `periodo` (hoje/semana/mes), `ambienteId`
   - Retornar ranking ordenado por pontuação
   - Incluir posição, nome, avatar, pontos, medalhas
   
-- [ ] `GET /analytics/garcons/:id/estatisticas`
+- [x] `GET /analytics/garcons/:id/estatisticas`
   - Estatísticas detalhadas de um garçom
   - Histórico de performance
-  - Gráficos de evolução
+  - Evolução diária (últimos 7 dias)
   
 - [ ] `GET /analytics/garcons/:id/medalhas`
   - Lista de medalhas conquistadas
   - Progresso de medalhas em andamento
   - Próximas conquistas disponíveis
 
-#### Fase 3: Sistema de Pontuação ❌
-- [ ] Criar `PontuacaoService`
+#### Fase 3: Sistema de Pontuação ✅ COMPLETO
+- [x] Criar lógica de pontuação em `getRankingGarcons()`
   - Calcular pontos por entrega (base: 10 pontos)
   - Bônus de velocidade (entrega <2min: +5 pontos)
   - Bônus de volume (>20 entregas/dia: +50 pontos)
-  - Penalidade por atraso (>5min: -3 pontos)
+  - Penalidade por atraso (>5min: -3 pontos por minuto extra)
+  - Bônus de SLA (95%: +100 pontos, 90%: +50 pontos)
 
 #### Fase 4: Sistema de Medalhas ❌
 - [ ] Criar enum `TipoMedalha`
@@ -82,53 +83,32 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
 
 ---
 
-### Frontend (40% estimado) ❌
+### Frontend (40% estimado) ✅ 60% COMPLETO
 
-#### Fase 1: Tipos e Services ❌
-- [ ] `src/types/ranking.ts`
-  ```typescript
-  interface RankingGarcom {
-    posicao: number;
-    funcionarioId: string;
-    nome: string;
-    avatar?: string;
-    pontos: number;
-    totalEntregas: number;
-    tempoMedioReacao: number;
-    tempoMedioEntrega: number;
-    percentualSLA: number;
-    medalhas: Medalha[];
-    tendencia: 'subindo' | 'descendo' | 'estavel';
-  }
+#### Fase 1: Tipos e Services ✅ COMPLETO
+- [x] `src/types/ranking.ts`
+  - RankingGarcom, Medalha, EstatisticasGarcom
+  - TipoMedalha, NivelMedalha enums
+  - RankingResponse, EvolucaoDiaria
   
-  interface Medalha {
-    tipo: string;
-    nome: string;
-    descricao: string;
-    icone: string;
-    nivel: 'bronze' | 'prata' | 'ouro';
-    conquistadaEm: string;
-  }
-  ```
-  
-- [ ] `src/services/rankingService.ts`
-  ```typescript
-  getRanking(periodo: string, ambienteId?: string)
-  getEstatisticas(garcomId: string)
-  getMedalhas(garcomId: string)
-  ```
+- [x] `src/services/rankingService.ts`
+  - getRanking(periodo, ambienteId, limite)
+  - getEstatisticas(garcomId, periodo)
+  - getMedalhas(garcomId) - pendente implementação backend
 
-#### Fase 2: Componentes ❌
-- [ ] `src/components/ranking/PodiumCard.tsx`
+#### Fase 2: Componentes ✅ 80% COMPLETO
+- [x] `src/components/ranking/PodiumCard.tsx`
   - Top 3 com visual de pódio (🥇🥈🥉)
-  - Animações de brilho
-  - Fotos dos garçons
+  - Animações de brilho (animate-pulse no 1º)
+  - Cores diferenciadas (ouro/prata/bronze)
+  - Gradientes e sombras
   
-- [ ] `src/components/ranking/RankingTable.tsx`
+- [x] `src/components/ranking/RankingTable.tsx`
   - Tabela completa do ranking
-  - Colunas: Pos, Nome, Pontos, Entregas, SLA, Tendência
-  - Highlight do garçom logado
-  - Filtros por período
+  - Colunas: Pos, Nome, Pontos, Entregas, Reação, SLA, Tendência
+  - Highlight do garçom logado (fundo azul)
+  - Badges coloridos por SLA
+  - Ícones de tendência (TrendingUp/Down/Minus)
   
 - [ ] `src/components/ranking/MedalhasBadge.tsx`
   - Badge visual de medalhas
@@ -145,32 +125,16 @@ Implementar sistema de ranking e gamificação para garçons, exibindo:
   - Cards de métricas: total entregas, média tempo, SLA
   - Histórico de medalhas conquistadas
 
-#### Fase 3: Páginas ❌
-- [ ] `src/app/(protected)/garcom/ranking/page.tsx`
-  - **Layout:**
-    ```
-    ┌─────────────────────────────────────┐
-    │ 🏆 Ranking de Garçons               │
-    │ [Hoje] [Semana] [Mês]              │
-    ├─────────────────────────────────────┤
-    │       🥇 Paulo   🥈 Ana   🥉 João   │
-    │      1200pts    980pts   850pts     │
-    ├─────────────────────────────────────┤
-    │ 4. Maria Silva        720pts  ↑    │
-    │ 5. José Costa         680pts  ↓    │
-    │ 6. YOU → Pedro Lima   650pts  -    │
-    ├─────────────────────────────────────┤
-    │ 📊 Suas Estatísticas                │
-    │ ✅ 45 entregas   ⏱️ 1.8min   📈 96% │
-    │                                      │
-    │ 🏅 Suas Medalhas (3)                │
-    │ [🥇 VELOCISTA] [🥈 PONTUAL] [🥉 ROOKIE] │
-    │                                      │
-    │ 🎯 Próximas Conquistas              │
-    │ ▓▓▓▓▓▓▓░░░ 75% MARATONISTA         │
-    │ ▓▓░░░░░░░░ 25% MVP                 │
-    └─────────────────────────────────────┘
-    ```
+#### Fase 3: Páginas ✅ COMPLETO
+- [x] `src/app/(protected)/garcom/ranking/page.tsx`
+  - Filtros de período (Hoje/Semana/Mês)
+  - Pódio visual (PodiumCard)
+  - Cards de estatísticas pessoais (4 métricas)
+  - Tabela de ranking completo
+  - Comparação com próximo colocado
+  - Highlight do garçom logado
+  - Botão de refresh
+  - Loading states
   
 - [ ] `src/app/(protected)/dashboard/ranking/page.tsx`
   - Versão para admin/gerente
