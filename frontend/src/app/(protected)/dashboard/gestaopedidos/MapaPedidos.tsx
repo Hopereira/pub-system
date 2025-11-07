@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin } from 'lucide-react';
-import { getPedidos } from '@/services/pedidoService';
+import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin, ShoppingBag, CheckCheck } from 'lucide-react';
+import { getPedidos, retirarItem, marcarComoEntregue } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
+import { useAuth } from '@/context/AuthContext';
 import { Pedido } from '@/types/pedido';
 import { PedidoStatus } from '@/types/pedido-status.enum';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { usePedidosSubscription } from '@/hooks/usePedidosSubscription';
  * - Métricas em tempo real
  */
 export default function MapaPedidos() {
+  const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string>('todos');
@@ -159,6 +161,46 @@ export default function MapaPedidos() {
     await loadPedidos();
     setIsRefreshing(false);
     toast.success('Pedidos atualizados!');
+  };
+
+  // Função para retirar item
+  const handleRetirarItem = async (itemId: string) => {
+    if (!user?.funcionario?.id) {
+      toast.error('Você precisa ser um garçom para retirar pedidos');
+      return;
+    }
+
+    try {
+      await retirarItem(itemId, user.funcionario.id);
+      toast.success('Item retirado com sucesso!');
+      await loadPedidos();
+    } catch (error: any) {
+      logger.error('Erro ao retirar item', { 
+        module: 'MapaPedidos',
+        error: error as Error 
+      });
+      toast.error(error.response?.data?.message || 'Erro ao retirar item');
+    }
+  };
+
+  // Função para marcar como entregue
+  const handleMarcarEntregue = async (itemId: string) => {
+    if (!user?.funcionario?.id) {
+      toast.error('Você precisa ser um garçom para entregar pedidos');
+      return;
+    }
+
+    try {
+      await marcarComoEntregue(itemId, user.funcionario.id);
+      toast.success('Item marcado como entregue!');
+      await loadPedidos();
+    } catch (error: any) {
+      logger.error('Erro ao marcar item como entregue', { 
+        module: 'MapaPedidos',
+        error: error as Error 
+      });
+      toast.error(error.response?.data?.message || 'Erro ao marcar como entregue');
+    }
   };
 
   // Filtra pedidos por ambiente e status
@@ -496,25 +538,54 @@ export default function MapaPedidos() {
                 {pedido.itens.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center text-sm border-b pb-2 last:border-0"
+                    className="flex flex-col gap-2 border-b pb-2 last:border-0"
                   >
-                    <div className="flex-1">
-                      <p className="font-medium">{item.produto?.nome || 'Produto removido'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Qtd: {item.quantidade} | {item.produto?.ambiente?.nome || 'N/A'}
-                      </p>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{item.produto?.nome || 'Produto removido'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Qtd: {item.quantidade} | {item.produto?.ambiente?.nome || 'N/A'}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs flex items-center gap-1 ${getStatusColor(item.status)}`}
+                      >
+                        {getStatusIcon(item.status)}
+                        {item.status.replace('_', ' ')}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs flex items-center gap-1 ${getStatusColor(item.status)}`}
-                    >
-                      {getStatusIcon(item.status)}
-                      {item.status.replace('_', ' ')}
-                    </Badge>
+                    
+                    {/* Botões de Ação */}
+                    <div className="flex gap-2">
+                      {item.status === PedidoStatus.PRONTO && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleRetirarItem(item.id)}
+                        >
+                          <ShoppingBag className="h-3 w-3 mr-1" />
+                          Retirar
+                        </Button>
+                      )}
+                      
+                      {item.status === PedidoStatus.RETIRADO && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          onClick={() => handleMarcarEntregue(item.id)}
+                        >
+                          <CheckCheck className="h-3 w-3 mr-1" />
+                          Entregar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
 
-                <Button asChild variant="default" size="sm" className="w-full mt-4">
+                <Button asChild variant="outline" size="sm" className="w-full mt-4">
                   <Link href="/dashboard/mapa/visualizar">
                     <MapPin className="h-4 w-4 mr-2" />
                     Localizar Cliente
