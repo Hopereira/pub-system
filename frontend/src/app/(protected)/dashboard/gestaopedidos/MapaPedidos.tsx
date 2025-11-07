@@ -165,13 +165,19 @@ export default function MapaPedidos() {
 
   // Função para retirar item
   const handleRetirarItem = async (itemId: string) => {
-    if (!user?.funcionario?.id) {
-      toast.error('Você precisa ser um garçom para retirar pedidos');
+    if (!user?.id) {
+      toast.error('Você precisa estar autenticado para retirar pedidos');
+      return;
+    }
+
+    // Verifica se é garçom
+    if (user.cargo !== 'GARCOM') {
+      toast.error('Apenas garçons podem retirar pedidos');
       return;
     }
 
     try {
-      await retirarItem(itemId, user.funcionario.id);
+      await retirarItem(itemId, user.id); // user.id É o funcionarioId
       toast.success('Item retirado com sucesso!');
       await loadPedidos();
     } catch (error: any) {
@@ -185,13 +191,19 @@ export default function MapaPedidos() {
 
   // Função para marcar como entregue
   const handleMarcarEntregue = async (itemId: string) => {
-    if (!user?.funcionario?.id) {
-      toast.error('Você precisa ser um garçom para entregar pedidos');
+    if (!user?.id) {
+      toast.error('Você precisa estar autenticado para entregar pedidos');
+      return;
+    }
+
+    // Verifica se é garçom
+    if (user.cargo !== 'GARCOM') {
+      toast.error('Apenas garçons podem entregar pedidos');
       return;
     }
 
     try {
-      await marcarComoEntregue(itemId, user.funcionario.id);
+      await marcarComoEntregue(itemId, user.id); // user.id É o funcionarioId
       toast.success('Item marcado como entregue!');
       await loadPedidos();
     } catch (error: any) {
