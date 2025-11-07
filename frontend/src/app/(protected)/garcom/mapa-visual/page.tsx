@@ -146,7 +146,7 @@ export default function MapaVisualGarcomPage() {
                 
                 {mesaSelecionada?.status === 'OCUPADA' && mesaSelecionada.comanda && (
                   <Button 
-                    onClick={() => router.push(`/garcom/gestao-pedidos?comandaId=${mesaSelecionada.comanda.id}`)}
+                    onClick={() => router.push(`/dashboard/gestaopedidos?comandaId=${mesaSelecionada.comanda.id}`)}
                     className="w-full"
                   >
                     Ver Pedidos

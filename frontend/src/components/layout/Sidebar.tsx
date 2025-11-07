@@ -19,7 +19,7 @@ const baseNavLinks = [
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
   { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
-  { href: '/garcom/gestao-pedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
   { href: '/garcom/qrcode-comanda', label: 'Gerar QR Code', icon: QrCode, roles: ['GARCOM'] },
   
   // --- Dashboard Administrativo ---
