@@ -48,24 +48,22 @@ export default function QRCodeComandaPage() {
   const buscarComandas = async () => {
     setCarregando(true);
     try {
-      // TODO: Implementar chamada à API para buscar comandas ativas
-      // Por enquanto, dados mockados
-      const comandasMock: Comanda[] = [
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/comandas?status=ABERTA`,
         {
-          id: 'ffeb85b5-0ac9-46ff-b6a3-7423bc960c36',
-          codigo: 'CMD-001',
-          cliente: {
-            id: '1',
-            nome: 'João Silva',
+          headers: {
+            'Authorization': `Bearer ${token}`,
           },
-          mesa: {
-            numero: 5,
-          },
-          status: 'ATIVA',
-          criadoEm: new Date().toISOString(),
-        },
-      ];
-      setComandas(comandasMock);
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Erro ao buscar comandas');
+      }
+
+      const data = await response.json();
+      setComandas(data);
     } catch (error) {
       toast.error('Erro ao buscar comandas');
       console.error(error);
