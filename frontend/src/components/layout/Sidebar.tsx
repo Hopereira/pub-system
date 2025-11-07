@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar, MapPin, Package // Ícones importados
+    Calendar, MapPin, Package, Map, QrCode // Ícones importados
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -18,8 +18,9 @@ import { Ambiente } from '@/types/ambiente';
 const baseNavLinks = [
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
-  { href: '/garcom/mapa', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['GARCOM'] },
-  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
+  { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
+  { href: '/garcom/gestao-pedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
+  { href: '/garcom/qrcode-comanda', label: 'Gerar QR Code', icon: QrCode, roles: ['GARCOM'] },
   
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
