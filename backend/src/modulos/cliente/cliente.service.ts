@@ -66,6 +66,8 @@ export class ClienteService {
       cpf: cpfFinal,
       celular: dto.telefone || null,
       email: null, // Opcional
+      ambienteId: dto.ambienteId || null,
+      pontoEntregaId: dto.pontoEntregaId || null,
     });
 
     return this.clienteRepository.save(cliente);
