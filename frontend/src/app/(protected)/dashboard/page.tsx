@@ -232,7 +232,7 @@ export default function DashboardPage() {
             subtitle="Em atendimento"
             icon={ShoppingBag}
             status="neutral"
-            href="/dashboard/operacional/caixa"
+            href="/dashboard/operacional/caixa?tab=clientes"
           />
         </BentoGridItem>
 
