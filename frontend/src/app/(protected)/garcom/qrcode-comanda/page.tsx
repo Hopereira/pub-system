@@ -28,7 +28,7 @@ interface Comanda {
 
 export default function QRCodeComandaPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [busca, setBusca] = useState('');
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [comandaSelecionada, setComandaSelecionada] = useState<Comanda | null>(null);
@@ -48,7 +48,12 @@ export default function QRCodeComandaPage() {
   const buscarComandas = async () => {
     setCarregando(true);
     try {
-      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        router.push('/login');
+        return;
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/comandas?status=ABERTA`,
         {
@@ -57,6 +62,12 @@ export default function QRCodeComandaPage() {
           },
         }
       );
+
+      if (response.status === 401) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        router.push('/login');
+        return;
+      }
 
       if (!response.ok) {
         throw new Error('Erro ao buscar comandas');
