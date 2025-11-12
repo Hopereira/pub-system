@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Search,
@@ -189,8 +188,19 @@ export default function CaixaPage() {
           </Link>
 
           {/* Calculadora */}
-          <Link href="/caixa/calculadora">
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+          <Card 
+            className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary"
+            onClick={() => {
+              // Abre a calculadora do sistema operacional
+              if (typeof window !== 'undefined') {
+                // Tenta abrir a calculadora
+                const opened = window.open('calculator://', '_blank') || window.open('calc:', '_blank');
+                if (!opened) {
+                  alert('Abra a calculadora do sistema:\nWindows: Tecla Windows + R, digite "calc"\nMac: Spotlight (Cmd+Space) e digite "calculadora"');
+                }
+              }
+            }}
+          >
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-orange-500/10 rounded-lg">
@@ -198,14 +208,11 @@ export default function CaixaPage() {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Calculadora</CardTitle>
-                  <CardDescription>
-                    <Badge variant="outline" className="text-xs">Em breve</Badge>
-                  </CardDescription>
+                  <CardDescription>Abre a calculadora do sistema</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            </Card>
-          </Link>
+          </Card>
 
           {/* Histórico de Fechamentos */}
           <Link href="/caixa/historico">
@@ -238,6 +245,7 @@ export default function CaixaPage() {
           <p>• Não esqueça de fazer <strong>check-in</strong> no início do turno</p>
           <p>• Verifique sempre se há pedidos pendentes antes de fechar uma comanda</p>
           <p>• Acesse os <strong>Relatórios</strong> para acompanhar o desempenho do dia</p>
+          <p>• Clique em <strong>Calculadora</strong> para abrir a calculadora do Windows</p>
         </CardContent>
       </Card>
     </div>
