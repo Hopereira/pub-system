@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin, ShoppingBag, CheckCheck } from 'lucide-react';
 import { getPedidos, retirarItem, marcarComoEntregue } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
@@ -40,6 +40,8 @@ export default function MapaPedidos() {
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string>('todos');
   const [statusFiltro, setStatusFiltro] = useState<PedidoStatus | 'todos' | 'ENTREGUES'>('todos');
   const [isLoading, setIsLoading] = useState(true);
+  const isGarcom = user?.cargo === 'GARCOM';
+  const isAdmin = user?.cargo === 'ADMIN' || user?.cargo === 'GERENTE';
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [pedidosProntosAnteriores, setPedidosProntosAnteriores] = useState<Set<string>>(new Set());
 
@@ -50,19 +52,36 @@ export default function MapaPedidos() {
     loadInitialData();
   }, []);
 
-  // Recarrega quando recebe novo pedido
+  // ✅ OTIMIZADO: Atualização incremental ao invés de recarregar tudo
   useEffect(() => {
     if (novoPedido) {
-      console.log('🆕 Novo pedido recebido, recarregando...');
-      loadPedidos();
+      console.log('🆕 Novo pedido recebido, adicionando...');
+      setPedidos((prev) => {
+        // Evita duplicatas
+        const exists = prev.some(p => p.id === novoPedido.id);
+        if (exists) return prev;
+        return [novoPedido, ...prev];
+      });
     }
   }, [novoPedido]);
 
-  // Recarrega quando pedido é atualizado
+  // ✅ OTIMIZADO: Atualiza apenas o pedido modificado
   useEffect(() => {
     if (pedidoAtualizado) {
-      console.log('🔄 Pedido atualizado, recarregando...');
-      loadPedidos();
+      console.log('🔄 Pedido atualizado, atualizando...');
+      setPedidos((prev) => {
+        const exists = prev.some(p => p.id === pedidoAtualizado.id);
+        
+        if (exists) {
+          // Atualiza o pedido existente
+          return prev.map((p) => 
+            p.id === pedidoAtualizado.id ? pedidoAtualizado : p
+          );
+        }
+        
+        // Se não existe, adiciona (caso raro)
+        return [pedidoAtualizado, ...prev];
+      });
     }
   }, [pedidoAtualizado]);
 
@@ -95,17 +114,17 @@ export default function MapaPedidos() {
     setPedidosProntosAnteriores(idsProntos);
   }, [pedidos]);
 
-  // Polling de fallback se WebSocket desconectar
+  // ✅ OTIMIZADO: Polling apenas se desconectado (60s ao invés de 30s)
   useEffect(() => {
     if (!isConnected && !isLoading) {
       const intervalId = setInterval(() => {
-        console.log('🔄 Polling de fallback...');
+        console.log('🔄 Polling de fallback (WebSocket desconectado)...');
         loadPedidos();
-      }, 30000); // 30 segundos
+      }, 60000); // 60 segundos
       
       return () => clearInterval(intervalId);
     }
-  }, [isConnected, isLoading]);
+  }, [isConnected, isLoading, loadPedidos]);
 
   const loadInitialData = async () => {
     try {
@@ -138,23 +157,23 @@ export default function MapaPedidos() {
     }
   };
 
-  const loadPedidos = async () => {
+  const loadPedidos = useCallback(async () => {
     try {
       const data = await getPedidos();
       setPedidos(data);
       
       logger.debug('Pedidos carregados', { 
-        module: 'SupervisaoPedidos',
+        module: 'MapaPedidos',
         data: { total: data.length }
       });
     } catch (error) {
       logger.error('Erro ao carregar pedidos', { 
-        module: 'SupervisaoPedidos',
+        module: 'MapaPedidos',
         error: error as Error 
       });
       toast.error('Erro ao carregar pedidos');
     }
-  };
+  }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -180,12 +199,13 @@ export default function MapaPedidos() {
       await retirarItem(itemId, user.id); // user.id É o funcionarioId
       toast.success('Item retirado com sucesso!');
       await loadPedidos();
-    } catch (error: any) {
+    } catch (error) {
       logger.error('Erro ao retirar item', { 
         module: 'MapaPedidos',
         error: error as Error 
       });
-      toast.error(error.response?.data?.message || 'Erro ao retirar item');
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(errorMessage || 'Erro ao retirar item');
     }
   };
 
@@ -206,48 +226,59 @@ export default function MapaPedidos() {
       await marcarComoEntregue(itemId, user.id); // user.id É o funcionarioId
       toast.success('Item marcado como entregue!');
       await loadPedidos();
-    } catch (error: any) {
+    } catch (error) {
       logger.error('Erro ao marcar item como entregue', { 
         module: 'MapaPedidos',
         error: error as Error 
       });
-      toast.error(error.response?.data?.message || 'Erro ao marcar como entregue');
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(errorMessage || 'Erro ao marcar como entregue');
     }
   };
 
-  // Filtra pedidos por ambiente e status
-  const pedidosFiltrados = pedidos
-    .filter((pedido) => {
-      // Filtro por ambiente
-      if (ambienteSelecionado !== 'todos') {
-        const temItemDoAmbiente = pedido.itens.some(
-          (item) => item.produto?.ambiente?.id === ambienteSelecionado
-        );
-        if (!temItemDoAmbiente) return false;
-      }
-
-      // Filtro por status
-      if (statusFiltro !== 'todos') {
-        if (statusFiltro === 'ENTREGUES') {
-          // Filtra por todos os tipos de entrega
-          const temItemEntregue = pedido.itens.some((item) => 
-            item.status === PedidoStatus.ENTREGUE || item.status === PedidoStatus.DEIXADO_NO_AMBIENTE
+  // ✅ OTIMIZADO: useMemo para filtros (só recalcula quando dependências mudam)
+  const pedidosFiltrados = useMemo(() => {
+    return pedidos
+      .filter((pedido) => {
+        // ✅ FILTRO POR GARÇOM: Se for garçom, mostra apenas pedidos que ELE entregou
+        if (isGarcom) {
+          const temItemEntregueporEle = pedido.itens.some(
+            (item) => item.garcomEntregaId === user?.id
           );
-          if (!temItemEntregue) return false;
-        } else {
-          // Filtra por status específico
-          const temItemComStatus = pedido.itens.some((item) => item.status === statusFiltro);
-          if (!temItemComStatus) return false;
+          if (!temItemEntregueporEle) return false;
         }
-      }
 
-      return true;
-    })
-    // Ordena do mais recente para o mais antigo
-    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+        // Filtro por ambiente
+        if (ambienteSelecionado !== 'todos') {
+          const temItemDoAmbiente = pedido.itens.some(
+            (item) => item.produto?.ambiente?.id === ambienteSelecionado
+          );
+          if (!temItemDoAmbiente) return false;
+        }
 
-  // Métricas
-  const metricas = {
+        // Filtro por status
+        if (statusFiltro !== 'todos') {
+          if (statusFiltro === 'ENTREGUES') {
+            // Filtra por todos os tipos de entrega
+            const temItemEntregue = pedido.itens.some((item) => 
+              item.status === PedidoStatus.ENTREGUE || item.status === PedidoStatus.DEIXADO_NO_AMBIENTE
+            );
+            if (!temItemEntregue) return false;
+          } else {
+            // Filtra por status específico
+            const temItemComStatus = pedido.itens.some((item) => item.status === statusFiltro);
+            if (!temItemComStatus) return false;
+          }
+        }
+
+        return true;
+      })
+      // Ordena do mais recente para o mais antigo
+      .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  }, [pedidos, isGarcom, user?.id, ambienteSelecionado, statusFiltro]);
+
+  // ✅ OTIMIZADO: useMemo para métricas (só recalcula quando pedidos filtrados mudam)
+  const metricas = useMemo(() => ({
     total: pedidosFiltrados.length,
     feito: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.FEITO)).length,
     emPreparo: pedidosFiltrados.filter((p) => p.itens.some((i) => i.status === PedidoStatus.EM_PREPARO)).length,
@@ -256,7 +287,7 @@ export default function MapaPedidos() {
     entregue: pedidosFiltrados.filter((p) => p.itens.some((i) => 
       i.status === PedidoStatus.ENTREGUE || i.status === PedidoStatus.DEIXADO_NO_AMBIENTE
     )).length,
-  };
+  }), [pedidosFiltrados]);
 
   const getStatusIcon = (status: PedidoStatus) => {
     switch (status) {
@@ -340,7 +371,10 @@ export default function MapaPedidos() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Pedidos</h1>
           <p className="text-muted-foreground mt-1">
-            Veja onde pegar cada pedido e localize seus clientes
+            {isGarcom 
+              ? 'Seus pedidos entregues'
+              : 'Veja onde pegar cada pedido e localize seus clientes'
+            }
           </p>
         </div>
 
@@ -558,6 +592,18 @@ export default function MapaPedidos() {
                         <p className="text-xs text-muted-foreground">
                           Qtd: {item.quantidade} | {item.produto?.ambiente?.nome || 'N/A'}
                         </p>
+                        {/* ✅ EXIBIR GARÇOM QUE ENTREGOU (apenas para admin/gerente) */}
+                        {isAdmin && item.garcomEntrega && (
+                          <p className="text-xs text-blue-600 font-medium mt-1">
+                            🚶 Entregue por: {item.garcomEntrega.nome}
+                          </p>
+                        )}
+                        {/* ✅ EXIBIR GARÇOM QUE RETIROU (apenas para admin/gerente) */}
+                        {isAdmin && item.retiradoPorGarcom && item.status === PedidoStatus.RETIRADO && (
+                          <p className="text-xs text-green-600 font-medium mt-1">
+                            📦 Retirado por: {item.retiradoPorGarcom.nome}
+                          </p>
+                        )}
                       </div>
                       <Badge
                         variant="outline"

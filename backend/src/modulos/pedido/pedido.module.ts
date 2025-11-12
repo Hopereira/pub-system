@@ -6,6 +6,7 @@ import { PedidoAnalyticsService } from './pedido-analytics.service';
 import { PedidoAnalyticsController } from './pedido-analytics.controller';
 import { Pedido } from './entities/pedido.entity';
 import { ItemPedido } from './entities/item-pedido.entity';
+import { RetiradaItem } from './entities/retirada-item.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
@@ -17,7 +18,8 @@ import { QuaseProntoScheduler } from './quase-pronto.scheduler';
 @Module({
   imports: [TypeOrmModule.forFeature([
     Pedido, 
-    ItemPedido, 
+    ItemPedido,
+    RetiradaItem,
     Comanda, 
     Produto, 
     Ambiente, 
