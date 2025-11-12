@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTurno } from '@/context/TurnoContext';
+import { useCaixa } from '@/context/CaixaContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -19,15 +20,32 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { CardCheckIn } from '@/components/turno/CardCheckIn';
+import { ResumoCaixaCard } from '@/components/caixa/ResumoCaixaCard';
+import { AberturaCaixaModal } from '@/components/caixa/AberturaCaixaModal';
+import { FechamentoCaixaModal } from '@/components/caixa/FechamentoCaixaModal';
+import { SangriaModal } from '@/components/caixa/SangriaModal';
 
 export default function CaixaPage() {
   const { user } = useAuth();
   const { temCheckIn } = useTurno();
+  const { 
+    temCaixaAberto, 
+    resumoCaixa, 
+    abrirCaixa, 
+    fecharCaixa, 
+    registrarSangria 
+  } = useCaixa();
+  
   const [estatisticas, setEstatisticas] = useState({
     comandasAbertas: 0,
     totalVendas: 0,
     pedidosPendentes: 0,
   });
+
+  // Estados dos modais
+  const [showAbertura, setShowAbertura] = useState(false);
+  const [showFechamento, setShowFechamento] = useState(false);
+  const [showSangria, setShowSangria] = useState(false);
 
   // Alerta ao tentar sair sem fazer checkout
   useEffect(() => {
@@ -75,13 +93,27 @@ export default function CaixaPage() {
         </p>
       </div>
 
-      {/* Card de Check-in/Check-out */}
-      {user?.id && (
-        <CardCheckIn 
-          funcionarioId={user.id} 
-          funcionarioNome={user.nome || 'Usuário'} 
-        />
-      )}
+      {/* Grid: Check-in + Resumo do Caixa */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card de Check-in/Check-out */}
+        {user?.id && (
+          <CardCheckIn 
+            funcionarioId={user.id} 
+            funcionarioNome={user.nome || 'Usuário'} 
+          />
+        )}
+
+        {/* Card de Resumo do Caixa */}
+        {temCheckIn && (
+          <ResumoCaixaCard
+            resumoCaixa={resumoCaixa}
+            temCaixaAberto={temCaixaAberto}
+            onAbrirCaixa={() => setShowAbertura(true)}
+            onFecharCaixa={() => setShowFechamento(true)}
+            onRegistrarSangria={() => setShowSangria(true)}
+          />
+        )}
+      </div>
 
       {/* Alerta: Faça check-in */}
       {!temCheckIn && (
@@ -322,11 +354,43 @@ export default function CaixaPage() {
         <CardContent className="text-sm space-y-2">
           <p>• Use o <strong>Terminal de Caixa</strong> para buscar comandas por mesa, cliente ou CPF</p>
           <p>• Não esqueça de fazer <strong>check-in</strong> no início do turno</p>
-          <p>• Verifique sempre se há pedidos pendentes antes de fechar uma comanda</p>
-          <p>• Acesse os <strong>Relatórios</strong> para acompanhar o desempenho do dia</p>
+          <p>• <strong>Abra o caixa</strong> logo após o check-in com o valor inicial</p>
+          <p>• Registre <strong>sangrias</strong> quando o caixa estiver muito cheio</p>
+          <p>• <strong>Feche o caixa</strong> e confira os valores antes do check-out</p>
           <p>• Clique em <strong>Calculadora</strong> para abrir a calculadora do Windows</p>
         </CardContent>
       </Card>
+
+      {/* Modais */}
+      {user && (
+        <>
+          <AberturaCaixaModal
+            open={showAbertura}
+            onClose={() => setShowAbertura(false)}
+            onConfirm={abrirCaixa}
+            funcionarioNome={user.nome || 'Usuário'}
+          />
+
+          {resumoCaixa && (
+            <>
+              <FechamentoCaixaModal
+                open={showFechamento}
+                onClose={() => setShowFechamento(false)}
+                onConfirm={fecharCaixa}
+                resumoCaixa={resumoCaixa}
+              />
+
+              <SangriaModal
+                open={showSangria}
+                onClose={() => setShowSangria(false)}
+                onConfirm={registrarSangria}
+                saldoAtual={resumoCaixa.saldoFinal}
+                funcionarioNome={user.nome || 'Usuário'}
+              />
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }
