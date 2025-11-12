@@ -48,6 +48,25 @@ export default function MapaPedidos() {
   // Hook de WebSocket para atualizações em tempo real
   const { novoPedido, pedidoAtualizado, isConnected } = usePedidosSubscription();
 
+  // Definir loadPedidos antes dos useEffects que o utilizam
+  const loadPedidos = useCallback(async () => {
+    try {
+      const data = await getPedidos();
+      setPedidos(data);
+      
+      logger.debug('Pedidos carregados', { 
+        module: 'MapaPedidos',
+        data: { total: data.length }
+      });
+    } catch (error) {
+      logger.error('Erro ao carregar pedidos', { 
+        module: 'MapaPedidos',
+        error: error as Error 
+      });
+      toast.error('Erro ao carregar pedidos');
+    }
+  }, []);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -156,24 +175,6 @@ export default function MapaPedidos() {
       setIsLoading(false);
     }
   };
-
-  const loadPedidos = useCallback(async () => {
-    try {
-      const data = await getPedidos();
-      setPedidos(data);
-      
-      logger.debug('Pedidos carregados', { 
-        module: 'MapaPedidos',
-        data: { total: data.length }
-      });
-    } catch (error) {
-      logger.error('Erro ao carregar pedidos', { 
-        module: 'MapaPedidos',
-        error: error as Error 
-      });
-      toast.error('Erro ao carregar pedidos');
-    }
-  }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

@@ -188,7 +188,7 @@ export default function ComandaDetalhePage() {
             {!podeFechar && (
               <p className="text-red-600 text-sm mt-3 flex items-center">
                 <ShieldAlert className="h-4 w-4 mr-1"/>
-                Apenas comandas com todos os itens entregues ou cancelados podem ser fechadas.
+                Aguarde todos os itens serem entregues/retirados ou cancelados para fechar.
               </p>
             )}
           </div>
