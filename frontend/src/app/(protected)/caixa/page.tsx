@@ -155,7 +155,7 @@ export default function CaixaPage() {
           </Link>
 
           {/* Relatório de Vendas */}
-          <Link href="/dashboard/relatorios">
+          <Link href="/caixa/relatorios">
             <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ export default function CaixaPage() {
                   </div>
                   <div>
                     <CardTitle className="text-lg">Relatórios</CardTitle>
-                    <CardDescription>Visualizar vendas e métricas</CardDescription>
+                    <CardDescription>Visualizar vendas do dia</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -172,7 +172,7 @@ export default function CaixaPage() {
           </Link>
 
           {/* Clientes */}
-          <Link href="/dashboard/clientes">
+          <Link href="/caixa/clientes">
             <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -181,7 +181,7 @@ export default function CaixaPage() {
                   </div>
                   <div>
                     <CardTitle className="text-lg">Clientes</CardTitle>
-                    <CardDescription>Cadastro e histórico</CardDescription>
+                    <CardDescription>Clientes com comandas</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -189,7 +189,8 @@ export default function CaixaPage() {
           </Link>
 
           {/* Calculadora */}
-          <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary opacity-50">
+          <Link href="/caixa/calculadora">
+            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-orange-500/10 rounded-lg">
@@ -203,24 +204,27 @@ export default function CaixaPage() {
                 </div>
               </div>
             </CardHeader>
-          </Card>
+            </Card>
+          </Link>
 
           {/* Histórico de Fechamentos */}
-          <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary opacity-50">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gray-500/10 rounded-lg">
-                  <Clock className="h-6 w-6 text-gray-600" />
+          <Link href="/caixa/historico">
+            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gray-500/10 rounded-lg">
+                    <Clock className="h-6 w-6 text-gray-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Histórico</CardTitle>
+                    <CardDescription>
+                      <Badge variant="outline" className="text-xs">Em breve</Badge>
+                    </CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg">Histórico</CardTitle>
-                  <CardDescription>
-                    <Badge variant="outline" className="text-xs">Em breve</Badge>
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+              </CardHeader>
+            </Card>
+          </Link>
         </div>
       </div>
 
