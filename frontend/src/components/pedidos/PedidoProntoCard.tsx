@@ -143,22 +143,28 @@ export const PedidoProntoCard = ({
                     </p>
                   )}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => onMarcarEntregue(item.id)}
-                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => {
+                      console.log('Botão Entregar clicado:', item.id);
+                      onMarcarEntregue(item.id);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 min-w-[40px]"
                     title="Marcar como entregue"
                   >
                     <CheckCircle className="w-4 h-4" />
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => onDeixarNoAmbiente(item.id)}
-                    className="text-destructive hover:text-destructive"
-                    title="Cliente não encontrado"
+                    onClick={() => {
+                      console.log('Botão Deixar no Ambiente clicado:', item.id);
+                      onDeixarNoAmbiente(item.id);
+                    }}
+                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-300 min-w-[40px]"
+                    title="Deixar no ambiente (cliente não encontrado)"
                   >
                     <PackageX className="w-4 h-4" />
                   </Button>
