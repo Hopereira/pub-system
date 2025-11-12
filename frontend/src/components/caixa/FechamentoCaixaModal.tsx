@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Lock, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Lock, AlertTriangle, CheckCircle2, XCircle, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResumoCaixa, formasPagamentoLabels } from '@/types/caixa';
 
@@ -43,7 +43,7 @@ export function FechamentoCaixaModal({
   const [loading, setLoading] = useState(false);
 
   const esperados = resumoCaixa.resumoPorFormaPagamento.reduce((acc, item) => {
-    const key = item.formaPagamento.toLowerCase().replace('_', '');
+    const key = item.formaPagamento.toLowerCase().replace(/_/g, '');
     acc[key] = item.valorEsperado;
     return acc;
   }, {} as Record<string, number>);
@@ -71,6 +71,18 @@ export function FechamentoCaixaModal({
 
   const totalEsperado = resumoCaixa.totalVendas - resumoCaixa.totalSangrias + resumoCaixa.totalSuprimentos;
   const diferencaTotal = totalInformado - totalEsperado;
+
+  const handlePreencherAutomatico = () => {
+    setValores({
+      dinheiro: (esperados.dinheiro || 0).toFixed(2),
+      pix: (esperados.pix || 0).toFixed(2),
+      debito: (esperados.debito || 0).toFixed(2),
+      credito: (esperados.credito || 0).toFixed(2),
+      valeRefeicao: (esperados.valerefeicao || 0).toFixed(2),
+      valeAlimentacao: (esperados.valealimentacao || 0).toFixed(2),
+    });
+    toast.success('Valores preenchidos automaticamente!');
+  };
 
   const handleConfirm = async () => {
     // Validar se todos os valores foram informados
@@ -131,6 +143,17 @@ export function FechamentoCaixaModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Botão de Preenchimento Automático */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handlePreencherAutomatico}
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            Preencher Valores Automaticamente
+          </Button>
+
           {/* Resumo do Turno */}
           <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
             <div className="flex justify-between">

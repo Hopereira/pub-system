@@ -6,6 +6,7 @@ import {
   Suprimento,
   MovimentacaoCaixa,
   ResumoCaixa,
+  FormaPagamento,
 } from '@/types/caixa';
 
 export const caixaService = {
@@ -81,6 +82,26 @@ export const caixaService = {
       return response.data;
     } catch (error: unknown) {
       console.error('Erro ao registrar suprimento:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Registrar venda (fechamento de comanda)
+   */
+  async registrarVenda(data: {
+    aberturaCaixaId: string;
+    valor: number;
+    formaPagamento: FormaPagamento;
+    comandaId: string;
+    comandaNumero?: string;
+    descricao?: string;
+  }): Promise<MovimentacaoCaixa> {
+    try {
+      const response = await api.post('/caixa/venda', data);
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Erro ao registrar venda:', error);
       throw error;
     }
   },

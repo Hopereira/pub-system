@@ -13,6 +13,7 @@ import { CaixaService } from './caixa.service';
 import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
+import { CreateVendaDto } from './dto/create-venda.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('caixa')
@@ -48,6 +49,16 @@ export class CaixaController {
   @HttpCode(HttpStatus.CREATED)
   async registrarSangria(@Body() dto: CreateSangriaDto) {
     return await this.caixaService.registrarSangria(dto);
+  }
+
+  /**
+   * POST /caixa/venda
+   * Registra uma venda (fechamento de comanda)
+   */
+  @Post('venda')
+  @HttpCode(HttpStatus.CREATED)
+  async registrarVenda(@Body() dto: CreateVendaDto) {
+    return await this.caixaService.registrarVenda(dto);
   }
 
   /**

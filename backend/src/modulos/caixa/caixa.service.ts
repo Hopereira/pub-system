@@ -14,6 +14,7 @@ import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
+import { CreateVendaDto } from './dto/create-venda.dto';
 
 @Injectable()
 export class CaixaService {
@@ -262,6 +263,57 @@ export class CaixaService {
     );
 
     return sangriaSalva;
+  }
+
+  /**
+   * Registra uma venda (fechamento de comanda)
+   */
+  async registrarVenda(dto: CreateVendaDto): Promise<MovimentacaoCaixa> {
+    // Busca abertura de caixa
+    const abertura = await this.aberturaRepository.findOne({
+      where: { id: dto.aberturaCaixaId },
+    });
+
+    if (!abertura) {
+      throw new NotFoundException('Abertura de caixa não encontrada');
+    }
+
+    if (abertura.status !== StatusCaixa.ABERTO) {
+      throw new BadRequestException('Caixa não está aberto');
+    }
+
+    // Mapeia forma de pagamento do DTO para a entidade
+    const formaPagamentoMap: Record<string, FormaPagamento> = {
+      'DINHEIRO': FormaPagamento.DINHEIRO,
+      'PIX': FormaPagamento.PIX,
+      'DEBITO': FormaPagamento.DEBITO,
+      'CREDITO': FormaPagamento.CREDITO,
+      'VALE_REFEICAO': FormaPagamento.VALE_REFEICAO,
+      'VALE_ALIMENTACAO': FormaPagamento.VALE_ALIMENTACAO,
+    };
+
+    const formaPagamento = formaPagamentoMap[dto.formaPagamento];
+
+    if (!formaPagamento) {
+      throw new BadRequestException('Forma de pagamento inválida');
+    }
+
+    // Registra movimentação de venda
+    const movimentacao = await this.registrarMovimentacao({
+      aberturaCaixaId: abertura.id,
+      tipo: TipoMovimentacao.VENDA,
+      formaPagamento: formaPagamento,
+      valor: dto.valor,
+      descricao: dto.descricao || `Venda - Comanda ${dto.comandaNumero || dto.comandaId}`,
+      funcionarioId: abertura.funcionarioId,
+      comandaId: dto.comandaId,
+    });
+
+    this.logger.log(
+      `💰 Venda registrada | Valor: R$ ${dto.valor.toFixed(2)} | Forma: ${dto.formaPagamento} | Comanda: ${dto.comandaNumero || dto.comandaId}`,
+    );
+
+    return movimentacao;
   }
 
   /**

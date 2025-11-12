@@ -135,9 +135,7 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // TODO: Implementar endpoint de registro de venda no backend
-      // Por enquanto, apenas registra localmente
-      console.log('Registrando venda no caixa:', {
+      await caixaService.registrarVenda({
         aberturaCaixaId: caixaAberto.id,
         ...dados,
       });
