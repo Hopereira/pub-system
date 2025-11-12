@@ -1,12 +1,13 @@
 // Types para gestão financeira do caixa
 
-export type FormaPagamento = 
-  | 'DINHEIRO'
-  | 'PIX'
-  | 'DEBITO'
-  | 'CREDITO'
-  | 'VALE_REFEICAO'
-  | 'VALE_ALIMENTACAO';
+export enum FormaPagamento {
+  DINHEIRO = 'DINHEIRO',
+  PIX = 'PIX',
+  DEBITO = 'DEBITO',
+  CREDITO = 'CREDITO',
+  VALE_REFEICAO = 'VALE_REFEICAO',
+  VALE_ALIMENTACAO = 'VALE_ALIMENTACAO',
+}
 
 export type TipoMovimentacao = 
   | 'ABERTURA'
