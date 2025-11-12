@@ -11,6 +11,9 @@ import { PedidoStatus } from "@/types/pedido-status.enum";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { PagamentoModal } from "@/components/caixa/PagamentoModal";
+import { useCaixa } from "@/context/CaixaContext";
+import { FormaPagamento } from "@/types/caixa";
 
 // Função para dar cor aos status
 const getStatusVariant = (status: PedidoStatus) => {
@@ -38,6 +41,9 @@ export default function ComandaDetalhePage() {
   const [comanda, setComanda] = useState<Comanda | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isPagamentoModalOpen, setIsPagamentoModalOpen] = useState(false);
+  
+  const { caixaAberto, registrarVenda } = useCaixa();
 
   const isCaixa = user?.cargo === 'ADMIN' || user?.cargo === 'CAIXA';
   const isGarcom = user?.cargo === 'ADMIN' || user?.cargo === 'GARCOM';
@@ -67,16 +73,33 @@ export default function ComandaDetalhePage() {
     fetchComanda();
   };
 
-  const handleFecharComanda = async () => {
-    if (window.confirm('Confirmar o pagamento e fechar esta comanda?')) {
-      try {
-        const comandaFechada = await fecharComanda(comandaId);
-        setComanda(comandaFechada);
-        toast.success('Comanda fechada com sucesso!');
-        setTimeout(() => router.push('/dashboard'), 2000);
-      } catch (error) {
-        toast.error('Não foi possível fechar a comanda.');
+  const handleAbrirPagamento = () => {
+    setIsPagamentoModalOpen(true);
+  };
+
+  const handleConfirmarPagamento = async (formaPagamento: FormaPagamento) => {
+    try {
+      // 1. Registrar venda no caixa (se houver caixa aberto)
+      if (caixaAberto) {
+        await registrarVenda({
+          valor: total,
+          formaPagamento,
+          comandaId: comandaId,
+          comandaNumero: comanda?.mesa?.numero?.toString() || 'Avulsa',
+          descricao: `Comanda Mesa ${comanda?.mesa?.numero || 'Avulsa'}`,
+        });
       }
+
+      // 2. Fechar a comanda
+      const comandaFechada = await fecharComanda(comandaId);
+      setComanda(comandaFechada);
+      
+      toast.success('💰 Pagamento processado e comanda fechada!');
+      setTimeout(() => router.push('/dashboard'), 2000);
+    } catch (error) {
+      console.error('Erro ao processar pagamento:', error);
+      toast.error('Não foi possível processar o pagamento.');
+      throw error; // Re-throw para o modal tratar
     }
   };
 
@@ -159,7 +182,7 @@ export default function ComandaDetalhePage() {
           <div className="flex flex-col items-center">
             <p className="text-lg mb-4">Verifique os itens com o cliente antes de fechar a conta.</p>
             
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed" onClick={handleFecharComanda} disabled={!podeFechar}>
+            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed" onClick={handleAbrirPagamento} disabled={!podeFechar}>
               <Banknote className="h-6 w-6 mr-2" />
               Confirmar Pagamento e Fechar Comanda
             </Button>
@@ -184,6 +207,13 @@ export default function ComandaDetalhePage() {
         onClose={() => setIsDrawerOpen(false)}
         comandaId={comandaId}
         onItensAdicionados={handleItensAdicionados}
+      />
+
+      <PagamentoModal
+        isOpen={isPagamentoModalOpen}
+        onClose={() => setIsPagamentoModalOpen(false)}
+        total={total}
+        onConfirmar={handleConfirmarPagamento}
       />
     </div>
   );

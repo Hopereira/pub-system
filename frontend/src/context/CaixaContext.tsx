@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useTurno } from './TurnoContext';
 import caixaService from '@/services/caixaService';
-import { AberturaCaixa, ResumoCaixa } from '@/types/caixa';
+import { AberturaCaixa, ResumoCaixa, FormaPagamento } from '@/types/caixa';
 
 interface CaixaContextData {
   caixaAberto: AberturaCaixa | null;
@@ -21,6 +21,13 @@ interface CaixaContextData {
     observacao?: string;
   }) => Promise<void>;
   registrarSangria: (valor: number, motivo: string, observacao?: string) => Promise<void>;
+  registrarVenda: (dados: {
+    valor: number;
+    formaPagamento: FormaPagamento;
+    comandaId: string;
+    comandaNumero: string;
+    descricao: string;
+  }) => Promise<void>;
   atualizarResumo: () => Promise<void>;
 }
 
@@ -115,6 +122,34 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
     await atualizarResumo();
   };
 
+  const registrarVenda = async (dados: {
+    valor: number;
+    formaPagamento: FormaPagamento;
+    comandaId: string;
+    comandaNumero: string;
+    descricao: string;
+  }) => {
+    if (!caixaAberto?.id) {
+      console.warn('Nenhum caixa aberto. Venda não será registrada no caixa.');
+      return;
+    }
+
+    try {
+      // TODO: Implementar endpoint de registro de venda no backend
+      // Por enquanto, apenas registra localmente
+      console.log('Registrando venda no caixa:', {
+        aberturaCaixaId: caixaAberto.id,
+        ...dados,
+      });
+      
+      // Atualizar resumo após registrar venda
+      await atualizarResumo();
+    } catch (error) {
+      console.error('Erro ao registrar venda:', error);
+      throw error;
+    }
+  };
+
   const atualizarResumo = async () => {
     if (!caixaAberto?.id) return;
 
@@ -138,6 +173,7 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
         abrirCaixa,
         fecharCaixa,
         registrarSangria,
+        registrarVenda,
         atualizarResumo,
       }}
     >
