@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar, MapPin, Package, Map, QrCode // Ícones importados
+    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator // Ícones importados
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -81,20 +81,20 @@ export function Sidebar() {
         setOperationalLinks([]);
     }
   }, [user]);
-  
-  const caixaLink = { 
-    href: '/dashboard/operacional/caixa', // Rota corrigida para consistência
-    label: 'Terminal de Caixa', 
-    icon: Landmark, 
-    roles: ['ADMIN', 'CAIXA'] 
-  };
 
   const allLinks = useMemo(() => {
-    let combinedLinks = [...baseNavLinks];
+    const caixaLinkDashboard = { 
+      href: '/dashboard/operacional/caixa',
+      label: 'Caixa (Dashboard)', 
+      icon: Landmark, 
+      roles: ['ADMIN', 'GERENTE']
+    };
     
-    // Adiciona o link do caixa e os links operacionais dinâmicos
+    const combinedLinks = [...baseNavLinks];
+    
+    // Adiciona o link do caixa do dashboard e os links operacionais dinâmicos
     const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
-    combinedLinks.splice(insertIndexOp, 0, caixaLink as any, ...(operationalLinks as any[]));
+    combinedLinks.splice(insertIndexOp, 0, caixaLinkDashboard, ...operationalLinks);
 
     return combinedLinks;
   }, [operationalLinks]);

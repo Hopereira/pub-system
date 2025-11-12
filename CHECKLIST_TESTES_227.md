@@ -10,7 +10,7 @@
 ### 1. AUTENTICAÇÃO (30 min)
 - [ ] Login ADMIN → /dashboard
 - [ ] Login GERENTE → /dashboard
-- [ ] Login CAIXA → /caixa
+- [x] Login CAIXA → /caixa ⚠️ **BUG #001 ENCONTRADO E CORRIGIDO!**
 - [ ] Login GARCOM → /garcom
 - [ ] Login COZINHA → /cozinha
 - [ ] Garçom bloqueado em /dashboard
@@ -179,9 +179,9 @@
 ## 📊 RESUMO DE PROGRESSO
 
 **Total de Testes:** ~180  
-**Concluídos:** [ ] 0%  
-**Bugs Encontrados:** 0  
-**Bugs Críticos:** 0
+**Concluídos:** 1 (~1%)  
+**Bugs Encontrados:** 1  
+**Bugs Críticos:** 1 (Corrigido ✅)
 
 **Tempo Estimado Total:** ~12 horas  
 **Tempo Decorrido:** 0h
@@ -210,7 +210,16 @@
 
 ### Bugs Encontrados
 ```
-[Adicionar bugs conforme encontrados]
+🐛 BUG #001 - Área do Caixa Não Existe (CRÍTICO) ✅ CORRIGIDO
+- Severidade: 🔴 CRÍTICA
+- Login CAIXA redirecionava para /caixa (404)
+- Dashboard próprio não existia
+- Check-in/checkout ausente
+- Menu lateral sem links específicos
+- Solução: Criada área completa do caixa com 3 páginas
+- Tempo: 45 minutos
+- Status: ✅ TESTADO E FUNCIONANDO
+- Documentação: BUG_ENCONTRADO_227_001_AREA_CAIXA.md
 ```
 
 ### Melhorias Sugeridas
