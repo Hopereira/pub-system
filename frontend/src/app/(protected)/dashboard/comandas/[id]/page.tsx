@@ -97,7 +97,9 @@ export default function ComandaDetalhePage() {
   // ==================================================================
   const todosOsItens = comanda.pedidos?.flatMap(pedido => pedido.itens) ?? [];
   const podeFechar = todosOsItens.length > 0 && todosOsItens.every(
-    item => item.status === PedidoStatus.ENTREGUE || item.status === PedidoStatus.CANCELADO
+    item => item.status === PedidoStatus.ENTREGUE || 
+            item.status === PedidoStatus.RETIRADO || 
+            item.status === PedidoStatus.CANCELADO
   );
 
   return (
