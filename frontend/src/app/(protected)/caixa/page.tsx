@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useTurno } from '@/context/TurnoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,17 +14,34 @@ import {
   Clock,
   DollarSign,
   Package,
+  Lock,
+  AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { CardCheckIn } from '@/components/turno/CardCheckIn';
 
 export default function CaixaPage() {
   const { user } = useAuth();
+  const { temCheckIn } = useTurno();
   const [estatisticas, setEstatisticas] = useState({
     comandasAbertas: 0,
     totalVendas: 0,
     pedidosPendentes: 0,
   });
+
+  // Alerta ao tentar sair sem fazer checkout
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (temCheckIn) {
+        e.preventDefault();
+        e.returnValue = 'Você ainda não fez check-out! Tem certeza que deseja sair?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [temCheckIn]);
 
   // Buscar estatísticas do dia
   useEffect(() => {
@@ -63,6 +81,24 @@ export default function CaixaPage() {
           funcionarioId={user.id} 
           funcionarioNome={user.nome || 'Usuário'} 
         />
+      )}
+
+      {/* Alerta: Faça check-in */}
+      {!temCheckIn && (
+        <Card className="bg-yellow-50 dark:bg-yellow-950 border-yellow-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+              <AlertTriangle className="h-5 w-5" />
+              Faça Check-in para Começar
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-yellow-700 dark:text-yellow-300">
+            <p>
+              <strong>Atenção:</strong> Você precisa fazer check-in antes de acessar as funções do caixa.
+              As ações rápidas estarão bloqueadas até que você inicie seu turno.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {/* Estatísticas do Dia */}
@@ -120,15 +156,22 @@ export default function CaixaPage() {
         <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Buscar Comanda */}
-          <Link href="/caixa/terminal">
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+          <Link href={temCheckIn ? "/caixa/terminal" : "#"} onClick={(e) => !temCheckIn && e.preventDefault()}>
+            <Card className={`transition-all border-2 ${
+              temCheckIn 
+                ? 'hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary' 
+                : 'opacity-50 cursor-not-allowed grayscale'
+            }`}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-primary/10 rounded-lg">
                     <Search className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Terminal de Caixa</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      Terminal de Caixa
+                      {!temCheckIn && <Lock className="h-4 w-4" />}
+                    </CardTitle>
                     <CardDescription>Buscar e fechar comandas</CardDescription>
                   </div>
                 </div>
@@ -137,15 +180,22 @@ export default function CaixaPage() {
           </Link>
 
           {/* Comandas Abertas */}
-          <Link href="/caixa/comandas-abertas">
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+          <Link href={temCheckIn ? "/caixa/comandas-abertas" : "#"} onClick={(e) => !temCheckIn && e.preventDefault()}>
+            <Card className={`transition-all border-2 ${
+              temCheckIn 
+                ? 'hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary' 
+                : 'opacity-50 cursor-not-allowed grayscale'
+            }`}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-green-500/10 rounded-lg">
                     <Receipt className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Comandas Abertas</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      Comandas Abertas
+                      {!temCheckIn && <Lock className="h-4 w-4" />}
+                    </CardTitle>
                     <CardDescription>Ver todas as comandas</CardDescription>
                   </div>
                 </div>
@@ -154,15 +204,22 @@ export default function CaixaPage() {
           </Link>
 
           {/* Relatório de Vendas */}
-          <Link href="/caixa/relatorios">
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+          <Link href={temCheckIn ? "/caixa/relatorios" : "#"} onClick={(e) => !temCheckIn && e.preventDefault()}>
+            <Card className={`transition-all border-2 ${
+              temCheckIn 
+                ? 'hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary' 
+                : 'opacity-50 cursor-not-allowed grayscale'
+            }`}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-blue-500/10 rounded-lg">
                     <TrendingUp className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Relatórios</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      Relatórios
+                      {!temCheckIn && <Lock className="h-4 w-4" />}
+                    </CardTitle>
                     <CardDescription>Visualizar vendas do dia</CardDescription>
                   </div>
                 </div>
@@ -171,15 +228,22 @@ export default function CaixaPage() {
           </Link>
 
           {/* Clientes */}
-          <Link href="/caixa/clientes">
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+          <Link href={temCheckIn ? "/caixa/clientes" : "#"} onClick={(e) => !temCheckIn && e.preventDefault()}>
+            <Card className={`transition-all border-2 ${
+              temCheckIn 
+                ? 'hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary' 
+                : 'opacity-50 cursor-not-allowed grayscale'
+            }`}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-purple-500/10 rounded-lg">
                     <Users className="h-6 w-6 text-purple-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Clientes</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      Clientes
+                      {!temCheckIn && <Lock className="h-4 w-4" />}
+                    </CardTitle>
                     <CardDescription>Clientes com comandas</CardDescription>
                   </div>
                 </div>
@@ -189,8 +253,13 @@ export default function CaixaPage() {
 
           {/* Calculadora */}
           <Card 
-            className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary"
+            className={`transition-all border-2 ${
+              temCheckIn 
+                ? 'hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary' 
+                : 'opacity-50 cursor-not-allowed grayscale'
+            }`}
             onClick={() => {
+              if (!temCheckIn) return;
               // Abre a calculadora do sistema operacional
               if (typeof window !== 'undefined') {
                 // Tenta abrir a calculadora
@@ -207,7 +276,10 @@ export default function CaixaPage() {
                   <Calculator className="h-6 w-6 text-orange-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Calculadora</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Calculadora
+                    {!temCheckIn && <Lock className="h-4 w-4" />}
+                  </CardTitle>
                   <CardDescription>Abre a calculadora do sistema</CardDescription>
                 </div>
               </div>
@@ -215,15 +287,22 @@ export default function CaixaPage() {
           </Card>
 
           {/* Histórico de Fechamentos */}
-          <Link href="/caixa/historico">
-            <Card className="hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer border-2 hover:border-primary">
+          <Link href={temCheckIn ? "/caixa/historico" : "#"} onClick={(e) => !temCheckIn && e.preventDefault()}>
+            <Card className={`transition-all border-2 ${
+              temCheckIn 
+                ? 'hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary' 
+                : 'opacity-50 cursor-not-allowed grayscale'
+            }`}>
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-gray-500/10 rounded-lg">
                     <Clock className="h-6 w-6 text-gray-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Histórico</CardTitle>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      Histórico
+                      {!temCheckIn && <Lock className="h-4 w-4" />}
+                    </CardTitle>
                     <CardDescription>
                       <Badge variant="outline" className="text-xs">Em breve</Badge>
                     </CardDescription>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { TurnoProvider } from "@/context/TurnoContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -24,9 +25,11 @@ export default function RootLayout({
       {/* ...e vem para a tag <body> */}
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
-          <SocketProvider>
-            {children}
-          </SocketProvider>
+          <TurnoProvider>
+            <SocketProvider>
+              {children}
+            </SocketProvider>
+          </TurnoProvider>
         </AuthProvider>
         <Toaster richColors />
       </body>
