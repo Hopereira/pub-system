@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { TurnoProvider } from "@/context/TurnoContext";
+import { CaixaProvider } from "@/context/CaixaContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -26,9 +27,11 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           <TurnoProvider>
-            <SocketProvider>
-              {children}
-            </SocketProvider>
+            <CaixaProvider>
+              <SocketProvider>
+                {children}
+              </SocketProvider>
+            </CaixaProvider>
           </TurnoProvider>
         </AuthProvider>
         <Toaster richColors />
