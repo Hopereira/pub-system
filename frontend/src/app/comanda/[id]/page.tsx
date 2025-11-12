@@ -81,7 +81,9 @@ export default function ComandaDetalhePage() {
 
   const todosOsItens = comanda.pedidos?.flatMap(pedido => pedido.itens) ?? [];
   const podeFechar = todosOsItens.length > 0 && todosOsItens.every(
-    item => item.status === PedidoStatus.ENTREGUE || item.status === PedidoStatus.CANCELADO
+    item => item.status === PedidoStatus.ENTREGUE || 
+            item.status === PedidoStatus.RETIRADO || 
+            item.status === PedidoStatus.CANCELADO
   );
 
   return (
@@ -186,7 +188,7 @@ export default function ComandaDetalhePage() {
             {!podeFechar && (
               <p className="text-red-600 text-sm mt-3 flex items-center">
                 <ShieldAlert className="h-4 w-4 mr-1"/>
-                Apenas comandas com todos os itens entregues ou cancelados podem ser fechadas.
+                Aguarde todos os itens serem entregues/retirados ou cancelados para fechar.
               </p>
             )}
           </div>

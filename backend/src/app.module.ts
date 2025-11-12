@@ -21,6 +21,7 @@ import { AvaliacaoModule } from './modulos/avaliacao/avaliacao.module';
 import { TurnoModule } from './modulos/turno/turno.module';
 import { AnalyticsModule } from './modulos/analytics/analytics.module';
 import { MedalhaModule } from './modulos/medalha/medalha.module';
+import { CaixaModule } from './modulos/caixa/caixa.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { MedalhaModule } from './modulos/medalha/medalha.module';
     TurnoModule,
     AnalyticsModule,
     MedalhaModule,
+    CaixaModule,
   ],
   controllers: [],
   providers: [],

@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar, MapPin, Package, Map, QrCode // Ícones importados
+    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator // Ícones importados
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -22,11 +22,16 @@ const baseNavLinks = [
   { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
   { href: '/garcom/qrcode-comanda', label: 'Gerar QR Code', icon: QrCode, roles: ['GARCOM'] },
   
+  // --- Área do Caixa ---
+  { href: '/caixa', label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA'] },
+  { href: '/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA'] },
+  { href: '/caixa/comandas-abertas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA'] },
+  
   // --- Dashboard Administrativo ---
-  { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
+  { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'COZINHA'] },
   { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
-  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE', 'CAIXA'] },
+  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE'] },
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
@@ -81,20 +86,20 @@ export function Sidebar() {
         setOperationalLinks([]);
     }
   }, [user]);
-  
-  const caixaLink = { 
-    href: '/dashboard/operacional/caixa', // Rota corrigida para consistência
-    label: 'Terminal de Caixa', 
-    icon: Landmark, 
-    roles: ['ADMIN', 'CAIXA'] 
-  };
 
   const allLinks = useMemo(() => {
-    let combinedLinks = [...baseNavLinks];
+    const caixaLinkDashboard = { 
+      href: '/dashboard/operacional/caixa',
+      label: 'Caixa (Dashboard)', 
+      icon: Landmark, 
+      roles: ['ADMIN', 'GERENTE']
+    };
     
-    // Adiciona o link do caixa e os links operacionais dinâmicos
+    const combinedLinks = [...baseNavLinks];
+    
+    // Adiciona o link do caixa do dashboard e os links operacionais dinâmicos
     const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
-    combinedLinks.splice(insertIndexOp, 0, caixaLink as any, ...(operationalLinks as any[]));
+    combinedLinks.splice(insertIndexOp, 0, caixaLinkDashboard, ...operationalLinks);
 
     return combinedLinks;
   }, [operationalLinks]);
