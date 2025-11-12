@@ -13,7 +13,7 @@ import { CaixaService } from './caixa.service';
 import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('caixa')
 @UseGuards(JwtAuthGuard)
