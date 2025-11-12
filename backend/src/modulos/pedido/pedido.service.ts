@@ -13,6 +13,7 @@ import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { CreatePedidoGarcomDto } from './dto/create-pedido-garcom.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
+import { RetiradaItem } from './entities/retirada-item.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
@@ -34,6 +35,8 @@ export class PedidoService {
     private readonly pedidoRepository: Repository<Pedido>,
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
+    @InjectRepository(RetiradaItem)
+    private readonly retiradaItemRepository: Repository<RetiradaItem>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
     @InjectRepository(Produto)
@@ -456,10 +459,10 @@ export class PedidoService {
     itemPedidoId: string,
     dto: RetirarItemDto,
   ): Promise<ItemPedido> {
-    // Busca o item
+    // Busca o item (incluindo ambiente do produto)
     const item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
-      relations: ['pedido', 'pedido.comanda', 'produto'],
+      relations: ['pedido', 'pedido.comanda', 'produto', 'produto.ambiente'],
     });
 
     if (!item) {
@@ -509,6 +512,13 @@ export class PedidoService {
       tempoReacaoMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
     }
 
+    // ✅ SOLUÇÃO 1: Registra ambiente de preparo do produto como ambiente de retirada
+    const ambientePreparo = item.produto?.ambiente;
+    if (ambientePreparo) {
+      item.ambienteRetiradaId = ambientePreparo.id;
+      item.ambienteRetirada = ambientePreparo;
+    }
+
     // Atualiza o item
     item.status = PedidoStatus.RETIRADO;
     item.retiradoEm = agora;
@@ -517,8 +527,28 @@ export class PedidoService {
 
     await this.itemPedidoRepository.save(item);
 
+    // ✅ SOLUÇÃO 3: Registra na tabela de histórico de retiradas
+    if (ambientePreparo) {
+      const retirada = this.retiradaItemRepository.create({
+        itemPedidoId: item.id,
+        garcomId: dto.garcomId,
+        ambienteId: ambientePreparo.id,
+        retiradoEm: agora,
+        tempoReacaoMinutos,
+        observacao: `Retirada do ambiente ${ambientePreparo.nome}`,
+      });
+
+      await this.retiradaItemRepository.save(retirada);
+      
+      this.logger.debug(
+        `📝 Retirada registrada no histórico | ID: ${retirada.id} | ` +
+        `Item: ${item.id} | Ambiente: ${ambientePreparo.nome}`,
+      );
+    }
+
     this.logger.log(
       `🎯 Item retirado | Produto: ${item.produto?.nome || 'Item'} | ` +
+      `Ambiente: ${ambientePreparo?.nome || 'N/A'} | ` +
       `Garçom: ${garcom.nome} | Tempo reação: ${tempoReacaoMinutos || 'N/A'} min`,
     );
 
@@ -532,6 +562,8 @@ export class PedidoService {
         itemId: item.id,
         pedidoId: item.pedido.id,
         produtoNome: item.produto?.nome,
+        ambienteId: ambientePreparo?.id,
+        ambienteNome: ambientePreparo?.nome,
         garcomId: dto.garcomId,
         garcomNome: garcom.nome,
         retiradoEm: agora,
@@ -545,6 +577,8 @@ export class PedidoService {
         itemId: item.id,
         pedidoId: item.pedido.id,
         produtoNome: item.produto?.nome,
+        ambienteId: ambientePreparo?.id,
+        ambienteNome: ambientePreparo?.nome,
         garcomId: dto.garcomId,
         garcomNome: garcom.nome,
         retiradoEm: agora,
@@ -584,6 +618,23 @@ export class PedidoService {
 
     if (!garcom) {
       throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+    }
+
+    // ✅ SOLUÇÃO 2: Valida se o garçom está em turno ativo
+    const turnoAtivo = await this.turnoRepository.findOne({
+      where: { 
+        funcionarioId: dto.garcomId,
+        ativo: true,
+        checkOut: null as any, // TypeORM IsNull workaround
+      },
+    });
+
+    if (!turnoAtivo) {
+      throw new BadRequestException(
+        `Garçom ${garcom.nome} não possui turno ativo. ` +
+        'Faça check-in antes de entregar pedidos.',
+        { cause: 'FORBIDDEN', description: 'Sem turno ativo' }
+      );
     }
 
     // Calcula tempo de entrega FINAL (do momento que foi RETIRADO até agora)

@@ -35,6 +35,7 @@ interface PedidoPronto {
     produto: { nome: string };
     quantidade: number;
     observacao?: string;
+    status?: string;
   }>;
   tempoEspera: string;
   data: Date;
@@ -196,11 +197,27 @@ const PedidosProntosPage = () => {
 
     try {
       // 1º Passo: RETIRAR (PRONTO → RETIRADO)
+      // Backend valida se item está PRONTO, se não estiver retorna erro específico
       logger.log('🛍️ Retirando item...', {
         module: 'PedidosProntosPage',
         data: { itemId }
       });
-      await retirarItem(itemId, user.id);
+      
+      try {
+        await retirarItem(itemId, user.id);
+      } catch (retirarError: any) {
+        // Se erro for "já retirado", continua para entrega
+        const mensagem = retirarError.response?.data?.message || '';
+        if (mensagem.includes('Status atual: RETIRADO')) {
+          logger.log('⏭️ Item já foi retirado, pulando para entrega...', {
+            module: 'PedidosProntosPage',
+            data: { itemId }
+          });
+        } else {
+          // Outro erro, propaga
+          throw retirarError;
+        }
+      }
       
       // 2º Passo: ENTREGAR (RETIRADO → ENTREGUE)
       logger.log('📦 Marcando como entregue...', {

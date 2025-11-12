@@ -41,16 +41,28 @@ export default function PedidosPendentesPage() {
             item.status === 'FEITO' || item.status === 'EM_PREPARO'
           )
           .forEach((item: ItemPedido) => {
+            // Validar se criadoEm existe e é válido (vem do pedido, não do item)
+            const criadoEm = pedido.data ? new Date(pedido.data) : new Date();
+            
+            // Verificar se a data é válida
+            if (isNaN(criadoEm.getTime())) {
+              logger.warn('⚠️ Data inválida no pedido', {
+                module: 'PedidosPendentes',
+                data: { pedidoId: pedido.id, data: pedido.data }
+              });
+              return; // Pula este item
+            }
+            
             itens.push({
               id: item.id,
               produto: item.produto.nome,
               quantidade: item.quantidade,
               status: item.status,
-              criadoEm: new Date(item.criadoEm),
-              ambiente: item.ambiente?.nome || 'N/A',
-              funcionario: pedido.funcionario?.nome || 'N/A',
-              mesa: pedido.mesa?.numero,
-              cliente: pedido.cliente?.nome,
+              criadoEm: criadoEm,
+              ambiente: item.produto?.ambiente?.nome || 'N/A',
+              funcionario: pedido.comanda?.cliente?.nome || 'N/A',
+              mesa: pedido.comanda?.mesa?.numero,
+              cliente: pedido.comanda?.cliente?.nome,
             });
           });
       });
@@ -146,23 +158,26 @@ export default function PedidosPendentesPage() {
                         </Badge>
                       </div>
                       
-                      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          <span>{item.funcionario}</span>
+                      <div className="flex flex-col gap-2 text-sm">
+                        {/* Cliente e Mesa */}
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium text-foreground">
+                            {item.cliente || 'Cliente não identificado'}
+                          </span>
+                          {item.mesa && (
+                            <Badge variant="outline" className="ml-2">
+                              Mesa {item.mesa}
+                            </Badge>
+                          )}
                         </div>
                         
-                        {item.mesa && (
-                          <span>Mesa {item.mesa}</span>
-                        )}
-                        
-                        {item.cliente && (
-                          <span>• {item.cliente}</span>
-                        )}
-                        
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{item.ambiente}</span>
+                        {/* Ambiente (onde foi preparado) */}
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-orange-600" />
+                          <span className="text-muted-foreground">
+                            Preparado em: <span className="font-medium text-foreground">{item.ambiente}</span>
+                          </span>
                         </div>
                       </div>
                     </div>
