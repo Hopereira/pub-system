@@ -6,6 +6,7 @@ import { PontoEntrega } from './entities/ponto-entrega.entity';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
 import { UpdatePontoEntregaDto } from './dto/update-ponto-entrega.dto';
+import { AtualizarPosicaoMesaDto } from '../mesa/dto/mapa.dto';
 
 @Injectable()
 export class PontoEntregaService {
@@ -56,7 +57,7 @@ export class PontoEntregaService {
 
     const pontos = await this.pontoEntregaRepository.find({
       where: finalEmpresaId ? { empresaId: finalEmpresaId } : {},
-      relations: ['mesaProxima', 'ambientePreparo'],
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
       order: { nome: 'ASC' },
     });
 
@@ -77,17 +78,36 @@ export class PontoEntregaService {
 
     const pontos = await this.pontoEntregaRepository.find({
       where: finalEmpresaId ? { empresaId: finalEmpresaId, ativo: true } : { ativo: true },
-      relations: ['mesaProxima', 'ambientePreparo'],
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
       order: { nome: 'ASC' },
     });
 
     return pontos;
   }
 
+  async findByAmbiente(ambienteId: string): Promise<PontoEntrega[]> {
+    this.logger.log(`🔍 Buscando pontos de entrega do ambiente: ${ambienteId}`);
+    
+    // Buscar pontos que estão fisicamente neste ambiente (atendimento)
+    // OU que têm este ambiente como preparo (para compatibilidade)
+    const pontos = await this.pontoEntregaRepository.find({
+      where: [
+        { ambienteAtendimentoId: ambienteId },
+        { ambientePreparoId: ambienteId },
+      ],
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
+      order: { nome: 'ASC' },
+    });
+
+    this.logger.log(`📋 Encontrados ${pontos.length} pontos no ambiente`);
+    
+    return pontos;
+  }
+
   async findOne(id: string): Promise<PontoEntrega> {
     const ponto = await this.pontoEntregaRepository.findOne({
       where: { id },
-      relations: ['mesaProxima', 'ambientePreparo', 'empresa'],
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo', 'empresa'],
     });
 
     if (!ponto) {
@@ -145,5 +165,19 @@ export class PontoEntregaService {
     this.logger.log(`🔄 Ponto ${ponto.nome} ${ponto.ativo ? 'ativado' : 'desativado'}`);
 
     return ponto;
+  }
+
+  async atualizarPosicao(id: string, dto: AtualizarPosicaoMesaDto): Promise<PontoEntrega> {
+    const ponto = await this.findOne(id);
+
+    ponto.posicao = dto.posicao;
+    if (dto.tamanho) {
+      ponto.tamanho = dto.tamanho;
+    }
+
+    const pontoAtualizado = await this.pontoEntregaRepository.save(ponto);
+    this.logger.log(`📍 Ponto ${ponto.nome} posição atualizada: (${dto.posicao.x}, ${dto.posicao.y})`);
+    
+    return pontoAtualizado;
   }
 }

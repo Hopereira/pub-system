@@ -5,7 +5,7 @@ export interface Funcionario {
   nome: string;
   email: string;
   cargo: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHA';
-  ativo: boolean;
+  status: 'ATIVO' | 'INATIVO';
   criadoEm: string;
   atualizadoEm: string;
 }

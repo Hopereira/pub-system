@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, LogIn, LogOut, User } from 'lucide-react';
 import { toast } from 'sonner';
 import turnoService from '@/services/turnoService';
-import { TurnoFuncionario } from '@/types/turno';
+import { useTurno } from '@/context/TurnoContext';
 
 interface CardCheckInProps {
   funcionarioId: string;
@@ -19,15 +19,9 @@ export function CardCheckIn({
   funcionarioNome,
   eventoId,
 }: CardCheckInProps) {
-  const [turnoAtivo, setTurnoAtivo] = useState<TurnoFuncionario | null>(null);
+  const { turnoAtivo, setTurnoAtivo, verificarTurno, verificando } = useTurno();
   const [tempoTrabalhado, setTempoTrabalhado] = useState<string>('0h 0min');
   const [loading, setLoading] = useState(false);
-  const [verificando, setVerificando] = useState(true);
-
-  // Verifica se há turno ativo ao carregar
-  useEffect(() => {
-    verificarTurnoAtivo();
-  }, [funcionarioId]);
 
   // Atualiza tempo trabalhado a cada minuto
   useEffect(() => {
@@ -41,19 +35,6 @@ export function CardCheckIn({
 
     return () => clearInterval(interval);
   }, [turnoAtivo]);
-
-  const verificarTurnoAtivo = async () => {
-    try {
-      setVerificando(true);
-      const turnos = await turnoService.getTurnosFuncionario(funcionarioId);
-      const ativo = turnos.find((t) => t.ativo && !t.checkOut);
-      setTurnoAtivo(ativo || null);
-    } catch (error) {
-      console.error('Erro ao verificar turno:', error);
-    } finally {
-      setVerificando(false);
-    }
-  };
 
   const calcularTempoTrabalhado = () => {
     if (!turnoAtivo) return;
@@ -70,6 +51,11 @@ export function CardCheckIn({
   };
 
   const handleCheckIn = async () => {
+    if (!funcionarioId) {
+      toast.error('Erro: ID do funcionário não disponível. Faça logout e login novamente.');
+      return;
+    }
+
     try {
       setLoading(true);
 

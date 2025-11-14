@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,13 +21,16 @@ import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 
 const CaixaPage = () => {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<Comanda[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [clientesComComanda, setClientesComComanda] = useState<Comanda[]>([]);
-  const [activeTab, setActiveTab] = useState('busca');
+  const [activeTab, setActiveTab] = useState(tabParam || 'busca');
 
   // O "debounced" searchTerm espera 300ms antes de atualizar.
   const [debouncedSearchTerm] = useDebounce(searchTerm, 300);

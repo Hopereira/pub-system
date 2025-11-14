@@ -51,8 +51,11 @@ export default function FuncionariosTable({ funcionarios, onEdit, onDelete }: Fu
                   <Badge variant="outline">{funcionario.cargo}</Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={funcionario.ativo ? 'default' : 'destructive'}>
-                    {funcionario.ativo ? 'Ativo' : 'Inativo'}
+                  <Badge 
+                    variant={funcionario.status === 'ATIVO' ? 'default' : 'secondary'}
+                    className={funcionario.status === 'ATIVO' ? 'bg-green-600 hover:bg-green-700' : ''}
+                  >
+                    {funcionario.status}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">

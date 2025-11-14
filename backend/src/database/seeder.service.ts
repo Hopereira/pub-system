@@ -8,6 +8,7 @@ import { Mesa } from '../modulos/mesa/entities/mesa.entity';
 import { Produto } from '../modulos/produto/entities/produto.entity';
 import { Cliente } from '../modulos/cliente/entities/cliente.entity';
 import { Comanda, ComandaStatus } from '../modulos/comanda/entities/comanda.entity';
+import { Empresa } from '../modulos/empresa/entities/empresa.entity';
 
 @Injectable()
 export class SeederService {
@@ -24,6 +25,8 @@ export class SeederService {
     private readonly clienteRepository: Repository<Cliente>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
+    @InjectRepository(Empresa)
+    private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
   async seed() {
@@ -35,6 +38,19 @@ export class SeederService {
     }
 
     this.logger.log('Iniciando o processo de seeding...');
+
+    // 1.5. Criar Empresa padrão se não existir
+    const countEmpresas = await this.empresaRepository.count();
+    if (countEmpresas === 0) {
+      await this.empresaRepository.save({
+        cnpj: '00.000.000/0000-00',
+        nomeFantasia: 'Pub System - Demo',
+        razaoSocial: 'Pub System Demonstração LTDA',
+        telefone: '(11) 99999-9999',
+        endereco: 'Rua Demo, 123 - São Paulo, SP'
+      });
+      this.logger.log('✅ Empresa padrão criada.');
+    }
 
     // 2. Criar Ambientes (diversos tipos para demonstrar o sistema dinâmico)
     const cozinhaQuente = await this.ambienteRepository.save({ 

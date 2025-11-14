@@ -7,16 +7,22 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pedido } from './entities/pedido.entity';
-import { Comanda } from '../comanda/entities/comanda.entity';
+import { Comanda, ComandaStatus } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
+import { CreatePedidoGarcomDto } from './dto/create-pedido-garcom.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
+import { RetiradaItem } from './entities/retirada-item.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
+import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
+import { RetirarItemDto } from './dto/retirar-item.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import { Funcionario } from '../funcionario/entities/funcionario.entity';
+import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -29,12 +35,18 @@ export class PedidoService {
     private readonly pedidoRepository: Repository<Pedido>,
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
+    @InjectRepository(RetiradaItem)
+    private readonly retiradaItemRepository: Repository<RetiradaItem>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
     @InjectRepository(Produto)
     private readonly produtoRepository: Repository<Produto>,
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
+    @InjectRepository(Funcionario)
+    private readonly funcionarioRepository: Repository<Funcionario>,
+    @InjectRepository(TurnoFuncionario)
+    private readonly turnoRepository: Repository<TurnoFuncionario>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
@@ -92,11 +104,90 @@ export class PedidoService {
     
     return pedidoCompleto;
   }
+
+  // ✅ NOVO: Criar pedido pelo garçom (com criação automática de comanda)
+  async createPedidoGarcom(dto: CreatePedidoGarcomDto): Promise<Pedido> {
+    const { clienteId, garcomId, mesaId, itens, observacao } = dto;
+    
+    this.logger.log(`👨‍🍳 Garçom criando pedido | Garçom: ${garcomId} | Cliente: ${clienteId} | ${itens.length} itens`);
+
+    // Busca ou cria comanda para o cliente
+    let comanda = await this.comandaRepository.findOne({
+      where: { 
+        cliente: { id: clienteId },
+        status: ComandaStatus.ABERTA 
+      },
+      relations: ['cliente', 'mesa'],
+    });
+
+    // Se não existe comanda aberta, cria uma nova
+    if (!comanda) {
+      this.logger.log(`📋 Criando nova comanda para cliente ${clienteId}`);
+      
+      const novaComanda = this.comandaRepository.create({
+        cliente: { id: clienteId } as any,
+        mesa: mesaId ? { id: mesaId } as any : null,
+        status: ComandaStatus.ABERTA,
+      });
+      
+      comanda = await this.comandaRepository.save(novaComanda);
+      this.logger.log(`✅ Comanda criada | ID: ${comanda.id}`);
+    } else {
+      this.logger.log(`📋 Usando comanda existente | ID: ${comanda.id}`);
+    }
+
+    // Valida itens
+    if (!itens || itens.length === 0) {
+      throw new BadRequestException('Um pedido não pode ser criado sem itens.');
+    }
+
+    // Cria itens do pedido
+    const itensPedidoPromise = itens.map(async (itemDto) => {
+      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
+      if (!produto) {
+        throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
+      }
+      return this.itemPedidoRepository.create({
+        produto,
+        quantidade: itemDto.quantidade,
+        precoUnitario: produto.preco,
+        observacao: itemDto.observacao,
+        status: PedidoStatus.FEITO,
+      });
+    });
+
+    const itensPedido = await Promise.all(itensPedidoPromise);
+    
+    // Calcula total
+    const total = itensPedido.reduce((sum, item) => {
+      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      return sum.plus(itemTotal);
+    }, new Decimal(0));
+    
+    // Cria pedido
+    const pedido = this.pedidoRepository.create({
+      comanda,
+      itens: itensPedido,
+      total: total.toNumber(),
+      status: PedidoStatus.FEITO,
+    });
+
+    const novoPedido = await this.pedidoRepository.save(pedido);
+    const pedidoCompleto = await this.findOne(novoPedido.id);
+    
+    this.logger.log(`✅ Pedido pelo garçom criado | ID: ${pedidoCompleto.id} | Garçom: ${garcomId} | Total: R$ ${total.toFixed(2)}`);
+
+    this.pedidosGateway.emitNovoPedido(pedidoCompleto);
+    
+    return pedidoCompleto;
+  }
   
  async findAll(ambienteId?: string): Promise<Pedido[]> {
   const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
     .leftJoinAndSelect('pedido.comanda', 'comanda')
     .leftJoinAndSelect('comanda.mesa', 'mesa')
+    .leftJoinAndSelect('comanda.cliente', 'cliente')
+    .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
     .leftJoinAndSelect('pedido.itens', 'itemPedido')
     .leftJoinAndSelect('itemPedido.produto', 'produto')
     .leftJoinAndSelect('produto.ambiente', 'ambiente')
@@ -105,13 +196,23 @@ export class PedidoService {
       'pedido',
       'comanda',
       'mesa',
+      'cliente',
+      'pontoEntrega',
       'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
       'produto',
       'ambiente',
       'ambienteRetirada'
     ])
     .where('itemPedido.status IN (:...statuses)', {
-      statuses: [PedidoStatus.FEITO, PedidoStatus.EM_PREPARO, PedidoStatus.PRONTO, PedidoStatus.ENTREGUE, PedidoStatus.DEIXADO_NO_AMBIENTE]
+      statuses: [
+        PedidoStatus.FEITO, 
+        PedidoStatus.EM_PREPARO, 
+        PedidoStatus.QUASE_PRONTO,  // ✅ ADICIONADO
+        PedidoStatus.PRONTO, 
+        PedidoStatus.RETIRADO,      // ✅ ADICIONADO
+        PedidoStatus.ENTREGUE, 
+        PedidoStatus.DEIXADO_NO_AMBIENTE
+      ]
     })
     .orderBy('pedido.data', 'ASC');
 
@@ -123,11 +224,25 @@ export class PedidoService {
   let pedidosFiltrados = pedidos;
 
   if (ambienteId) {
+    // Log para debug: quantos itens ANTES do filtro
+    const totalItensAntesFiltro = pedidos.reduce((sum, p) => sum + p.itens.length, 0);
+    const statusAntes = pedidos.flatMap(p => p.itens).reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    this.logger.debug(`📊 ANTES do filtro JS | Pedidos: ${pedidos.length} | Total Itens: ${totalItensAntesFiltro} | Status: ${JSON.stringify(statusAntes)}`);
+    
     pedidosFiltrados = pedidos.map(pedido => ({
       ...pedido,
       itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
     })).filter(pedido => pedido.itens.length > 0);
-    this.logger.debug(`🔍 Filtro por ambiente aplicado | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length}`);
+    
+    const totalItensDepoisFiltro = pedidosFiltrados.reduce((sum, p) => sum + p.itens.length, 0);
+    const statusDepois = pedidosFiltrados.flatMap(p => p.itens).reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    this.logger.debug(`🔍 DEPOIS do filtro JS | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length} | Total Itens: ${totalItensDepoisFiltro} | Status: ${JSON.stringify(statusDepois)}`);
   }
 
   return pedidosFiltrados;
@@ -136,7 +251,7 @@ export class PedidoService {
   async findOne(id: string): Promise<Pedido> {
       const pedido = await this.pedidoRepository.findOne({
         where: { id },
-        relations: ['comanda', 'comanda.mesa', 'itens', 'itens.produto', 'itens.produto.ambiente'],
+        relations: ['comanda', 'comanda.mesa', 'comanda.cliente', 'comanda.pontoEntrega', 'itens', 'itens.produto', 'itens.produto.ambiente'],
       });
       if (!pedido) {
         throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
@@ -333,6 +448,249 @@ export class PedidoService {
         ambiente: ambienteRetirada.nome,
         mensagem: `Seu pedido está pronto para retirada no ${ambienteRetirada.nome}`,
       });
+
+    return item;
+  }
+
+  /**
+   * ✅ NOVO: Marca item como retirado pelo garçom
+   */
+  async retirarItem(
+    itemPedidoId: string,
+    dto: RetirarItemDto,
+  ): Promise<ItemPedido> {
+    // Busca o item (incluindo ambiente do produto)
+    const item = await this.itemPedidoRepository.findOne({
+      where: { id: itemPedidoId },
+      relations: ['pedido', 'pedido.comanda', 'produto', 'produto.ambiente'],
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+    }
+
+    // Verifica se o item está no estado PRONTO
+    if (item.status !== PedidoStatus.PRONTO) {
+      throw new BadRequestException(
+        'Apenas itens com status PRONTO podem ser retirados. ' +
+        `Status atual: ${item.status}`
+      );
+    }
+
+    // Busca o garçom
+    const garcom = await this.funcionarioRepository.findOne({
+      where: { id: dto.garcomId },
+    });
+
+    if (!garcom) {
+      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+    }
+
+    // Valida se o garçom está em turno ativo
+    const turnoAtivo = await this.turnoRepository.findOne({
+      where: { 
+        funcionarioId: dto.garcomId,
+        ativo: true,
+        checkOut: null as any, // TypeORM IsNull workaround
+      },
+    });
+
+    if (!turnoAtivo) {
+      throw new BadRequestException(
+        `Garçom ${garcom.nome} não possui turno ativo. ` +
+        'Faça check-in antes de retirar pedidos.',
+        { cause: 'FORBIDDEN', description: 'Sem turno ativo' }
+      );
+    }
+
+    // Calcula tempo de reação (PRONTO -> RETIRADO)
+    const agora = new Date();
+    let tempoReacaoMinutos = null;
+
+    if (item.prontoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.prontoEm).getTime();
+      tempoReacaoMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+    }
+
+    // ✅ SOLUÇÃO 1: Registra ambiente de preparo do produto como ambiente de retirada
+    const ambientePreparo = item.produto?.ambiente;
+    if (ambientePreparo) {
+      item.ambienteRetiradaId = ambientePreparo.id;
+      item.ambienteRetirada = ambientePreparo;
+    }
+
+    // Atualiza o item
+    item.status = PedidoStatus.RETIRADO;
+    item.retiradoEm = agora;
+    item.retiradoPorGarcomId = dto.garcomId;
+    item.tempoReacaoMinutos = tempoReacaoMinutos;
+
+    await this.itemPedidoRepository.save(item);
+
+    // ✅ SOLUÇÃO 3: Registra na tabela de histórico de retiradas
+    if (ambientePreparo) {
+      const retirada = this.retiradaItemRepository.create({
+        itemPedidoId: item.id,
+        garcomId: dto.garcomId,
+        ambienteId: ambientePreparo.id,
+        retiradoEm: agora,
+        tempoReacaoMinutos,
+        observacao: `Retirada do ambiente ${ambientePreparo.nome}`,
+      });
+
+      await this.retiradaItemRepository.save(retirada);
+      
+      this.logger.debug(
+        `📝 Retirada registrada no histórico | ID: ${retirada.id} | ` +
+        `Item: ${item.id} | Ambiente: ${ambientePreparo.nome}`,
+      );
+    }
+
+    this.logger.log(
+      `🎯 Item retirado | Produto: ${item.produto?.nome || 'Item'} | ` +
+      `Ambiente: ${ambientePreparo?.nome || 'N/A'} | ` +
+      `Garçom: ${garcom.nome} | Tempo reação: ${tempoReacaoMinutos || 'N/A'} min`,
+    );
+
+    // Emite evento WebSocket para atualização em tempo real
+    const comanda = item.pedido?.comanda;
+    if (comanda) {
+      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      
+      // Evento específico de item retirado
+      this.pedidosGateway.server.emit('item_retirado', {
+        itemId: item.id,
+        pedidoId: item.pedido.id,
+        produtoNome: item.produto?.nome,
+        ambienteId: ambientePreparo?.id,
+        ambienteNome: ambientePreparo?.nome,
+        garcomId: dto.garcomId,
+        garcomNome: garcom.nome,
+        retiradoEm: agora,
+        tempoReacaoMinutos,
+        statusAnterior: PedidoStatus.PRONTO,
+        statusAtual: PedidoStatus.RETIRADO,
+      });
+
+      // Emite também para sala de gestão
+      this.pedidosGateway.server.to('gestao').emit('item_retirado', {
+        itemId: item.id,
+        pedidoId: item.pedido.id,
+        produtoNome: item.produto?.nome,
+        ambienteId: ambientePreparo?.id,
+        ambienteNome: ambientePreparo?.nome,
+        garcomId: dto.garcomId,
+        garcomNome: garcom.nome,
+        retiradoEm: agora,
+        tempoReacaoMinutos,
+      });
+    }
+
+    return item;
+  }
+
+  /**
+   * ✅ NOVO: Marca item como entregue pelo garçom
+   */
+  async marcarComoEntregue(
+    itemPedidoId: string,
+    dto: MarcarEntregueDto,
+  ): Promise<ItemPedido> {
+    // Busca o item
+    const item = await this.itemPedidoRepository.findOne({
+      where: { id: itemPedidoId },
+      relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+    }
+
+    // Verifica se o item está RETIRADO (não PRONTO)
+    if (item.status !== PedidoStatus.RETIRADO) {
+      throw new BadRequestException('Apenas itens com status RETIRADO podem ser marcados como entregues.');
+    }
+
+    // Busca o garçom
+    const garcom = await this.funcionarioRepository.findOne({
+      where: { id: dto.garcomId },
+    });
+
+    if (!garcom) {
+      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+    }
+
+    // ✅ SOLUÇÃO 2: Valida se o garçom está em turno ativo
+    const turnoAtivo = await this.turnoRepository.findOne({
+      where: { 
+        funcionarioId: dto.garcomId,
+        ativo: true,
+        checkOut: null as any, // TypeORM IsNull workaround
+      },
+    });
+
+    if (!turnoAtivo) {
+      throw new BadRequestException(
+        `Garçom ${garcom.nome} não possui turno ativo. ` +
+        'Faça check-in antes de entregar pedidos.',
+        { cause: 'FORBIDDEN', description: 'Sem turno ativo' }
+      );
+    }
+
+    // Calcula tempo de entrega FINAL (do momento que foi RETIRADO até agora)
+    const agora = new Date();
+    let tempoEntregaFinalMinutos = null;
+
+    if (item.retiradoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.retiradoEm).getTime();
+      tempoEntregaFinalMinutos = Math.round(diferencaMs / 60000); // Converte para minutos
+    }
+
+    // Calcula tempo TOTAL de entrega (do momento que ficou PRONTO até agora)
+    let tempoEntregaMinutos = null;
+    if (item.prontoEm) {
+      const diferencaMs = agora.getTime() - new Date(item.prontoEm).getTime();
+      tempoEntregaMinutos = Math.round(diferencaMs / 60000);
+    }
+
+    // Atualiza o item
+    item.status = PedidoStatus.ENTREGUE;
+    item.entregueEm = agora;
+    item.garcomEntregaId = dto.garcomId;
+    item.tempoEntregaMinutos = tempoEntregaMinutos; // Tempo total (PRONTO -> ENTREGUE)
+    item.tempoEntregaFinalMinutos = tempoEntregaFinalMinutos; // Última milha (RETIRADO -> ENTREGUE)
+
+    await this.itemPedidoRepository.save(item);
+
+    this.logger.log(
+      `✅ Item entregue | Produto: ${item.produto?.nome || 'Item'} | Garçom: ${garcom.nome} | Tempo total: ${tempoEntregaMinutos || 'N/A'} min | Última milha: ${tempoEntregaFinalMinutos || 'N/A'} min`,
+    );
+
+    // Emite evento WebSocket para TODOS os clientes
+    const comanda = item.pedido?.comanda;
+    if (comanda) {
+      // Atualiza status geral do pedido
+      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      
+      // Evento específico de item entregue (broadcast para todos)
+      this.pedidosGateway.server.emit('item_entregue', {
+        itemId: item.id,
+        pedidoId: item.pedido.id,
+        produtoNome: item.produto?.nome,
+        garcomNome: garcom.nome,
+        tempoEntregaFinalMinutos,
+        tempoEntregaMinutos,
+      });
+
+      // Notifica cliente específico da comanda
+      this.pedidosGateway.server
+        .to(`comanda_${comanda.id}`)
+        .emit('item_entregue', {
+          itemId: item.id,
+          produtoNome: item.produto?.nome,
+          garcomNome: garcom.nome,
+        });
+    }
 
     return item;
   }

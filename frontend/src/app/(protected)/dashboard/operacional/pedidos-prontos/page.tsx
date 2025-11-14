@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { RefreshCw, Package, Filter } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
-import { getPedidosProntos } from '@/services/pedidoService';
+import { getPedidosProntos, marcarComoEntregue, retirarItem } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
+import { useAuth } from '@/context/AuthContext';
 import { Ambiente } from '@/types/ambiente';
 import { PedidoProntoCard } from '@/components/pedidos/PedidoProntoCard';
 import { DeixarNoAmbienteModal } from '@/components/pedidos/DeixarNoAmbienteModal';
@@ -34,12 +35,14 @@ interface PedidoPronto {
     produto: { nome: string };
     quantidade: number;
     observacao?: string;
+    status?: string;
   }>;
   tempoEspera: string;
   data: Date;
 }
 
 const PedidosProntosPage = () => {
+  const { user } = useAuth();
   const [pedidos, setPedidos] = useState<PedidoPronto[]>([]);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string>('todos');
@@ -72,7 +75,7 @@ const PedidosProntosPage = () => {
     socketRef.current.on('comanda_atualizada', (comanda: any) => {
       logger.log('📍 Comanda atualizada - local mudou', { 
         module: 'PedidosProntosPage',
-        comandaId: comanda.id 
+        data: { comandaId: comanda.id }
       });
       
       // Destaca o card por 5 segundos
@@ -180,6 +183,60 @@ const PedidosProntosPage = () => {
     loadPedidos(); // Recarregar lista após sucesso
   };
 
+  const handleMarcarEntregue = async (itemId: string) => {
+    if (!user?.id) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    // Verifica se é garçom
+    if (user.cargo !== 'GARCOM') {
+      toast.error('Apenas garçons podem entregar pedidos');
+      return;
+    }
+
+    try {
+      // 1º Passo: RETIRAR (PRONTO → RETIRADO)
+      // Backend valida se item está PRONTO, se não estiver retorna erro específico
+      logger.log('🛍️ Retirando item...', {
+        module: 'PedidosProntosPage',
+        data: { itemId }
+      });
+      
+      try {
+        await retirarItem(itemId, user.id);
+      } catch (retirarError: any) {
+        // Se erro for "já retirado", continua para entrega
+        const mensagem = retirarError.response?.data?.message || '';
+        if (mensagem.includes('Status atual: RETIRADO')) {
+          logger.log('⏭️ Item já foi retirado, pulando para entrega...', {
+            module: 'PedidosProntosPage',
+            data: { itemId }
+          });
+        } else {
+          // Outro erro, propaga
+          throw retirarError;
+        }
+      }
+      
+      // 2º Passo: ENTREGAR (RETIRADO → ENTREGUE)
+      logger.log('📦 Marcando como entregue...', {
+        module: 'PedidosProntosPage',
+        data: { itemId }
+      });
+      await marcarComoEntregue(itemId, user.id);
+      
+      toast.success('Item entregue com sucesso!');
+      loadPedidos(); // Recarregar lista
+    } catch (error: any) {
+      logger.error('Erro ao entregar item', {
+        module: 'PedidosProntosPage',
+        error: error as Error,
+      });
+      toast.error(error.response?.data?.message || 'Erro ao entregar item');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -262,6 +319,7 @@ const PedidosProntosPage = () => {
                 tempoEspera={pedido.tempoEspera}
                 data={pedido.data}
                 onDeixarNoAmbiente={(itemId) => handleDeixarNoAmbiente(itemId, pedido)}
+                onMarcarEntregue={handleMarcarEntregue}
                 isDestacado={comandasDestacadas.has(pedido.comandaId)}
               />
             </div>

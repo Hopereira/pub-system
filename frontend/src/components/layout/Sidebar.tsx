@@ -8,7 +8,7 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar, MapPin, Package // Ícones importados
+    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator // Ícones importados
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -16,10 +16,25 @@ import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 
 const baseNavLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'] },
-  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'COZINHA'] },
-  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
-  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GARCOM', 'CAIXA'] },
+  // --- Área do Garçom ---
+  { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
+  { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['GARCOM'] },
+  { href: '/garcom/qrcode-comanda', label: 'Gerar QR Code', icon: QrCode, roles: ['GARCOM'] },
+  
+  // --- Área do Caixa ---
+  { href: '/caixa', label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA'] },
+  { href: '/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA'] },
+  { href: '/caixa/comandas-abertas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA'] },
+  
+  // --- Área da Cozinha ---
+  { href: '/cozinha', label: 'Área da Cozinha', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO'] },
+  
+  // --- Dashboard Administrativo ---
+  { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
+  { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
+  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE'] },
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
@@ -54,40 +69,54 @@ export function Sidebar() {
     const fetchOperationalLinks = async () => {
       try {
         const ambientes = await getAmbientes();
-        const dynamicLinks = ambientes
-          .filter(ambiente => ambiente.tipo === 'PREPARO') // Mostra apenas painéis para ambientes de preparo
-          .map(ambiente => ({
-            href: `/dashboard/operacional/${ambiente.id}`,
-            label: `Painel ${ambiente.nome}`,
-            icon: ChefHat,
-            roles: ['ADMIN', 'COZINHA'],
+        
+        let dynamicLinks = ambientes
+          .filter(ambiente => ambiente.tipo === 'PREPARO'); // Filtra apenas ambientes de preparo
+        
+        // Se for COZINHA/COZINHEIRO, mostra apenas o ambiente onde trabalha
+        if (['COZINHA', 'COZINHEIRO'].includes(user?.cargo || '')) {
+          if (user?.ambienteId) {
+            dynamicLinks = dynamicLinks.filter(ambiente => ambiente.id === user.ambienteId);
+          } else {
+            // Se não tiver ambienteId configurado, não mostra nenhum painel
+            dynamicLinks = [];
+          }
+        }
+        // ADMIN vê todos os painéis (sem filtro adicional)
+        
+        const links = dynamicLinks.map(ambiente => ({
+          href: `/dashboard/operacional/${ambiente.id}`,
+          label: `Painel ${ambiente.nome}`,
+          icon: ChefHat,
+          roles: ['ADMIN', 'COZINHA', 'COZINHEIRO'],
         }));
-        setOperationalLinks(dynamicLinks);
+        
+        setOperationalLinks(links);
       } catch (error) {
         console.error('Erro ao buscar links operacionais:', error);
       }
     };
 
-    if (user?.cargo && ['ADMIN', 'COZINHA'].includes(user.cargo)) {
+    if (user?.cargo && ['ADMIN', 'COZINHA', 'COZINHEIRO'].includes(user.cargo)) {
         fetchOperationalLinks();
     } else {
         setOperationalLinks([]);
     }
   }, [user]);
-  
-  const caixaLink = { 
-    href: '/dashboard/operacional/caixa', // Rota corrigida para consistência
-    label: 'Terminal de Caixa', 
-    icon: Landmark, 
-    roles: ['ADMIN', 'CAIXA'] 
-  };
 
   const allLinks = useMemo(() => {
-    let combinedLinks = [...baseNavLinks];
+    const caixaLinkDashboard = { 
+      href: '/dashboard/operacional/caixa',
+      label: 'Caixa (Dashboard)', 
+      icon: Landmark, 
+      roles: ['ADMIN', 'GERENTE']
+    };
     
-    // Adiciona o link do caixa e os links operacionais dinâmicos
+    const combinedLinks = [...baseNavLinks];
+    
+    // Adiciona o link do caixa do dashboard e os links operacionais dinâmicos
     const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
-    combinedLinks.splice(insertIndexOp, 0, caixaLink as any, ...(operationalLinks as any[]));
+    combinedLinks.splice(insertIndexOp, 0, caixaLinkDashboard, ...operationalLinks);
 
     return combinedLinks;
   }, [operationalLinks]);

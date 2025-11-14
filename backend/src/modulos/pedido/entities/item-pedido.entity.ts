@@ -10,6 +10,7 @@ import { Pedido } from './pedido.entity';
 // --- CORREÇÃO APLICADA AQUI ---
 import { Produto } from '../../produto/entities/produto.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
 
 @Entity('itens_pedido')
@@ -59,6 +60,46 @@ export class ItemPedido {
   @Column({ type: 'timestamp', nullable: true })
   prontoEm: Date;
 
+  // ✅ NOVO: Timestamp quando item foi marcado como quase pronto
+  @Column({ name: 'quase_pronto_em', type: 'timestamp', nullable: true })
+  quaseProntoEm: Date;
+
+  // ✅ NOVO: Timestamp quando garçom retirou o item
+  @Column({ name: 'retirado_em', type: 'timestamp', nullable: true })
+  retiradoEm: Date;
+
   @Column({ type: 'timestamp', nullable: true })
   entregueEm: Date;
+
+  // ✅ NOVO: Garçom que retirou o item
+  @Column({ name: 'retirado_por_garcom_id', type: 'uuid', nullable: true })
+  retiradoPorGarcomId: string;
+
+  @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'retirado_por_garcom_id' })
+  retiradoPorGarcom: Funcionario;
+
+  // ✅ NOVO: Garçom que entregou o item
+  @Column({ name: 'garcom_entrega_id', type: 'uuid', nullable: true })
+  garcomEntregaId: string;
+
+  @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'garcom_entrega_id' })
+  garcomEntrega: Funcionario;
+
+  // ✅ NOVO: Tempo de entrega em minutos (calculado automaticamente)
+  @Column({ name: 'tempoentregaminutos', type: 'int', nullable: true })
+  tempoEntregaMinutos: number;
+
+  // Tempo de preparo em minutos (do início ao pronto)
+  @Column({ name: 'tempo_preparo_minutos', type: 'integer', nullable: true })
+  tempoPreparoMinutos: number;
+
+  // ✅ NOVO: Tempo de reação (PRONTO -> RETIRADO) em minutos
+  @Column({ name: 'tempo_reacao_minutos', type: 'integer', nullable: true })
+  tempoReacaoMinutos: number;
+
+  // ✅ NOVO: Tempo de entrega final (RETIRADO -> ENTREGUE) em minutos
+  @Column({ name: 'tempo_entrega_final_minutos', type: 'integer', nullable: true })
+  tempoEntregaFinalMinutos: number;
 }

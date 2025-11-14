@@ -1,5 +1,5 @@
 // frontend/src/services/comandaService.ts
-import { Comanda } from "@/types/comanda";
+import { Comanda, ComandaStatus } from "@/types/comanda";
 import { CreateComandaDto } from "@/types/comanda.dto";
 import { UpdatePontoComandaDto } from "@/types/ponto-entrega.dto";
 import api, { publicApi } from "./api";
@@ -126,6 +126,28 @@ export const updateComanda = async (
     return response.data;
   } catch (error) {
     logger.error('❌ Erro ao atualizar local da comanda', {
+      module: 'ComandaService',
+      error: error as Error,
+    });
+    throw error;
+  }
+};
+
+// Buscar comandas por ponto de entrega
+export const getComandasByPontoEntrega = async (pontoEntregaId: string): Promise<Comanda[]> => {
+  try {
+    logger.debug(`🔍 Buscando comandas do ponto de entrega ${pontoEntregaId}`, { module: 'ComandaService' });
+    
+    // Buscar todas as comandas e filtrar no frontend
+    const response = await api.get<Comanda[]>('/comandas');
+    const comandasFiltradas = response.data.filter(
+      (comanda) => comanda.pontoEntrega?.id === pontoEntregaId && comanda.status === ComandaStatus.ABERTA
+    );
+    
+    logger.log(`✅ ${comandasFiltradas.length} comandas encontradas no ponto`, { module: 'ComandaService' });
+    return comandasFiltradas;
+  } catch (error) {
+    logger.error('❌ Erro ao buscar comandas do ponto de entrega', {
       module: 'ComandaService',
       error: error as Error,
     });

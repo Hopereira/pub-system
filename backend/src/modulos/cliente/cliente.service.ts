@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateClienteDto } from './dto/create-cliente.dto';
+import { CreateClienteRapidoDto } from './dto/create-cliente-rapido.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { Cliente } from './entities/cliente.entity';
 
@@ -43,6 +44,42 @@ export class ClienteService {
     return this.clienteRepository.save(cliente);
   }
 
+  // ✅ NOVO: Criar cliente rápido (campos mínimos)
+  async createRapido(dto: CreateClienteRapidoDto): Promise<Cliente> {
+    // Se CPF foi fornecido, verifica se já existe
+    if (dto.cpf) {
+      const clienteExistente = await this.clienteRepository.findOne({
+        where: { cpf: dto.cpf },
+      });
+
+      if (clienteExistente) {
+        // Retorna o cliente existente ao invés de erro
+        return clienteExistente;
+      }
+    }
+
+    // Gera CPF temporário se não fornecido (para permitir criação rápida)
+    const cpfFinal = dto.cpf || this.gerarCpfTemporario();
+
+    const cliente = this.clienteRepository.create({
+      nome: dto.nome,
+      cpf: cpfFinal,
+      celular: dto.telefone || null,
+      email: null, // Opcional
+      ambienteId: dto.ambienteId || null,
+      pontoEntregaId: dto.pontoEntregaId || null,
+    });
+
+    return this.clienteRepository.save(cliente);
+  }
+
+  // Gera CPF temporário único
+  private gerarCpfTemporario(): string {
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `999${timestamp.slice(-8)}`.slice(0, 11);
+  }
+
   findAll(): Promise<Cliente[]> {
     return this.clienteRepository.find();
   }
@@ -59,6 +96,32 @@ export class ClienteService {
     }
 
     return cliente;
+  }
+
+  // ✅ NOVO: Busca flexível por nome ou CPF
+  async buscar(termo: string): Promise<Cliente[]> {
+    // Remove formatação do CPF se for número
+    const termoLimpo = termo.replace(/[^\d]/g, '');
+    
+    // Se for um CPF (11 dígitos), busca por CPF
+    if (termoLimpo.length === 11) {
+      const cliente = await this.clienteRepository.findOne({ 
+        where: { cpf: termoLimpo } 
+      });
+      return cliente ? [cliente] : [];
+    }
+
+    // Caso contrário, busca por nome (case-insensitive, parcial)
+    const clientes = await this.clienteRepository
+      .createQueryBuilder('cliente')
+      .where('LOWER(cliente.nome) LIKE LOWER(:termo)', { 
+        termo: `%${termo}%` 
+      })
+      .orderBy('cliente.nome', 'ASC')
+      .limit(10) // Limita a 10 resultados
+      .getMany();
+
+    return clientes;
   }
 
   async findOne(id: string): Promise<Cliente> {

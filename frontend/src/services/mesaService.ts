@@ -15,6 +15,17 @@ export const getMesas = async (): Promise<Mesa[]> => {
   }
 };
 
+// --- NOVO: Buscar mesas por ambiente ---
+export const getMesasByAmbiente = async (ambienteId: string): Promise<Mesa[]> => {
+  try {
+    const response = await api.get(`/mesas/ambiente/${ambienteId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao buscar mesas do ambiente ${ambienteId}:`, error);
+    throw error;
+  }
+};
+
 // --- MÉTODO ATUALIZADO ---
 export const createMesa = async (mesaData: CreateMesaDto): Promise<Mesa> => {
     try {

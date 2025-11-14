@@ -20,6 +20,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Settings } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // Enum para o Tipo de Ambiente, para garantir consistência
 const TipoAmbienteEnum = z.enum(['PREPARO', 'ATENDIMENTO']);
@@ -35,6 +37,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const AmbientesPage = () => {
+  const router = useRouter();
   const [ambientes, setAmbientes] = useState<AmbienteData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
@@ -226,6 +229,7 @@ const AmbientesPage = () => {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Mesas</TableHead>
               <TableHead>Ponto de Retirada</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -248,6 +252,9 @@ const AmbientesPage = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    <span className="font-medium">{ambiente.tableCount ?? 0}</span>
+                  </TableCell>
+                  <TableCell>
                     {ambiente.isPontoDeRetirada ? (
                       <Badge className="bg-blue-600 hover:bg-blue-700">Sim</Badge>
                     ) : (
@@ -262,6 +269,17 @@ const AmbientesPage = () => {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
+                    {ambiente.tipo === 'ATENDIMENTO' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mr-2"
+                        onClick={() => router.push(`/dashboard/mapa/configurar?ambienteId=${ambiente.id}`)}
+                      >
+                        <Settings className="h-4 w-4 mr-1" />
+                        Configurar Layout
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" className="mr-2" onClick={() => handleOpenEditDialog(ambiente)}>Editar</Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>

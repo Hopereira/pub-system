@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ClienteService } from './cliente.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
+import { CreateClienteRapidoDto } from './dto/create-cliente-rapido.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -33,6 +34,16 @@ export class ClienteController {
   @ApiResponse({ status: 409, description: 'Cliente com este CPF já existe.' })
   create(@Body() createClienteDto: CreateClienteDto) {
     return this.clienteService.create(createClienteDto);
+  }
+
+  // ✅ NOVA ROTA PÚBLICA PARA CRIAÇÃO RÁPIDA
+  @Public()
+  @Post('rapido')
+  @ApiOperation({ summary: 'Cria um cliente rapidamente com campos mínimos (Rota Pública)' })
+  @ApiResponse({ status: 201, description: 'Cliente criado com sucesso.' })
+  @ApiResponse({ status: 200, description: 'Cliente já existe, retornado existente.' })
+  createRapido(@Body() dto: CreateClienteRapidoDto) {
+    return this.clienteService.createRapido(dto);
   }
 
   // ✅ CORREÇÃO CRÍTICA: ROTA DE BUSCA FLEXÍVEL
@@ -69,7 +80,7 @@ export class ClienteController {
     return this.clienteService.findAll();
   }
   
-  // ✅ NOVA ROTA PÚBLICA PARA BUSCA POR CPF
+  // NOVA ROTA PÚBLICA PARA BUSCA POR CPF
   @Public()
   @Get('by-cpf') // Novo endpoint: /clientes/by-cpf?cpf=...
   @ApiOperation({ summary: 'Busca um cliente por CPF (Rota Pública).' })
@@ -79,6 +90,14 @@ export class ClienteController {
       return this.clienteService.findByCpf(cpf); // Assumindo que findByCpf lança 404
   }
 
+  // NOVA ROTA PÚBLICA PARA BUSCA FLEXÍVEL
+  @Public()
+  @Get('buscar') // Novo endpoint: /clientes/buscar?q=termo
+  @ApiOperation({ summary: 'Busca clientes por nome ou CPF (Rota Pública).' })
+  @ApiResponse({ status: 200, description: 'Lista de clientes encontrados.' })
+  buscar(@Query('q') termo: string) {
+      return this.clienteService.buscar(termo);
+  }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)

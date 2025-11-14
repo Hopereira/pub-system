@@ -8,11 +8,13 @@ import {
   Param,
   Delete,
   UseGuards,
+  Put,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PontoEntregaService } from './ponto-entrega.service';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
 import { UpdatePontoEntregaDto } from './dto/update-ponto-entrega.dto';
+import { AtualizarPosicaoMesaDto } from '../mesa/dto/mapa.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -50,6 +52,14 @@ export class PontoEntregaController {
     return this.pontoEntregaService.findAllAtivos();
   }
 
+  @Get('ambiente/:ambienteId')
+  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @ApiOperation({ summary: 'Listar pontos de entrega de um ambiente específico' })
+  @ApiResponse({ status: 200, description: 'Lista de pontos do ambiente' })
+  findByAmbiente(@Param('ambienteId') ambienteId: string) {
+    return this.pontoEntregaService.findByAmbiente(ambienteId);
+  }
+
   @Get(':id')
   @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM)
   @ApiOperation({ summary: 'Buscar ponto específico por ID' })
@@ -84,5 +94,18 @@ export class PontoEntregaController {
   @ApiResponse({ status: 404, description: 'Ponto não encontrado' })
   remove(@Param('id') id: string) {
     return this.pontoEntregaService.remove(id);
+  }
+
+  @Put(':id/posicao')
+  @Roles(Cargo.ADMIN)
+  @ApiOperation({ summary: 'Atualizar posição do ponto no mapa (Admin)' })
+  @ApiResponse({ status: 200, description: 'Posição atualizada com sucesso.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({ status: 404, description: 'Ponto não encontrado.' })
+  atualizarPosicao(
+    @Param('id') id: string,
+    @Body() dto: AtualizarPosicaoMesaDto,
+  ) {
+    return this.pontoEntregaService.atualizarPosicao(id, dto);
   }
 }

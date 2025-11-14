@@ -192,3 +192,100 @@ export const deixarNoAmbiente = async (
     throw error;
   }
 };
+
+/**
+ * ✅ NOVO: Cria pedido pelo garçom (com criação automática de comanda)
+ * Rota: POST /pedidos/garcom
+ */
+export const criarPedidoGarcom = async (data: {
+  clienteId: string;
+  garcomId: string;
+  mesaId?: string;
+  observacao?: string;
+  itens: Array<{
+    produtoId: string;
+    quantidade: number;
+    observacao?: string;
+  }>;
+}): Promise<Pedido> => {
+  try {
+    logger.log('👨‍🍳 Garçom criando pedido', {
+      module: 'PedidoService',
+      data: { clienteId: data.clienteId, garcomId: data.garcomId, qtdItens: data.itens.length }
+    });
+    const response = await api.post<Pedido>('/pedidos/garcom', data);
+    logger.log('✅ Pedido pelo garçom criado', {
+      module: 'PedidoService',
+      data: { pedidoId: response.data.id }
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Erro ao criar pedido pelo garçom', {
+      module: 'PedidoService',
+      error: error as Error
+    });
+    throw error;
+  }
+};
+
+/**
+ * ✅ NOVO: Marca item como retirado pelo garçom
+ * Rota: PATCH /pedidos/item/:id/retirar
+ */
+export const retirarItem = async (
+  itemPedidoId: string,
+  garcomId: string,
+): Promise<any> => {
+  try {
+    logger.log('🎯 Marcando item como retirado', {
+      module: 'PedidoService',
+      data: { itemPedidoId, garcomId }
+    });
+    const response = await api.patch(`/pedidos/item/${itemPedidoId}/retirar`, {
+      garcomId
+    });
+    logger.log('✅ Item marcado como retirado', {
+      module: 'PedidoService',
+      data: { itemPedidoId, tempoReacao: response.data.tempoReacaoMinutos }
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Erro ao marcar item como retirado', {
+      module: 'PedidoService',
+      data: { itemPedidoId },
+      error: error as Error
+    });
+    throw error;
+  }
+};
+
+/**
+ * ✅ NOVO: Marca item como entregue pelo garçom
+ * Rota: PATCH /pedidos/item/:id/marcar-entregue
+ */
+export const marcarComoEntregue = async (
+  itemPedidoId: string,
+  garcomId: string,
+): Promise<any> => {
+  try {
+    logger.log('🚚 Marcando item como entregue', {
+      module: 'PedidoService',
+      data: { itemPedidoId, garcomId }
+    });
+    const response = await api.patch(`/pedidos/item/${itemPedidoId}/marcar-entregue`, {
+      garcomId
+    });
+    logger.log('✅ Item marcado como entregue', {
+      module: 'PedidoService',
+      data: { itemPedidoId }
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Erro ao marcar item como entregue', {
+      module: 'PedidoService',
+      data: { itemPedidoId },
+      error: error as Error
+    });
+    throw error;
+  }
+};

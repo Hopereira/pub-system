@@ -8,9 +8,10 @@ import { Mesa } from '../modulos/mesa/entities/mesa.entity';
 import { Produto } from '../modulos/produto/entities/produto.entity';
 import { Cliente } from '../modulos/cliente/entities/cliente.entity';
 import { Comanda } from '../modulos/comanda/entities/comanda.entity';
+import { Empresa } from '../modulos/empresa/entities/empresa.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Ambiente, Mesa, Produto, Cliente, Comanda])],
+  imports: [TypeOrmModule.forFeature([Ambiente, Mesa, Produto, Cliente, Comanda, Empresa])],
   providers: [SeederService],
   exports: [SeederService],
 })

@@ -39,10 +39,10 @@ export class AmbienteController {
   }
 
   @Get()
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
   @ApiOperation({ summary: 'Lista todos os ambientes cadastrados' })
   @ApiResponse({ status: 200, description: 'Lista de ambientes retornada com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado.' })
   findAll() {
     return this.ambienteService.findAll();
   }

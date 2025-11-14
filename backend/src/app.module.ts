@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
@@ -18,10 +19,14 @@ import { PontoEntregaModule } from './modulos/ponto-entrega/ponto-entrega.module
 import { HealthModule } from './health/health.module';
 import { AvaliacaoModule } from './modulos/avaliacao/avaliacao.module';
 import { TurnoModule } from './modulos/turno/turno.module';
+import { AnalyticsModule } from './modulos/analytics/analytics.module';
+import { MedalhaModule } from './modulos/medalha/medalha.module';
+import { CaixaModule } from './modulos/caixa/caixa.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ScheduleModule.forRoot(), // Habilita jobs agendados
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -54,6 +59,9 @@ import { TurnoModule } from './modulos/turno/turno.module';
     HealthModule,
     AvaliacaoModule,
     TurnoModule,
+    AnalyticsModule,
+    MedalhaModule,
+    CaixaModule,
   ],
   controllers: [],
   providers: [],

@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Between } from 'typeorm';
 import { TurnoFuncionario } from './entities/turno-funcionario.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
+import { FuncionarioStatus } from '../funcionario/enums/funcionario-status.enum';
 import { CheckInDto } from './dto/check-in.dto';
 import { CheckOutDto } from './dto/check-out.dto';
 import {
@@ -15,6 +16,7 @@ import {
   FuncionarioAtivoDto,
   EstatisticasTurnoDto,
 } from './dto/turno-response.dto';
+import { TurnoGateway } from './turno.gateway';
 
 @Injectable()
 export class TurnoService {
@@ -25,6 +27,7 @@ export class TurnoService {
     private turnoRepository: Repository<TurnoFuncionario>,
     @InjectRepository(Funcionario)
     private funcionarioRepository: Repository<Funcionario>,
+    private readonly turnoGateway: TurnoGateway,
   ) {}
 
   async checkIn(checkInDto: CheckInDto): Promise<TurnoResponseDto> {
@@ -64,9 +67,24 @@ export class TurnoService {
 
     const turnoSalvo = await this.turnoRepository.save(turno);
 
+    // Atualiza status do funcionário para ATIVO
+    funcionario.status = FuncionarioStatus.ATIVO;
+    await this.funcionarioRepository.save(funcionario);
+
     this.logger.log(
-      `✅ Check-in realizado | Funcionário: ${funcionario.nome} | ${new Date().toLocaleTimeString('pt-BR')}`,
+      `✅ Check-in realizado | Funcionário: ${funcionario.nome} | Status: ATIVO | ${new Date().toLocaleTimeString('pt-BR')}`,
     );
+
+    // Emite evento WebSocket para atualização em tempo real
+    this.turnoGateway.emitCheckIn({
+      ...turnoSalvo,
+      funcionario: {
+        id: funcionario.id,
+        nome: funcionario.nome,
+        cargo: funcionario.cargo,
+      },
+    });
+    this.turnoGateway.emitFuncionariosAtualizados();
 
     return turnoSalvo;
   }
@@ -103,9 +121,24 @@ export class TurnoService {
 
     const turnoAtualizado = await this.turnoRepository.save(turno);
 
+    // Atualiza status do funcionário para INATIVO
+    turno.funcionario.status = FuncionarioStatus.INATIVO;
+    await this.funcionarioRepository.save(turno.funcionario);
+
     this.logger.log(
-      `⏹️ Check-out realizado | Funcionário: ${turno.funcionario.nome} | Tempo: ${this.formatarTempo(horasTrabalhadas)}`,
+      `⏹️ Check-out realizado | Funcionário: ${turno.funcionario.nome} | Status: INATIVO | Tempo: ${this.formatarTempo(horasTrabalhadas)}`,
     );
+
+    // Emite evento WebSocket para atualização em tempo real
+    this.turnoGateway.emitCheckOut({
+      ...turnoAtualizado,
+      funcionario: {
+        id: turno.funcionario.id,
+        nome: turno.funcionario.nome,
+        cargo: turno.funcionario.cargo,
+      },
+    });
+    this.turnoGateway.emitFuncionariosAtualizados();
 
     return turnoAtualizado;
   }

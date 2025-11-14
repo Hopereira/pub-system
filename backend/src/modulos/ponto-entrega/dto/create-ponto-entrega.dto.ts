@@ -27,9 +27,17 @@ export class CreatePontoEntregaDto {
   @IsUUID()
   mesaProximaId?: string;
 
+  @ApiPropertyOptional({
+    description: 'ID do ambiente de atendimento (onde o cliente está fisicamente)',
+    example: 'uuid-do-ambiente-atendimento',
+  })
+  @IsOptional()
+  @IsUUID()
+  ambienteAtendimentoId?: string;
+
   @ApiProperty({
-    description: 'ID do ambiente de preparo (onde deixar se cliente não for encontrado)',
-    example: 'uuid-do-ambiente',
+    description: 'ID do ambiente de preparo (de onde vem o pedido)',
+    example: 'uuid-do-ambiente-preparo',
   })
   @IsUUID()
   ambientePreparoId: string;

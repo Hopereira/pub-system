@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { useAdminComandaSubscription } from "@/hooks/useAdminComandaSubscription";
 import { MudarLocalModal } from "@/components/pontos-entrega/MudarLocalModal";
+import { ComandaStatus } from "@/types/comanda";
 
 // Função para dar cor aos status (pode ser movida para um ficheiro de 'utils' no futuro)
 const getStatusVariant = (status: PedidoStatus) => {
@@ -81,7 +82,9 @@ export default function ComandaDetalhePage() {
 
   const todosOsItens = comanda.pedidos?.flatMap(pedido => pedido.itens) ?? [];
   const podeFechar = todosOsItens.length > 0 && todosOsItens.every(
-    item => item.status === PedidoStatus.ENTREGUE || item.status === PedidoStatus.CANCELADO
+    item => item.status === PedidoStatus.ENTREGUE || 
+            item.status === PedidoStatus.RETIRADO || 
+            item.status === PedidoStatus.CANCELADO
   );
 
   return (
@@ -94,7 +97,7 @@ export default function ComandaDetalhePage() {
       </p>
 
       {/* Seção: Local de Entrega */}
-      {comanda.status === 'ABERTA' && (
+      {comanda.status === ComandaStatus.ABERTA && (
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
@@ -107,6 +110,16 @@ export default function ComandaDetalhePage() {
                 {comanda.pontoEntrega?.descricao && (
                   <p className="text-xs text-gray-500 mt-1">
                     {comanda.pontoEntrega.descricao}
+                  </p>
+                )}
+                {comanda.pontoEntrega?.ambienteAtendimento && (
+                  <p className="text-xs text-blue-700 font-medium mt-2">
+                    📍 Você está em: {comanda.pontoEntrega.ambienteAtendimento.nome}
+                  </p>
+                )}
+                {comanda.pontoEntrega?.ambientePreparo && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    🍳 Pedido vem de: {comanda.pontoEntrega.ambientePreparo.nome}
                   </p>
                 )}
               </div>
@@ -176,7 +189,7 @@ export default function ComandaDetalhePage() {
             {!podeFechar && (
               <p className="text-red-600 text-sm mt-3 flex items-center">
                 <ShieldAlert className="h-4 w-4 mr-1"/>
-                Apenas comandas com todos os itens entregues ou cancelados podem ser fechadas.
+                Aguarde todos os itens serem entregues/retirados ou cancelados para fechar.
               </p>
             )}
           </div>

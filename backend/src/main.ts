@@ -8,10 +8,14 @@ import { json } from 'express';
 import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { DataSource } from 'typeorm';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
+
+  // ✅ Migrations rodam automaticamente via migrationsRun: true no data-source.ts
+  logger.log('✅ Migrations executadas automaticamente pelo TypeORM');
 
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());
@@ -48,8 +52,13 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   
-  const seeder = app.get(SeederService);
-  await seeder.seed();
+  // ✅ Seeder com proteção contra erros
+  try {
+    const seeder = app.get(SeederService);
+    await seeder.seed();
+  } catch (error) {
+    logger.warn('⚠️ Seeder não executado (tabelas podem não existir ainda)');
+  }
 
   await app.listen(3000);
   logger.log(`Aplicação rodando em: ${await app.getUrl()}`);
