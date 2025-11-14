@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { getComandasAbertas } from '@/services/comandaService';
-import { Comanda } from '@/types/comanda';
+import { Comanda, ComandaStatus } from '@/types/comanda';
+import { PedidoStatus } from '@/types/pedido';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -19,6 +20,9 @@ export default function ComandasAbertasPage() {
     setIsLoading(true);
     try {
       const data = await getComandasAbertas();
+      console.log('📋 Comandas recebidas:', data);
+      console.log('📋 Primeira comanda:', data[0]);
+      console.log('📋 Pedidos da primeira comanda:', data[0]?.pedidos);
       setComandas(data);
     } catch (error) {
       logger.error('Erro ao carregar comandas abertas', { module: 'ComandasAbertasPage', error: error as Error });
@@ -31,6 +35,16 @@ export default function ComandasAbertasPage() {
   useEffect(() => {
     carregarComandas();
   }, []);
+
+  // Função para calcular o total de uma comanda
+  const calcularTotal = (comanda: Comanda): number => {
+    if (!comanda.pedidos || comanda.pedidos.length === 0) return 0;
+    
+    return comanda.pedidos
+      .flatMap(pedido => pedido.itens)
+      .filter(item => item.status !== PedidoStatus.CANCELADO)
+      .reduce((acc, item) => acc + (Number(item.precoUnitario) * item.quantidade), 0);
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -83,7 +97,7 @@ export default function ComandasAbertasPage() {
                        'Balcão'}
                     </CardTitle>
                     <Badge 
-                      variant={comanda.status === 'ABERTA' ? 'default' : 'secondary'}
+                      variant={comanda.status === ComandaStatus.ABERTA ? 'default' : 'secondary'}
                     >
                       {comanda.status}
                     </Badge>
@@ -115,7 +129,7 @@ export default function ComandasAbertasPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-bold text-lg">
-                      R$ {(comanda.valorTotal || 0).toFixed(2)}
+                      R$ {calcularTotal(comanda).toFixed(2)}
                     </span>
                   </div>
                 </CardContent>

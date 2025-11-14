@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { useAdminComandaSubscription } from "@/hooks/useAdminComandaSubscription";
 import { MudarLocalModal } from "@/components/pontos-entrega/MudarLocalModal";
+import { ComandaStatus } from "@/types/comanda";
 
 // Função para dar cor aos status (pode ser movida para um ficheiro de 'utils' no futuro)
 const getStatusVariant = (status: PedidoStatus) => {
@@ -96,7 +97,7 @@ export default function ComandaDetalhePage() {
       </p>
 
       {/* Seção: Local de Entrega */}
-      {comanda.status === 'ABERTA' && (
+      {comanda.status === ComandaStatus.ABERTA && (
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">

@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Filter, Bell, BellOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { RefreshCw, Filter, Bell, BellOff, ArrowLeft } from 'lucide-react';
 import { getPedidosPorAmbiente } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
@@ -38,6 +40,8 @@ interface PreparoPedidosProps {
  * - WebSocket em tempo real
  */
 export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProps) {
+  const router = useRouter();
+  const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string | null>(
@@ -60,17 +64,28 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
 
   useEffect(() => {
     if (!isLoading && ambienteSelecionado) {
-      loadPedidos();
+      // Limpa pedidos anteriores antes de carregar novos
+      setPedidos([]);
+      setIsRefreshing(true);
+      loadPedidos().finally(() => setIsRefreshing(false));
     }
   }, [ambienteSelecionado]);
 
   // WebSocket - escuta novos pedidos e atualizações
   useEffect(() => {
     socket.on('novo_pedido', (novoPedido: Pedido) => {
+      logger.log('🆕 Novo pedido recebido via WebSocket', {
+        module: 'PreparoPedidos',
+        data: { pedidoId: novoPedido.id },
+      });
       setPedidos((prev) => [novoPedido, ...prev]);
     });
 
     socket.on('status_atualizado', (pedidoAtualizado: Pedido) => {
+      logger.log('🔄 Status atualizado via WebSocket', {
+        module: 'PreparoPedidos',
+        data: { pedidoId: pedidoAtualizado.id },
+      });
       setPedidos((prev) =>
         prev.map((p) => (p.id === pedidoAtualizado.id ? pedidoAtualizado : p))
       );
@@ -146,6 +161,9 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
       const data: UpdateItemPedidoStatusDto = { status: novoStatus };
       await updateItemStatus(itemPedidoId, data);
       toast.success(`Item atualizado para ${novoStatus.replace('_', ' ')}!`);
+      
+      // Recarrega pedidos após atualização para garantir sincronização
+      await loadPedidos();
     } catch (err: any) {
       toast.error(err.message || 'Falha ao atualizar o status do item.');
     }
@@ -159,18 +177,31 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
     : pedidos;
 
   // Organiza pedidos em colunas do Kanban
+  // Considera apenas itens do ambiente selecionado para determinar a coluna
   const colunas = {
     feito: pedidosFiltrados.filter((p) =>
-      p.itens.some((i) => i.status === PedidoStatus.FEITO)
+      p.itens.some((i) => 
+        i.produto?.ambiente?.id === ambienteSelecionado && 
+        i.status === PedidoStatus.FEITO
+      )
     ),
     emPreparo: pedidosFiltrados.filter((p) =>
-      p.itens.some((i) => i.status === PedidoStatus.EM_PREPARO)
+      p.itens.some((i) => 
+        i.produto?.ambiente?.id === ambienteSelecionado && 
+        i.status === PedidoStatus.EM_PREPARO
+      )
     ),
     quasePronto: pedidosFiltrados.filter((p) =>
-      p.itens.some((i) => i.status === PedidoStatus.QUASE_PRONTO)
+      p.itens.some((i) => 
+        i.produto?.ambiente?.id === ambienteSelecionado && 
+        i.status === PedidoStatus.QUASE_PRONTO
+      )
     ),
     pronto: pedidosFiltrados.filter((p) =>
-      p.itens.some((i) => i.status === PedidoStatus.PRONTO)
+      p.itens.some((i) => 
+        i.produto?.ambiente?.id === ambienteSelecionado && 
+        i.status === PedidoStatus.PRONTO
+      )
     ),
   };
 
@@ -191,11 +222,25 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Painel de Preparo</h1>
-          <p className="text-muted-foreground mt-1">
-            Acompanhe e atualize pedidos em tempo real
-          </p>
+        <div className="flex items-center gap-3">
+          {/* Botão Voltar para COZINHA */}
+          {user?.cargo === 'COZINHA' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/cozinha')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Painel de Preparo</h1>
+            <p className="text-muted-foreground mt-1">
+              Acompanhe e atualize pedidos em tempo real
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -255,6 +300,16 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>Selecione um ambiente para visualizar os pedidos.</AlertDescription>
         </Alert>
+      ) : isRefreshing ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="h-16 bg-gray-200 rounded-lg"></div>
+              <div className="h-32 bg-gray-100 rounded-lg"></div>
+              <div className="h-32 bg-gray-100 rounded-lg"></div>
+            </div>
+          ))}
+        </div>
       ) : pedidosFiltrados.length === 0 ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />

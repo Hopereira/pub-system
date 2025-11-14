@@ -1,7 +1,7 @@
 // Caminho: frontend/src/types/comanda.ts
 
 import { Mesa } from "./mesa";
-import { PedidoStatus } from "./pedido";
+import { ItemPedido, PedidoStatus } from "./pedido"; 
 import { Produto } from "./produto";
 import { PontoEntrega, Agregado } from "./ponto-entrega";
 
@@ -14,16 +14,6 @@ export enum ComandaStatus {
 }
 // --- FIM DA CORREÇÃO ---
 
-// Define a estrutura de um item dentro de um pedido
-export interface ItemPedido {
-  id: string;
-  quantidade: number;
-  observacao?: string | null;
-  produto: Produto;
-  precoUnitario: number;
-  pedidoId: string;
-}
-
 // Define a estrutura de um Pedido
 export interface Pedido {
     id: string;
@@ -35,12 +25,17 @@ export interface Pedido {
 // A comanda agora tem uma lista de Pedidos, e não de Itens
 export interface Comanda {
   id: string;
-  status: ComandaStatus; // Esta linha já estava correta e agora funcionará
+  status: ComandaStatus; 
   mesa?: Mesa;
   pontoEntrega?: PontoEntrega;
   agregados?: Agregado[];
   pedidos: Pedido[];
-  // Futuramente adicionaremos cliente
+  dataAbertura: string;
+  cliente?: {
+    id: string;
+    nome: string;
+    cpf?: string;
+  } | null;
 }
 
 export interface AbrirComandaDto {

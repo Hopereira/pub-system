@@ -22,19 +22,23 @@ export class FuncionarioService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const contador = await this.funcionarioRepository.count();
-    if (contador === 0) {
-      this.logger.log('Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...');
-      const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
-      const senhaHash = await bcrypt.hash(senhaPlana, 10);
-      const admin = this.funcionarioRepository.create({
-        nome: 'Administrador Padrão',
-        email: this.configService.get<string>('ADMIN_EMAIL'),
-        senha: senhaHash,
-        cargo: Cargo.ADMIN,
-      });
-      await this.funcionarioRepository.save(admin);
-      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
+    try {
+      const contador = await this.funcionarioRepository.count();
+      if (contador === 0) {
+        this.logger.log('Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...');
+        const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
+        const senhaHash = await bcrypt.hash(senhaPlana, 10);
+        const admin = this.funcionarioRepository.create({
+          nome: 'Administrador Padrão',
+          email: this.configService.get<string>('ADMIN_EMAIL'),
+          senha: senhaHash,
+          cargo: Cargo.ADMIN,
+        });
+        await this.funcionarioRepository.save(admin);
+        this.logger.log('Usuário ADMIN padrão criado com sucesso!');
+      }
+    } catch (error) {
+      this.logger.warn('⚠️ Não foi possível criar usuário ADMIN padrão (tabela pode não existir ainda)');
     }
   }
   

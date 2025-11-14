@@ -188,7 +188,13 @@ export class ComandaService {
     const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
     queryBuilder
       .leftJoinAndSelect('comanda.mesa', 'mesa')
+      .leftJoinAndSelect('mesa.ambiente', 'ambiente')
       .leftJoinAndSelect('comanda.cliente', 'cliente')
+      .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
+      .leftJoinAndSelect('comanda.agregados', 'agregados')
+      .leftJoinAndSelect('comanda.pedidos', 'pedidos')
+      .leftJoinAndSelect('pedidos.itens', 'itens')
+      .leftJoinAndSelect('itens.produto', 'produto')
       .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
     
     if (term) {

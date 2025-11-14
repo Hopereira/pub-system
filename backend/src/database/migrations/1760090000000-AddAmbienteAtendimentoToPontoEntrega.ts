@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
 
-export class AddAmbienteAtendimentoToPontoEntrega1730918000000 implements MigrationInterface {
+export class AddAmbienteAtendimentoToPontoEntrega1760090000000 implements MigrationInterface {
+  name = 'AddAmbienteAtendimentoToPontoEntrega1760090000000'
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Adicionar coluna ambiente_atendimento_id
     await queryRunner.addColumn(

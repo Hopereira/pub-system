@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddMissingColumns1730880000000 implements MigrationInterface {
-  name = 'AddMissingColumns1730880000000';
+export class AddMissingColumns1760080000000 implements MigrationInterface {
+  name = 'AddMissingColumns1760080000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Adicionar colunas empresa_id e ambiente_id à tabela funcionarios

@@ -19,7 +19,7 @@ import { getComandasAbertas } from "@/services/comandaService";
 import { getMesas } from "@/services/mesaService";
 import { getPedidos } from "@/services/pedidoService";
 import { getEstatisticasDoDia } from "@/services/avaliacaoService";
-import { Comanda } from "@/types/comanda";
+import { Comanda, ComandaStatus } from "@/types/comanda";
 import { Mesa } from "@/types/mesa";
 import { Pedido } from "@/types/pedido";
 import { logger } from "@/lib/logger";
@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
         // Conta mesas ocupadas (com comanda aberta)
         const mesasOcupadas = mesas.filter((m: Mesa) => 
-          comandas.some((c: Comanda) => c.mesa?.id === m.id && c.status === 'ABERTA')
+          comandas.some((c: Comanda) => c.mesa?.id === m.id && c.status === ComandaStatus.ABERTA)
         ).length;
 
         // Conta pedidos pendentes (FEITO ou EM_PREPARO)

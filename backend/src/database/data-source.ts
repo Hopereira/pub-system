@@ -18,10 +18,15 @@ export const dataSourceOptions: DataSourceOptions = {
   entities: [path.join(__dirname, '..', '**', '*.entity.{ts,js}')],
   
   // ==================== CORREÇÃO AQUI ====================
-  // O mesmo padrão robusto para as migrações.
-  migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
+  // Migrations: usar padrão que funciona tanto em dev quanto prod
+  // __dirname em dev: /usr/src/app/src/database
+  // __dirname em prod: /usr/src/app/dist/database
+  migrations: [
+    path.join(__dirname, 'migrations', '**', '*.{ts,js}'),
+  ],
   // =======================================================
   synchronize: false,
+  migrationsRun: false, // Migrations rodadas via script antes do NestJS iniciar
 };
 
 const dataSource = new DataSource(dataSourceOptions);

@@ -9,6 +9,7 @@ import { Save, RotateCw, Plus, Trash2, MapPin } from 'lucide-react';
 import { MapaCompleto, Posicao } from '@/types/mapa';
 import mapaService from '@/services/mapaService';
 import { getPontosByAmbiente } from '@/services/pontoEntregaService';
+import { createMesa } from '@/services/mesaService';
 import { toast } from 'sonner';
 
 interface ConfiguradorMapaProps {
@@ -214,9 +215,33 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
   const adicionarMesa = () => {
     if (!mapa) return;
 
-    // Gerar número da nova mesa
+    // Gerar número da nova mesa (apenas do ambiente atual)
     const numerosMesas = mapa.mesas.map(m => m.numero);
     const proximoNumero = Math.max(...numerosMesas, 0) + 1;
+
+    // Solicitar número da mesa ao usuário
+    const numeroEscolhido = window.prompt(
+      `Digite o número da nova mesa.\n\n` +
+      `Sugestão: ${proximoNumero}\n\n` +
+      `Observação: O número deve ser único dentro deste ambiente.`,
+      proximoNumero.toString()
+    );
+
+    if (!numeroEscolhido) {
+      return; // Usuário cancelou
+    }
+
+    const numero = parseInt(numeroEscolhido, 10);
+    if (isNaN(numero) || numero <= 0) {
+      toast.error('Número inválido. Por favor, digite um número positivo.');
+      return;
+    }
+
+    // Verificar se já existe mesa com este número no ambiente atual
+    if (numerosMesas.includes(numero)) {
+      toast.error(`A mesa ${numero} já existe neste ambiente. Por favor, escolha outro número.`);
+      return;
+    }
 
     // Criar nova mesa temporária (será salva no backend ao clicar em Salvar)
     // Calcular posição inicial para evitar sobreposição
@@ -227,7 +252,7 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
 
     const novaMesa = {
       id: `temp-${Date.now()}`, // ID temporário
-      numero: proximoNumero,
+      numero: numero,
       status: 'LIVRE' as const,
       posicao: posicaoInicial,
       tamanho: { width: 80, height: 80 },
@@ -240,7 +265,7 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
       mesas: [...mapa.mesas, novaMesa],
     });
 
-    toast.success(`Mesa ${proximoNumero} adicionada. Clique em "Salvar Layout" para confirmar.`);
+    toast.success(`Mesa ${numero} adicionada. Clique em "Salvar Layout" para confirmar.`);
   };
 
   const removerMesa = (mesaId: string) => {
@@ -264,14 +289,101 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
   };
 
   const salvarLayout = async () => {
-    if (!mapa) return;
+    if (!mapa || !ambienteId) return;
 
     try {
       setSalvando(true);
 
-      // Salvar posição de cada mesa
-      for (const mesa of mapa.mesas) {
-        if (mesa.posicao) {
+      // 1. Primeiro, criar mesas temporárias no backend
+      const mesasAtualizadas = [...mapa.mesas];
+      for (let i = 0; i < mesasAtualizadas.length; i++) {
+        const mesa = mesasAtualizadas[i];
+        
+        // Se é uma mesa temporária, criar no backend primeiro
+        if (mesa.id.startsWith('temp-')) {
+          try {
+            const novaMesa = await createMesa({
+              numero: mesa.numero,
+              ambienteId: ambienteId,
+              posicao: mesa.posicao,
+              tamanho: mesa.tamanho,
+              rotacao: mesa.rotacao,
+            });
+            
+            // Substituir ID temporário pelo ID real
+            mesasAtualizadas[i] = {
+              ...mesa,
+              id: novaMesa.id,
+            };
+            
+            console.log(`✅ Mesa ${mesa.numero} criada com ID: ${novaMesa.id}`);
+          } catch (error) {
+            // Se der erro de mesa duplicada, permitir ao usuário escolher outro número
+            const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+            if (axiosError.response?.status === 409) {
+              const mensagemErro = axiosError.response.data?.message || `A mesa ${mesa.numero} já existe.`;
+              toast.error(mensagemErro);
+              
+              // Perguntar se o usuário quer escolher outro número
+              const novoNumero = window.prompt(
+                `${mensagemErro}\n\n` +
+                `Digite um novo número para esta mesa:`,
+                (mesa.numero + 1).toString()
+              );
+              
+              if (novoNumero) {
+                const numeroInt = parseInt(novoNumero, 10);
+                if (!isNaN(numeroInt) && numeroInt > 0) {
+                  // Atualizar número da mesa e tentar novamente
+                  mesasAtualizadas[i] = {
+                    ...mesa,
+                    numero: numeroInt,
+                  };
+                  
+                  // Tentar criar novamente com o novo número
+                  try {
+                    const novaMesa = await createMesa({
+                      numero: numeroInt,
+                      ambienteId: ambienteId,
+                      posicao: mesa.posicao,
+                      tamanho: mesa.tamanho,
+                      rotacao: mesa.rotacao,
+                    });
+                    
+                    mesasAtualizadas[i] = {
+                      ...mesasAtualizadas[i],
+                      id: novaMesa.id,
+                    };
+                    
+                    console.log(`✅ Mesa ${numeroInt} criada com ID: ${novaMesa.id}`);
+                  } catch (error2) {
+                    toast.error(`Erro ao criar mesa ${numeroInt}. Tente novamente.`);
+                    throw error2;
+                  }
+                } else {
+                  toast.error('Número inválido.');
+                  throw error;
+                }
+              } else {
+                throw error; // Usuário cancelou
+              }
+            } else {
+              toast.error(`Erro ao criar mesa ${mesa.numero}`);
+              throw error;
+            }
+          }
+        }
+      }
+
+      // Atualizar estado com IDs reais
+      setMapa({
+        ...mapa,
+        mesas: mesasAtualizadas,
+      });
+
+      // 2. Depois, atualizar posição de todas as mesas (agora todas têm ID real)
+      for (const mesa of mesasAtualizadas) {
+        if (mesa.posicao && !mesa.id.startsWith('temp-')) {
           await mapaService.atualizarPosicaoMesa(mesa.id, {
             posicao: mesa.posicao,
             tamanho: mesa.tamanho,
@@ -280,7 +392,7 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
         }
       }
 
-      // Salvar posição de cada ponto
+      // 3. Salvar posição de cada ponto
       for (const ponto of mapa.pontosEntrega) {
         if (ponto.posicao) {
           await mapaService.atualizarPosicaoPonto(ponto.id, {
