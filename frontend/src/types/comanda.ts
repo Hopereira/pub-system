@@ -32,15 +32,26 @@ export interface Pedido {
     total: number;
 }
 
+// Interface do Cliente
+export interface Cliente {
+  id: string;
+  nome: string;
+  cpf?: string;
+  telefone?: string;
+  email?: string;
+}
+
 // A comanda agora tem uma lista de Pedidos, e não de Itens
 export interface Comanda {
   id: string;
-  status: ComandaStatus; // Esta linha já estava correta e agora funcionará
+  status: ComandaStatus;
   mesa?: Mesa;
   pontoEntrega?: PontoEntrega;
   agregados?: Agregado[];
   pedidos: Pedido[];
-  // Futuramente adicionaremos cliente
+  cliente?: Cliente;
+  dataAbertura?: string;
+  dataFechamento?: string;
 }
 
 export interface AbrirComandaDto {

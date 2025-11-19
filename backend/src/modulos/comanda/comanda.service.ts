@@ -16,11 +16,16 @@ import { ComandaAgregado } from './entities/comanda-agregado.entity';
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
+import { FecharComandaDto } from './dto/fechar-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 
 // Gateways
 import { PedidosGateway } from '../pedido/pedidos.gateway';
+
+// Serviços
+import { CaixaService } from '../caixa/caixa.service';
+
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -47,6 +52,7 @@ export class ComandaService {
     @InjectRepository(ComandaAgregado)
     private readonly comandaAgregadoRepository: Repository<ComandaAgregado>,
     private readonly pedidosGateway: PedidosGateway,
+    private readonly caixaService: CaixaService,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -188,7 +194,12 @@ export class ComandaService {
     const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
     queryBuilder
       .leftJoinAndSelect('comanda.mesa', 'mesa')
+      .leftJoinAndSelect('mesa.ambiente', 'ambiente')
       .leftJoinAndSelect('comanda.cliente', 'cliente')
+      .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
+      .leftJoinAndSelect('comanda.pedidos', 'pedidos')
+      .leftJoinAndSelect('pedidos.itens', 'itens')
+      .leftJoinAndSelect('itens.produto', 'produto')
       .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
     
     if (term) {
@@ -313,22 +324,99 @@ export class ComandaService {
     };
   }
 
-  async fecharComanda(id: string): Promise<Comanda> {
-    const comanda = await this.findOne(id);
+  async fecharComanda(id: string, dto: FecharComandaDto): Promise<Comanda> {
+    this.logger.log(`🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento}`);
+
+    // Buscar comanda com todas as relações necessárias
+    const comanda = await this.comandaRepository.findOne({
+      where: { id },
+      relations: ['mesa', 'cliente', 'pedidos', 'pedidos.itens', 'pedidos.itens.produto'],
+    });
+
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
+
     if (comanda.status !== ComandaStatus.ABERTA) {
       throw new BadRequestException('Apenas comandas com status ABERTA podem ser fechadas.');
     }
+
+    // Calcular total da comanda
+    const total = comanda.pedidos.reduce((totalComanda, pedido) => {
+      const totalPedido = pedido.itens.reduce((sum, item) => {
+        const valorItem = new Decimal(item.precoUnitario).times(item.quantidade);
+        return sum.plus(valorItem);
+      }, new Decimal(0));
+      return totalComanda.plus(totalPedido);
+    }, new Decimal(0));
+
+    const totalNumber = total.toNumber();
+
+    this.logger.log(`💰 Total da comanda: R$ ${totalNumber.toFixed(2)}`);
+
+    // ✅ NOVO: Validar e registrar venda no caixa
+    try {
+      // Buscar caixa aberto (pode estar vinculado ao funcionário que abriu a comanda ou ao atual)
+      // Por simplicidade, vamos buscar qualquer caixa aberto no momento
+      const caixaAberto = await this.caixaService.getCaixaAbertoAtual();
+
+      if (!caixaAberto) {
+        throw new BadRequestException(
+          'Não há caixa aberto no momento. Por favor, abra o caixa antes de fechar comandas.',
+        );
+      }
+
+      // Validar valor pago se for DINHEIRO
+      if (dto.formaPagamento === 'DINHEIRO') {
+        if (!dto.valorPago) {
+          throw new BadRequestException('Valor pago é obrigatório quando a forma de pagamento é DINHEIRO.');
+        }
+        if (dto.valorPago < totalNumber) {
+          throw new BadRequestException(
+            `Valor pago (R$ ${dto.valorPago.toFixed(2)}) é menor que o total da comanda (R$ ${totalNumber.toFixed(2)}).`,
+          );
+        }
+      }
+
+      // Registrar venda no caixa
+      await this.caixaService.registrarVenda({
+        aberturaCaixaId: caixaAberto.id,
+        comandaId: comanda.id,
+        comandaNumero: comanda.id, // Usando ID como identificador único
+        valor: totalNumber,
+        formaPagamento: dto.formaPagamento,
+        descricao: dto.observacao,
+      });
+
+      this.logger.log(`✅ Venda registrada no caixa ${caixaAberto.id} - Valor: R$ ${totalNumber.toFixed(2)}`);
+    } catch (error) {
+      this.logger.error(`❌ Erro ao registrar venda no caixa: ${error.message}`);
+      
+      // Se for erro de validação (BadRequestException), propagar
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      // Outros erros
+      throw new BadRequestException(
+        `Erro ao registrar venda no caixa: ${error.message}. Por favor, tente novamente.`,
+      );
+    }
+
+    // Fechar comanda
     comanda.status = ComandaStatus.FECHADA;
+    
+    // Liberar mesa se houver
     if (comanda.mesa) {
       comanda.mesa.status = MesaStatus.LIVRE;
       await this.mesaRepository.save(comanda.mesa);
+      this.logger.log(`🪑 Mesa ${comanda.mesa.numero} liberada`);
     }
 
     const comandaFechada = await this.comandaRepository.save(comanda);
     this.pedidosGateway.emitComandaAtualizada(comandaFechada);
+    
+    this.logger.log(`✅ Comanda ${id} fechada com sucesso`);
     
     return comandaFechada;
   }

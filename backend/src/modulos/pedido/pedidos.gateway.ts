@@ -105,4 +105,13 @@ export class PedidosGateway
     this.logger.log(`Emitindo evento 'comanda_atualizada' para a comanda ID: ${comanda.id}`);
     this.server.emit('comanda_atualizada', comanda);
   }
+
+  /**
+   * Emite evento quando uma nova movimentação é registrada no caixa
+   * Atualiza em tempo real o resumo do caixa
+   */
+  emitCaixaAtualizado(aberturaCaixaId: string) {
+    this.logger.log(`Emitindo evento 'caixa_atualizado' para o caixa ID: ${aberturaCaixaId}`);
+    this.server.emit('caixa_atualizado', { aberturaCaixaId });
+  }
 }

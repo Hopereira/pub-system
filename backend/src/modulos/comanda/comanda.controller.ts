@@ -6,6 +6,7 @@ import { ComandaService } from './comanda.service';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
+import { FecharComandaDto } from './dto/fechar-comanda.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
@@ -71,9 +72,15 @@ export class ComandaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Fecha uma comanda e libera a mesa associada, se houver' })
-  fecharComanda(@Param('id', ParseUUIDPipe) id: string) {
-    return this.comandaService.fecharComanda(id);
+  @ApiOperation({ summary: 'Fecha uma comanda, registra venda no caixa e libera a mesa associada' })
+  @ApiResponse({ status: 200, description: 'Comanda fechada e venda registrada no caixa com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Comanda já fechada ou não há caixa aberto.' })
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
+  fecharComanda(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: FecharComandaDto,
+  ) {
+    return this.comandaService.fecharComanda(id, dto);
   }
 
   @Get(':id')

@@ -15,6 +15,7 @@ import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
 import { CreateVendaDto } from './dto/create-venda.dto';
+import { PedidosGateway } from '../pedido/pedidos.gateway';
 
 @Injectable()
 export class CaixaService {
@@ -31,6 +32,7 @@ export class CaixaService {
     private movimentacaoRepository: Repository<MovimentacaoCaixa>,
     @InjectRepository(TurnoFuncionario)
     private turnoRepository: Repository<TurnoFuncionario>,
+    private pedidosGateway: PedidosGateway,
   ) {}
 
   /**
@@ -262,6 +264,9 @@ export class CaixaService {
       `💸 Sangria registrada | Valor: R$ ${dto.valor.toFixed(2)} | Motivo: ${dto.motivo}`,
     );
 
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
     return sangriaSalva;
   }
 
@@ -313,6 +318,9 @@ export class CaixaService {
       `💰 Venda registrada | Valor: R$ ${dto.valor.toFixed(2)} | Forma: ${dto.formaPagamento} | Comanda: ${dto.comandaNumero || dto.comandaId}`,
     );
 
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
     return movimentacao;
   }
 
@@ -324,6 +332,53 @@ export class CaixaService {
       where: {
         turnoFuncionarioId,
         status: StatusCaixa.ABERTO,
+      },
+    });
+  }
+
+  /**
+   * Busca caixa aberto do funcionário específico
+   */
+  async getCaixaAbertoPorFuncionario(funcionarioId: string): Promise<AberturaCaixa | null> {
+    return await this.aberturaRepository.findOne({
+      where: {
+        funcionarioId,
+        status: StatusCaixa.ABERTO,
+      },
+      order: {
+        dataAbertura: 'DESC',
+        horaAbertura: 'DESC',
+      },
+    });
+  }
+
+  /**
+   * Busca todos os caixas abertos (apenas para admin/gestor)
+   */
+  async getTodosCaixasAbertos(): Promise<AberturaCaixa[]> {
+    return await this.aberturaRepository.find({
+      where: {
+        status: StatusCaixa.ABERTO,
+      },
+      order: {
+        dataAbertura: 'DESC',
+        horaAbertura: 'DESC',
+      },
+    });
+  }
+
+  /**
+   * Busca qualquer caixa aberto no momento (para fechamento de comandas)
+   * @deprecated Use getCaixaAbertoPorFuncionario para garantir isolamento
+   */
+  async getCaixaAbertoAtual(): Promise<AberturaCaixa | null> {
+    return await this.aberturaRepository.findOne({
+      where: {
+        status: StatusCaixa.ABERTO,
+      },
+      order: {
+        dataAbertura: 'DESC', // Pega o mais recente
+        horaAbertura: 'DESC',
       },
     });
   }

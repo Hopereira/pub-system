@@ -115,7 +115,15 @@ export default function ComandasAbertasPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-bold text-lg">
-                      R$ {(comanda.valorTotal || 0).toFixed(2)}
+                      R$ {(() => {
+                        const total = comanda.pedidos?.reduce((acc, pedido) => {
+                          const pedidoTotal = pedido.itens?.reduce((sum, item) => {
+                            return sum + (item.precoUnitario * item.quantidade);
+                          }, 0) || 0;
+                          return acc + pedidoTotal;
+                        }, 0) || 0;
+                        return total.toFixed(2);
+                      })()}
                     </span>
                   </div>
                 </CardContent>

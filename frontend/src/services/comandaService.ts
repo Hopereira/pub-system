@@ -89,9 +89,15 @@ export const searchComandas = async (term: string): Promise<Comanda[]> => {
   }
 };
 
-export const fecharComanda = async (id: string): Promise<Comanda> => {
+export interface FecharComandaDto {
+  formaPagamento: 'DINHEIRO' | 'PIX' | 'DEBITO' | 'CREDITO' | 'VALE_REFEICAO' | 'VALE_ALIMENTACAO';
+  valorPago?: number;
+  observacao?: string;
+}
+
+export const fecharComanda = async (id: string, dto: FecharComandaDto): Promise<Comanda> => {
   try {
-    const response = await api.patch<Comanda>(`/comandas/${id}/fechar`);
+    const response = await api.patch<Comanda>(`/comandas/${id}/fechar`, dto);
     return response.data;
   } catch (error) {
     console.error(`Erro ao fechar comanda ${id}:`, error);
