@@ -11,9 +11,7 @@ import { PedidoStatus } from "@/types/pedido-status.enum";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { PagamentoModal } from "@/components/caixa/PagamentoModal";
-import { useCaixa } from "@/context/CaixaContext";
-import { FormaPagamento } from "@/types/caixa";
+import { PagamentoModal, FormaPagamento } from "@/components/modals/PagamentoModal";
 
 // Função para dar cor aos status
 const getStatusVariant = (status: PedidoStatus) => {
@@ -42,8 +40,6 @@ export default function ComandaDetalhePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPagamentoModalOpen, setIsPagamentoModalOpen] = useState(false);
-  
-  const { caixaAberto, registrarVenda } = useCaixa();
 
   const isCaixa = user?.cargo === 'ADMIN' || user?.cargo === 'CAIXA';
   const isGarcom = user?.cargo === 'ADMIN' || user?.cargo === 'GARCOM';
@@ -77,28 +73,27 @@ export default function ComandaDetalhePage() {
     setIsPagamentoModalOpen(true);
   };
 
-  const handleConfirmarPagamento = async (formaPagamento: FormaPagamento) => {
+  const handleConfirmarPagamento = async (
+    formaPagamento: FormaPagamento, 
+    valorPago?: number, 
+    observacao?: string
+  ) => {
     try {
-      // 1. Registrar venda no caixa (se houver caixa aberto)
-      if (caixaAberto) {
-        await registrarVenda({
-          valor: total,
-          formaPagamento,
-          comandaId: comandaId,
-          comandaNumero: comanda?.mesa?.numero?.toString() || 'Avulsa',
-          descricao: `Comanda Mesa ${comanda?.mesa?.numero || 'Avulsa'}`,
-        });
-      }
-
-      // 2. Fechar a comanda
-      const comandaFechada = await fecharComanda(comandaId);
+      // Fechar a comanda com integração no backend (que já registra a venda no caixa)
+      const comandaFechada = await fecharComanda(comandaId, {
+        formaPagamento,
+        valorPago,
+        observacao,
+      });
+      
       setComanda(comandaFechada);
       
       toast.success('💰 Pagamento processado e comanda fechada!');
-      setTimeout(() => router.push('/dashboard'), 2000);
-    } catch (error) {
+      setTimeout(() => router.push('/dashboard/operacional/caixa'), 2000);
+    } catch (error: any) {
       console.error('Erro ao processar pagamento:', error);
-      toast.error('Não foi possível processar o pagamento.');
+      const mensagem = error?.response?.data?.message || 'Não foi possível processar o pagamento.';
+      toast.error(mensagem);
       throw error; // Re-throw para o modal tratar
     }
   };
@@ -212,8 +207,9 @@ export default function ComandaDetalhePage() {
       <PagamentoModal
         isOpen={isPagamentoModalOpen}
         onClose={() => setIsPagamentoModalOpen(false)}
+        comandaId={comandaId}
         total={total}
-        onConfirmar={handleConfirmarPagamento}
+        onConfirm={handleConfirmarPagamento}
       />
     </div>
   );

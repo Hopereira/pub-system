@@ -62,12 +62,33 @@ export class CaixaController {
   }
 
   /**
-   * GET /caixa/aberto/:turnoFuncionarioId
-   * Busca caixa aberto por turno
+   * GET /caixa/aberto
+   * Busca caixa aberto do funcionário específico ou por turno
    */
-  @Get('aberto/:turnoFuncionarioId')
-  async getCaixaAberto(@Param('turnoFuncionarioId') turnoFuncionarioId: string) {
-    return await this.caixaService.getCaixaAberto(turnoFuncionarioId);
+  @Get('aberto')
+  async getCaixaAberto(
+    @Query('turnoId') turnoId?: string,
+    @Query('funcionarioId') funcionarioId?: string,
+  ) {
+    if (turnoId) {
+      // Busca por turno específico
+      return await this.caixaService.getCaixaAberto(turnoId);
+    } else if (funcionarioId) {
+      // Busca por funcionário específico (isolamento de caixas)
+      return await this.caixaService.getCaixaAbertoPorFuncionario(funcionarioId);
+    } else {
+      // Fallback: busca qualquer caixa aberto (manter compatibilidade)
+      return await this.caixaService.getCaixaAbertoAtual();
+    }
+  }
+
+  /**
+   * GET /caixa/aberto/todos
+   * Busca todos os caixas abertos (apenas para admin/gestor)
+   */
+  @Get('aberto/todos')
+  async getTodosCaixasAbertos() {
+    return await this.caixaService.getTodosCaixasAbertos();
   }
 
   /**
