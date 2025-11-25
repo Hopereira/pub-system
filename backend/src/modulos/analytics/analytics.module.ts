@@ -7,9 +7,7 @@ import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda]),
-  ],
+  imports: [TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda])],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
   exports: [AnalyticsService],

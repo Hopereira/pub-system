@@ -2,16 +2,17 @@
 
 export interface CreateEventoDto {
   titulo: string;
-  descricao?: string;
+  descricao?: string | null;
   dataEvento: Date;
   valor: number;
-  // A imagem será enviada separadamente, então não a incluímos aqui
+  paginaEventoId?: string | null;
 }
 
 export interface UpdateEventoDto {
   titulo?: string;
-  descricao?: string;
+  descricao?: string | null;
   dataEvento?: Date;
   valor?: number;
   ativo?: boolean;
+  paginaEventoId?: string | null;
 }

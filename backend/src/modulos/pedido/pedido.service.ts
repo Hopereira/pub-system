@@ -52,24 +52,40 @@ export class PedidoService {
 
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
     const { comandaId, itens } = createPedidoDto;
-    
-    this.logger.log(`📝 Criando novo pedido | Comanda: ${comandaId} | ${itens.length} itens`);
 
-    const comanda = await this.comandaRepository.findOne({ where: { id: comandaId } });
+    this.logger.log(
+      `📝 Criando novo pedido | Comanda: ${comandaId} | ${itens.length} itens`,
+    );
+
+    const comanda = await this.comandaRepository.findOne({
+      where: { id: comandaId },
+    });
     if (!comanda) {
-      this.logger.warn(`⚠️ Tentativa de criar pedido para comanda inexistente: ${comandaId}`);
-      throw new NotFoundException(`Comanda com ID "${comandaId}" não encontrada.`);
+      this.logger.warn(
+        `⚠️ Tentativa de criar pedido para comanda inexistente: ${comandaId}`,
+      );
+      throw new NotFoundException(
+        `Comanda com ID "${comandaId}" não encontrada.`,
+      );
     }
     if (!itens || itens.length === 0) {
-      this.logger.warn(`⚠️ Tentativa de criar pedido sem itens | Comanda: ${comandaId}`);
+      this.logger.warn(
+        `⚠️ Tentativa de criar pedido sem itens | Comanda: ${comandaId}`,
+      );
       throw new BadRequestException('Um pedido não pode ser criado sem itens.');
     }
 
     const itensPedidoPromise = itens.map(async (itemDto) => {
-      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
+      const produto = await this.produtoRepository.findOne({
+        where: { id: itemDto.produtoId },
+      });
       if (!produto) {
-        this.logger.warn(`⚠️ Tentativa de criar item de pedido para produto inexistente: ${itemDto.produtoId}`);
-        throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
+        this.logger.warn(
+          `⚠️ Tentativa de criar item de pedido para produto inexistente: ${itemDto.produtoId}`,
+        );
+        throw new NotFoundException(
+          `Produto com ID "${itemDto.produtoId}" não encontrado.`,
+        );
       }
       return this.itemPedidoRepository.create({
         produto,
@@ -81,13 +97,15 @@ export class PedidoService {
     });
 
     const itensPedido = await Promise.all(itensPedidoPromise);
-    
+
     // Usar Decimal.js para cálculos monetários precisos
     const total = itensPedido.reduce((sum, item) => {
-      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      const itemTotal = new Decimal(item.quantidade).times(
+        new Decimal(item.precoUnitario),
+      );
       return sum.plus(itemTotal);
     }, new Decimal(0));
-    
+
     const pedido = this.pedidoRepository.create({
       comanda,
       itens: itensPedido,
@@ -97,25 +115,29 @@ export class PedidoService {
 
     const novoPedido = await this.pedidoRepository.save(pedido);
     const pedidoCompleto = await this.findOne(novoPedido.id);
-    
-    this.logger.log(`✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`);
+
+    this.logger.log(
+      `✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`,
+    );
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
-    
+
     return pedidoCompleto;
   }
 
   // ✅ NOVO: Criar pedido pelo garçom (com criação automática de comanda)
   async createPedidoGarcom(dto: CreatePedidoGarcomDto): Promise<Pedido> {
     const { clienteId, garcomId, mesaId, itens, observacao } = dto;
-    
-    this.logger.log(`👨‍🍳 Garçom criando pedido | Garçom: ${garcomId} | Cliente: ${clienteId} | ${itens.length} itens`);
+
+    this.logger.log(
+      `👨‍🍳 Garçom criando pedido | Garçom: ${garcomId} | Cliente: ${clienteId} | ${itens.length} itens`,
+    );
 
     // Busca ou cria comanda para o cliente
     let comanda = await this.comandaRepository.findOne({
-      where: { 
+      where: {
         cliente: { id: clienteId },
-        status: ComandaStatus.ABERTA 
+        status: ComandaStatus.ABERTA,
       },
       relations: ['cliente', 'mesa'],
     });
@@ -123,13 +145,13 @@ export class PedidoService {
     // Se não existe comanda aberta, cria uma nova
     if (!comanda) {
       this.logger.log(`📋 Criando nova comanda para cliente ${clienteId}`);
-      
+
       const novaComanda = this.comandaRepository.create({
         cliente: { id: clienteId } as any,
-        mesa: mesaId ? { id: mesaId } as any : null,
+        mesa: mesaId ? ({ id: mesaId } as any) : null,
         status: ComandaStatus.ABERTA,
       });
-      
+
       comanda = await this.comandaRepository.save(novaComanda);
       this.logger.log(`✅ Comanda criada | ID: ${comanda.id}`);
     } else {
@@ -143,9 +165,13 @@ export class PedidoService {
 
     // Cria itens do pedido
     const itensPedidoPromise = itens.map(async (itemDto) => {
-      const produto = await this.produtoRepository.findOne({ where: { id: itemDto.produtoId } });
+      const produto = await this.produtoRepository.findOne({
+        where: { id: itemDto.produtoId },
+      });
       if (!produto) {
-        throw new NotFoundException(`Produto com ID "${itemDto.produtoId}" não encontrado.`);
+        throw new NotFoundException(
+          `Produto com ID "${itemDto.produtoId}" não encontrado.`,
+        );
       }
       return this.itemPedidoRepository.create({
         produto,
@@ -157,13 +183,15 @@ export class PedidoService {
     });
 
     const itensPedido = await Promise.all(itensPedidoPromise);
-    
+
     // Calcula total
     const total = itensPedido.reduce((sum, item) => {
-      const itemTotal = new Decimal(item.quantidade).times(new Decimal(item.precoUnitario));
+      const itemTotal = new Decimal(item.quantidade).times(
+        new Decimal(item.precoUnitario),
+      );
       return sum.plus(itemTotal);
     }, new Decimal(0));
-    
+
     // Cria pedido
     const pedido = this.pedidoRepository.create({
       comanda,
@@ -174,150 +202,219 @@ export class PedidoService {
 
     const novoPedido = await this.pedidoRepository.save(pedido);
     const pedidoCompleto = await this.findOne(novoPedido.id);
-    
-    this.logger.log(`✅ Pedido pelo garçom criado | ID: ${pedidoCompleto.id} | Garçom: ${garcomId} | Total: R$ ${total.toFixed(2)}`);
+
+    this.logger.log(
+      `✅ Pedido pelo garçom criado | ID: ${pedidoCompleto.id} | Garçom: ${garcomId} | Total: R$ ${total.toFixed(2)}`,
+    );
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
-    
+
     return pedidoCompleto;
   }
-  
- async findAll(ambienteId?: string): Promise<Pedido[]> {
-  const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
-    .leftJoinAndSelect('pedido.comanda', 'comanda')
-    .leftJoinAndSelect('comanda.mesa', 'mesa')
-    .leftJoinAndSelect('comanda.cliente', 'cliente')
-    .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
-    .leftJoinAndSelect('pedido.itens', 'itemPedido')
-    .leftJoinAndSelect('itemPedido.produto', 'produto')
-    .leftJoinAndSelect('produto.ambiente', 'ambiente')
-    .leftJoinAndSelect('itemPedido.ambienteRetirada', 'ambienteRetirada')
-    .select([ // ✅ A CORREÇÃO ESTÁ AQUI
-      'pedido',
-      'comanda',
-      'mesa',
-      'cliente',
-      'pontoEntrega',
-      'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
-      'produto',
-      'ambiente',
-      'ambienteRetirada'
-    ])
-    .where('itemPedido.status IN (:...statuses)', {
-      statuses: [
-        PedidoStatus.FEITO, 
-        PedidoStatus.EM_PREPARO, 
-        PedidoStatus.QUASE_PRONTO,  // ✅ ADICIONADO
-        PedidoStatus.PRONTO, 
-        PedidoStatus.RETIRADO,      // ✅ ADICIONADO
-        PedidoStatus.ENTREGUE, 
-        PedidoStatus.DEIXADO_NO_AMBIENTE
-      ]
-    })
-    .orderBy('pedido.data', 'ASC');
 
-  if (ambienteId) {
-    queryBuilder.andWhere('ambiente.id = :ambienteId', { ambienteId });
+  async findAll(ambienteId?: string): Promise<Pedido[]> {
+    const queryBuilder = this.pedidoRepository
+      .createQueryBuilder('pedido')
+      .leftJoinAndSelect('pedido.comanda', 'comanda')
+      .leftJoinAndSelect('comanda.mesa', 'mesa')
+      .leftJoinAndSelect('comanda.cliente', 'cliente')
+      .leftJoinAndSelect('comanda.pontoEntrega', 'pontoEntrega')
+      .leftJoinAndSelect('pedido.itens', 'itemPedido')
+      .leftJoinAndSelect('itemPedido.produto', 'produto')
+      .leftJoinAndSelect('produto.ambiente', 'ambiente')
+      .leftJoinAndSelect('itemPedido.ambienteRetirada', 'ambienteRetirada')
+      .select([
+        // ✅ A CORREÇÃO ESTÁ AQUI
+        'pedido',
+        'comanda',
+        'mesa',
+        'cliente',
+        'pontoEntrega',
+        'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
+        'produto',
+        'ambiente',
+        'ambienteRetirada',
+      ])
+      .where('itemPedido.status IN (:...statuses)', {
+        statuses: [
+          PedidoStatus.FEITO,
+          PedidoStatus.EM_PREPARO,
+          PedidoStatus.QUASE_PRONTO, // ✅ ADICIONADO
+          PedidoStatus.PRONTO,
+          PedidoStatus.RETIRADO, // ✅ ADICIONADO
+          PedidoStatus.ENTREGUE,
+          PedidoStatus.DEIXADO_NO_AMBIENTE,
+        ],
+      })
+      .orderBy('pedido.data', 'ASC');
+
+    if (ambienteId) {
+      queryBuilder.andWhere('ambiente.id = :ambienteId', { ambienteId });
+    }
+
+    const pedidos = await queryBuilder.getMany();
+    let pedidosFiltrados = pedidos;
+
+    if (ambienteId) {
+      // Log para debug: quantos itens ANTES do filtro
+      const totalItensAntesFiltro = pedidos.reduce(
+        (sum, p) => sum + p.itens.length,
+        0,
+      );
+      const statusAntes = pedidos
+        .flatMap((p) => p.itens)
+        .reduce(
+          (acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
+      this.logger.debug(
+        `📊 ANTES do filtro JS | Pedidos: ${pedidos.length} | Total Itens: ${totalItensAntesFiltro} | Status: ${JSON.stringify(statusAntes)}`,
+      );
+
+      pedidosFiltrados = pedidos
+        .map((pedido) => ({
+          ...pedido,
+          itens: pedido.itens.filter(
+            (item) => item.produto.ambiente?.id === ambienteId,
+          ),
+        }))
+        .filter((pedido) => pedido.itens.length > 0);
+
+      const totalItensDepoisFiltro = pedidosFiltrados.reduce(
+        (sum, p) => sum + p.itens.length,
+        0,
+      );
+      const statusDepois = pedidosFiltrados
+        .flatMap((p) => p.itens)
+        .reduce(
+          (acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
+      this.logger.debug(
+        `🔍 DEPOIS do filtro JS | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length} | Total Itens: ${totalItensDepoisFiltro} | Status: ${JSON.stringify(statusDepois)}`,
+      );
+    }
+
+    return pedidosFiltrados;
   }
-
-  const pedidos = await queryBuilder.getMany();
-  let pedidosFiltrados = pedidos;
-
-  if (ambienteId) {
-    // Log para debug: quantos itens ANTES do filtro
-    const totalItensAntesFiltro = pedidos.reduce((sum, p) => sum + p.itens.length, 0);
-    const statusAntes = pedidos.flatMap(p => p.itens).reduce((acc, item) => {
-      acc[item.status] = (acc[item.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    this.logger.debug(`📊 ANTES do filtro JS | Pedidos: ${pedidos.length} | Total Itens: ${totalItensAntesFiltro} | Status: ${JSON.stringify(statusAntes)}`);
-    
-    pedidosFiltrados = pedidos.map(pedido => ({
-      ...pedido,
-      itens: pedido.itens.filter(item => item.produto.ambiente?.id === ambienteId),
-    })).filter(pedido => pedido.itens.length > 0);
-    
-    const totalItensDepoisFiltro = pedidosFiltrados.reduce((sum, p) => sum + p.itens.length, 0);
-    const statusDepois = pedidosFiltrados.flatMap(p => p.itens).reduce((acc, item) => {
-      acc[item.status] = (acc[item.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-    this.logger.debug(`🔍 DEPOIS do filtro JS | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length} | Total Itens: ${totalItensDepoisFiltro} | Status: ${JSON.stringify(statusDepois)}`);
-  }
-
-  return pedidosFiltrados;
-}
-//----------------------------------------------------------
+  //----------------------------------------------------------
   async findOne(id: string): Promise<Pedido> {
-      const pedido = await this.pedidoRepository.findOne({
-        where: { id },
-        relations: ['comanda', 'comanda.mesa', 'comanda.cliente', 'comanda.pontoEntrega', 'itens', 'itens.produto', 'itens.produto.ambiente'],
-      });
-      if (!pedido) {
-        throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
-      }
-      return pedido;
+    const pedido = await this.pedidoRepository.findOne({
+      where: { id },
+      relations: [
+        'comanda',
+        'comanda.mesa',
+        'comanda.cliente',
+        'comanda.pontoEntrega',
+        'itens',
+        'itens.produto',
+        'itens.produto.ambiente',
+      ],
+    });
+    if (!pedido) {
+      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
+    }
+    return pedido;
   }
 
-  async updateItemStatus(itemPedidoId: string, updateDto: UpdateItemPedidoStatusDto): Promise<ItemPedido> {
+  async updateItemStatus(
+    itemPedidoId: string,
+    updateDto: UpdateItemPedidoStatusDto,
+  ): Promise<ItemPedido> {
     const itemPedido = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'produto'],
     });
 
     if (!itemPedido) {
-      this.logger.warn(`⚠️ Tentativa de atualizar status de item inexistente: ${itemPedidoId}`);
-      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+      this.logger.warn(
+        `⚠️ Tentativa de atualizar status de item inexistente: ${itemPedidoId}`,
+      );
+      throw new NotFoundException(
+        `Item de pedido com ID "${itemPedidoId}" não encontrado.`,
+      );
     }
 
     const statusAnterior = itemPedido.status;
     itemPedido.status = updateDto.status;
-    
+
     // Registra timestamps para cálculo de tempo de preparo
     const agora = new Date();
-    if (updateDto.status === PedidoStatus.EM_PREPARO && !itemPedido.iniciadoEm) {
+    if (
+      updateDto.status === PedidoStatus.EM_PREPARO &&
+      !itemPedido.iniciadoEm
+    ) {
       itemPedido.iniciadoEm = agora;
-      this.logger.log(`⏱️ Preparo iniciado: ${itemPedido.produto?.nome || 'Produto'}`);
-    } else if (updateDto.status === PedidoStatus.PRONTO && !itemPedido.prontoEm) {
+      this.logger.log(
+        `⏱️ Preparo iniciado: ${itemPedido.produto?.nome || 'Produto'}`,
+      );
+    } else if (
+      updateDto.status === PedidoStatus.PRONTO &&
+      !itemPedido.prontoEm
+    ) {
       itemPedido.prontoEm = agora;
-      const tempoPreparo = itemPedido.iniciadoEm 
-        ? Math.round((agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000)
+      const tempoPreparo = itemPedido.iniciadoEm
+        ? Math.round(
+            (agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000,
+          )
         : null;
-      this.logger.log(`✅ Item pronto: ${itemPedido.produto?.nome || 'Produto'} | Tempo: ${tempoPreparo || '?'} min`);
-    } else if (updateDto.status === PedidoStatus.ENTREGUE && !itemPedido.entregueEm) {
+      this.logger.log(
+        `✅ Item pronto: ${itemPedido.produto?.nome || 'Produto'} | Tempo: ${tempoPreparo || '?'} min`,
+      );
+    } else if (
+      updateDto.status === PedidoStatus.ENTREGUE &&
+      !itemPedido.entregueEm
+    ) {
       itemPedido.entregueEm = agora;
       const tempoTotal = itemPedido.iniciadoEm
-        ? Math.round((agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000)
+        ? Math.round(
+            (agora.getTime() - itemPedido.iniciadoEm.getTime()) / 60000,
+          )
         : null;
-      this.logger.log(`🎉 Item entregue: ${itemPedido.produto?.nome || 'Produto'} | Tempo total: ${tempoTotal || '?'} min`);
+      this.logger.log(
+        `🎉 Item entregue: ${itemPedido.produto?.nome || 'Produto'} | Tempo total: ${tempoTotal || '?'} min`,
+      );
     }
-    
+
     if (updateDto.status === PedidoStatus.CANCELADO) {
       itemPedido.motivoCancelamento = updateDto.motivoCancelamento;
-      this.logger.warn(`🚫 Item cancelado: ${itemPedido.produto?.nome || 'Produto'} | Motivo: ${updateDto.motivoCancelamento}`);
+      this.logger.warn(
+        `🚫 Item cancelado: ${itemPedido.produto?.nome || 'Produto'} | Motivo: ${updateDto.motivoCancelamento}`,
+      );
     } else {
-      this.logger.log(`🔄 Status alterado: ${itemPedido.produto?.nome || 'Produto'} | ${statusAnterior} → ${updateDto.status}`);
+      this.logger.log(
+        `🔄 Status alterado: ${itemPedido.produto?.nome || 'Produto'} | ${statusAnterior} → ${updateDto.status}`,
+      );
     }
 
     const itemAtualizado = await this.itemPedidoRepository.save(itemPedido);
-    
+
     const pedidoPaiCompleto = await this.findOne(itemAtualizado.pedido.id);
     this.pedidosGateway.emitStatusAtualizado(pedidoPaiCompleto);
 
     return itemAtualizado;
   }
-  
+
   async update(id: string, updatePedidoDto: UpdatePedidoDto): Promise<Pedido> {
-      const pedido = await this.pedidoRepository.preload({ id, ...updatePedidoDto });
-      if (!pedido) {
-        throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
-      }
-      return this.pedidoRepository.save(pedido);
+    const pedido = await this.pedidoRepository.preload({
+      id,
+      ...updatePedidoDto,
+    });
+    if (!pedido) {
+      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
+    }
+    return this.pedidoRepository.save(pedido);
   }
-  
+
   async remove(id: string): Promise<void> {
-      const pedido = await this.findOne(id);
-      await this.pedidoRepository.remove(pedido);
+    const pedido = await this.findOne(id);
+    await this.pedidoRepository.remove(pedido);
   }
 
   // ==================== NOVOS MÉTODOS ====================
@@ -327,7 +424,8 @@ export class PedidoService {
    * Formatado com informações de localização (Mesa ou Ponto de Entrega)
    */
   async findProntos(ambienteId?: string): Promise<any[]> {
-    const queryBuilder = this.pedidoRepository.createQueryBuilder('pedido')
+    const queryBuilder = this.pedidoRepository
+      .createQueryBuilder('pedido')
       .leftJoinAndSelect('pedido.comanda', 'comanda')
       .leftJoinAndSelect('comanda.mesa', 'mesa')
       .leftJoinAndSelect('mesa.ambiente', 'mesaAmbiente')
@@ -348,11 +446,15 @@ export class PedidoService {
 
     const pedidos = await queryBuilder.getMany();
 
-    this.logger.log(`📋 Listando pedidos prontos | Ambiente: ${ambienteId || 'Todos'} | Quantidade: ${pedidos.length}`);
+    this.logger.log(
+      `📋 Listando pedidos prontos | Ambiente: ${ambienteId || 'Todos'} | Quantidade: ${pedidos.length}`,
+    );
 
     // Formata resposta com informações de localização
-    return pedidos.map(pedido => {
-      const tempoEspera = Math.floor((Date.now() - new Date(pedido.data).getTime()) / 60000);
+    return pedidos.map((pedido) => {
+      const tempoEspera = Math.floor(
+        (Date.now() - new Date(pedido.data).getTime()) / 60000,
+      );
 
       return {
         pedidoId: pedido.id,
@@ -371,10 +473,13 @@ export class PedidoService {
               pontoEntrega: {
                 nome: pedido.comanda.pontoEntrega?.nome || 'N/A',
                 mesaProxima: pedido.comanda.pontoEntrega?.mesaProxima?.numero,
-                ambientePreparo: pedido.comanda.pontoEntrega?.ambientePreparo?.nome,
+                ambientePreparo:
+                  pedido.comanda.pontoEntrega?.ambientePreparo?.nome,
               },
             },
-        itens: pedido.itens.filter(item => item.status === PedidoStatus.PRONTO),
+        itens: pedido.itens.filter(
+          (item) => item.status === PedidoStatus.PRONTO,
+        ),
         tempoEspera: `${tempoEspera} min`,
         data: pedido.data,
       };
@@ -403,12 +508,16 @@ export class PedidoService {
     });
 
     if (!item) {
-      this.logger.warn(`⚠️ Tentativa de deixar no ambiente - Item não encontrado: ${itemPedidoId}`);
+      this.logger.warn(
+        `⚠️ Tentativa de deixar no ambiente - Item não encontrado: ${itemPedidoId}`,
+      );
       throw new NotFoundException('Item de pedido não encontrado');
     }
 
     if (item.status !== PedidoStatus.PRONTO) {
-      throw new BadRequestException('Apenas itens com status PRONTO podem ser deixados no ambiente');
+      throw new BadRequestException(
+        'Apenas itens com status PRONTO podem ser deixados no ambiente',
+      );
     }
 
     const { comanda } = item.pedido;
@@ -466,14 +575,16 @@ export class PedidoService {
     });
 
     if (!item) {
-      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+      throw new NotFoundException(
+        `Item de pedido com ID "${itemPedidoId}" não encontrado.`,
+      );
     }
 
     // Verifica se o item está no estado PRONTO
     if (item.status !== PedidoStatus.PRONTO) {
       throw new BadRequestException(
         'Apenas itens com status PRONTO podem ser retirados. ' +
-        `Status atual: ${item.status}`
+          `Status atual: ${item.status}`,
       );
     }
 
@@ -483,12 +594,14 @@ export class PedidoService {
     });
 
     if (!garcom) {
-      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+      throw new NotFoundException(
+        `Garçom com ID "${dto.garcomId}" não encontrado.`,
+      );
     }
 
     // Valida se o garçom está em turno ativo
     const turnoAtivo = await this.turnoRepository.findOne({
-      where: { 
+      where: {
         funcionarioId: dto.garcomId,
         ativo: true,
         checkOut: null as any, // TypeORM IsNull workaround
@@ -498,8 +611,8 @@ export class PedidoService {
     if (!turnoAtivo) {
       throw new BadRequestException(
         `Garçom ${garcom.nome} não possui turno ativo. ` +
-        'Faça check-in antes de retirar pedidos.',
-        { cause: 'FORBIDDEN', description: 'Sem turno ativo' }
+          'Faça check-in antes de retirar pedidos.',
+        { cause: 'FORBIDDEN', description: 'Sem turno ativo' },
       );
     }
 
@@ -539,24 +652,24 @@ export class PedidoService {
       });
 
       await this.retiradaItemRepository.save(retirada);
-      
+
       this.logger.debug(
         `📝 Retirada registrada no histórico | ID: ${retirada.id} | ` +
-        `Item: ${item.id} | Ambiente: ${ambientePreparo.nome}`,
+          `Item: ${item.id} | Ambiente: ${ambientePreparo.nome}`,
       );
     }
 
     this.logger.log(
       `🎯 Item retirado | Produto: ${item.produto?.nome || 'Item'} | ` +
-      `Ambiente: ${ambientePreparo?.nome || 'N/A'} | ` +
-      `Garçom: ${garcom.nome} | Tempo reação: ${tempoReacaoMinutos || 'N/A'} min`,
+        `Ambiente: ${ambientePreparo?.nome || 'N/A'} | ` +
+        `Garçom: ${garcom.nome} | Tempo reação: ${tempoReacaoMinutos || 'N/A'} min`,
     );
 
     // Emite evento WebSocket para atualização em tempo real
     const comanda = item.pedido?.comanda;
     if (comanda) {
       this.pedidosGateway.emitStatusAtualizado(item.pedido);
-      
+
       // Evento específico de item retirado
       this.pedidosGateway.server.emit('item_retirado', {
         itemId: item.id,
@@ -603,12 +716,16 @@ export class PedidoService {
     });
 
     if (!item) {
-      throw new NotFoundException(`Item de pedido com ID "${itemPedidoId}" não encontrado.`);
+      throw new NotFoundException(
+        `Item de pedido com ID "${itemPedidoId}" não encontrado.`,
+      );
     }
 
     // Verifica se o item está RETIRADO (não PRONTO)
     if (item.status !== PedidoStatus.RETIRADO) {
-      throw new BadRequestException('Apenas itens com status RETIRADO podem ser marcados como entregues.');
+      throw new BadRequestException(
+        'Apenas itens com status RETIRADO podem ser marcados como entregues.',
+      );
     }
 
     // Busca o garçom
@@ -617,12 +734,14 @@ export class PedidoService {
     });
 
     if (!garcom) {
-      throw new NotFoundException(`Garçom com ID "${dto.garcomId}" não encontrado.`);
+      throw new NotFoundException(
+        `Garçom com ID "${dto.garcomId}" não encontrado.`,
+      );
     }
 
     // ✅ SOLUÇÃO 2: Valida se o garçom está em turno ativo
     const turnoAtivo = await this.turnoRepository.findOne({
-      where: { 
+      where: {
         funcionarioId: dto.garcomId,
         ativo: true,
         checkOut: null as any, // TypeORM IsNull workaround
@@ -632,8 +751,8 @@ export class PedidoService {
     if (!turnoAtivo) {
       throw new BadRequestException(
         `Garçom ${garcom.nome} não possui turno ativo. ` +
-        'Faça check-in antes de entregar pedidos.',
-        { cause: 'FORBIDDEN', description: 'Sem turno ativo' }
+          'Faça check-in antes de entregar pedidos.',
+        { cause: 'FORBIDDEN', description: 'Sem turno ativo' },
       );
     }
 
@@ -671,7 +790,7 @@ export class PedidoService {
     if (comanda) {
       // Atualiza status geral do pedido
       this.pedidosGateway.emitStatusAtualizado(item.pedido);
-      
+
       // Evento específico de item entregue (broadcast para todos)
       this.pedidosGateway.server.emit('item_entregue', {
         itemId: item.id,

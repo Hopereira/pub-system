@@ -27,7 +27,11 @@ export class TurnoFuncionario {
   @Column({ type: 'timestamp', nullable: true })
   checkOut: Date;
 
-  @Column({ type: 'int', nullable: true, comment: 'Tempo trabalhado em minutos' })
+  @Column({
+    type: 'int',
+    nullable: true,
+    comment: 'Tempo trabalhado em minutos',
+  })
   horasTrabalhadas: number;
 
   @Column({ type: 'boolean', default: true })

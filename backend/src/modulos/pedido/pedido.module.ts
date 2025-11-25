@@ -16,20 +16,22 @@ import { PedidosGateway } from './pedidos.gateway';
 import { QuaseProntoScheduler } from './quase-pronto.scheduler';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([
-    Pedido, 
-    ItemPedido,
-    RetiradaItem,
-    Comanda, 
-    Produto, 
-    Ambiente, 
-    Funcionario,
-    TurnoFuncionario,
-  ])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Pedido,
+      ItemPedido,
+      RetiradaItem,
+      Comanda,
+      Produto,
+      Ambiente,
+      Funcionario,
+      TurnoFuncionario,
+    ]),
+  ],
   controllers: [PedidoController, PedidoAnalyticsController],
   providers: [
-    PedidoService, 
-    PedidoAnalyticsService, 
+    PedidoService,
+    PedidoAnalyticsService,
     PedidosGateway,
     QuaseProntoScheduler,
   ],

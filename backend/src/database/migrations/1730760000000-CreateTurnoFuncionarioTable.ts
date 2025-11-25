@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
 export class CreateTurnoFuncionarioTable1730760000000
   implements MigrationInterface
@@ -94,7 +99,9 @@ export class CreateTurnoFuncionarioTable1730760000000
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_turnos_check_in";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_turnos_funcionario_id";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_turnos_funcionario_id";`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_turnos_ativo";`);
     await queryRunner.dropTable('turnos_funcionario');
   }

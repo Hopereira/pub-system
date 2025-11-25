@@ -1,13 +1,22 @@
 // Caminho: backend/src/modulos/mesa/mesa.service.ts
 
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common'; 
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
-import { AtualizarPosicaoMesaDto, MesaMapaDto, MapaCompletoDto } from './dto/mapa.dto';
+import {
+  AtualizarPosicaoMesaDto,
+  MesaMapaDto,
+  MapaCompletoDto,
+} from './dto/mapa.dto';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
@@ -26,9 +35,13 @@ export class MesaService {
     const { numero, ambienteId, posicao, tamanho, rotacao } = createMesaDto;
 
     // Valida se ambiente existe
-    const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
+    const ambiente = await this.ambienteRepository.findOne({
+      where: { id: ambienteId },
+    });
     if (!ambiente) {
-      throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
+      throw new NotFoundException(
+        `Ambiente com ID "${ambienteId}" não encontrado.`,
+      );
     }
 
     // Cria mesa com posição, tamanho e rotação (se fornecidos)
@@ -42,12 +55,12 @@ export class MesaService {
 
     try {
       const mesaSalva = await this.mesaRepository.save(mesa);
-      
+
       Logger.log(
         `✅ Mesa ${mesa.numero} criada no ambiente "${ambiente.nome}" com posição (${mesa.posicao.x}, ${mesa.posicao.y})`,
-        'MesaService'
+        'MesaService',
       );
-      
+
       return mesaSalva;
     } catch (error) {
       if (error.code === '23505') {
@@ -64,28 +77,38 @@ export class MesaService {
       relations: ['ambiente', 'comandas', 'comandas.cliente'],
       order: { numero: 'ASC' },
     });
-    return mesas.map(mesa => {
-      const comandaAberta = mesa.comandas?.find(comanda => comanda.status === 'ABERTA');
+    return mesas.map((mesa) => {
+      const comandaAberta = mesa.comandas?.find(
+        (comanda) => comanda.status === 'ABERTA',
+      );
       return {
         ...mesa,
         status: comandaAberta ? MesaStatus.OCUPADA : MesaStatus.LIVRE,
-        comanda: comandaAberta ? {
-          id: comandaAberta.id,
-          cliente: comandaAberta.cliente ? {
-            id: comandaAberta.cliente.id,
-            nome: comandaAberta.cliente.nome,
-          } : undefined,
-          dataAbertura: comandaAberta.dataAbertura,
-        } : undefined,
+        comanda: comandaAberta
+          ? {
+              id: comandaAberta.id,
+              cliente: comandaAberta.cliente
+                ? {
+                    id: comandaAberta.cliente.id,
+                    nome: comandaAberta.cliente.nome,
+                  }
+                : undefined,
+              dataAbertura: comandaAberta.dataAbertura,
+            }
+          : undefined,
       };
     });
   }
 
   // --- NOVO: Buscar mesas por ambiente ---
   async findByAmbiente(ambienteId: string): Promise<Mesa[]> {
-    const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
+    const ambiente = await this.ambienteRepository.findOne({
+      where: { id: ambienteId },
+    });
     if (!ambiente) {
-      throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
+      throw new NotFoundException(
+        `Ambiente com ID "${ambienteId}" não encontrado.`,
+      );
     }
 
     const mesas = await this.mesaRepository.find({
@@ -94,10 +117,15 @@ export class MesaService {
       order: { numero: 'ASC' },
     });
 
-    Logger.log(`🔍 Buscadas ${mesas.length} mesas do ambiente "${ambiente.nome}"`, 'MesaService');
+    Logger.log(
+      `🔍 Buscadas ${mesas.length} mesas do ambiente "${ambiente.nome}"`,
+      'MesaService',
+    );
 
-    return mesas.map(mesa => {
-      const temComandaAberta = mesa.comandas?.some(comanda => comanda.status === 'ABERTA');
+    return mesas.map((mesa) => {
+      const temComandaAberta = mesa.comandas?.some(
+        (comanda) => comanda.status === 'ABERTA',
+      );
       return {
         ...mesa,
         status: temComandaAberta ? MesaStatus.OCUPADA : MesaStatus.LIVRE,
@@ -118,7 +146,7 @@ export class MesaService {
 
   async update(id: string, updateMesaDto: UpdateMesaDto): Promise<Mesa> {
     const { ambienteId, ...dadosUpdate } = updateMesaDto;
-    
+
     const mesa = await this.mesaRepository.preload({
       id: id,
       ...dadosUpdate,
@@ -128,13 +156,17 @@ export class MesaService {
     }
 
     if (ambienteId) {
-      const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
+      const ambiente = await this.ambienteRepository.findOne({
+        where: { id: ambienteId },
+      });
       if (!ambiente) {
-        throw new NotFoundException(`Ambiente com ID "${ambienteId}" não encontrado.`);
+        throw new NotFoundException(
+          `Ambiente com ID "${ambienteId}" não encontrado.`,
+        );
       }
       mesa.ambiente = ambiente;
     }
-    
+
     // NOTA: O update também poderia ter o mesmo tratamento de erro de duplicidade.
     // Vamos focar no create primeiro, mas saiba que seria bom adicionar aqui também.
     return this.mesaRepository.save(mesa);
@@ -147,7 +179,10 @@ export class MesaService {
 
   // ===== MÉTODOS DE MAPA VISUAL =====
 
-  async atualizarPosicao(id: string, dto: AtualizarPosicaoMesaDto): Promise<Mesa> {
+  async atualizarPosicao(
+    id: string,
+    dto: AtualizarPosicaoMesaDto,
+  ): Promise<Mesa> {
     const mesa = await this.findOne(id);
 
     mesa.posicao = dto.posicao;
@@ -159,8 +194,10 @@ export class MesaService {
     }
 
     const mesaAtualizada = await this.mesaRepository.save(mesa);
-    Logger.log(`Mesa ${mesa.numero} posição atualizada: (${dto.posicao.x}, ${dto.posicao.y})`);
-    
+    Logger.log(
+      `Mesa ${mesa.numero} posição atualizada: (${dto.posicao.x}, ${dto.posicao.y})`,
+    );
+
     return mesaAtualizada;
   }
 
@@ -181,15 +218,15 @@ export class MesaService {
     // Mapear mesas com informações de pedidos
     const mesasMapa: MesaMapaDto[] = mesas.map((mesa) => {
       const comandaAberta = mesa.comandas?.find((c) => c.status === 'ABERTA');
-      
+
       let pedidosProntos = 0;
       let totalPedidos = 0;
 
       if (comandaAberta) {
         totalPedidos = comandaAberta.pedidos?.length || 0;
-        pedidosProntos = comandaAberta.pedidos?.filter(
-          (p) => p.status === PedidoStatus.FEITO,
-        ).length || 0;
+        pedidosProntos =
+          comandaAberta.pedidos?.filter((p) => p.status === PedidoStatus.FEITO)
+            .length || 0;
       }
 
       return {
@@ -211,13 +248,14 @@ export class MesaService {
 
     // Mapear pontos de entrega
     const pontosEntregaMapa = pontosEntrega.map((ponto) => {
-      const comandasAtivas = ponto.comandas?.filter((c) => c.status === 'ABERTA') || [];
-      
+      const comandasAtivas =
+        ponto.comandas?.filter((c) => c.status === 'ABERTA') || [];
+
       let pedidosProntos = 0;
       comandasAtivas.forEach((comanda) => {
-        pedidosProntos += comanda.pedidos?.filter(
-          (p) => p.status === PedidoStatus.FEITO,
-        ).length || 0;
+        pedidosProntos +=
+          comanda.pedidos?.filter((p) => p.status === PedidoStatus.FEITO)
+            .length || 0;
       });
 
       return {

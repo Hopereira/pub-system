@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsNumber, IsString, IsEnum, IsOptional, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsEnum,
+  IsOptional,
+  Min,
+} from 'class-validator';
 
 export enum FormaPagamento {
   DINHEIRO = 'DINHEIRO',

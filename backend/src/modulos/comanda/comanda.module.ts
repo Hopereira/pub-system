@@ -23,16 +23,16 @@ import { CaixaModule } from '../caixa/caixa.module';
   imports: [
     // ✅ 3. Adicionar TODAS as entidades que o ComandaService agora utiliza
     TypeOrmModule.forFeature([
-      Comanda, 
-      Mesa, 
-      Cliente, 
+      Comanda,
+      Mesa,
+      Cliente,
       PaginaEvento,
       Evento,
       Pedido,
       ItemPedido,
       PontoEntrega,
       ComandaAgregado,
-    ]), 
+    ]),
     PedidoModule, // Mantemos a importação do PedidoModule para acesso ao Gateway
     CaixaModule, // ✅ Módulo de caixa para registrar vendas
   ],

@@ -39,7 +39,7 @@ export class RelatorioGeralDto {
     inicio: Date;
     fim: Date;
   };
-  
+
   resumo: {
     totalPedidos: number;
     totalItens: number;
@@ -47,17 +47,17 @@ export class RelatorioGeralDto {
     tempoMedioPreparo: number;
     tempoMedioEntrega: number;
   };
-  
+
   garcons: GarcomPerformanceDto[];
   ambientes: AmbientePerformanceDto[];
   produtosMaisVendidos: ProdutoVendasDto[];
   produtosMenosVendidos: ProdutoVendasDto[];
-  
+
   pedidosPorHora: {
     hora: number;
     quantidade: number;
   }[];
-  
+
   pedidosPorDiaSemana: {
     dia: string;
     quantidade: number;

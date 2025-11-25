@@ -1,5 +1,11 @@
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 
 @Entity('produtos')
 export class Produto {

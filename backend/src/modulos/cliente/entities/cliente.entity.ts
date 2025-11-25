@@ -4,7 +4,14 @@
 import { Comanda } from '../../comanda/entities/comanda.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import { PontoEntrega } from '../../ponto-entrega/entities/ponto-entrega.entity';
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 
 @Entity('clientes')
 export class Cliente {

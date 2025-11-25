@@ -16,7 +16,7 @@ export const dataSourceOptions: DataSourceOptions = {
   // Este padrão simples e robusto encontra todas as entidades,
   // quer estejam em formato .ts (desenvolvimento) ou .js (produção).
   entities: [path.join(__dirname, '..', '**', '*.entity.{ts,js}')],
-  
+
   // ==================== CORREÇÃO AQUI ====================
   // O mesmo padrão robusto para as migrações.
   migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],

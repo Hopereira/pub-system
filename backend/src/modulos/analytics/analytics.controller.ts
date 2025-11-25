@@ -1,5 +1,11 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -60,7 +66,10 @@ export class AnalyticsController {
   @Get('garcons/performance')
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Performance de garçons' })
-  @ApiResponse({ status: 200, description: 'Performance carregada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Performance carregada com sucesso',
+  })
   @ApiQuery({ name: 'dataInicio', required: false, type: String })
   @ApiQuery({ name: 'dataFim', required: false, type: String })
   async getPerformanceGarcons(
@@ -76,7 +85,10 @@ export class AnalyticsController {
   @Get('ambientes/performance')
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Performance de ambientes' })
-  @ApiResponse({ status: 200, description: 'Performance carregada com sucesso' })
+  @ApiResponse({
+    status: 200,
+    description: 'Performance carregada com sucesso',
+  })
   @ApiQuery({ name: 'dataInicio', required: false, type: String })
   @ApiQuery({ name: 'dataFim', required: false, type: String })
   async getPerformanceAmbientes(
@@ -112,9 +124,24 @@ export class AnalyticsController {
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
   @ApiOperation({ summary: 'Ranking de garçons com pontuação e métricas' })
   @ApiResponse({ status: 200, description: 'Ranking gerado com sucesso' })
-  @ApiQuery({ name: 'periodo', required: false, enum: ['hoje', 'semana', 'mes'], description: 'Período do ranking' })
-  @ApiQuery({ name: 'ambienteId', required: false, type: String, description: 'Filtrar por ambiente' })
-  @ApiQuery({ name: 'limite', required: false, type: Number, description: 'Limite de resultados' })
+  @ApiQuery({
+    name: 'periodo',
+    required: false,
+    enum: ['hoje', 'semana', 'mes'],
+    description: 'Período do ranking',
+  })
+  @ApiQuery({
+    name: 'ambienteId',
+    required: false,
+    type: String,
+    description: 'Filtrar por ambiente',
+  })
+  @ApiQuery({
+    name: 'limite',
+    required: false,
+    type: Number,
+    description: 'Limite de resultados',
+  })
   async getRankingGarcons(
     @Query('periodo') periodo?: 'hoje' | 'semana' | 'mes',
     @Query('ambienteId') ambienteId?: string,
@@ -130,8 +157,16 @@ export class AnalyticsController {
   @Get('garcons/:id/estatisticas')
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
   @ApiOperation({ summary: 'Estatísticas detalhadas de um garçom' })
-  @ApiResponse({ status: 200, description: 'Estatísticas carregadas com sucesso' })
-  @ApiQuery({ name: 'periodo', required: false, enum: ['hoje', 'semana', 'mes'], description: 'Período das estatísticas' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estatísticas carregadas com sucesso',
+  })
+  @ApiQuery({
+    name: 'periodo',
+    required: false,
+    enum: ['hoje', 'semana', 'mes'],
+    description: 'Período das estatísticas',
+  })
   async getEstatisticasGarcom(
     @Query('id') garcomId: string,
     @Query('periodo') periodo?: 'hoje' | 'semana' | 'mes',

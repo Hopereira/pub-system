@@ -43,8 +43,9 @@ const AmbientesPage = () => {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingAmbiente, setEditingAmbiente] = useState<AmbienteData | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       nome: '',
       descricao: '',

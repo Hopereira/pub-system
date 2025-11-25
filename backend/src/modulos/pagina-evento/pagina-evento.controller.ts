@@ -1,14 +1,33 @@
 // Caminho: backend/src/modulos/pagina-evento/pagina-evento.controller.ts
 
 import {
-  Controller, Get, Post, Body, Patch, Param, Delete, ParseUUIDPipe, UseGuards,
-  UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PaginaEventoService } from './pagina-evento.service';
 import { CreatePaginaEventoDto } from './dto/create-pagina-evento.dto';
 import { UpdatePaginaEventoDto } from './dto/update-pagina-evento.dto';
-import { ApiBearerAuth, ApiOperation, ApiTags, ApiConsumes, ApiBody, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+  ApiConsumes,
+  ApiBody,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -29,7 +48,7 @@ export class PaginaEventoController {
   create(@Body() createPaginaEventoDto: CreatePaginaEventoDto) {
     return this.paginaEventoService.create(createPaginaEventoDto);
   }
-  
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
@@ -38,21 +57,25 @@ export class PaginaEventoController {
   findAll() {
     return this.paginaEventoService.findAll();
   }
-  
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Busca uma página de evento específica pelo ID (Apenas Admin)' })
+  @ApiOperation({
+    summary: 'Busca uma página de evento específica pelo ID (Apenas Admin)',
+  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.paginaEventoService.findOne(id);
   }
-  
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualiza os dados de texto de uma página de evento' })
+  @ApiOperation({
+    summary: 'Atualiza os dados de texto de uma página de evento',
+  })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePaginaEventoDto: UpdatePaginaEventoDto,
@@ -76,9 +99,14 @@ export class PaginaEventoController {
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload de mídia (imagem/vídeo) para página de evento' })
+  @ApiOperation({
+    summary: 'Upload de mídia (imagem/vídeo) para página de evento',
+  })
   @ApiResponse({ status: 200, description: 'Mídia enviada com sucesso.' })
-  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Arquivo inválido ou muito grande.',
+  })
   @UseInterceptors(FileInterceptor('file'))
   uploadMedia(
     @Param('id', ParseUUIDPipe) id: string,
@@ -99,11 +127,13 @@ export class PaginaEventoController {
 
   @Public()
   @Get('ativa/publica')
-  @ApiOperation({ summary: 'Busca a página de evento atualmente ativa (Público)' })
+  @ApiOperation({
+    summary: 'Busca a página de evento atualmente ativa (Público)',
+  })
   findAtiva() {
     return this.paginaEventoService.findAtiva();
   }
-  
+
   @Public()
   @Get(':id/public')
   @ApiOperation({ summary: 'Busca uma página de evento pública por ID' })

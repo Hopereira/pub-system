@@ -20,7 +20,9 @@ export class AuthService {
       this.logger.log(` Autenticação bem-sucedida: ${email} (${user.cargo})`);
       return result;
     }
-    this.logger.warn(` Falha na autenticação: Email ${email} - Credenciais inválidas`);
+    this.logger.warn(
+      ` Falha na autenticação: Email ${email} - Credenciais inválidas`,
+    );
     return null;
   }
 

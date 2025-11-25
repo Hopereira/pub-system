@@ -27,10 +27,12 @@ export class AnalyticsService {
   ) {}
 
   async getRelatorioGeral(filtro: FiltroRelatorio) {
-    this.logger.log(`📊 Gerando relatório geral | Filtro: ${JSON.stringify(filtro)}`);
+    this.logger.log(
+      `📊 Gerando relatório geral | Filtro: ${JSON.stringify(filtro)}`,
+    );
 
     const whereClause: any = {};
-    
+
     if (filtro.dataInicio && filtro.dataFim) {
       whereClause.data = Between(filtro.dataInicio, filtro.dataFim);
     } else if (filtro.dataInicio) {
@@ -42,33 +44,55 @@ export class AnalyticsService {
     // Buscar pedidos
     const pedidos = await this.pedidoRepository.find({
       where: whereClause,
-      relations: ['itens', 'itens.produto', 'comanda', 'criadoPor', 'entreguePor'],
+      relations: [
+        'itens',
+        'itens.produto',
+        'comanda',
+        'criadoPor',
+        'entreguePor',
+      ],
     });
 
     // Resumo geral
     const totalPedidos = pedidos.length;
     const totalItens = pedidos.reduce((sum, p) => sum + p.itens.length, 0);
     const valorTotal = pedidos.reduce((sum, p) => sum + Number(p.total), 0);
-    
-    const pedidosComTempo = pedidos.filter(p => p.tempoTotalMinutos);
-    const tempoMedioEntrega = pedidosComTempo.length > 0
-      ? Math.round(pedidosComTempo.reduce((sum, p) => sum + p.tempoTotalMinutos, 0) / pedidosComTempo.length)
-      : 0;
+
+    const pedidosComTempo = pedidos.filter((p) => p.tempoTotalMinutos);
+    const tempoMedioEntrega =
+      pedidosComTempo.length > 0
+        ? Math.round(
+            pedidosComTempo.reduce((sum, p) => sum + p.tempoTotalMinutos, 0) /
+              pedidosComTempo.length,
+          )
+        : 0;
 
     const itensComTempo = await this.itemPedidoRepository.find({
       where: { tempoPreparoMinutos: MoreThanOrEqual(0) },
       order: { prontoEm: 'DESC' },
       take: filtro.limite || 10,
     });
-    const tempoMedioPreparo = itensComTempo.length > 0
-      ? Math.round(itensComTempo.reduce((sum, i) => sum + i.tempoPreparoMinutos, 0) / itensComTempo.length)
-      : 0;
+    const tempoMedioPreparo =
+      itensComTempo.length > 0
+        ? Math.round(
+            itensComTempo.reduce((sum, i) => sum + i.tempoPreparoMinutos, 0) /
+              itensComTempo.length,
+          )
+        : 0;
 
     // Produtos mais vendidos
-    const produtosMap = new Map<string, { produtoId: string; produtoNome: string; quantidadeVendida: number; valorTotal: number }>();
-    
-    pedidos.forEach(pedido => {
-      pedido.itens.forEach(item => {
+    const produtosMap = new Map<
+      string,
+      {
+        produtoId: string;
+        produtoNome: string;
+        quantidadeVendida: number;
+        valorTotal: number;
+      }
+    >();
+
+    pedidos.forEach((pedido) => {
+      pedido.itens.forEach((item) => {
         if (item.produto) {
           const key = item.produto.id;
           const existing = produtosMap.get(key) || {
@@ -88,15 +112,24 @@ export class AnalyticsService {
     const produtosMaisVendidos = produtosArray
       .sort((a, b) => b.quantidadeVendida - a.quantidadeVendida)
       .slice(0, filtro.limite || 10);
-    
+
     const produtosMenosVendidos = produtosArray
       .sort((a, b) => a.quantidadeVendida - b.quantidadeVendida)
       .slice(0, 5);
 
     // Performance de garçons
-    const garconsMap = new Map<string, { funcionarioId: string; funcionarioNome: string; totalPedidosEntregues: number; tempoMedioEntregaMinutos: number; totalTempos: number }>();
-    
-    pedidos.forEach(pedido => {
+    const garconsMap = new Map<
+      string,
+      {
+        funcionarioId: string;
+        funcionarioNome: string;
+        totalPedidosEntregues: number;
+        tempoMedioEntregaMinutos: number;
+        totalTempos: number;
+      }
+    >();
+
+    pedidos.forEach((pedido) => {
       if (pedido.entreguePor && pedido.tempoTotalMinutos) {
         const key = pedido.entreguePor.id;
         const existing = garconsMap.get(key) || {
@@ -112,19 +145,34 @@ export class AnalyticsService {
       }
     });
 
-    const garcons = Array.from(garconsMap.values()).map(g => ({
-      ...g,
-      tempoMedioEntregaMinutos: g.totalPedidosEntregues > 0 ? Math.round(g.totalTempos / g.totalPedidosEntregues) : 0,
-    })).sort((a, b) => b.totalPedidosEntregues - a.totalPedidosEntregues);
+    const garcons = Array.from(garconsMap.values())
+      .map((g) => ({
+        ...g,
+        tempoMedioEntregaMinutos:
+          g.totalPedidosEntregues > 0
+            ? Math.round(g.totalTempos / g.totalPedidosEntregues)
+            : 0,
+      }))
+      .sort((a, b) => b.totalPedidosEntregues - a.totalPedidosEntregues);
 
     // Performance de ambientes
-    const ambientesMap = new Map<string, { ambienteId: string; ambienteNome: string; totalPedidosPreparados: number; tempoMedioPreparoMinutos: number; pedidosEmPreparo: number; totalTempos: number }>();
-    
+    const ambientesMap = new Map<
+      string,
+      {
+        ambienteId: string;
+        ambienteNome: string;
+        totalPedidosPreparados: number;
+        tempoMedioPreparoMinutos: number;
+        pedidosEmPreparo: number;
+        totalTempos: number;
+      }
+    >();
+
     const itens = await this.itemPedidoRepository.find({
       relations: ['produto', 'produto.ambiente'],
     });
 
-    itens.forEach(item => {
+    itens.forEach((item) => {
       if (item.produto?.ambiente) {
         const key = item.produto.ambiente.id;
         const existing = ambientesMap.get(key) || {
@@ -135,24 +183,29 @@ export class AnalyticsService {
           pedidosEmPreparo: 0,
           totalTempos: 0,
         };
-        
+
         if (item.status === 'EM_PREPARO') {
           existing.pedidosEmPreparo++;
         }
-        
+
         if (item.tempoPreparoMinutos) {
           existing.totalPedidosPreparados++;
           existing.totalTempos += item.tempoPreparoMinutos;
         }
-        
+
         ambientesMap.set(key, existing);
       }
     });
 
-    const ambientes = Array.from(ambientesMap.values()).map(a => ({
-      ...a,
-      tempoMedioPreparoMinutos: a.totalPedidosPreparados > 0 ? Math.round(a.totalTempos / a.totalPedidosPreparados) : 0,
-    })).sort((a, b) => b.totalPedidosPreparados - a.totalPedidosPreparados);
+    const ambientes = Array.from(ambientesMap.values())
+      .map((a) => ({
+        ...a,
+        tempoMedioPreparoMinutos:
+          a.totalPedidosPreparados > 0
+            ? Math.round(a.totalTempos / a.totalPedidosPreparados)
+            : 0,
+      }))
+      .sort((a, b) => b.totalPedidosPreparados - a.totalPedidosPreparados);
 
     const relatorio = {
       periodo: {
@@ -172,28 +225,38 @@ export class AnalyticsService {
       ambientes,
     };
 
-    this.logger.log(`✅ Relatório gerado | Pedidos: ${totalPedidos} | Valor: R$ ${valorTotal.toFixed(2)}`);
-    
+    this.logger.log(
+      `✅ Relatório gerado | Pedidos: ${totalPedidos} | Valor: R$ ${valorTotal.toFixed(2)}`,
+    );
+
     return relatorio;
   }
 
   async getTemposPedidos(filtro: FiltroRelatorio) {
-    this.logger.log(`⏱️ Buscando tempos de pedidos | Filtro: ${JSON.stringify(filtro)}`);
+    this.logger.log(
+      `⏱️ Buscando tempos de pedidos | Filtro: ${JSON.stringify(filtro)}`,
+    );
 
     const whereClause: any = {};
-    
+
     if (filtro.dataInicio && filtro.dataFim) {
       whereClause.data = Between(filtro.dataInicio, filtro.dataFim);
     }
 
     const pedidos = await this.pedidoRepository.find({
       where: whereClause,
-      relations: ['itens', 'comanda', 'comanda.mesa', 'criadoPor', 'entreguePor'],
+      relations: [
+        'itens',
+        'comanda',
+        'comanda.mesa',
+        'criadoPor',
+        'entreguePor',
+      ],
       order: { data: 'DESC' },
       take: filtro.limite || 50,
     });
 
-    const tempos = pedidos.map(pedido => ({
+    const tempos = pedidos.map((pedido) => ({
       pedidoId: pedido.id,
       data: pedido.data,
       mesa: pedido.comanda?.mesa?.numero,
@@ -204,7 +267,7 @@ export class AnalyticsService {
     }));
 
     this.logger.log(`✅ Tempos carregados | Total: ${tempos.length}`);
-    
+
     return tempos;
   }
 
@@ -212,7 +275,7 @@ export class AnalyticsService {
     this.logger.log(`👥 Buscando performance de garçons`);
 
     const whereClause: any = {};
-    
+
     if (filtro.dataInicio && filtro.dataFim) {
       whereClause.entregueEm = Between(filtro.dataInicio, filtro.dataFim);
     }
@@ -223,21 +286,22 @@ export class AnalyticsService {
     });
 
     const garconsMap = new Map();
-    
+
     // Buscar itens retirados para calcular tempo de reação
     const itensRetirados = await this.itemPedidoRepository.find({
       where: {
         retiradoPorGarcomId: filtro.funcionarioId || undefined,
-        retiradoEm: filtro.dataInicio && filtro.dataFim 
-          ? Between(filtro.dataInicio, filtro.dataFim)
-          : undefined,
+        retiradoEm:
+          filtro.dataInicio && filtro.dataFim
+            ? Between(filtro.dataInicio, filtro.dataFim)
+            : undefined,
       },
       relations: ['retiradoPorGarcom'],
     });
 
     // Mapear itens por garçom para calcular métricas de reação
     const itensRetiradosMap = new Map();
-    itensRetirados.forEach(item => {
+    itensRetirados.forEach((item) => {
       if (item.retiradoPorGarcom) {
         const key = item.retiradoPorGarcom.id;
         if (!itensRetiradosMap.has(key)) {
@@ -246,8 +310,8 @@ export class AnalyticsService {
         itensRetiradosMap.get(key).push(item);
       }
     });
-    
-    pedidos.forEach(pedido => {
+
+    pedidos.forEach((pedido) => {
       if (pedido.entreguePor) {
         const key = pedido.entreguePor.id;
         const existing = garconsMap.get(key) || {
@@ -270,11 +334,14 @@ export class AnalyticsService {
         if (pedido.tempoTotalMinutos) {
           existing.totalTempos += pedido.tempoTotalMinutos;
         }
-        
+
         // Calcular métricas dos itens
         const itensDoGarcom = itensRetiradosMap.get(key) || [];
-        itensDoGarcom.forEach(item => {
-          if (item.tempoReacaoMinutos !== null && item.tempoReacaoMinutos !== undefined) {
+        itensDoGarcom.forEach((item) => {
+          if (
+            item.tempoReacaoMinutos !== null &&
+            item.tempoReacaoMinutos !== undefined
+          ) {
             existing.totalReacoes++;
             existing.somaReacoes += item.tempoReacaoMinutos;
             // SLA: reação < 2min
@@ -282,24 +349,35 @@ export class AnalyticsService {
               existing.totalReacoesDentroSLA++;
             }
           }
-          if (item.tempoEntregaFinalMinutos !== null && item.tempoEntregaFinalMinutos !== undefined) {
+          if (
+            item.tempoEntregaFinalMinutos !== null &&
+            item.tempoEntregaFinalMinutos !== undefined
+          ) {
             existing.totalEntregasFinais++;
             existing.somaEntregasFinais += item.tempoEntregaFinalMinutos;
           }
         });
-        
+
         garconsMap.set(key, existing);
       }
     });
 
-    const garcons = Array.from(garconsMap.values()).map(g => ({
+    const garcons = Array.from(garconsMap.values()).map((g) => ({
       funcionarioId: g.funcionarioId,
       funcionarioNome: g.funcionarioNome,
       totalEntregas: g.totalEntregas,
-      tempoMedioMinutos: g.totalEntregas > 0 ? Math.round(g.totalTempos / g.totalEntregas) : 0,
-      tempoMedioReacaoMinutos: g.totalReacoes > 0 ? Math.round(g.somaReacoes / g.totalReacoes) : 0,
-      tempoMedioEntregaFinalMinutos: g.totalEntregasFinais > 0 ? Math.round(g.somaEntregasFinais / g.totalEntregasFinais) : 0,
-      percentualSLA: g.totalReacoes > 0 ? Math.round((g.totalReacoesDentroSLA / g.totalReacoes) * 100) : 0,
+      tempoMedioMinutos:
+        g.totalEntregas > 0 ? Math.round(g.totalTempos / g.totalEntregas) : 0,
+      tempoMedioReacaoMinutos:
+        g.totalReacoes > 0 ? Math.round(g.somaReacoes / g.totalReacoes) : 0,
+      tempoMedioEntregaFinalMinutos:
+        g.totalEntregasFinais > 0
+          ? Math.round(g.somaEntregasFinais / g.totalEntregasFinais)
+          : 0,
+      percentualSLA:
+        g.totalReacoes > 0
+          ? Math.round((g.totalReacoesDentroSLA / g.totalReacoes) * 100)
+          : 0,
     }));
 
     return garcons;
@@ -313,8 +391,8 @@ export class AnalyticsService {
     });
 
     const ambientesMap = new Map();
-    
-    itens.forEach(item => {
+
+    itens.forEach((item) => {
       if (item.produto?.ambiente) {
         const key = item.produto.ambiente.id;
         const existing = ambientesMap.get(key) || {
@@ -332,9 +410,12 @@ export class AnalyticsService {
       }
     });
 
-    const ambientes = Array.from(ambientesMap.values()).map(a => ({
+    const ambientes = Array.from(ambientesMap.values()).map((a) => ({
       ...a,
-      tempoMedioMinutos: a.totalPreparados > 0 ? Math.round(a.totalTempos / a.totalPreparados) : 0,
+      tempoMedioMinutos:
+        a.totalPreparados > 0
+          ? Math.round(a.totalTempos / a.totalPreparados)
+          : 0,
     }));
 
     return ambientes;
@@ -344,7 +425,7 @@ export class AnalyticsService {
     this.logger.log(`📦 Buscando produtos mais vendidos`);
 
     const whereClause: any = {};
-    
+
     if (filtro.dataInicio && filtro.dataFim) {
       whereClause.data = Between(filtro.dataInicio, filtro.dataFim);
     }
@@ -355,9 +436,9 @@ export class AnalyticsService {
     });
 
     const produtosMap = new Map();
-    
-    pedidos.forEach(pedido => {
-      pedido.itens.forEach(item => {
+
+    pedidos.forEach((pedido) => {
+      pedido.itens.forEach((item) => {
         if (item.produto) {
           const key = item.produto.id;
           const existing = produtosMap.get(key) || {
@@ -380,8 +461,14 @@ export class AnalyticsService {
     return produtos;
   }
 
-  async getRankingGarcons(filtro: { periodo?: 'hoje' | 'semana' | 'mes'; ambienteId?: string; limite?: number }) {
-    this.logger.log(`🏆 Gerando ranking de garçons | Período: ${filtro.periodo || 'hoje'}`);
+  async getRankingGarcons(filtro: {
+    periodo?: 'hoje' | 'semana' | 'mes';
+    ambienteId?: string;
+    limite?: number;
+  }) {
+    this.logger.log(
+      `🏆 Gerando ranking de garçons | Período: ${filtro.periodo || 'hoje'}`,
+    );
 
     // Calcular datas baseado no período
     const agora = new Date();
@@ -417,14 +504,14 @@ export class AnalyticsService {
     let itensFiltrados = itensRetirados;
     if (filtro.ambienteId) {
       itensFiltrados = itensRetirados.filter(
-        item => item.produto?.ambiente?.id === filtro.ambienteId
+        (item) => item.produto?.ambiente?.id === filtro.ambienteId,
       );
     }
 
     // Mapear por garçom
     const garconsMap = new Map();
 
-    itensFiltrados.forEach(item => {
+    itensFiltrados.forEach((item) => {
       if (item.retiradoPorGarcom) {
         const key = item.retiradoPorGarcom.id;
         const existing = garconsMap.get(key) || {
@@ -441,7 +528,10 @@ export class AnalyticsService {
 
         existing.totalEntregas++;
 
-        if (item.tempoReacaoMinutos !== null && item.tempoReacaoMinutos !== undefined) {
+        if (
+          item.tempoReacaoMinutos !== null &&
+          item.tempoReacaoMinutos !== undefined
+        ) {
           existing.totalReacoes++;
           existing.somaReacoes += item.tempoReacaoMinutos;
           if (item.tempoReacaoMinutos < 2) {
@@ -450,7 +540,10 @@ export class AnalyticsService {
           }
         }
 
-        if (item.tempoEntregaFinalMinutos !== null && item.tempoEntregaFinalMinutos !== undefined) {
+        if (
+          item.tempoEntregaFinalMinutos !== null &&
+          item.tempoEntregaFinalMinutos !== undefined
+        ) {
           existing.totalEntregasFinais++;
           existing.somaEntregasFinais += item.tempoEntregaFinalMinutos;
         }
@@ -460,9 +553,13 @@ export class AnalyticsService {
     });
 
     // Calcular pontuação e ranking
-    const garcons = Array.from(garconsMap.values()).map(g => {
-      const tempoMedioReacao = g.totalReacoes > 0 ? g.somaReacoes / g.totalReacoes : 0;
-      const percentualSLA = g.totalReacoes > 0 ? (g.totalReacoesDentroSLA / g.totalReacoes) * 100 : 0;
+    const garcons = Array.from(garconsMap.values()).map((g) => {
+      const tempoMedioReacao =
+        g.totalReacoes > 0 ? g.somaReacoes / g.totalReacoes : 0;
+      const percentualSLA =
+        g.totalReacoes > 0
+          ? (g.totalReacoesDentroSLA / g.totalReacoes) * 100
+          : 0;
 
       // Fórmula de pontuação
       let pontos = g.totalEntregas * 10; // Base: 10 pontos por entrega
@@ -492,9 +589,11 @@ export class AnalyticsService {
         funcionarioNome: g.funcionarioNome,
         totalEntregas: g.totalEntregas,
         tempoMedioReacaoMinutos: Math.round(tempoMedioReacao * 10) / 10,
-        tempoMedioEntregaFinalMinutos: g.totalEntregasFinais > 0 
-          ? Math.round((g.somaEntregasFinais / g.totalEntregasFinais) * 10) / 10 
-          : 0,
+        tempoMedioEntregaFinalMinutos:
+          g.totalEntregasFinais > 0
+            ? Math.round((g.somaEntregasFinais / g.totalEntregasFinais) * 10) /
+              10
+            : 0,
         percentualSLA: Math.round(percentualSLA),
         pontos: Math.round(pontos),
         entregasRapidas: g.totalEntregasRapidas,
@@ -505,14 +604,18 @@ export class AnalyticsService {
     garcons.sort((a, b) => b.pontos - a.pontos);
 
     // Adicionar posição e tendência
-    const rankingFinal = garcons.slice(0, filtro.limite || 100).map((g, index) => ({
-      ...g,
-      posicao: index + 1,
-      tendencia: 'estavel' as 'subindo' | 'descendo' | 'estavel', // TODO: Comparar com ranking anterior
-      medalhas: [], // TODO: Buscar medalhas conquistadas
-    }));
+    const rankingFinal = garcons
+      .slice(0, filtro.limite || 100)
+      .map((g, index) => ({
+        ...g,
+        posicao: index + 1,
+        tendencia: 'estavel' as 'subindo' | 'descendo' | 'estavel', // TODO: Comparar com ranking anterior
+        medalhas: [], // TODO: Buscar medalhas conquistadas
+      }));
 
-    this.logger.log(`✅ Ranking gerado | Total garçons: ${rankingFinal.length}`);
+    this.logger.log(
+      `✅ Ranking gerado | Total garçons: ${rankingFinal.length}`,
+    );
 
     return {
       periodo: filtro.periodo || 'hoje',
@@ -522,7 +625,10 @@ export class AnalyticsService {
     };
   }
 
-  async getEstatisticasGarcom(garcomId: string, filtro: { periodo?: 'hoje' | 'semana' | 'mes' }) {
+  async getEstatisticasGarcom(
+    garcomId: string,
+    filtro: { periodo?: 'hoje' | 'semana' | 'mes' },
+  ) {
     this.logger.log(`📊 Buscando estatísticas do garçom ${garcomId}`);
 
     // Calcular datas
@@ -557,21 +663,32 @@ export class AnalyticsService {
 
     // Calcular estatísticas
     const totalEntregas = itens.length;
-    const itensComReacao = itens.filter(i => i.tempoReacaoMinutos !== null);
-    const itensComEntregaFinal = itens.filter(i => i.tempoEntregaFinalMinutos !== null);
+    const itensComReacao = itens.filter((i) => i.tempoReacaoMinutos !== null);
+    const itensComEntregaFinal = itens.filter(
+      (i) => i.tempoEntregaFinalMinutos !== null,
+    );
 
-    const tempoMedioReacao = itensComReacao.length > 0
-      ? itensComReacao.reduce((sum, i) => sum + i.tempoReacaoMinutos, 0) / itensComReacao.length
-      : 0;
+    const tempoMedioReacao =
+      itensComReacao.length > 0
+        ? itensComReacao.reduce((sum, i) => sum + i.tempoReacaoMinutos, 0) /
+          itensComReacao.length
+        : 0;
 
-    const tempoMedioEntregaFinal = itensComEntregaFinal.length > 0
-      ? itensComEntregaFinal.reduce((sum, i) => sum + i.tempoEntregaFinalMinutos, 0) / itensComEntregaFinal.length
-      : 0;
+    const tempoMedioEntregaFinal =
+      itensComEntregaFinal.length > 0
+        ? itensComEntregaFinal.reduce(
+            (sum, i) => sum + i.tempoEntregaFinalMinutos,
+            0,
+          ) / itensComEntregaFinal.length
+        : 0;
 
-    const entregasRapidas = itensComReacao.filter(i => i.tempoReacaoMinutos < 2).length;
-    const percentualSLA = itensComReacao.length > 0
-      ? (entregasRapidas / itensComReacao.length) * 100
-      : 0;
+    const entregasRapidas = itensComReacao.filter(
+      (i) => i.tempoReacaoMinutos < 2,
+    ).length;
+    const percentualSLA =
+      itensComReacao.length > 0
+        ? (entregasRapidas / itensComReacao.length) * 100
+        : 0;
 
     // Evolução por dia (últimos 7 dias)
     const evolucaoDiaria = [];
@@ -579,11 +696,11 @@ export class AnalyticsService {
       const dia = new Date(agora);
       dia.setDate(agora.getDate() - i);
       dia.setHours(0, 0, 0, 0);
-      
+
       const diaFim = new Date(dia);
       diaFim.setHours(23, 59, 59, 999);
 
-      const itensDoDia = itens.filter(item => {
+      const itensDoDia = itens.filter((item) => {
         const dataItem = new Date(item.retiradoEm);
         return dataItem >= dia && dataItem <= diaFim;
       });
@@ -591,7 +708,9 @@ export class AnalyticsService {
       evolucaoDiaria.push({
         data: dia.toISOString().split('T')[0],
         totalEntregas: itensDoDia.length,
-        pontos: itensDoDia.length * 10 + itensDoDia.filter(i => i.tempoReacaoMinutos < 2).length * 5,
+        pontos:
+          itensDoDia.length * 10 +
+          itensDoDia.filter((i) => i.tempoReacaoMinutos < 2).length * 5,
       });
     }
 
@@ -599,7 +718,8 @@ export class AnalyticsService {
       periodo: filtro.periodo || 'hoje',
       totalEntregas,
       tempoMedioReacaoMinutos: Math.round(tempoMedioReacao * 10) / 10,
-      tempoMedioEntregaFinalMinutos: Math.round(tempoMedioEntregaFinal * 10) / 10,
+      tempoMedioEntregaFinalMinutos:
+        Math.round(tempoMedioEntregaFinal * 10) / 10,
       percentualSLA: Math.round(percentualSLA),
       entregasRapidas,
       evolucaoDiaria,

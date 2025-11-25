@@ -34,26 +34,25 @@ export class MedalhaScheduler {
 
       for (const garcom of garcons) {
         try {
-          const novasMedalhas = await this.medalhaService.verificarNovasMedalhas(
-            garcom.id
-          );
+          const novasMedalhas =
+            await this.medalhaService.verificarNovasMedalhas(garcom.id);
 
           if (novasMedalhas.length > 0) {
             totalNovasMedalhas += novasMedalhas.length;
             this.logger.log(
-              `🏆 ${garcom.nome} conquistou ${novasMedalhas.length} nova(s) medalha(s)!`
+              `🏆 ${garcom.nome} conquistou ${novasMedalhas.length} nova(s) medalha(s)!`,
             );
           }
         } catch (error) {
           this.logger.error(
             `❌ Erro ao verificar medalhas de ${garcom.nome}:`,
-            error.message
+            error.message,
           );
         }
       }
 
       this.logger.log(
-        `✅ Verificação concluída: ${totalNovasMedalhas} nova(s) medalha(s) conquistada(s)`
+        `✅ Verificação concluída: ${totalNovasMedalhas} nova(s) medalha(s) conquistada(s)`,
       );
     } catch (error) {
       this.logger.error('❌ Erro na verificação de medalhas:', error.message);

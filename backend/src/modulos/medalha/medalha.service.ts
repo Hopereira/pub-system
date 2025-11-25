@@ -29,7 +29,7 @@ export class MedalhaService {
       order: { conquistadaEm: 'DESC' },
     });
 
-    return medalhasConquistadas.map(mg => ({
+    return medalhasConquistadas.map((mg) => ({
       id: mg.medalha.id,
       tipo: mg.medalha.tipo,
       nome: mg.medalha.nome,
@@ -57,7 +57,7 @@ export class MedalhaService {
     });
 
     const medalhasConquistadasIds = new Set(
-      medalhasConquistadas.map(mg => mg.medalhaId)
+      medalhasConquistadas.map((mg) => mg.medalhaId),
     );
 
     // Calcular estatísticas do garçom
@@ -111,7 +111,7 @@ export class MedalhaService {
     });
 
     const medalhasConquistadasIds = new Set(
-      medalhasConquistadas.map(mg => mg.medalhaId)
+      medalhasConquistadas.map((mg) => mg.medalhaId),
     );
 
     const novasMedalhas = [];
@@ -146,7 +146,7 @@ export class MedalhaService {
         //   .emit('medalha_conquistada', { medalha: {...} });
 
         this.logger.log(
-          `🏆 Nova medalha conquistada! ${medalha.nome} por ${garcomId}`
+          `🏆 Nova medalha conquistada! ${medalha.nome} por ${garcomId}`,
         );
       }
     }
@@ -172,12 +172,10 @@ export class MedalhaService {
       order: { retiradoEm: 'ASC' },
     });
 
-    const itensHoje = itens.filter(
-      i => new Date(i.retiradoEm) >= hoje
-    );
+    const itensHoje = itens.filter((i) => new Date(i.retiradoEm) >= hoje);
 
     const itensRapidos = itens.filter(
-      i => i.tempoReacaoMinutos !== null && i.tempoReacaoMinutos < 2
+      (i) => i.tempoReacaoMinutos !== null && i.tempoReacaoMinutos < 2,
     );
 
     return {
@@ -196,7 +194,7 @@ export class MedalhaService {
         return {
           percentual: Math.min(
             100,
-            (stats.entregasRapidas / req.entregasRapidas) * 100
+            (stats.entregasRapidas / req.entregasRapidas) * 100,
           ),
           valorAtual: stats.entregasRapidas,
           valorNecessario: req.entregasRapidas,
@@ -207,7 +205,7 @@ export class MedalhaService {
         return {
           percentual: Math.min(
             100,
-            (stats.entregasHoje / req.entregasPorDia) * 100
+            (stats.entregasHoje / req.entregasPorDia) * 100,
           ),
           valorAtual: stats.entregasHoje,
           valorNecessario: req.entregasPorDia,

@@ -140,17 +140,35 @@ export class AddFluxoGarcomCompleto1730990000000 implements MigrationInterface {
     `);
 
     // Remover índices
-    await queryRunner.query(`DROP INDEX "public"."IDX_itens_pedido_quase_pronto"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_itens_pedido_retirado_garcom"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_itens_pedido_status_ambiente"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_itens_pedido_quase_pronto"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_itens_pedido_retirado_garcom"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_itens_pedido_status_ambiente"`,
+    );
 
     // Remover colunas
-    await queryRunner.query(`ALTER TABLE "itens_pedido" DROP COLUMN "tempo_entrega_final_minutos"`);
-    await queryRunner.query(`ALTER TABLE "itens_pedido" DROP COLUMN "tempo_reacao_minutos"`);
-    await queryRunner.query(`ALTER TABLE "itens_pedido" DROP CONSTRAINT "FK_itens_pedido_retirado_por_garcom"`);
-    await queryRunner.query(`ALTER TABLE "itens_pedido" DROP COLUMN "retirado_por_garcom_id"`);
-    await queryRunner.query(`ALTER TABLE "itens_pedido" DROP COLUMN "retirado_em"`);
-    await queryRunner.query(`ALTER TABLE "itens_pedido" DROP COLUMN "quase_pronto_em"`);
+    await queryRunner.query(
+      `ALTER TABLE "itens_pedido" DROP COLUMN "tempo_entrega_final_minutos"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "itens_pedido" DROP COLUMN "tempo_reacao_minutos"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "itens_pedido" DROP CONSTRAINT "FK_itens_pedido_retirado_por_garcom"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "itens_pedido" DROP COLUMN "retirado_por_garcom_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "itens_pedido" DROP COLUMN "retirado_em"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "itens_pedido" DROP COLUMN "quase_pronto_em"`,
+    );
 
     // Reverter enum
     await queryRunner.query(`

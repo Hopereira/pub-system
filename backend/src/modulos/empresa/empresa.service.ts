@@ -22,7 +22,9 @@ export class EmpresaService {
       return await this.empresaRepository.save(empresa);
     } catch (error) {
       if (error.code === '23505') {
-        throw new ConflictException('Uma empresa com este CNPJ já está cadastrada.');
+        throw new ConflictException(
+          'Uma empresa com este CNPJ já está cadastrada.',
+        );
       }
       throw error;
     }
@@ -36,7 +38,10 @@ export class EmpresaService {
     return empresa;
   }
 
-  async update(id: string, updateEmpresaDto: UpdateEmpresaDto): Promise<Empresa> {
+  async update(
+    id: string,
+    updateEmpresaDto: UpdateEmpresaDto,
+  ): Promise<Empresa> {
     const empresa = await this.empresaRepository.preload({
       id: id,
       ...updateEmpresaDto,

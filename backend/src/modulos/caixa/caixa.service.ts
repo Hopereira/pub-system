@@ -9,7 +9,11 @@ import { Repository, IsNull } from 'typeorm';
 import { AberturaCaixa, StatusCaixa } from './entities/abertura-caixa.entity';
 import { FechamentoCaixa } from './entities/fechamento-caixa.entity';
 import { Sangria } from './entities/sangria.entity';
-import { MovimentacaoCaixa, TipoMovimentacao, FormaPagamento } from './entities/movimentacao-caixa.entity';
+import {
+  MovimentacaoCaixa,
+  TipoMovimentacao,
+  FormaPagamento,
+} from './entities/movimentacao-caixa.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
@@ -61,7 +65,9 @@ export class CaixaService {
     });
 
     if (caixaAberto) {
-      throw new BadRequestException('Já existe um caixa aberto para este turno');
+      throw new BadRequestException(
+        'Já existe um caixa aberto para este turno',
+      );
     }
 
     // Cria abertura de caixa
@@ -134,12 +140,18 @@ export class CaixaService {
       Number(dto.valorInformadoValeAlimentacao);
 
     // Calcula diferenças
-    const diferencaDinheiro = Number(dto.valorInformadoDinheiro) - valoresEsperados.dinheiro;
+    const diferencaDinheiro =
+      Number(dto.valorInformadoDinheiro) - valoresEsperados.dinheiro;
     const diferencaPix = Number(dto.valorInformadoPix) - valoresEsperados.pix;
-    const diferencaDebito = Number(dto.valorInformadoDebito) - valoresEsperados.debito;
-    const diferencaCredito = Number(dto.valorInformadoCredito) - valoresEsperados.credito;
-    const diferencaValeRefeicao = Number(dto.valorInformadoValeRefeicao) - valoresEsperados.valeRefeicao;
-    const diferencaValeAlimentacao = Number(dto.valorInformadoValeAlimentacao) - valoresEsperados.valeAlimentacao;
+    const diferencaDebito =
+      Number(dto.valorInformadoDebito) - valoresEsperados.debito;
+    const diferencaCredito =
+      Number(dto.valorInformadoCredito) - valoresEsperados.credito;
+    const diferencaValeRefeicao =
+      Number(dto.valorInformadoValeRefeicao) - valoresEsperados.valeRefeicao;
+    const diferencaValeAlimentacao =
+      Number(dto.valorInformadoValeAlimentacao) -
+      valoresEsperados.valeAlimentacao;
     const diferencaTotal = valorInformadoTotal - valoresEsperados.total;
 
     // Calcula estatísticas
@@ -229,7 +241,7 @@ export class CaixaService {
 
     // Valida se valor da sangria não excede o saldo disponível
     const saldoAtual = await this.calcularSaldoAtual(abertura.id);
-    
+
     if (dto.valor > saldoAtual) {
       throw new BadRequestException(
         `Valor da sangria (R$ ${dto.valor.toFixed(2)}) excede o saldo disponível (R$ ${saldoAtual.toFixed(2)})`,
@@ -289,12 +301,12 @@ export class CaixaService {
 
     // Mapeia forma de pagamento do DTO para a entidade
     const formaPagamentoMap: Record<string, FormaPagamento> = {
-      'DINHEIRO': FormaPagamento.DINHEIRO,
-      'PIX': FormaPagamento.PIX,
-      'DEBITO': FormaPagamento.DEBITO,
-      'CREDITO': FormaPagamento.CREDITO,
-      'VALE_REFEICAO': FormaPagamento.VALE_REFEICAO,
-      'VALE_ALIMENTACAO': FormaPagamento.VALE_ALIMENTACAO,
+      DINHEIRO: FormaPagamento.DINHEIRO,
+      PIX: FormaPagamento.PIX,
+      DEBITO: FormaPagamento.DEBITO,
+      CREDITO: FormaPagamento.CREDITO,
+      VALE_REFEICAO: FormaPagamento.VALE_REFEICAO,
+      VALE_ALIMENTACAO: FormaPagamento.VALE_ALIMENTACAO,
     };
 
     const formaPagamento = formaPagamentoMap[dto.formaPagamento];
@@ -309,7 +321,9 @@ export class CaixaService {
       tipo: TipoMovimentacao.VENDA,
       formaPagamento: formaPagamento,
       valor: dto.valor,
-      descricao: dto.descricao || `Venda - Comanda ${dto.comandaNumero || dto.comandaId}`,
+      descricao:
+        dto.descricao ||
+        `Venda - Comanda ${dto.comandaNumero || dto.comandaId}`,
       funcionarioId: abertura.funcionarioId,
       comandaId: dto.comandaId,
     });
@@ -327,7 +341,9 @@ export class CaixaService {
   /**
    * Busca caixa aberto por turno
    */
-  async getCaixaAberto(turnoFuncionarioId: string): Promise<AberturaCaixa | null> {
+  async getCaixaAberto(
+    turnoFuncionarioId: string,
+  ): Promise<AberturaCaixa | null> {
     return await this.aberturaRepository.findOne({
       where: {
         turnoFuncionarioId,
@@ -339,7 +355,9 @@ export class CaixaService {
   /**
    * Busca caixa aberto do funcionário específico
    */
-  async getCaixaAbertoPorFuncionario(funcionarioId: string): Promise<AberturaCaixa | null> {
+  async getCaixaAbertoPorFuncionario(
+    funcionarioId: string,
+  ): Promise<AberturaCaixa | null> {
     return await this.aberturaRepository.findOne({
       where: {
         funcionarioId,
@@ -407,10 +425,13 @@ export class CaixaService {
       where: { aberturaCaixaId },
     });
 
-    const vendas = movimentacoes.filter((m) => m.tipo === TipoMovimentacao.VENDA);
+    const vendas = movimentacoes.filter(
+      (m) => m.tipo === TipoMovimentacao.VENDA,
+    );
     const totalVendas = vendas.reduce((acc, v) => acc + Number(v.valor), 0);
     const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
-    const saldoFinal = Number(abertura.valorInicial) + totalVendas - totalSangrias;
+    const saldoFinal =
+      Number(abertura.valorInicial) + totalVendas - totalSangrias;
 
     const resumoPorFormaPagamento = this.agruparPorFormaPagamento(vendas);
 
@@ -544,10 +565,13 @@ export class CaixaService {
 
   private agruparPorFormaPagamento(vendas: MovimentacaoCaixa[]) {
     const formas = Object.values(FormaPagamento);
-    
+
     return formas.map((forma) => {
       const vendasPorForma = vendas.filter((v) => v.formaPagamento === forma);
-      const valorEsperado = vendasPorForma.reduce((acc, v) => acc + Number(v.valor), 0);
+      const valorEsperado = vendasPorForma.reduce(
+        (acc, v) => acc + Number(v.valor),
+        0,
+      );
 
       return {
         formaPagamento: forma,

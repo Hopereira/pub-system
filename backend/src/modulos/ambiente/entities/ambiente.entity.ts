@@ -37,7 +37,7 @@ export class Ambiente {
     name: 'is_ponto_de_retirada', // Nome da coluna no banco de dados (padrão snake_case)
   })
   isPontoDeRetirada: boolean;
-  
+
   // --- FIM DA ADIÇÃO ---
 
   @OneToMany(() => Mesa, (mesa) => mesa.ambiente)

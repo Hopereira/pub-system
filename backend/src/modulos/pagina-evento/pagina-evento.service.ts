@@ -18,7 +18,9 @@ export class PaginaEventoService {
 
   // --- Criar (Create) ---
   create(createPaginaEventoDto: CreatePaginaEventoDto): Promise<PaginaEvento> {
-    const paginaEvento = this.paginaEventoRepository.create(createPaginaEventoDto);
+    const paginaEvento = this.paginaEventoRepository.create(
+      createPaginaEventoDto,
+    );
     return this.paginaEventoRepository.save(paginaEvento);
   }
 
@@ -29,25 +31,34 @@ export class PaginaEventoService {
 
   // --- Ler Um (Read One) ---
   async findOne(id: string): Promise<PaginaEvento> {
-    const paginaEvento = await this.paginaEventoRepository.findOne({ where: { id } });
+    const paginaEvento = await this.paginaEventoRepository.findOne({
+      where: { id },
+    });
     if (!paginaEvento) {
-      throw new NotFoundException(`Página de Evento com ID "${id}" não encontrada.`);
+      throw new NotFoundException(
+        `Página de Evento com ID "${id}" não encontrada.`,
+      );
     }
     return paginaEvento;
   }
 
   // --- Atualizar (Update) ---
-  async update(id: string, updatePaginaEventoDto: UpdatePaginaEventoDto): Promise<PaginaEvento> {
+  async update(
+    id: string,
+    updatePaginaEventoDto: UpdatePaginaEventoDto,
+  ): Promise<PaginaEvento> {
     const paginaEvento = await this.paginaEventoRepository.preload({
       id,
       ...updatePaginaEventoDto,
     });
     if (!paginaEvento) {
-      throw new NotFoundException(`Página de Evento com ID "${id}" não encontrada.`);
+      throw new NotFoundException(
+        `Página de Evento com ID "${id}" não encontrada.`,
+      );
     }
     return this.paginaEventoRepository.save(paginaEvento);
   }
-  
+
   // --- Apagar (Remove) ---
   async remove(id: string): Promise<void> {
     const paginaEvento = await this.findOne(id);
@@ -58,7 +69,10 @@ export class PaginaEventoService {
   }
 
   // --- Upload de Mídia ---
-  async uploadMedia(id: string, file: Express.Multer.File): Promise<PaginaEvento> {
+  async uploadMedia(
+    id: string,
+    file: Express.Multer.File,
+  ): Promise<PaginaEvento> {
     const paginaEvento = await this.findOne(id);
 
     if (paginaEvento.urlImagem) {

@@ -5,12 +5,16 @@ import { Type } from 'class-transformer';
 import { CreateAgregadoDto } from './create-agregado.dto';
 
 export class CreateComandaDto {
-  @ApiPropertyOptional({ description: 'ID da mesa (exclusivo com pontoEntregaId)' })
+  @ApiPropertyOptional({
+    description: 'ID da mesa (exclusivo com pontoEntregaId)',
+  })
   @IsUUID()
   @IsOptional()
   mesaId?: string;
 
-  @ApiPropertyOptional({ description: 'ID do ponto de entrega (exclusivo com mesaId)' })
+  @ApiPropertyOptional({
+    description: 'ID do ponto de entrega (exclusivo com mesaId)',
+  })
   @IsUUID()
   @IsOptional()
   pontoEntregaId?: string;
@@ -19,13 +23,15 @@ export class CreateComandaDto {
   @IsUUID()
   @IsOptional()
   clienteId?: string;
-  
+
   @ApiPropertyOptional({ description: 'ID da página de evento (opcional)' })
   @IsUUID()
   @IsOptional()
   paginaEventoId?: string;
 
-  @ApiPropertyOptional({ description: 'ID do Evento (da agenda) para cobrar a entrada (opcional)' })
+  @ApiPropertyOptional({
+    description: 'ID do Evento (da agenda) para cobrar a entrada (opcional)',
+  })
   @IsUUID()
   @IsOptional()
   eventoId?: string;

@@ -1,5 +1,10 @@
 // Caminho: backend/src/modulos/comanda/comanda.service.ts
-import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 
@@ -56,138 +61,189 @@ export class ComandaService {
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
-    const { mesaId, pontoEntregaId, clienteId, paginaEventoId, eventoId, agregados } = createComandaDto;
+    const {
+      mesaId,
+      pontoEntregaId,
+      clienteId,
+      paginaEventoId,
+      eventoId,
+      agregados,
+    } = createComandaDto;
 
     // Validação: Mesa XOR Ponto de Entrega (não pode ter ambos)
     if (mesaId && pontoEntregaId) {
-      throw new BadRequestException('A comanda não pode ter mesa E ponto de entrega ao mesmo tempo.');
+      throw new BadRequestException(
+        'A comanda não pode ter mesa E ponto de entrega ao mesmo tempo.',
+      );
     }
-    
+
     // Validação: Se não tiver mesa, precisa ter cliente (balcão/delivery/ponto)
     if (!mesaId && !clienteId) {
-      throw new BadRequestException('Comandas sem mesa precisam estar associadas a um cliente.');
+      throw new BadRequestException(
+        'Comandas sem mesa precisam estar associadas a um cliente.',
+      );
     }
 
     // ✅ USAR TRANSAÇÃO COM LOCK PESSIMISTA PARA EVITAR RACE CONDITION
-    return await this.comandaRepository.manager.transaction(async (transactionalEntityManager) => {
-      let mesa: Mesa | null = null;
-      if (mesaId) {
-        // Lock pessimista para evitar que duas requisições simultâneas ocupem a mesma mesa
-        mesa = await transactionalEntityManager.findOne(Mesa, {
-          where: { id: mesaId },
-          lock: { mode: 'pessimistic_write' }
-        });
-        if (!mesa) throw new NotFoundException(`Mesa com ID "${mesaId}" não encontrada.`);
-        if (!clienteId && mesa.status !== MesaStatus.LIVRE) {
-          throw new BadRequestException(`A Mesa ${mesa.numero} já está ocupada.`);
+    return await this.comandaRepository.manager
+      .transaction(async (transactionalEntityManager) => {
+        let mesa: Mesa | null = null;
+        if (mesaId) {
+          // Lock pessimista para evitar que duas requisições simultâneas ocupem a mesma mesa
+          mesa = await transactionalEntityManager.findOne(Mesa, {
+            where: { id: mesaId },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (!mesa)
+            throw new NotFoundException(
+              `Mesa com ID "${mesaId}" não encontrada.`,
+            );
+          if (!clienteId && mesa.status !== MesaStatus.LIVRE) {
+            throw new BadRequestException(
+              `A Mesa ${mesa.numero} já está ocupada.`,
+            );
+          }
         }
-      }
 
-      let cliente: Cliente | null = null;
-      if (clienteId) {
-        cliente = await transactionalEntityManager.findOne(Cliente, { where: { id: clienteId } });
-        if (!cliente) throw new NotFoundException(`Cliente com ID "${clienteId}" não encontrado.`);
-        
-        // ✅ REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
-        const comandaAbertaExistente = await transactionalEntityManager.findOne(Comanda, {
-          where: { cliente: { id: clienteId }, status: ComandaStatus.ABERTA }
-        });
-      
-        if (comandaAbertaExistente) {
-          this.logger.warn(`BLOQUEIO: Cliente ${clienteId} tentou criar nova comanda, mas já possui comanda aberta: ${comandaAbertaExistente.id}.`);
-          throw new BadRequestException(
-            `O Cliente "${cliente.nome}" já possui uma comanda aberta (ID: ${comandaAbertaExistente.id}). Por favor, feche a comanda anterior.`
+        let cliente: Cliente | null = null;
+        if (clienteId) {
+          cliente = await transactionalEntityManager.findOne(Cliente, {
+            where: { id: clienteId },
+          });
+          if (!cliente)
+            throw new NotFoundException(
+              `Cliente com ID "${clienteId}" não encontrado.`,
+            );
+
+          // ✅ REGRA DE NEGÓCIO: UMA COMANDA ABERTA POR CLIENTE (BLOQUEIO TOTAL)
+          const comandaAbertaExistente =
+            await transactionalEntityManager.findOne(Comanda, {
+              where: {
+                cliente: { id: clienteId },
+                status: ComandaStatus.ABERTA,
+              },
+            });
+
+          if (comandaAbertaExistente) {
+            this.logger.warn(
+              `BLOQUEIO: Cliente ${clienteId} tentou criar nova comanda, mas já possui comanda aberta: ${comandaAbertaExistente.id}.`,
+            );
+            throw new BadRequestException(
+              `O Cliente "${cliente.nome}" já possui uma comanda aberta (ID: ${comandaAbertaExistente.id}). Por favor, feche a comanda anterior.`,
+            );
+          }
+        }
+
+        let paginaEvento: PaginaEvento | null = null;
+        if (paginaEventoId) {
+          paginaEvento = await transactionalEntityManager.findOne(
+            PaginaEvento,
+            { where: { id: paginaEventoId } },
+          );
+          if (!paginaEvento) {
+            this.logger.warn(
+              `Página de Evento com ID "${paginaEventoId}" não encontrada.`,
+            );
+          }
+        }
+
+        // Validar Ponto de Entrega
+        let pontoEntrega: PontoEntrega | null = null;
+        if (pontoEntregaId) {
+          pontoEntrega = await transactionalEntityManager.findOne(
+            PontoEntrega,
+            {
+              where: { id: pontoEntregaId },
+            },
+          );
+          if (!pontoEntrega) {
+            throw new NotFoundException(
+              `Ponto de entrega com ID "${pontoEntregaId}" não encontrado.`,
+            );
+          }
+          if (!pontoEntrega.ativo) {
+            throw new BadRequestException(
+              `O ponto de entrega "${pontoEntrega.nome}" está desativado.`,
+            );
+          }
+          this.logger.log(
+            `📍 Comanda será criada no ponto: ${pontoEntrega.nome}`,
           );
         }
-      }
 
-      let paginaEvento: PaginaEvento | null = null;
-      if (paginaEventoId) {
-        paginaEvento = await transactionalEntityManager.findOne(PaginaEvento, { where: { id: paginaEventoId } });
-        if (!paginaEvento) {
-          this.logger.warn(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
-        }
-      }
-
-      // Validar Ponto de Entrega
-      let pontoEntrega: PontoEntrega | null = null;
-      if (pontoEntregaId) {
-        pontoEntrega = await transactionalEntityManager.findOne(PontoEntrega, { 
-          where: { id: pontoEntregaId } 
+        const comanda = transactionalEntityManager.create(Comanda, {
+          mesa,
+          cliente,
+          pontoEntrega,
+          paginaEvento,
+          status: ComandaStatus.ABERTA,
         });
-        if (!pontoEntrega) {
-          throw new NotFoundException(`Ponto de entrega com ID "${pontoEntregaId}" não encontrado.`);
-        }
-        if (!pontoEntrega.ativo) {
-          throw new BadRequestException(`O ponto de entrega "${pontoEntrega.nome}" está desativado.`);
-        }
-        this.logger.log(`📍 Comanda será criada no ponto: ${pontoEntrega.nome}`);
-      }
 
-      const comanda = transactionalEntityManager.create(Comanda, {
-        mesa,
-        cliente,
-        pontoEntrega,
-        paginaEvento,
-        status: ComandaStatus.ABERTA,
+        const novaComanda = await transactionalEntityManager.save(comanda);
+
+        // Criar agregados se fornecidos
+        if (agregados && agregados.length > 0) {
+          const agregadosEntities = agregados.map((agr, index) =>
+            transactionalEntityManager.create(ComandaAgregado, {
+              comandaId: novaComanda.id,
+              nome: agr.nome,
+              cpf: agr.cpf,
+              ordem: index + 1,
+            }),
+          );
+          await transactionalEntityManager.save(agregadosEntities);
+          this.logger.log(
+            `✅ ${agregados.length} agregado(s) adicionado(s) à comanda ${novaComanda.id}`,
+          );
+        }
+
+        // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
+        if (eventoId) {
+          const evento = await transactionalEntityManager.findOne(Evento, {
+            where: { id: eventoId },
+          });
+          if (evento && evento.valor > 0) {
+            this.logger.log(
+              `Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`,
+            );
+
+            const itemEntrada = transactionalEntityManager.create(ItemPedido, {
+              produto: null,
+              quantidade: 1,
+              precoUnitario: evento.valor,
+              observacao: `Couvert Artístico - ${evento.titulo}`,
+              status: PedidoStatus.ENTREGUE,
+            });
+
+            const pedidoEntrada = transactionalEntityManager.create(Pedido, {
+              comanda: novaComanda,
+              itens: [itemEntrada],
+              total: evento.valor,
+              status: PedidoStatus.ENTREGUE,
+            });
+
+            await transactionalEntityManager.save(itemEntrada);
+            await transactionalEntityManager.save(pedidoEntrada);
+          }
+        }
+
+        if (mesa) {
+          mesa.status = MesaStatus.OCUPADA;
+          await transactionalEntityManager.save(mesa);
+        }
+
+        return novaComanda;
+      })
+      .then(async (novaComanda) => {
+        // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
+        return this.findOne(novaComanda.id);
       });
-
-      const novaComanda = await transactionalEntityManager.save(comanda);
-
-      // Criar agregados se fornecidos
-      if (agregados && agregados.length > 0) {
-        const agregadosEntities = agregados.map((agr, index) =>
-          transactionalEntityManager.create(ComandaAgregado, {
-            comandaId: novaComanda.id,
-            nome: agr.nome,
-            cpf: agr.cpf,
-            ordem: index + 1,
-          })
-        );
-        await transactionalEntityManager.save(agregadosEntities);
-        this.logger.log(`✅ ${agregados.length} agregado(s) adicionado(s) à comanda ${novaComanda.id}`);
-      }
-
-      // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
-      if (eventoId) {
-        const evento = await transactionalEntityManager.findOne(Evento, { where: { id: eventoId } });
-        if (evento && evento.valor > 0) {
-          this.logger.log(`Adicionando entrada de R$ ${evento.valor} do evento "${evento.titulo}" à comanda ${novaComanda.id}`);
-          
-          const itemEntrada = transactionalEntityManager.create(ItemPedido, {
-            produto: null,
-            quantidade: 1,
-            precoUnitario: evento.valor,
-            observacao: `Couvert Artístico - ${evento.titulo}`,
-            status: PedidoStatus.ENTREGUE,
-          });
-
-          const pedidoEntrada = transactionalEntityManager.create(Pedido, {
-            comanda: novaComanda,
-            itens: [itemEntrada],
-            total: evento.valor,
-            status: PedidoStatus.ENTREGUE,
-          });
-          
-          await transactionalEntityManager.save(itemEntrada);
-          await transactionalEntityManager.save(pedidoEntrada);
-        }
-      }
-
-      if (mesa) {
-        mesa.status = MesaStatus.OCUPADA;
-        await transactionalEntityManager.save(mesa);
-      }
-      
-      return novaComanda;
-    }).then(async (novaComanda) => {
-      // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
-      return this.findOne(novaComanda.id);
-    });
   }
 
   findAll(): Promise<Comanda[]> {
-    return this.comandaRepository.find({ relations: ['mesa', 'cliente', 'paginaEvento'] });
+    return this.comandaRepository.find({
+      relations: ['mesa', 'cliente', 'paginaEvento'],
+    });
   }
 
   async search(term: string): Promise<Comanda[]> {
@@ -201,20 +257,24 @@ export class ComandaService {
       .leftJoinAndSelect('pedidos.itens', 'itens')
       .leftJoinAndSelect('itens.produto', 'produto')
       .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
-    
+
     if (term) {
       const searchTerm = term.trim();
       queryBuilder.andWhere(
         new Brackets((qb) => {
           // Busca por nome do cliente (parcial, case-insensitive)
-          qb.where('LOWER(cliente.nome) LIKE LOWER(:nomeTerm)', { nomeTerm: `%${searchTerm}%` });
-          
+          qb.where('LOWER(cliente.nome) LIKE LOWER(:nomeTerm)', {
+            nomeTerm: `%${searchTerm}%`,
+          });
+
           // Busca por CPF (parcial ou completo, apenas números)
           const cpfNumeros = searchTerm.replace(/\D/g, ''); // Remove tudo que não é número
           if (cpfNumeros) {
-            qb.orWhere('cliente.cpf LIKE :cpfTerm', { cpfTerm: `%${cpfNumeros}%` });
+            qb.orWhere('cliente.cpf LIKE :cpfTerm', {
+              cpfTerm: `%${cpfNumeros}%`,
+            });
           }
-          
+
           // Busca por número de mesa (apenas se for um número pequeno, não um CPF)
           // CPF tem 11 dígitos, então só considera número de mesa se tiver menos de 5 dígitos
           const numeroMesa = parseInt(searchTerm, 10);
@@ -224,34 +284,34 @@ export class ComandaService {
         }),
       );
     }
-    
+
     return queryBuilder.getMany();
   }
 
   async findOne(id: string): Promise<Comanda> {
     const comanda = await this.comandaRepository.findOne({
-        where: { id },
-        relations: [
-            'mesa', 
-            'cliente', 
-            'paginaEvento',
-            'pontoEntrega',
-            'pontoEntrega.mesaProxima',
-            'pontoEntrega.ambientePreparo',
-            'agregados',
-            'pedidos', 
-            'pedidos.itens', 
-            'pedidos.itens.produto',
-            'pedidos.itens.ambienteRetirada' // Carrega ambiente onde item foi deixado
-        ],
-        order: {
-            agregados: {
-                ordem: 'ASC',
-            },
-            pedidos: {
-                data: "ASC"
-            }
-        }
+      where: { id },
+      relations: [
+        'mesa',
+        'cliente',
+        'paginaEvento',
+        'pontoEntrega',
+        'pontoEntrega.mesaProxima',
+        'pontoEntrega.ambientePreparo',
+        'agregados',
+        'pedidos',
+        'pedidos.itens',
+        'pedidos.itens.produto',
+        'pedidos.itens.ambienteRetirada', // Carrega ambiente onde item foi deixado
+      ],
+      order: {
+        agregados: {
+          ordem: 'ASC',
+        },
+        pedidos: {
+          data: 'ASC',
+        },
+      },
     });
 
     if (!comanda) {
@@ -260,22 +320,25 @@ export class ComandaService {
 
     let totalComandaCalculado = new Decimal(0);
     if (comanda.pedidos) {
-      comanda.pedidos.forEach(pedido => {
+      comanda.pedidos.forEach((pedido) => {
         const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
           // Itens de entrada (sem produto) também devem ser somados
           if (item.status !== PedidoStatus.CANCELADO) {
-            const itemTotal = new Decimal(item.precoUnitario).times(new Decimal(item.quantidade));
+            const itemTotal = new Decimal(item.precoUnitario).times(
+              new Decimal(item.quantidade),
+            );
             return sum.plus(itemTotal);
           }
           return sum;
         }, new Decimal(0));
-        
+
         pedido.total = totalPedidoCalculado.toNumber();
-        totalComandaCalculado = totalComandaCalculado.plus(totalPedidoCalculado);
+        totalComandaCalculado =
+          totalComandaCalculado.plus(totalPedidoCalculado);
       });
     }
     (comanda as any).total = totalComandaCalculado.toNumber();
-    
+
     return comanda;
   }
 
@@ -293,44 +356,58 @@ export class ComandaService {
 
   async findPublicOne(id: string) {
     const comanda = await this.findOne(id);
-    
+
     // Simplificamos o retorno dos itens para o frontend não se confundir
-    const pedidosSimplificados = comanda.pedidos.map(p => ({
-        ...p,
-        itens: p.itens.map(i => ({
-            ...i,
-            produto: i.produto ? { nome: i.produto.nome } : null, // Envia só o nome do produto
-            ambienteRetirada: i.ambienteRetirada ? { 
-              id: i.ambienteRetirada.id, 
-              nome: i.ambienteRetirada.nome 
-            } : null, // Inclui ambiente de retirada quando item foi deixado no ambiente
-        }))
+    const pedidosSimplificados = comanda.pedidos.map((p) => ({
+      ...p,
+      itens: p.itens.map((i) => ({
+        ...i,
+        produto: i.produto ? { nome: i.produto.nome } : null, // Envia só o nome do produto
+        ambienteRetirada: i.ambienteRetirada
+          ? {
+              id: i.ambienteRetirada.id,
+              nome: i.ambienteRetirada.nome,
+            }
+          : null, // Inclui ambiente de retirada quando item foi deixado no ambiente
+      })),
     }));
 
     return {
       id: comanda.id,
       status: comanda.status,
-      mesa: comanda.mesa ? { id: comanda.mesa.id, numero: comanda.mesa.numero } : null,
-      pontoEntrega: comanda.pontoEntrega ? {
-        id: comanda.pontoEntrega.id,
-        nome: comanda.pontoEntrega.nome,
-        descricao: comanda.pontoEntrega.descricao
-      } : null,
+      mesa: comanda.mesa
+        ? { id: comanda.mesa.id, numero: comanda.mesa.numero }
+        : null,
+      pontoEntrega: comanda.pontoEntrega
+        ? {
+            id: comanda.pontoEntrega.id,
+            nome: comanda.pontoEntrega.nome,
+            descricao: comanda.pontoEntrega.descricao,
+          }
+        : null,
       agregados: comanda.agregados || [],
       cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
       pedidos: pedidosSimplificados, // Usa a versão simplificada
       totalComanda: (comanda as any).total,
-      paginaEvento: comanda.paginaEvento 
+      paginaEvento: comanda.paginaEvento,
     };
   }
 
   async fecharComanda(id: string, dto: FecharComandaDto): Promise<Comanda> {
-    this.logger.log(`🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento}`);
+    this.logger.log(
+      `🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento}`,
+    );
 
     // Buscar comanda com todas as relações necessárias
     const comanda = await this.comandaRepository.findOne({
       where: { id },
-      relations: ['mesa', 'cliente', 'pedidos', 'pedidos.itens', 'pedidos.itens.produto'],
+      relations: [
+        'mesa',
+        'cliente',
+        'pedidos',
+        'pedidos.itens',
+        'pedidos.itens.produto',
+      ],
     });
 
     if (!comanda) {
@@ -338,13 +415,17 @@ export class ComandaService {
     }
 
     if (comanda.status !== ComandaStatus.ABERTA) {
-      throw new BadRequestException('Apenas comandas com status ABERTA podem ser fechadas.');
+      throw new BadRequestException(
+        'Apenas comandas com status ABERTA podem ser fechadas.',
+      );
     }
 
     // Calcular total da comanda
     const total = comanda.pedidos.reduce((totalComanda, pedido) => {
       const totalPedido = pedido.itens.reduce((sum, item) => {
-        const valorItem = new Decimal(item.precoUnitario).times(item.quantidade);
+        const valorItem = new Decimal(item.precoUnitario).times(
+          item.quantidade,
+        );
         return sum.plus(valorItem);
       }, new Decimal(0));
       return totalComanda.plus(totalPedido);
@@ -369,7 +450,9 @@ export class ComandaService {
       // Validar valor pago se for DINHEIRO
       if (dto.formaPagamento === 'DINHEIRO') {
         if (!dto.valorPago) {
-          throw new BadRequestException('Valor pago é obrigatório quando a forma de pagamento é DINHEIRO.');
+          throw new BadRequestException(
+            'Valor pago é obrigatório quando a forma de pagamento é DINHEIRO.',
+          );
         }
         if (dto.valorPago < totalNumber) {
           throw new BadRequestException(
@@ -388,15 +471,22 @@ export class ComandaService {
         descricao: dto.observacao,
       });
 
-      this.logger.log(`✅ Venda registrada no caixa ${caixaAberto.id} - Valor: R$ ${totalNumber.toFixed(2)}`);
+      this.logger.log(
+        `✅ Venda registrada no caixa ${caixaAberto.id} - Valor: R$ ${totalNumber.toFixed(2)}`,
+      );
     } catch (error) {
-      this.logger.error(`❌ Erro ao registrar venda no caixa: ${error.message}`);
-      
+      this.logger.error(
+        `❌ Erro ao registrar venda no caixa: ${error.message}`,
+      );
+
       // Se for erro de validação (BadRequestException), propagar
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      
+
       // Outros erros
       throw new BadRequestException(
         `Erro ao registrar venda no caixa: ${error.message}. Por favor, tente novamente.`,
@@ -405,7 +495,7 @@ export class ComandaService {
 
     // Fechar comanda
     comanda.status = ComandaStatus.FECHADA;
-    
+
     // Liberar mesa se houver
     if (comanda.mesa) {
       comanda.mesa.status = MesaStatus.LIVRE;
@@ -415,14 +505,17 @@ export class ComandaService {
 
     const comandaFechada = await this.comandaRepository.save(comanda);
     this.pedidosGateway.emitComandaAtualizada(comandaFechada);
-    
+
     this.logger.log(`✅ Comanda ${id} fechada com sucesso`);
-    
+
     return comandaFechada;
   }
 
   async update(id: string, updateComandaDto: any): Promise<Comanda> {
-    const comanda = await this.comandaRepository.preload({ id, ...updateComandaDto });
+    const comanda = await this.comandaRepository.preload({
+      id,
+      ...updateComandaDto,
+    });
     if (!comanda) {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
@@ -443,33 +536,49 @@ export class ComandaService {
     const comanda = await this.findOne(comandaId);
 
     if (comanda.status !== ComandaStatus.ABERTA) {
-      throw new BadRequestException('Apenas comandas abertas podem ter o local alterado.');
+      throw new BadRequestException(
+        'Apenas comandas abertas podem ter o local alterado.',
+      );
     }
 
     // Se for mesa
     if (dto.mesaId) {
-      const mesa = await this.mesaRepository.findOne({ where: { id: dto.mesaId } });
+      const mesa = await this.mesaRepository.findOne({
+        where: { id: dto.mesaId },
+      });
       if (!mesa) {
-        throw new NotFoundException(`Mesa com ID "${dto.mesaId}" não encontrada.`);
+        throw new NotFoundException(
+          `Mesa com ID "${dto.mesaId}" não encontrada.`,
+        );
       }
       comanda.mesa = mesa;
       comanda.pontoEntrega = null;
       comanda.pontoEntregaId = null;
-      this.logger.log(`🔄 Comanda ${comandaId} vinculada à Mesa ${mesa.numero}`);
+      this.logger.log(
+        `🔄 Comanda ${comandaId} vinculada à Mesa ${mesa.numero}`,
+      );
     }
     // Se for ponto de entrega
     else if (dto.pontoEntregaId) {
-      const ponto = await this.pontoEntregaRepository.findOne({ where: { id: dto.pontoEntregaId } });
+      const ponto = await this.pontoEntregaRepository.findOne({
+        where: { id: dto.pontoEntregaId },
+      });
       if (!ponto) {
-        throw new NotFoundException(`Ponto de entrega com ID "${dto.pontoEntregaId}" não encontrado.`);
+        throw new NotFoundException(
+          `Ponto de entrega com ID "${dto.pontoEntregaId}" não encontrado.`,
+        );
       }
       if (!ponto.ativo) {
-        throw new BadRequestException(`O ponto de entrega "${ponto.nome}" está desativado.`);
+        throw new BadRequestException(
+          `O ponto de entrega "${ponto.nome}" está desativado.`,
+        );
       }
       comanda.pontoEntrega = ponto;
       comanda.pontoEntregaId = dto.pontoEntregaId;
       comanda.mesa = null;
-      this.logger.log(`🔄 Comanda ${comandaId} vinculada ao Ponto ${ponto.nome}`);
+      this.logger.log(
+        `🔄 Comanda ${comandaId} vinculada ao Ponto ${ponto.nome}`,
+      );
     }
     // Se for remover ambos
     else {
@@ -481,7 +590,7 @@ export class ComandaService {
 
     const comandaAtualizada = await this.comandaRepository.save(comanda);
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
-    
+
     return comandaAtualizada;
   }
 
@@ -492,7 +601,9 @@ export class ComandaService {
     const comanda = await this.findOne(comandaId);
 
     if (comanda.status !== ComandaStatus.ABERTA) {
-      throw new BadRequestException('Apenas comandas abertas podem ter o ponto de entrega alterado.');
+      throw new BadRequestException(
+        'Apenas comandas abertas podem ter o ponto de entrega alterado.',
+      );
     }
 
     // Verifica se tem pedidos EM_PREPARO
@@ -505,7 +616,7 @@ export class ComandaService {
 
     if (pedidosEmPreparo > 0) {
       this.logger.warn(
-        `⚠️ Cliente mudou ponto de entrega com ${pedidosEmPreparo} pedido(s) em preparo - Comanda ${comandaId}`
+        `⚠️ Cliente mudou ponto de entrega com ${pedidosEmPreparo} pedido(s) em preparo - Comanda ${comandaId}`,
       );
       // Não bloqueia, apenas alerta
     }
@@ -515,11 +626,15 @@ export class ComandaService {
     });
 
     if (!novoPonto) {
-      throw new NotFoundException(`Ponto de entrega com ID "${dto.pontoEntregaId}" não encontrado.`);
+      throw new NotFoundException(
+        `Ponto de entrega com ID "${dto.pontoEntregaId}" não encontrado.`,
+      );
     }
 
     if (!novoPonto.ativo) {
-      throw new BadRequestException(`O ponto de entrega "${novoPonto.nome}" está desativado.`);
+      throw new BadRequestException(
+        `O ponto de entrega "${novoPonto.nome}" está desativado.`,
+      );
     }
 
     comanda.pontoEntrega = novoPonto;
@@ -528,12 +643,14 @@ export class ComandaService {
     const comandaAtualizada = await this.comandaRepository.save(comanda);
 
     this.logger.log(
-      `🔄 Ponto de entrega alterado: Comanda ${comandaId} → ${novoPonto.nome}`
+      `🔄 Ponto de entrega alterado: Comanda ${comandaId} → ${novoPonto.nome}`,
     );
 
     // Emite evento WebSocket para notificar mudança de local
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
-    this.logger.log(`📡 Evento 'comanda_atualizada' emitido para comanda ${comandaId}`);
+    this.logger.log(
+      `📡 Evento 'comanda_atualizada' emitido para comanda ${comandaId}`,
+    );
 
     return this.findOne(comandaId);
   }
