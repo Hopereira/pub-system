@@ -37,7 +37,7 @@ const baseNavLinks: NavLink[] = [
   { href: '/caixa/gestao', label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
   
   // --- Área da Cozinha ---
-  { href: '/cozinha', label: 'Painel da Cozinha', icon: ChefHat, roles: ['COZINHA'] },
+  { href: '/cozinha', label: 'Ambiente de Preparo', icon: ChefHat, roles: ['COZINHA'] },
   
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
