@@ -40,6 +40,7 @@ export interface Cliente {
   nome: string;
   cpf?: string;
   telefone?: string;
+  celular?: string;
   email?: string;
 }
 
