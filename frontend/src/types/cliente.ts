@@ -9,11 +9,14 @@ export interface Cliente {
   cpf: string;
   nome: string;
   email?: string;
+  telefone?: string;
   celular?: string;
   ambienteId?: string;
   ambiente?: Ambiente;
   pontoEntregaId?: string;
   pontoEntrega?: PontoEntrega;
+  criadoEm?: string;
+  atualizadoEm?: string;
 }
 
 // Re-exportar para compatibilidade com imports existentes
