@@ -146,7 +146,7 @@ export default function GarcomPage() {
       />
 
       {/* Estatísticas do Mês - Desabilitado temporariamente */}
-      {false && estatisticas && estatisticas.totalTurnos > 0 && (
+      {false && estatisticas && (estatisticas?.totalTurnos ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
