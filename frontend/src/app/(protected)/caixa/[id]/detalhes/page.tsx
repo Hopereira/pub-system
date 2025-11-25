@@ -48,7 +48,7 @@ export default function DetalhesCaixaPage({ params }: PageProps) {
     }
   };
 
-  const calcularTempoAberto = (dataAbertura: Date, horaAbertura: string) => {
+  const calcularTempoAberto = (dataAbertura: string | Date, horaAbertura: string) => {
     const agora = new Date();
     const abertura = new Date(dataAbertura);
     const [horas, minutos] = horaAbertura.split(':');
@@ -243,10 +243,10 @@ export default function DetalhesCaixaPage({ params }: PageProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(resumoPorFormaPagamento).map(([forma, valor]) => (
-              <div key={forma} className="flex justify-between items-center p-4 bg-muted rounded-lg">
-                <span className="font-medium">{forma}</span>
-                <span className="font-bold">{formatCurrency(valor)}</span>
+            {resumoPorFormaPagamento.map((item) => (
+              <div key={item.formaPagamento} className="flex justify-between items-center p-4 bg-muted rounded-lg">
+                <span className="font-medium">{item.formaPagamento}</span>
+                <span className="font-bold">{formatCurrency(item.valorEsperado)}</span>
               </div>
             ))}
           </div>
@@ -291,7 +291,7 @@ export default function DetalhesCaixaPage({ params }: PageProps) {
                       {mov.tipo === 'VENDA' ? '+' : '-'} {formatCurrency(Number(mov.valor))}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(mov.criadoEm).toLocaleString('pt-BR')}
+                      {new Date(mov.criadoEm || mov.data).toLocaleString('pt-BR')}
                     </p>
                   </div>
                 </div>
@@ -333,7 +333,7 @@ export default function DetalhesCaixaPage({ params }: PageProps) {
                       - {formatCurrency(Number(sangria.valor))}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(sangria.criadoEm).toLocaleString('pt-BR')}
+                      {new Date(sangria.criadoEm || sangria.dataSangria).toLocaleString('pt-BR')}
                     </p>
                   </div>
                 </div>
