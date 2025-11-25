@@ -23,6 +23,7 @@ export interface ItemPedido {
   produto: Produto;
   precoUnitario: number;
   pedidoId: string;
+  status?: PedidoStatus; // Status individual do item
 }
 
 // Define a estrutura de um Pedido
