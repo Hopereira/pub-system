@@ -42,7 +42,7 @@ export const useComandaSubscription = (comandaId: string | null) => {
     try {
       const data = await getPublicComandaById(comandaId);
       
-      if (comandaAnteriorRef.current && audioRef.current) {
+      if (comandaAnteriorRef.current && audioRef.current && data) {
         const novosPedidosAlterados = new Set<string>();
         data.pedidos?.forEach(pedidoNovo => {
           const pedidoAntigo = comandaAnteriorRef.current?.pedidos?.find(p => p.id === pedidoNovo.id);
