@@ -54,7 +54,7 @@ export default function ComandaDetalhePage() {
   const handleFecharComanda = async () => {
     if (window.confirm('Confirmar o pagamento e fechar esta comanda?')) {
       try {
-        await fecharComanda(comandaId);
+        await fecharComanda(comandaId, { formaPagamento: 'DINHEIRO' });
         // Não precisamos de 'setComanda', o hook já vai receber a atualização via WebSocket
         toast.success('Comanda fechada com sucesso!');
         // A navegação pode continuar como estava
@@ -158,8 +158,8 @@ export default function ComandaDetalhePage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <p>{formatCurrency(Number(item.precoUnitario) * item.quantidade)}</p>
-                        <Badge variant={getStatusVariant(item.status)}>
-                          {item.status.replace('_', ' ')}
+                        <Badge variant={getStatusVariant(item.status || PedidoStatus.FEITO)}>
+                          {(item.status || 'FEITO').replace('_', ' ')}
                         </Badge>
                       </div>
                     </li>
