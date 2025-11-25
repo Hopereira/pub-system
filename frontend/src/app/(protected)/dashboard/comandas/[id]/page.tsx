@@ -153,8 +153,8 @@ export default function ComandaDetalhePage() {
                       </div>
                       <div className="flex items-center gap-4">
                         <p>{formatCurrency(Number(item.precoUnitario) * item.quantidade)}</p>
-                        <Badge variant={getStatusVariant(item.status as PedidoStatus)}>
-                          {item.status.replace('_', ' ')}
+                        <Badge variant={getStatusVariant((item.status || PedidoStatus.FEITO) as PedidoStatus)}>
+                          {(item.status || 'FEITO').replace('_', ' ')}
                         </Badge>
                       </div>
                     </li>

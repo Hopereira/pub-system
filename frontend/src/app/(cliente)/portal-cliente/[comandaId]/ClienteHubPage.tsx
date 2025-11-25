@@ -12,11 +12,12 @@ import { MapPin, ShoppingBag, Receipt, Calendar, User } from 'lucide-react';
 import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
 import { getPublicComandaById } from '@/services/comandaService';
 
-interface ClienteHubPageProps {
+export interface ClienteHubPageProps {
   comanda: Comanda;
+  paginaAtiva?: import('@/types/pagina-evento').PaginaEvento | null;
 }
 
-export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
+export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageProps) {
   const [isEventosModalOpen, setIsEventosModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [comandaAtualizada, setComandaAtualizada] = useState(comanda); 
