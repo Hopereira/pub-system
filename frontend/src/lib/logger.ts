@@ -13,6 +13,8 @@ interface LogOptions {
   module?: string;
   data?: unknown;
   error?: Error | unknown;
+  // Permite propriedades extras para contexto adicional
+  [key: string]: unknown;
 }
 
 const isServer = typeof window === 'undefined';

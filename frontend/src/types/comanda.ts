@@ -4,6 +4,7 @@ import { Mesa } from "./mesa";
 import { PedidoStatus } from "./pedido";
 import { Produto } from "./produto";
 import { PontoEntrega, Agregado } from "./ponto-entrega";
+import { PaginaEvento } from "./pagina-evento";
 
 // --- CORREÇÃO APLICADA AQUI ---
 // Transformado de 'type' para 'enum' para que possa ser usado no código em execução.
@@ -50,8 +51,11 @@ export interface Comanda {
   agregados?: Agregado[];
   pedidos: Pedido[];
   cliente?: Cliente;
+  paginaEvento?: PaginaEvento;
   dataAbertura?: string;
   dataFechamento?: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
 }
 
 export interface AbrirComandaDto {
