@@ -19,10 +19,10 @@ export const AnimatedButton = React.forwardRef<HTMLButtonElement, AnimatedButton
 
     const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
       if (onClick) {
-        const result = onClick(e);
+        const result = onClick(e) as unknown;
         
         // Se retornar uma Promise, aguarda resolução
-        if (result instanceof Promise) {
+        if (result && typeof result === 'object' && 'then' in result) {
           try {
             await result;
             // Micro-animação de sucesso

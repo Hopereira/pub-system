@@ -16,7 +16,14 @@ import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 
-const baseNavLinks = [
+interface NavLink {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    roles: string[];
+}
+
+const baseNavLinks: NavLink[] = [
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
   { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
@@ -51,13 +58,6 @@ const baseNavLinks = [
   { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] }, // Rota corrigida
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];
-
-interface NavLink {
-    href: string;
-    label: string;
-    icon: React.ElementType;
-    roles: string[];
-}
 
 export function Sidebar() {
   const { user } = useAuth();

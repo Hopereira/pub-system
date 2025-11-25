@@ -8,7 +8,8 @@
     ],
     "types": [
       "react",
-      "react-dom"
+      "react-dom",
+      "jest"
     ],
     "target": "ES2017",
     "allowJs": true,
