@@ -75,7 +75,9 @@ export class CaixaController {
       return await this.caixaService.getCaixaAberto(turnoId);
     } else if (funcionarioId) {
       // Busca por funcionário específico (isolamento de caixas)
-      return await this.caixaService.getCaixaAbertoPorFuncionario(funcionarioId);
+      return await this.caixaService.getCaixaAbertoPorFuncionario(
+        funcionarioId,
+      );
     } else {
       // Fallback: busca qualquer caixa aberto (manter compatibilidade)
       return await this.caixaService.getCaixaAbertoAtual();

@@ -60,7 +60,10 @@ export class AberturaCaixa {
   @OneToMany(() => Sangria, (sangria) => sangria.aberturaCaixa)
   sangrias: Sangria[];
 
-  @OneToMany(() => MovimentacaoCaixa, (movimentacao) => movimentacao.aberturaCaixa)
+  @OneToMany(
+    () => MovimentacaoCaixa,
+    (movimentacao) => movimentacao.aberturaCaixa,
+  )
   movimentacoes: MovimentacaoCaixa[];
 
   @CreateDateColumn()

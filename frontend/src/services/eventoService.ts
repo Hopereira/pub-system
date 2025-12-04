@@ -69,7 +69,14 @@ export const createEvento = async (data: CreateEventoDto): Promise<Evento> => {
  * Atualiza um evento existente (API PATCH).
  */
 export const updateEvento = async (id: string, data: Partial<UpdateEventoDto>): Promise<Evento> => {
-  const payload: Partial<UpdateEventoDto & { dataEvento?: string }> = { ...data };
+  // Cria payload com tipo correto para envio à API (dataEvento como string ISO)
+  const payload: Omit<Partial<UpdateEventoDto>, 'dataEvento'> & { dataEvento?: string } = {
+    titulo: data.titulo,
+    descricao: data.descricao,
+    valor: data.valor,
+    ativo: data.ativo,
+  };
+  
   if (data.dataEvento instanceof Date) {
     payload.dataEvento = data.dataEvento.toISOString();
   }

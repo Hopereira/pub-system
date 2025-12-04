@@ -16,7 +16,14 @@ import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 
-const baseNavLinks = [
+interface NavLink {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    roles: string[];
+}
+
+const baseNavLinks: NavLink[] = [
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
   { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
@@ -28,6 +35,9 @@ const baseNavLinks = [
   { href: '/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
   { href: '/caixa/comandas-abertas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
   { href: '/caixa/gestao', label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
+  
+  // --- Área da Cozinha ---
+  { href: '/cozinha', label: 'Ambiente de Preparo', icon: ChefHat, roles: ['COZINHA'] },
   
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
@@ -51,13 +61,6 @@ const baseNavLinks = [
   { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] }, // Rota corrigida
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];
-
-interface NavLink {
-    href: string;
-    label: string;
-    icon: React.ElementType;
-    roles: string[];
-}
 
 export function Sidebar() {
   const { user } = useAuth();

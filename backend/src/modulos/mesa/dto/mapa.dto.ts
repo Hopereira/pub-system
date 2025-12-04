@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsUUID, Min, Max, ValidateNested } from 'class-validator';
+import {
+  IsNumber,
+  IsOptional,
+  IsUUID,
+  Min,
+  Max,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PosicaoDto {
@@ -40,7 +47,10 @@ export class AtualizarPosicaoMesaDto {
   @Type(() => TamanhoDto)
   tamanho?: TamanhoDto;
 
-  @ApiPropertyOptional({ description: 'Rotação em graus (0, 90, 180, 270)', example: 0 })
+  @ApiPropertyOptional({
+    description: 'Rotação em graus (0, 90, 180, 270)',
+    example: 0,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -137,7 +147,10 @@ export class AtualizarLayoutDto {
   @IsOptional()
   backgroundImage?: string;
 
-  @ApiPropertyOptional({ description: 'Tamanho da grade em pixels', example: 20 })
+  @ApiPropertyOptional({
+    description: 'Tamanho da grade em pixels',
+    example: 20,
+  })
   @IsOptional()
   @IsNumber()
   @Min(10)

@@ -68,7 +68,7 @@ export default function GestaoTodosCaixas() {
     }
   };
 
-  const calcularTempoAberto = (dataAbertura: Date, horaAbertura: string) => {
+  const calcularTempoAberto = (dataAbertura: string | Date, horaAbertura: string) => {
     const agora = new Date();
     const abertura = new Date(dataAbertura);
     const [horas, minutos] = horaAbertura.split(':');
@@ -409,14 +409,14 @@ export default function GestaoTodosCaixas() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {Object.entries(caixaSelecionado.resumo.resumoPorFormaPagamento).map(
-                        ([forma, valor]) => (
+                      {caixaSelecionado.resumo.resumoPorFormaPagamento.map(
+                        (item) => (
                           <div
-                            key={forma}
+                            key={item.formaPagamento}
                             className="flex justify-between items-center p-3 bg-muted rounded-lg"
                           >
-                            <span className="font-medium text-sm">{forma}</span>
-                            <span className="font-bold">{formatCurrency(valor)}</span>
+                            <span className="font-medium text-sm">{item.formaPagamento}</span>
+                            <span className="font-bold">{formatCurrency(item.valorEsperado)}</span>
                           </div>
                         )
                       )}
@@ -463,7 +463,7 @@ export default function GestaoTodosCaixas() {
                               {mov.tipo === 'VENDA' ? '+' : '-'} {formatCurrency(Number(mov.valor))}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(mov.criadoEm).toLocaleTimeString('pt-BR')}
+                              {new Date(mov.criadoEm || mov.data).toLocaleTimeString('pt-BR')}
                             </p>
                           </div>
                         </div>

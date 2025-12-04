@@ -26,11 +26,17 @@ export interface AberturaCaixa {
   turnoFuncionarioId: string;
   funcionarioId: string;
   funcionarioNome: string;
+  funcionario?: {
+    id: string;
+    nome: string;
+    cargo?: string;
+  };
   dataAbertura: string;
   horaAbertura: string;
   valorInicial: number;
   observacao?: string;
   status: StatusCaixa;
+  criadoEm?: string;
 }
 
 export interface FechamentoCaixa {
@@ -95,6 +101,7 @@ export interface Sangria {
   observacao?: string;
   autorizadoPor?: string;
   autorizadoCargo?: string;
+  criadoEm?: string;
 }
 
 export interface Suprimento {
@@ -123,6 +130,7 @@ export interface MovimentacaoCaixa {
   funcionarioNome: string;
   comandaId?: string;
   comandaNumero?: string;
+  criadoEm?: string;
 }
 
 export interface ResumoFormaPagamento {

@@ -25,7 +25,7 @@ const nextConfig = {
   },
 
   // ✅ ADIÇÃO AQUI: Esta é a parte que estabiliza o ambiente Docker
-  webpack: (config) => {
+  webpack: (config: { watchOptions: { poll: number; aggregateTimeout: number } }) => {
     config.watchOptions = {
       poll: 1000, // Verifica por alterações a cada segundo
       aggregateTimeout: 300, // Agrupa múltiplas alterações num único rebuild

@@ -6,5 +6,6 @@ export interface CreateComandaDto {
   mesaId?: string;
   paginaEventoId?: string;
   pontoEntregaId?: string;
+  eventoId?: string;
   agregados?: CreateAgregadoDto[];
 }

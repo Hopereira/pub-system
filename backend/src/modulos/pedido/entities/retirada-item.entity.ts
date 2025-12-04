@@ -44,7 +44,11 @@ export class RetiradaItem {
   ambiente: Ambiente;
 
   // Timestamp da retirada
-  @Column({ name: 'retirado_em', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'retirado_em',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   retiradoEm: Date;
 
   // Tempo de reação (PRONTO -> RETIRADO) em minutos

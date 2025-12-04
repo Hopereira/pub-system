@@ -1,4 +1,11 @@
-import { IsString, IsNumber, IsOptional, Min, IsUUID, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  Min,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 
 export class CreateSangriaDto {
   @IsUUID()

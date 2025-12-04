@@ -46,7 +46,7 @@ export const createMesa = async (mesaData: CreateMesaDto): Promise<Mesa> => {
     }
 }
 
-export const updateMesa = async (id: string, mesaData: UpdateMetaDto): Promise<Mesa> => {
+export const updateMesa = async (id: string, mesaData: UpdateMesaDto): Promise<Mesa> => {
   try {
     const response = await api.patch<Mesa>(`/mesas/${id}`, mesaData);
     return response.data;

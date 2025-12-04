@@ -25,7 +25,8 @@ export class FinalizarPedidoDto {
   pontoRetiradaId?: string;
 
   @ApiProperty({
-    description: 'Instruções de entrega (opcional, usado principalmente para GARCOM)',
+    description:
+      'Instruções de entrega (opcional, usado principalmente para GARCOM)',
     required: false,
   })
   @IsString()

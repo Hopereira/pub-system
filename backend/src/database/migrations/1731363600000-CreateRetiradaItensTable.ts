@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
-export class CreateRetiradaItensTable1731363600000 implements MigrationInterface {
+export class CreateRetiradaItensTable1731363600000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar tabela retiradas_itens
     await queryRunner.createTable(
@@ -128,17 +135,36 @@ export class CreateRetiradaItensTable1731363600000 implements MigrationInterface
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remover índices
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_retiradas_itens_ambiente_data`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_retiradas_itens_garcom_data`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_retiradas_itens_retirado_em`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_retiradas_itens_ambiente`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_retiradas_itens_ambiente_data`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_retiradas_itens_garcom_data`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_retiradas_itens_retirado_em`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_retiradas_itens_ambiente`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS IDX_retiradas_itens_garcom`);
-    await queryRunner.query(`DROP INDEX IF EXISTS IDX_retiradas_itens_item_pedido`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS IDX_retiradas_itens_item_pedido`,
+    );
 
     // Remover foreign keys
-    await queryRunner.dropForeignKey('retiradas_itens', 'FK_retiradas_itens_ambiente');
-    await queryRunner.dropForeignKey('retiradas_itens', 'FK_retiradas_itens_garcom');
-    await queryRunner.dropForeignKey('retiradas_itens', 'FK_retiradas_itens_item_pedido');
+    await queryRunner.dropForeignKey(
+      'retiradas_itens',
+      'FK_retiradas_itens_ambiente',
+    );
+    await queryRunner.dropForeignKey(
+      'retiradas_itens',
+      'FK_retiradas_itens_garcom',
+    );
+    await queryRunner.dropForeignKey(
+      'retiradas_itens',
+      'FK_retiradas_itens_item_pedido',
+    );
 
     // Remover tabela
     await queryRunner.dropTable('retiradas_itens');

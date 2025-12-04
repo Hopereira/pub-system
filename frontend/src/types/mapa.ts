@@ -19,12 +19,17 @@ export interface MesaMapa {
     id: string;
     pedidosProntos: number;
     totalPedidos: number;
+    cliente?: {
+      id: string;
+      nome: string;
+    };
   };
 }
 
 export interface PontoEntregaMapa {
   id: string;
   nome: string;
+  descricao?: string;
   ativo: boolean;
   posicao?: Posicao;
   tamanho?: Tamanho;

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
   // ✅ Importar BadRequestException para o erro de validação (futuro)
-  BadRequestException, 
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,7 +20,6 @@ export class ClienteService {
   ) {}
 
   async create(createClienteDto: CreateClienteDto): Promise<Cliente> {
-    
     // ==========================================================
     // ✅ VALIDAÇÃO DE CPF (Comentada para Futuro Desbloqueio)
     // ==========================================================
@@ -30,14 +29,16 @@ export class ClienteService {
     }
     */
     // ==========================================================
-    
+
     const clienteExistente = await this.clienteRepository.findOne({
       where: { cpf: createClienteDto.cpf },
     });
 
     if (clienteExistente) {
       // Lança 409 Conflict se o cliente tentar se recadastrar
-      throw new ConflictException('Um cliente com este CPF já está cadastrado.');
+      throw new ConflictException(
+        'Um cliente com este CPF já está cadastrado.',
+      );
     }
 
     const cliente = this.clienteRepository.create(createClienteDto);
@@ -76,7 +77,9 @@ export class ClienteService {
   // Gera CPF temporário único
   private gerarCpfTemporario(): string {
     const timestamp = Date.now().toString();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
     return `999${timestamp.slice(-8)}`.slice(0, 11);
   }
 
@@ -86,8 +89,8 @@ export class ClienteService {
 
   // Função para buscar o cliente pelo CPF (essencial para o fluxo de entrada pública)
   async findByCpf(cpf: string): Promise<Cliente> {
-    const cliente = await this.clienteRepository.findOne({ 
-        where: { cpf } 
+    const cliente = await this.clienteRepository.findOne({
+      where: { cpf },
     });
 
     if (!cliente) {
@@ -102,11 +105,11 @@ export class ClienteService {
   async buscar(termo: string): Promise<Cliente[]> {
     // Remove formatação do CPF se for número
     const termoLimpo = termo.replace(/[^\d]/g, '');
-    
+
     // Se for um CPF (11 dígitos), busca por CPF
     if (termoLimpo.length === 11) {
-      const cliente = await this.clienteRepository.findOne({ 
-        where: { cpf: termoLimpo } 
+      const cliente = await this.clienteRepository.findOne({
+        where: { cpf: termoLimpo },
       });
       return cliente ? [cliente] : [];
     }
@@ -114,8 +117,8 @@ export class ClienteService {
     // Caso contrário, busca por nome (case-insensitive, parcial)
     const clientes = await this.clienteRepository
       .createQueryBuilder('cliente')
-      .where('LOWER(cliente.nome) LIKE LOWER(:termo)', { 
-        termo: `%${termo}%` 
+      .where('LOWER(cliente.nome) LIKE LOWER(:termo)', {
+        termo: `%${termo}%`,
       })
       .orderBy('cliente.nome', 'ASC')
       .limit(10) // Limita a 10 resultados
@@ -157,18 +160,18 @@ export class ClienteService {
    * Fonte: Algoritmo padrão de validação de CPF.
    */
   private validarCpf(cpf: string): boolean {
-    cpf = cpf.replace(/[^\d]/g, ""); // Remove caracteres não numéricos
+    cpf = cpf.replace(/[^\d]/g, ''); // Remove caracteres não numéricos
 
     if (cpf.length !== 11) return false;
     // Bloqueia CPFs com dígitos repetidos (ex: 111.111.111-11)
-    if (/^(\d)\1{10}$/.test(cpf)) return false; 
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
 
     let sum = 0;
     let remainder;
-    
+
     // Cálculo do 1º dígito verificador
     for (let i = 1; i <= 9; i++) {
-        sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (11 - i);
     }
     remainder = (sum * 10) % 11;
     if (remainder === 10 || remainder === 11) remainder = 0;
@@ -177,7 +180,7 @@ export class ClienteService {
     sum = 0;
     // Cálculo do 2º dígito verificador
     for (let i = 1; i <= 10; i++) {
-        sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
+      sum = sum + parseInt(cpf.substring(i - 1, i)) * (12 - i);
     }
     remainder = (sum * 10) % 11;
     if (remainder === 10 || remainder === 11) remainder = 0;

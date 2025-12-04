@@ -10,10 +10,16 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Realiza login e retorna token JWT' })
-  @ApiResponse({ status: 200, description: 'Login realizado com sucesso. Retorna access_token.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login realizado com sucesso. Retorna access_token.',
+  })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   async login(@Body() loginDto: LoginDto) {
-    const user = await this.authService.validateUser(loginDto.email, loginDto.senha);
+    const user = await this.authService.validateUser(
+      loginDto.email,
+      loginDto.senha,
+    );
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
     }

@@ -84,7 +84,8 @@ export function ItemPedidoCard({
       ),
     };
 
-    return badges[item.status as PedidoStatus] || (
+    const status = item.status as keyof typeof badges;
+    return badges[status] || (
       <Badge variant="outline">{item.status}</Badge>
     );
   };

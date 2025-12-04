@@ -1,8 +1,27 @@
 import {
-  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe, Logger,
-  UseInterceptors, UploadedFile, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  ParseUUIDPipe,
+  Logger,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 import { EventoService } from './evento.service';
@@ -28,7 +47,10 @@ export class EventoController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload de imagem para um evento' })
   @ApiResponse({ status: 200, description: 'Imagem enviada com sucesso.' })
-  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Arquivo inválido ou muito grande.',
+  })
   @UseInterceptors(FileInterceptor('file'))
   async uploadImagem(
     @Param('id', ParseUUIDPipe) id: string,
@@ -42,7 +64,9 @@ export class EventoController {
     )
     file: Express.Multer.File,
   ) {
-    this.logger.log(`Recebida imagem para o evento ID ${id}. A fazer upload...`);
+    this.logger.log(
+      `Recebida imagem para o evento ID ${id}. A fazer upload...`,
+    );
     return this.eventoService.uploadImagem(id, file);
   }
 
@@ -52,9 +76,14 @@ export class EventoController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria um novo evento' })
   @ApiResponse({ status: 201, description: 'Evento criado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Apenas Administradores.',
+  })
   create(@Body() createEventoDto: CreateEventoDto) {
-    this.logger.log(`Recebida requisição para criar evento. Dados: ${JSON.stringify(createEventoDto)}`);
+    this.logger.log(
+      `Recebida requisição para criar evento. Dados: ${JSON.stringify(createEventoDto)}`,
+    );
     return this.eventoService.create(createEventoDto);
   }
 
@@ -63,7 +92,10 @@ export class EventoController {
   @Roles(Cargo.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista todos os eventos (Admin)' })
-  @ApiResponse({ status: 200, description: 'Lista de eventos retornada com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de eventos retornada com sucesso.',
+  })
   findAll() {
     return this.eventoService.findAll();
   }
@@ -71,21 +103,26 @@ export class EventoController {
   @Public()
   @Get('publicos')
   @ApiOperation({ summary: 'Lista eventos públicos ativos (sem autenticação)' })
-  @ApiResponse({ status: 200, description: 'Lista de eventos públicos retornada com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de eventos públicos retornada com sucesso.',
+  })
   findAllPublic() {
     return this.eventoService.findAllPublic();
   }
-  
+
   // ✅ NOVA ROTA PÚBLICA: Permite que o frontend busque um único evento (para a página /entrada/)
   @Public()
   @Get('publicos/:id') // Endpoint: /eventos/publicos/:id
-  @ApiOperation({ summary: 'Busca um evento público específico (sem autenticação)' })
+  @ApiOperation({
+    summary: 'Busca um evento público específico (sem autenticação)',
+  })
   @ApiResponse({ status: 200, description: 'Evento retornado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })
   findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
     // Você precisará de um método findPublicOne no seu EventoService para buscar eventos ativos.
     // Se não tiver, use findOne e implemente a verificação de ativo no service.
-    return this.eventoService.findOne(id); 
+    return this.eventoService.findOne(id);
   }
 
   @Patch(':id')
@@ -95,7 +132,10 @@ export class EventoController {
   @ApiOperation({ summary: 'Atualiza um evento' })
   @ApiResponse({ status: 200, description: 'Evento atualizado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateEventoDto: UpdateEventoDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateEventoDto: UpdateEventoDto,
+  ) {
     return this.eventoService.update(id, updateEventoDto);
   }
 
@@ -109,7 +149,7 @@ export class EventoController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.eventoService.remove(id);
   }
-  
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)

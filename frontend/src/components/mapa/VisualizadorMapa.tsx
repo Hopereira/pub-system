@@ -518,7 +518,7 @@ export function VisualizadorMapa({ ambienteId, ambienteNome }: VisualizadorMapaP
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             <span>
-                              Aberta há {calcularTempoDecorrido(comanda.criadoEm)}
+                              Aberta há {calcularTempoDecorrido(comanda.criadoEm || '')}
                             </span>
                           </div>
                           

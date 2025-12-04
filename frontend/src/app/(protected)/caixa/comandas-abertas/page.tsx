@@ -106,7 +106,7 @@ export default function ComandasAbertasPage() {
                     )}
                     <div className="pt-2 border-t">
                       <p className="text-xs text-muted-foreground">
-                        Aberta em: {new Date(comanda.dataAbertura).toLocaleDateString('pt-BR')}
+                        Aberta em: {new Date(comanda.dataAbertura || comanda.criadoEm || new Date()).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   </CardDescription>

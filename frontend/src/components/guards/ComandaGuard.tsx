@@ -39,6 +39,10 @@ export const ComandaGuard = ({
         });
 
         const comanda = await getPublicComandaById(comandaId);
+        if (!comanda) {
+          setIsValid(false);
+          return;
+        }
         setComandaStatus(comanda.status);
 
         const statusValido = allowedStatuses.includes(comanda.status);

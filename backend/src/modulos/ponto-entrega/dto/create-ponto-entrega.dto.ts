@@ -1,5 +1,11 @@
 // Caminho: backend/src/modulos/ponto-entrega/dto/create-ponto-entrega.dto.ts
-import { IsString, IsUUID, IsOptional, IsBoolean, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsBoolean,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePontoEntregaDto {
@@ -28,7 +34,8 @@ export class CreatePontoEntregaDto {
   mesaProximaId?: string;
 
   @ApiPropertyOptional({
-    description: 'ID do ambiente de atendimento (onde o cliente está fisicamente)',
+    description:
+      'ID do ambiente de atendimento (onde o cliente está fisicamente)',
     example: 'uuid-do-ambiente-atendimento',
   })
   @IsOptional()

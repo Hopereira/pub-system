@@ -15,7 +15,7 @@ async function bootstrap() {
 
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());
-  
+
   // 🔥 Ativar Exception Filter Global
   app.useGlobalFilters(new AllExceptionsFilter());
 
@@ -47,7 +47,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  
   const seeder = app.get(SeederService);
   await seeder.seed();
 

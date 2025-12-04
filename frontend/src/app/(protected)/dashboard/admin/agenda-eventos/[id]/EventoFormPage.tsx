@@ -29,7 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 const formSchema = z.object({
   titulo: z.string().min(3, { message: "O título é obrigatório." }),
   descricao: z.string().optional().nullable(),
-  dataEvento: z.date({ required_error: "A data do evento é obrigatória." }),
+  dataEvento: z.date({ message: "A data do evento é obrigatória." }),
   hora: z.coerce.number().min(0, 'Hora inválida').max(23, 'Hora inválida'),
   minuto: z.coerce.number().min(0, 'Minuto inválido').max(59, 'Minuto inválido'),
   valor: z.coerce.number().min(0, "O valor não pode ser negativo.").default(0),
@@ -53,8 +53,9 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [paginasEvento, setPaginasEvento] = useState<PaginaEvento[]>([]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       titulo: '',
       descricao: '',

@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  TableColumn,
+  TableForeignKey,
+} from 'typeorm';
 
-export class AddPontoEntregaToComanda1760060200000 implements MigrationInterface {
+export class AddPontoEntregaToComanda1760060200000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Adicionar coluna ponto_entrega_id à tabela comandas
     await queryRunner.addColumn(

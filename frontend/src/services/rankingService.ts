@@ -1,4 +1,4 @@
-import api from '@/lib/axios';
+import api from '@/services/api';
 import { RankingResponse, EstatisticasGarcom, Medalha } from '@/types/ranking';
 
 /**

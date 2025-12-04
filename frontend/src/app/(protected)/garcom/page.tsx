@@ -146,7 +146,7 @@ export default function GarcomPage() {
       />
 
       {/* Estatísticas do Mês - Desabilitado temporariamente */}
-      {false && estatisticas && estatisticas.totalTurnos > 0 && (
+      {false && estatisticas && (estatisticas?.totalTurnos ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -158,30 +158,30 @@ export default function GarcomPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Total de Turnos</p>
-                <p className="text-2xl font-bold">{estatisticas.totalTurnos}</p>
+                <p className="text-2xl font-bold">{estatisticas?.totalTurnos}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Horas Totais</p>
                 <p className="text-2xl font-bold">
-                  {formatarTempo(estatisticas.horasTotais)}
+                  {formatarTempo(estatisticas?.horasTotais ?? 0)}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Média por Turno</p>
                 <p className="text-2xl font-bold">
-                  {formatarTempo(estatisticas.horasMedia)}
+                  {formatarTempo(estatisticas?.horasMedia ?? 0)}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Turno Mais Longo</p>
                 <p className="text-xl font-bold text-blue-600">
-                  {formatarTempo(estatisticas.turnoMaisLongo)}
+                  {formatarTempo(estatisticas?.turnoMaisLongo ?? 0)}
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Turno Mais Curto</p>
                 <p className="text-xl font-bold text-green-600">
-                  {formatarTempo(estatisticas.turnoMaisCurto)}
+                  {formatarTempo(estatisticas?.turnoMaisCurto ?? 0)}
                 </p>
               </div>
             </div>

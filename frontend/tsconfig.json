@@ -8,7 +8,12 @@
     ],
     "types": [
       "react",
-      "react-dom"
+      "react-dom",
+      "jest"
+    ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
     ],
     "target": "ES2017",
     "allowJs": true,
@@ -39,6 +44,7 @@
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/__tests__/**"
   ]
 }

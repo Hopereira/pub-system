@@ -14,13 +14,13 @@ import Decimal from 'decimal.js';
 @Injectable()
 export class QuaseProntoScheduler {
   private readonly logger = new Logger(QuaseProntoScheduler.name);
-  
+
   // Tempo de antecipação padrão (em segundos)
   private readonly ANTECIPACAO_PADRAO_SEGUNDOS = 45;
-  
+
   // Percentual do tempo médio para considerar "quase pronto"
   private readonly PERCENTUAL_QUASE_PRONTO = 0.7; // 70%
-  
+
   // Tempo de fallback para produtos sem histórico (5 minutos)
   private readonly TEMPO_FALLBACK_MINUTOS = 5;
 
@@ -60,15 +60,18 @@ export class QuaseProntoScheduler {
         }
 
         // Calcula tempo médio de preparo do produto
-        const tempoMedioPreparo = await this.calcularTempoMedioPreparo(item.produto.id);
-        
+        const tempoMedioPreparo = await this.calcularTempoMedioPreparo(
+          item.produto.id,
+        );
+
         // Tempo decorrido desde início do preparo (em minutos)
-        const tempoDecorridoMs = agora.getTime() - new Date(item.iniciadoEm).getTime();
+        const tempoDecorridoMs =
+          agora.getTime() - new Date(item.iniciadoEm).getTime();
         const tempoDecorridoMin = tempoDecorridoMs / 60000;
 
         // Tempo alvo para marcar como quase pronto
         let tempoAlvoMin: number;
-        
+
         if (tempoMedioPreparo > 0) {
           // Usa 70% do tempo médio histórico
           tempoAlvoMin = tempoMedioPreparo * this.PERCENTUAL_QUASE_PRONTO;
@@ -85,7 +88,9 @@ export class QuaseProntoScheduler {
       }
 
       if (itensAtualizados > 0) {
-        this.logger.log(`✨ ${itensAtualizados} itens marcados como QUASE_PRONTO`);
+        this.logger.log(
+          `✨ ${itensAtualizados} itens marcados como QUASE_PRONTO`,
+        );
       }
     } catch (error) {
       this.logger.error('❌ Erro ao verificar itens quase prontos:', error);
@@ -101,8 +106,12 @@ export class QuaseProntoScheduler {
       .select('AVG(item.tempo_preparo_minutos)', 'media')
       .where('item.produtoId = :produtoId', { produtoId })
       .andWhere('item.tempo_preparo_minutos IS NOT NULL')
-      .andWhere('item.status IN (:...status)', { 
-        status: [PedidoStatus.PRONTO, PedidoStatus.ENTREGUE, PedidoStatus.RETIRADO] 
+      .andWhere('item.status IN (:...status)', {
+        status: [
+          PedidoStatus.PRONTO,
+          PedidoStatus.ENTREGUE,
+          PedidoStatus.RETIRADO,
+        ],
       })
       .getRawOne();
 
@@ -113,16 +122,17 @@ export class QuaseProntoScheduler {
    * Marca um item como QUASE_PRONTO e emite eventos
    */
   private async marcarComoQuasePronto(
-    item: ItemPedido, 
-    tempoMedioPreparoMin: number
+    item: ItemPedido,
+    tempoMedioPreparoMin: number,
   ): Promise<void> {
     const agora = new Date();
-    
+
     // Calcula ETA (tempo estimado até ficar PRONTO)
     let etaSegundos = this.ANTECIPACAO_PADRAO_SEGUNDOS;
-    
+
     if (tempoMedioPreparoMin > 0 && item.iniciadoEm) {
-      const tempoDecorridoMs = agora.getTime() - new Date(item.iniciadoEm).getTime();
+      const tempoDecorridoMs =
+        agora.getTime() - new Date(item.iniciadoEm).getTime();
       const tempoDecorridoMin = tempoDecorridoMs / 60000;
       const tempoRestanteMin = tempoMedioPreparoMin - tempoDecorridoMin;
       etaSegundos = Math.max(30, Math.round(tempoRestanteMin * 60));
@@ -131,19 +141,19 @@ export class QuaseProntoScheduler {
     // Atualiza o item
     item.status = PedidoStatus.QUASE_PRONTO;
     item.quaseProntoEm = agora;
-    
+
     await this.itemPedidoRepository.save(item);
 
     this.logger.log(
       `⏳ Item quase pronto | Produto: ${item.produto?.nome || 'N/A'} | ` +
-      `ETA: ${etaSegundos}s | Tempo médio: ${tempoMedioPreparoMin.toFixed(1)}min`
+        `ETA: ${etaSegundos}s | Tempo médio: ${tempoMedioPreparoMin.toFixed(1)}min`,
     );
 
     // Emite evento WebSocket
     const comanda = item.pedido?.comanda;
     if (comanda) {
       this.pedidosGateway.emitStatusAtualizado(item.pedido);
-      
+
       // Evento específico de item quase pronto
       this.pedidosGateway.server.emit('item_quase_pronto', {
         itemId: item.id,

@@ -8,7 +8,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { EmpresaService } from './empresa.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
@@ -29,7 +34,10 @@ export class EmpresaController {
   @Post()
   @ApiOperation({ summary: 'Cria os dados da empresa' })
   @ApiResponse({ status: 201, description: 'Empresa criada com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Apenas Administradores.',
+  })
   create(@Body() createEmpresaDto: CreateEmpresaDto) {
     return this.empresaService.create(createEmpresaDto);
   }
@@ -37,7 +45,10 @@ export class EmpresaController {
   // GET /empresa
   @Get()
   @ApiOperation({ summary: 'Busca os dados da empresa cadastrada' })
-  @ApiResponse({ status: 200, description: 'Dados da empresa retornados com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dados da empresa retornados com sucesso.',
+  })
   @ApiResponse({ status: 404, description: 'Empresa não encontrada.' })
   findOne() {
     return this.empresaService.findOne();

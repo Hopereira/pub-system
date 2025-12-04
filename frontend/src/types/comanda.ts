@@ -4,6 +4,7 @@ import { Mesa } from "./mesa";
 import { PedidoStatus } from "./pedido";
 import { Produto } from "./produto";
 import { PontoEntrega, Agregado } from "./ponto-entrega";
+import { PaginaEvento } from "./pagina-evento";
 
 // --- CORREÇÃO APLICADA AQUI ---
 // Transformado de 'type' para 'enum' para que possa ser usado no código em execução.
@@ -22,6 +23,7 @@ export interface ItemPedido {
   produto: Produto;
   precoUnitario: number;
   pedidoId: string;
+  status?: PedidoStatus; // Status individual do item
 }
 
 // Define a estrutura de um Pedido
@@ -38,6 +40,7 @@ export interface Cliente {
   nome: string;
   cpf?: string;
   telefone?: string;
+  celular?: string;
   email?: string;
 }
 
@@ -50,8 +53,11 @@ export interface Comanda {
   agregados?: Agregado[];
   pedidos: Pedido[];
   cliente?: Cliente;
+  paginaEvento?: PaginaEvento;
   dataAbertura?: string;
   dataFechamento?: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
 }
 
 export interface AbrirComandaDto {

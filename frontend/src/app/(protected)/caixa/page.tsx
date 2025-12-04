@@ -78,7 +78,7 @@ export default function CaixaPage() {
         // Buscar todos os pedidos para contar pendentes
         const pedidos = await getPedidos();
         const pedidosPendentes = pedidos.filter(
-          p => p.status === 'AGUARDANDO' || p.status === 'EM_PREPARO'
+          p => p.status === 'FEITO' || p.status === 'EM_PREPARO'
         );
         
         // Total de vendas vem do resumo do caixa

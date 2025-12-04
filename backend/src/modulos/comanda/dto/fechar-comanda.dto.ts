@@ -1,4 +1,11 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { FormaPagamento } from '../../caixa/dto/create-venda.dto';
 
@@ -9,14 +16,16 @@ export class FecharComandaDto {
     example: FormaPagamento.DINHEIRO,
   })
   @IsEnum(FormaPagamento, {
-    message: 'Forma de pagamento inválida. Valores aceitos: DINHEIRO, PIX, DEBITO, CREDITO, VALE_REFEICAO, VALE_ALIMENTACAO',
+    message:
+      'Forma de pagamento inválida. Valores aceitos: DINHEIRO, PIX, DEBITO, CREDITO, VALE_REFEICAO, VALE_ALIMENTACAO',
   })
   @IsNotEmpty({ message: 'Forma de pagamento é obrigatória' })
   formaPagamento: FormaPagamento;
 
   @ApiProperty({
-    description: 'Valor pago pelo cliente (obrigatório apenas para DINHEIRO para calcular troco)',
-    example: 100.00,
+    description:
+      'Valor pago pelo cliente (obrigatório apenas para DINHEIRO para calcular troco)',
+    example: 100.0,
     required: false,
   })
   @IsNumber({}, { message: 'Valor pago deve ser um número' })

@@ -23,12 +23,16 @@ export class EventoService {
 
   async create(createEventoDto: CreateEventoDto): Promise<Evento> {
     const { paginaEventoId, ...restoDoDto } = createEventoDto;
-    
+
     let paginaEvento: PaginaEvento | null = null;
     if (paginaEventoId) {
-      paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
+      paginaEvento = await this.paginaEventoRepository.findOne({
+        where: { id: paginaEventoId },
+      });
       if (!paginaEvento) {
-        throw new NotFoundException(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
+        throw new NotFoundException(
+          `Página de Evento com ID "${paginaEventoId}" não encontrada.`,
+        );
       }
     }
 
@@ -41,9 +45,9 @@ export class EventoService {
 
   findAll(): Promise<Evento[]> {
     // ✅ Garante que a paginaEvento (tema) seja sempre incluída na listagem
-    return this.eventoRepository.find({ 
-      relations: ['paginaEvento'], 
-      order: { dataEvento: 'DESC' } 
+    return this.eventoRepository.find({
+      relations: ['paginaEvento'],
+      order: { dataEvento: 'DESC' },
     });
   }
 
@@ -65,10 +69,10 @@ export class EventoService {
     }
     return evento;
   }
-  
+
   async update(id: string, updateEventoDto: UpdateEventoDto): Promise<Evento> {
     const { paginaEventoId, ...restoDoDto } = updateEventoDto;
-    
+
     const evento = await this.eventoRepository.preload({
       id: id,
       ...restoDoDto,
@@ -79,9 +83,13 @@ export class EventoService {
 
     if (updateEventoDto.hasOwnProperty('paginaEventoId')) {
       if (paginaEventoId) {
-        const paginaEvento = await this.paginaEventoRepository.findOne({ where: { id: paginaEventoId } });
+        const paginaEvento = await this.paginaEventoRepository.findOne({
+          where: { id: paginaEventoId },
+        });
         if (!paginaEvento) {
-          throw new NotFoundException(`Página de Evento com ID "${paginaEventoId}" não encontrada.`);
+          throw new NotFoundException(
+            `Página de Evento com ID "${paginaEventoId}" não encontrada.`,
+          );
         }
         evento.paginaEvento = paginaEvento;
       } else {
@@ -102,7 +110,10 @@ export class EventoService {
         await this.storageService.deleteFile(evento.urlImagem);
         this.logger.log(`Imagem antiga do evento ${id} apagada do GCS.`);
       } catch (error) {
-        this.logger.error(`Falha ao apagar a imagem antiga do GCS: ${evento.urlImagem}`, error);
+        this.logger.error(
+          `Falha ao apagar a imagem antiga do GCS: ${evento.urlImagem}`,
+          error,
+        );
       }
     }
 
@@ -113,7 +124,7 @@ export class EventoService {
     evento.urlImagem = novaUrl;
     return this.eventoRepository.save(evento);
   }
-  
+
   async remove(id: string): Promise<void> {
     const result = await this.eventoRepository.delete(id);
     if (result.affected === 0) {

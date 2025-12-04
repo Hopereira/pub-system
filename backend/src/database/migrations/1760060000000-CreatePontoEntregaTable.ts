@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
-export class CreatePontoEntregaTable1760060000000 implements MigrationInterface {
+export class CreatePontoEntregaTable1760060000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar tabela pontos_entrega
     await queryRunner.createTable(
@@ -81,8 +88,14 @@ export class CreatePontoEntregaTable1760060000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropForeignKey('pontos_entrega', 'FK_ponto_entrega_mesa_proxima');
-    await queryRunner.dropForeignKey('pontos_entrega', 'FK_ponto_entrega_ambiente_preparo');
+    await queryRunner.dropForeignKey(
+      'pontos_entrega',
+      'FK_ponto_entrega_mesa_proxima',
+    );
+    await queryRunner.dropForeignKey(
+      'pontos_entrega',
+      'FK_ponto_entrega_ambiente_preparo',
+    );
     await queryRunner.dropTable('pontos_entrega');
   }
 }

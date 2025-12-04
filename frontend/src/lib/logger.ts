@@ -11,8 +11,10 @@ type LogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 
 interface LogOptions {
   module?: string;
-  data?: any;
-  error?: Error;
+  data?: unknown;
+  error?: Error | unknown;
+  // Permite propriedades extras para contexto adicional
+  [key: string]: unknown;
 }
 
 const isServer = typeof window === 'undefined';
@@ -87,9 +89,13 @@ class Logger {
     
     console.error(formattedMessage);
     if (error) {
-      console.error('  ├─ Error:', error.message);
-      if (this.isDevelopment && error.stack) {
-        console.error('  └─ Stack:', error.stack);
+      if (error instanceof Error) {
+        console.error('  ├─ Error:', error.message);
+        if (this.isDevelopment && error.stack) {
+          console.error('  └─ Stack:', error.stack);
+        }
+      } else {
+        console.error('  ├─ Error:', error);
       }
     }
     if (data) console.error('  └─ Data:', data);
@@ -116,7 +122,7 @@ class Logger {
     url?: string;
     status?: number;
     duration?: number;
-    error?: any;
+    error?: unknown;
   }) {
     const { method, url, status, duration, error } = details;
     

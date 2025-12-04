@@ -28,7 +28,7 @@ export class ItemPedido {
 
   @Column()
   quantidade: number;
-  
+
   @Column('numeric', { precision: 10, scale: 2 })
   precoUnitario: number;
 
@@ -100,6 +100,10 @@ export class ItemPedido {
   tempoReacaoMinutos: number;
 
   // ✅ NOVO: Tempo de entrega final (RETIRADO -> ENTREGUE) em minutos
-  @Column({ name: 'tempo_entrega_final_minutos', type: 'integer', nullable: true })
+  @Column({
+    name: 'tempo_entrega_final_minutos',
+    type: 'integer',
+    nullable: true,
+  })
   tempoEntregaFinalMinutos: number;
 }

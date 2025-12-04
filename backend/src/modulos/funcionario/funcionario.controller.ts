@@ -18,7 +18,12 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Cargo } from './enums/cargo.enum';
 
 // --- DECORADORES DO SWAGGER ---
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 @ApiTags('Funcionários') // Agrupa todos os endpoints sob a tag "Funcionários"
 @Controller('funcionarios')
@@ -27,9 +32,10 @@ export class FuncionarioController {
 
   // --- VERIFICAR SE É PRIMEIRO ACESSO ---
   @Get('check-first-access')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Verifica se é o primeiro acesso ao sistema',
-    description: 'Retorna true se não há nenhum usuário cadastrado, false caso contrário.'
+    description:
+      'Retorna true se não há nenhum usuário cadastrado, false caso contrário.',
   })
   @ApiResponse({ status: 200, description: 'Status retornado com sucesso.' })
   async checkFirstAccess() {
@@ -39,13 +45,18 @@ export class FuncionarioController {
 
   // --- REGISTRO PÚBLICO (Primeiro usuário vira ADMIN) ---
   @Post('registro')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Registro público de primeiro acesso',
-    description: 'O primeiro usuário a se registrar automaticamente vira ADMIN. Depois disso, apenas ADMIN pode criar novos funcionários.'
+    description:
+      'O primeiro usuário a se registrar automaticamente vira ADMIN. Depois disso, apenas ADMIN pode criar novos funcionários.',
   })
   @ApiResponse({ status: 201, description: 'Usuário registrado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Já existe um usuário no sistema. Use o endpoint /funcionarios para criar novos.' })
-  @ApiResponse({ status: 409, description: 'Conflito. O e-mail já existe.'})
+  @ApiResponse({
+    status: 403,
+    description:
+      'Já existe um usuário no sistema. Use o endpoint /funcionarios para criar novos.',
+  })
+  @ApiResponse({ status: 409, description: 'Conflito. O e-mail já existe.' })
   async registro(@Body() createFuncionarioDto: CreateFuncionarioDto) {
     return this.funcionarioService.registroPrimeiroAcesso(createFuncionarioDto);
   }
@@ -55,10 +66,18 @@ export class FuncionarioController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: 'Cria um novo funcionário no sistema (Apenas ADMIN)' })
+  @ApiOperation({
+    summary: 'Cria um novo funcionário no sistema (Apenas ADMIN)',
+  })
   @ApiResponse({ status: 201, description: 'Funcionário criado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
-  @ApiResponse({ status: 409, description: 'Conflito. O e-mail ou CPF já existe.'})
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Rota apenas para administradores.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflito. O e-mail ou CPF já existe.',
+  })
   create(@Body() createFuncionarioDto: CreateFuncionarioDto) {
     return this.funcionarioService.create(createFuncionarioDto);
   }
@@ -69,8 +88,14 @@ export class FuncionarioController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Lista todos os funcionários cadastrados' })
-  @ApiResponse({ status: 200, description: 'Lista de funcionários retornada com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de funcionários retornada com sucesso.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Rota apenas para administradores.',
+  })
   findAll() {
     return this.funcionarioService.findAll();
   }
@@ -81,8 +106,14 @@ export class FuncionarioController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Busca um único funcionário pelo seu ID' })
-  @ApiResponse({ status: 200, description: 'Dados do funcionário retornados com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dados do funcionário retornados com sucesso.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Rota apenas para administradores.',
+  })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.funcionarioService.findOne(id);
@@ -94,8 +125,14 @@ export class FuncionarioController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Atualiza os dados de um funcionário específico' })
-  @ApiResponse({ status: 200, description: 'Funcionário atualizado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Funcionário atualizado com sucesso.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Rota apenas para administradores.',
+  })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,8 +147,14 @@ export class FuncionarioController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Remove um funcionário do sistema' })
-  @ApiResponse({ status: 200, description: 'Funcionário removido com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Rota apenas para administradores.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Funcionário removido com sucesso.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Rota apenas para administradores.',
+  })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.funcionarioService.remove(id);
