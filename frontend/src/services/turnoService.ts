@@ -12,39 +12,24 @@ export const turnoService = {
    * Fazer check-in (iniciar turno)
    */
   async checkIn(data: CheckInDto): Promise<TurnoFuncionario> {
-    try {
-      const response = await api.post('/turnos/check-in', data);
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Erro ao fazer check-in:', error);
-      throw error;
-    }
+    const response = await api.post('/turnos/check-in', data);
+    return response.data;
   },
 
   /**
    * Fazer check-out (finalizar turno)
    */
   async checkOut(data: CheckOutDto): Promise<TurnoFuncionario> {
-    try {
-      const response = await api.post('/turnos/check-out', data);
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Erro ao fazer check-out:', error);
-      throw error;
-    }
+    const response = await api.post('/turnos/check-out', data);
+    return response.data;
   },
 
   /**
    * Listar funcionários ativos (com check-in)
    */
   async getFuncionariosAtivos(): Promise<FuncionarioAtivo[]> {
-    try {
-      const response = await api.get('/turnos/ativos');
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Erro ao buscar funcionários ativos:', error);
-      throw error;
-    }
+    const response = await api.get('/turnos/ativos');
+    return response.data;
   },
 
   /**
@@ -57,15 +42,10 @@ export const turnoService = {
       dataFim?: string;
     },
   ): Promise<TurnoFuncionario[]> {
-    try {
-      const response = await api.get(`/turnos/funcionario/${funcionarioId}`, {
-        params,
-      });
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Erro ao buscar turnos do funcionário:', error);
-      throw error;
-    }
+    const response = await api.get(`/turnos/funcionario/${funcionarioId}`, {
+      params,
+    });
+    return response.data;
   },
 
   /**
@@ -78,28 +58,36 @@ export const turnoService = {
       dataFim?: string;
     },
   ): Promise<EstatisticasTurno> {
+    const response = await api.get(
+      `/turnos/funcionario/${funcionarioId}/estatisticas`,
+      { params },
+    );
+    return response.data;
+  },
+
+  /**
+   * Verificar se funcionário tem turno ativo (método legado)
+   * @deprecated Use getTurnoAtivo para obter o turno completo
+   */
+  async verificarTurnoAtivo(funcionarioId: string): Promise<boolean> {
     try {
-      const response = await api.get(
-        `/turnos/funcionario/${funcionarioId}/estatisticas`,
-        { params },
-      );
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Erro ao buscar estatísticas do funcionário:', error);
-      throw error;
+      const turno = await this.getTurnoAtivo(funcionarioId);
+      return turno !== null;
+    } catch {
+      return false;
     }
   },
 
   /**
-   * Verificar se funcionário tem turno ativo
+   * Buscar turno ativo de um funcionário específico
+   * Retorna o turno completo ou null se não houver turno ativo
    */
-  async verificarTurnoAtivo(funcionarioId: string): Promise<boolean> {
+  async getTurnoAtivo(funcionarioId: string): Promise<TurnoFuncionario | null> {
     try {
-      const turnos = await this.getTurnosFuncionario(funcionarioId);
-      return turnos.some((t) => t.ativo && !t.checkOut);
-    } catch (error: unknown) {
-      console.error('Erro ao verificar turno ativo:', error);
-      return false;
+      const response = await api.get(`/turnos/funcionario/${funcionarioId}/ativo`);
+      return response.data;
+    } catch {
+      return null;
     }
   },
 };

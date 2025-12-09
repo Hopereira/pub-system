@@ -252,6 +252,20 @@ export class TurnoService {
     }
   }
 
+  /**
+   * Busca o turno ativo de um funcionário específico
+   */
+  async getTurnoAtivo(funcionarioId: string): Promise<TurnoFuncionario | null> {
+    return await this.turnoRepository.findOne({
+      where: {
+        funcionarioId,
+        ativo: true,
+        checkOut: IsNull(),
+      },
+      relations: ['funcionario', 'evento'],
+    });
+  }
+
   private formatarTempo(minutos: number): string {
     const horas = Math.floor(minutos / 60);
     const mins = minutos % 60;

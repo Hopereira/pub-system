@@ -102,8 +102,6 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
       valor: values.valor,
     };
     
-    console.log("Enviando para a API com data e hora combinadas:", payload);
-
     try {
       if (isEditMode && eventoToEdit) {
         await updateEvento(eventoToEdit.id, payload as UpdateEventoDto);
