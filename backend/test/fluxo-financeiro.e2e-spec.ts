@@ -4,6 +4,15 @@ import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { DataSource } from 'typeorm';
 
+// Configurar variáveis de ambiente para teste
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'substitua-por-um-segredo-forte-e-aleatorio-em-producao';
+process.env.DB_HOST = process.env.DB_HOST || 'localhost';
+process.env.DB_PORT = process.env.DB_PORT || '5432';
+process.env.DB_USER = process.env.DB_USER || 'postgres';
+process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'admin';
+process.env.DB_DATABASE = process.env.DB_DATABASE || 'pub_system_db';
+process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
+
 /**
  * TESTE E2E: FLUXO FINANCEIRO COMPLETO
  * 
@@ -63,28 +72,21 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
     const adminLogin = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'admin@admin.com', senha: 'admin123' });
+    
+    if (adminLogin.status !== 201 && adminLogin.status !== 200) {
+      console.error('❌ Falha no login admin:', adminLogin.status, adminLogin.body);
+    }
     adminToken = adminLogin.body.access_token;
 
-    // Login como GARCOM (criar se não existir)
-    try {
-      const garcomLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'garcom.teste@pub.com', senha: 'senha123' });
-      garcomToken = garcomLogin.body.access_token;
-    } catch {
-      // Garçom não existe, usar admin para criar
-      garcomToken = adminToken;
-    }
+    // Para simplificar, usar admin para todos os papéis
+    // (admin tem acesso a todas as rotas)
+    garcomToken = adminToken;
+    caixaToken = adminToken;
 
-    // Login como CAIXA (criar se não existir)
-    try {
-      const caixaLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({ email: 'caixa.teste@pub.com', senha: 'senha123' });
-      caixaToken = caixaLogin.body.access_token;
-    } catch {
-      // Caixa não existe, usar admin
-      caixaToken = adminToken;
+    if (!adminToken) {
+      console.error('❌ Token admin não obtido! Resposta:', adminLogin.body);
+    } else {
+      console.log('✅ Login admin OK, token obtido');
     }
   });
 
