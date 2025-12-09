@@ -106,21 +106,18 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
     });
 
     socket.on('connect', () => {
-      console.log('🔌 Socket conectado ao servidor (Caixa)');
+      // Socket conectado
     });
 
     socket.on('caixa_atualizado', (data: { aberturaCaixaId: string }) => {
-      console.log('💰 Evento caixa_atualizado recebido:', data);
-      
       // Atualizar apenas se for o caixa atual
       if (data.aberturaCaixaId === caixaAberto.id) {
-        console.log('✅ Atualizando resumo do caixa...');
         atualizarResumo();
       }
     });
 
     socket.on('disconnect', () => {
-      console.log('🔌 Socket desconectado (Caixa)');
+      // Socket desconectado
     });
 
     return () => {

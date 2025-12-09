@@ -24,15 +24,6 @@ export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageP
   
   const comandaId = comanda.id;
 
-  // Debug: verificar estado da comanda
-  console.log('🔍 ClienteHubPage - Estado da comanda:', {
-    temPontoEntrega: !!comandaAtualizada.pontoEntrega,
-    temMesa: !!comandaAtualizada.mesa,
-    pontoEntrega: comandaAtualizada.pontoEntrega,
-    mesa: comandaAtualizada.mesa,
-    deveriaMostrarBotoes: !!(comandaAtualizada.pontoEntrega || comandaAtualizada.mesa)
-  });
-
   const nomeAmigavel = comanda.cliente?.nome 
     ? comanda.cliente.nome 
     : comanda.mesa?.numero 
@@ -218,23 +209,12 @@ export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageP
         open={isLocalModalOpen}
         onOpenChange={setIsLocalModalOpen}
         onSuccess={async () => {
-          // Recarregar dados da comanda
-          console.log('✅ Modal fechado com sucesso, recarregando dados...');
           try {
             const comandaNova = await getPublicComandaById(comandaId);
-            console.log('📦 Dados recarregados:', {
-              temPontoEntrega: !!comandaNova?.pontoEntrega,
-              temMesa: !!comandaNova?.mesa,
-              pontoEntrega: comandaNova?.pontoEntrega,
-              mesa: comandaNova?.mesa
-            });
             if (comandaNova) {
               setComandaAtualizada(comandaNova);
-              console.log('✅ Estado atualizado!');
             }
-          } catch (error) {
-            console.error('❌ Erro ao recarregar comanda:', error);
-            // Fallback: recarrega a página
+          } catch {
             window.location.reload();
           }
         }}

@@ -74,7 +74,6 @@ export default function MapaPedidos() {
   // ✅ OTIMIZADO: Atualização incremental ao invés de recarregar tudo
   useEffect(() => {
     if (novoPedido) {
-      console.log('🆕 Novo pedido recebido, adicionando...');
       setPedidos((prev) => {
         // Evita duplicatas
         const exists = prev.some(p => p.id === novoPedido.id);
@@ -87,7 +86,6 @@ export default function MapaPedidos() {
   // ✅ OTIMIZADO: Atualiza apenas o pedido modificado
   useEffect(() => {
     if (pedidoAtualizado) {
-      console.log('🔄 Pedido atualizado, atualizando...');
       setPedidos((prev) => {
         const exists = prev.some(p => p.id === pedidoAtualizado.id);
         
@@ -120,14 +118,13 @@ export default function MapaPedidos() {
     if (novosProntos.length > 0 && pedidosProntosAnteriores.size > 0) {
       // Toca som de notificação
       const audio = new Audio('/sounds/notification.mp3');
-      audio.play().catch((err) => console.log('Erro ao tocar som:', err));
+      audio.play().catch(() => { /* Erro silencioso ao tocar som */ });
 
       // Mostra toast
       toast.success(`🔔 ${novosProntos.length} pedido(s) pronto(s) para entrega!`, {
         duration: 5000,
       });
 
-      console.log('🔔 Novos pedidos prontos:', novosProntos.length);
     }
 
     setPedidosProntosAnteriores(idsProntos);
@@ -137,7 +134,6 @@ export default function MapaPedidos() {
   useEffect(() => {
     if (!isConnected && !isLoading) {
       const intervalId = setInterval(() => {
-        console.log('🔄 Polling de fallback (WebSocket desconectado)...');
         loadPedidos();
       }, 60000); // 60 segundos
       
