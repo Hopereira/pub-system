@@ -35,15 +35,11 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
   const carregarMapa = async () => {
     try {
       setLoading(true);
-      console.log('🗺️ Carregando mapa do ambiente:', ambienteId);
       
       const dados = await mapaService.getMapa(ambienteId);
-      console.log('✅ Dados do mapa carregados:', dados);
       
       // Buscar pontos de entrega do ambiente
-      console.log('📍 Buscando pontos de entrega...');
       const pontos = await getPontosByAmbiente(ambienteId);
-      console.log('✅ Pontos encontrados:', pontos.length, pontos);
       
       // Mesclar pontos com dados do mapa
       setMapa({
@@ -54,10 +50,7 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
           tamanho: p.tamanho || { width: 100, height: 60 },
         })),
       });
-      
-      console.log('✅ Mapa configurado com sucesso');
     } catch (error) {
-      console.error('❌ Erro ao carregar mapa:', error);
       toast.error('Erro ao carregar mapa: ' + (error as Error).message);
     } finally {
       setLoading(false);

@@ -147,10 +147,7 @@ export const PedidoProntoCard = ({
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => {
-                      console.log('Botão Entregar clicado:', item.id);
-                      onMarcarEntregue(item.id);
-                    }}
+                    onClick={() => onMarcarEntregue(item.id)}
                     className="bg-green-600 hover:bg-green-700 min-w-[40px]"
                     title="Marcar como entregue"
                   >
@@ -159,10 +156,7 @@ export const PedidoProntoCard = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      console.log('Botão Deixar no Ambiente clicado:', item.id);
-                      onDeixarNoAmbiente(item.id);
-                    }}
+                    onClick={() => onDeixarNoAmbiente(item.id)}
                     className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-300 min-w-[40px]"
                     title="Deixar no ambiente (cliente não encontrado)"
                   >

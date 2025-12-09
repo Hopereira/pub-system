@@ -132,13 +132,33 @@ export class PedidoController {
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Lista todos os pedidos, com filtro opcional por ambiente',
+    summary: 'Lista todos os pedidos, com filtros opcionais',
+  })
+  @ApiQuery({
+    name: 'ambienteId',
+    required: false,
+    description: 'Filtrar por ambiente de preparo',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description:
+      'Filtrar por status do pedido (FEITO, EM_PREPARO, PRONTO, ENTREGUE, CANCELADO)',
+  })
+  @ApiQuery({
+    name: 'comandaId',
+    required: false,
+    description: 'Filtrar por comanda específica',
   })
   @ApiResponse({ status: 200, description: 'Lista de pedidos retornada.' })
   @ApiResponse({ status: 401, description: 'Não autenticado.' })
   @ApiResponse({ status: 403, description: 'Sem permissão.' })
-  findAll(@Query('ambienteId') ambienteId?: string) {
-    return this.pedidoService.findAll(ambienteId);
+  findAll(
+    @Query('ambienteId') ambienteId?: string,
+    @Query('status') status?: string,
+    @Query('comandaId') comandaId?: string,
+  ) {
+    return this.pedidoService.findAll({ ambienteId, status, comandaId });
   }
 
   @Get('prontos')

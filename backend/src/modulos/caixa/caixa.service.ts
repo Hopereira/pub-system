@@ -283,6 +283,46 @@ export class CaixaService {
   }
 
   /**
+   * Registra um suprimento (entrada de dinheiro no caixa)
+   */
+  async registrarSuprimento(dto: {
+    aberturaCaixaId: string;
+    valor: number;
+    motivo?: string;
+  }): Promise<MovimentacaoCaixa> {
+    const abertura = await this.aberturaRepository.findOne({
+      where: { id: dto.aberturaCaixaId },
+    });
+
+    if (!abertura) {
+      throw new NotFoundException('Abertura de caixa não encontrada');
+    }
+
+    if (abertura.status !== StatusCaixa.ABERTO) {
+      throw new BadRequestException('Caixa não está aberto');
+    }
+
+    // Registra movimentação de suprimento
+    const movimentacao = await this.registrarMovimentacao({
+      aberturaCaixaId: abertura.id,
+      tipo: TipoMovimentacao.SUPRIMENTO,
+      formaPagamento: FormaPagamento.DINHEIRO,
+      valor: dto.valor,
+      descricao: dto.motivo || 'Suprimento de caixa',
+      funcionarioId: abertura.funcionarioId,
+    });
+
+    this.logger.log(
+      `💵 Suprimento registrado | Valor: R$ ${dto.valor.toFixed(2)} | Motivo: ${dto.motivo || 'Não informado'}`,
+    );
+
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
+    return movimentacao;
+  }
+
+  /**
    * Registra uma venda (fechamento de comanda)
    */
   async registrarVenda(dto: CreateVendaDto): Promise<MovimentacaoCaixa> {

@@ -112,4 +112,19 @@ export class TurnoController {
     const fim = dataFim ? new Date(dataFim) : undefined;
     return this.turnoService.getEstatisticasFuncionario(id, inicio, fim);
   }
+
+  @Get('funcionario/:id/ativo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verificar se funcionário tem turno ativo' })
+  @ApiResponse({
+    status: 200,
+    description: 'Turno ativo do funcionário ou null',
+    type: TurnoResponseDto,
+  })
+  async getTurnoAtivo(
+    @Param('id') id: string,
+  ): Promise<TurnoResponseDto | null> {
+    return this.turnoService.getTurnoAtivo(id);
+  }
 }
