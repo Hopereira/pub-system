@@ -56,7 +56,6 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   // Recarrega dados quando recebe novo pedido via WebSocket
   useEffect(() => {
     if (novoPedidoRecebido) {
-      console.log('🆕 Novo pedido recebido, recarregando dados...');
       fetchDados();
     }
   }, [novoPedidoRecebido]);

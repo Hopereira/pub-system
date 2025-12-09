@@ -25,7 +25,7 @@ import { Cargo } from '../funcionario/enums/cargo.enum';
 @ApiBearerAuth()
 @Controller('caixa')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GERENTE)
+@Roles(Cargo.ADMIN, Cargo.CAIXA)
 export class CaixaController {
   constructor(private readonly caixaService: CaixaService) {}
 

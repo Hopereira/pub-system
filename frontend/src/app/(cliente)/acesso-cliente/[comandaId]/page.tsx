@@ -283,7 +283,6 @@ export default function ComandaClientePage() {
                     open={isLocalModalOpen}
                     onOpenChange={setIsLocalModalOpen}
                     onSuccess={async () => {
-                        console.log('✅ Local alterado, recarregando...');
                         window.location.reload();
                     }}
                 />

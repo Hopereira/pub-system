@@ -121,12 +121,21 @@ export class CaixaService {
       where: { aberturaCaixaId: abertura.id, tipo: TipoMovimentacao.VENDA },
     });
 
-    const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
-
     // Busca sangrias
     const sangrias = await this.sangriaRepository.find({
       where: { aberturaCaixaId: abertura.id },
     });
+
+    // Validação: Não permite fechar caixa sem nenhuma movimentação
+    // (exceto se forçar fechamento via flag)
+    if (movimentacoes.length === 0 && sangrias.length === 0 && !dto.forcarFechamento) {
+      throw new BadRequestException(
+        'Não é possível fechar o caixa sem movimentações. ' +
+        'Se deseja fechar mesmo assim, marque a opção "Forçar fechamento".'
+      );
+    }
+
+    const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
 
     const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
 

@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min, IsUUID } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, IsUUID, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateFechamentoCaixaDto {
@@ -71,4 +71,14 @@ export class CreateFechamentoCaixaDto {
   @IsOptional()
   @IsString()
   observacao?: string;
+
+  @ApiProperty({
+    description: 'Forçar fechamento mesmo sem movimentações (requer justificativa)',
+    example: false,
+    required: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  forcarFechamento?: boolean;
 }

@@ -16,10 +16,10 @@ import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
 import { FecharComandaDto } from './dto/fechar-comanda.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
-import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from 'src/auth/decorators/public.decorator';
 import {
   ApiBearerAuth,
