@@ -334,10 +334,13 @@ pub-system/
 │   │   │   ├── medalha/    # Sistema de gamificação (/medalhas) ✨
 │   │   │   ├── mesa/       # Gestão de mesas (/mesas)
 │   │   │   ├── pagina-evento/ # Landing pages (/paginas-evento)
-│   │   │   ├── pedido/     # Sistema de pedidos (/pedidos) + WebSocket
+│   │   │   ├── pedido/     # Sistema de pedidos (/pedidos) + WebSocket + Analytics
+│   │   │   │   ├── pedidos.gateway.ts    # WebSocket Gateway ✨
+│   │   │   │   └── quase-pronto.scheduler.ts # Job agendado ✨
 │   │   │   ├── ponto-entrega/ # Pontos de entrega (/pontos-entrega) ✨
 │   │   │   ├── produto/    # Gestão de produtos (/produtos)
-│   │   │   └── turno/      # Check-in/Check-out (/turnos) ✨
+│   │   │   └── turno/      # Check-in/Check-out (/turnos) + WebSocket ✨
+│   │   │       └── turno.gateway.ts      # WebSocket Gateway ✨
 │   │   ├── shared/         # Módulos compartilhados
 │   │   └── types/          # Definições de tipos
 │   ├── test/               # Testes automatizados
@@ -392,18 +395,18 @@ pub-system/
 ├── .env                   # Variáveis de ambiente
 ├── setup.ps1              # Script de configuração automática
 ├── verify-setup.ps1       # Script de verificação
-└── Documentação (70+ arquivos):
-    ├── README.md          # Este arquivo
-    ├── SETUP.md           # Guia completo de configuração
-    ├── MIGRATIONS.md      # Guia de migrations
-    ├── ROADMAP_GARCOM.md  # Roadmap do sistema do garçom ✨
-    ├── SISTEMA_RASTREAMENTO_COMPLETO.md # Rastreamento ✨
-    ├── MODULO_RELATORIOS_IMPLEMENTADO.md # Analytics ✨
-    ├── MAPA_VISUAL_GARCOM.md # Mapa visual ✨
-    ├── MAPA_INTERATIVO_MOBILE.md # Interatividade mobile ✨
-    ├── PEDIDO_RAPIDO_MAPA.md # Pedido rápido ✨
-    ├── MELHORIAS_GESTAO_PEDIDOS_GARCOM.md # Melhorias ✨
-    └── ... (60+ outros documentos técnicos)
+└── docs/                  # Documentação organizada (100+ arquivos)
+    ├── INDICE_GERAL.md    # Mapa de navegação
+    ├── 00-10-*.md         # Visões por perfil de usuário
+    ├── manuais/           # Guias definitivos
+    │   ├── SETUP.md       # Guia de configuração
+    │   └── GUIA-TESTES-FASE1.md
+    ├── tecnico/           # Arquitetura e migrations
+    │   ├── MIGRATIONS.md  # Guia de migrations
+    │   └── SECURITY.md    # Políticas de segurança
+    ├── troubleshooting/   # Soluções de problemas (FIX_, CORRECAO_)
+    ├── relatorios/        # PRs e relatórios de validação
+    └── historico/         # Logs de sessões antigas
 ```
 
 **✨ = Funcionalidades novas/destacadas**
@@ -507,52 +510,41 @@ ADMIN_SENHA=admin123
 
 ## 📚 Documentação
 
-### 📖 Documentação Principal
+> 📁 **Toda documentação está organizada em `docs/`** - Ver [INDICE_GERAL.md](./docs/INDICE_GERAL.md)
+
+### 📖 Por Onde Começar
 | Documento | Descrição |
 |-----------|-----------|
-| 📚 **[DOCUMENTACAO_TECNICA_COMPLETA.md](./DOCUMENTACAO_TECNICA_COMPLETA.md)** | Documentação técnica completa do sistema ✨ |
-| 📊 **[STATUS_COMPLETO_SISTEMA_CORRIGIDO.md](./STATUS_COMPLETO_SISTEMA_CORRIGIDO.md)** | Status atualizado e corrigido (99% completo) ✨ |
+| 📚 **[docs/INDICE_GERAL.md](./docs/INDICE_GERAL.md)** | Mapa de navegação da documentação |
+| 📊 **[docs/01-VISAO-GERAL-SISTEMA.md](./docs/01-VISAO-GERAL-SISTEMA.md)** | Arquitetura completa do sistema |
 
-### 🚀 Início Rápido
+### 🚀 Manuais (`docs/manuais/`)
 | Documento | Descrição |
 |-----------|-----------|
-| 📘 **[SETUP.md](./SETUP.md)** | Guia completo de configuração |
-| 📗 **[MIGRATIONS.md](./MIGRATIONS.md)** | Guia de migrations |
-| ⚙️ **[CONFIGURATION.md](./CONFIGURATION.md)** | Resumo das configurações |
+| 📘 **[SETUP.md](./docs/manuais/SETUP.md)** | Guia completo de configuração |
+| 📗 **[GUIA-TESTES-FASE1.md](./docs/manuais/GUIA-TESTES-FASE1.md)** | Como testar o sistema |
 
-### 👨‍🍳 Sistema do Garçom
+### 🔧 Técnico (`docs/tecnico/`)
 | Documento | Descrição |
 |-----------|-----------|
-| 🗺️ **[ROADMAP_GARCOM.md](./ROADMAP_GARCOM.md)** | Roadmap completo do sistema ✨ |
-| 🗺️ **[MAPA_VISUAL_GARCOM.md](./MAPA_VISUAL_GARCOM.md)** | Mapa visual interativo ✨ |
-| 📱 **[MAPA_INTERATIVO_MOBILE.md](./MAPA_INTERATIVO_MOBILE.md)** | Interatividade mobile ✨ |
-| ⚡ **[PEDIDO_RAPIDO_MAPA.md](./PEDIDO_RAPIDO_MAPA.md)** | Pedido rápido (42% mais rápido) ✨ |
-| 🎯 **[MELHORIAS_GESTAO_PEDIDOS_GARCOM.md](./MELHORIAS_GESTAO_PEDIDOS_GARCOM.md)** | Melhorias na gestão ✨ |
-| ⏰ **[COMO_TESTAR_CHECK_IN.md](./COMO_TESTAR_CHECK_IN.md)** | Testar check-in/check-out ✨ |
+| 📗 **[MIGRATIONS.md](./docs/tecnico/MIGRATIONS.md)** | Guia de migrations |
+| 🔒 **[SECURITY.md](./docs/tecnico/SECURITY.md)** | Políticas de segurança |
+| 📚 **[DOCUMENTACAO_TECNICA_COMPLETA.md](./docs/tecnico/DOCUMENTACAO_TECNICA_COMPLETA.md)** | Documentação técnica |
 
-### 📊 Analytics e Rastreamento
-| Documento | Descrição |
-|-----------|-----------|
-| 📈 **[MODULO_RELATORIOS_IMPLEMENTADO.md](./MODULO_RELATORIOS_IMPLEMENTADO.md)** | Módulo de relatórios completo ✨ |
-| 🔍 **[SISTEMA_RASTREAMENTO_COMPLETO.md](./SISTEMA_RASTREAMENTO_COMPLETO.md)** | Sistema de rastreamento ✨ |
-| 📊 **[FEATURE_ANALYTICS_RELATORIOS.md](./FEATURE_ANALYTICS_RELATORIOS.md)** | Feature de analytics |
+### 🔥 Troubleshooting (`docs/troubleshooting/`)
+| Prefixo | Descrição |
+|---------|-----------|
+| `FIX_*` | Correções de bugs documentadas |
+| `CORRECAO_*` | Soluções de problemas |
+| `SOLUCAO_*` | Guias de resolução |
 
-### 🔔 Notificações e WebSocket
-| Documento | Descrição |
-|-----------|-----------|
-| 🔔 **[NOTIFICACOES.md](./NOTIFICACOES.md)** | Sistema de notificações |
-| 🔧 **[IMPLEMENTACAO_NOTIFICACOES.md](./IMPLEMENTACAO_NOTIFICACOES.md)** | Implementação técnica |
+### 📊 Relatórios (`docs/relatorios/`)
+PRs, checklists e relatórios de validação.
 
-### 🧪 Testes e Dados
-| Documento | Descrição |
-|-----------|-----------|
-| 🧪 **[CREATE_TEST_DATA.md](./CREATE_TEST_DATA.md)** | Criação de dados de teste |
-| 📊 **[DADOS_TESTE.md](./DADOS_TESTE.md)** | Dados de exemplo |
+### 📜 Histórico (`docs/historico/`)
+Logs de sessões antigas e implementações passadas.
 
-### 📝 Outros Documentos
-**Total:** 70+ arquivos de documentação técnica detalhada
-
-**✨ = Documentos novos/destacados**
+**Total:** 100+ arquivos de documentação técnica organizada
 
 ---
 
