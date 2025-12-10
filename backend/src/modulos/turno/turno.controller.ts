@@ -26,33 +26,44 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 
 @ApiTags('Turnos')
 @Controller('turnos')
 export class TurnoController {
   constructor(private readonly turnoService: TurnoService) {}
 
+  // ✅ CORREÇÃO: Adicionado autenticação JWT e rate limiting restritivo
   @Post('check-in')
-  @ApiOperation({ summary: 'Fazer check-in (iniciar turno)' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Máximo 5 check-ins por minuto
+  @ApiOperation({ summary: 'Fazer check-in (iniciar turno) - Requer autenticação' })
   @ApiResponse({
     status: 201,
     description: 'Check-in realizado com sucesso',
     type: TurnoResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Já existe check-in ativo' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado' })
   async checkIn(@Body() checkInDto: CheckInDto): Promise<TurnoResponseDto> {
     return this.turnoService.checkIn(checkInDto);
   }
 
+  // ✅ CORREÇÃO: Adicionado autenticação JWT e rate limiting restritivo
   @Post('check-out')
-  @ApiOperation({ summary: 'Fazer check-out (finalizar turno)' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Máximo 5 check-outs por minuto
+  @ApiOperation({ summary: 'Fazer check-out (finalizar turno) - Requer autenticação' })
   @ApiResponse({
     status: 200,
     description: 'Check-out realizado com sucesso',
     type: TurnoResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Nenhum check-in ativo encontrado' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
   async checkOut(@Body() checkOutDto: CheckOutDto): Promise<TurnoResponseDto> {
     return this.turnoService.checkOut(checkOutDto);
   }

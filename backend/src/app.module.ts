@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
@@ -29,6 +31,11 @@ import { JobsModule } from './jobs/jobs.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     ScheduleModule.forRoot(), // Habilita jobs agendados
+    // Rate Limiting global - 100 requisições por minuto por IP
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minuto em milissegundos
+      limit: 100, // 100 requisições por minuto
+    }]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -68,6 +75,12 @@ import { JobsModule } from './jobs/jobs.module';
     JobsModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    // Aplica rate limiting globalmente
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

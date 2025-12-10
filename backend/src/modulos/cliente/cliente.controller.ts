@@ -25,6 +25,7 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Clientes')
 @Controller('clientes')
@@ -90,20 +91,26 @@ export class ClienteController {
   }
 
   // NOVA ROTA PÚBLICA PARA BUSCA POR CPF
+  // ✅ CORREÇÃO: Rate limiting restritivo para evitar enumeração de CPFs
   @Public()
   @Get('by-cpf') // Novo endpoint: /clientes/by-cpf?cpf=...
-  @ApiOperation({ summary: 'Busca um cliente por CPF (Rota Pública).' })
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // Máximo 10 buscas por minuto
+  @ApiOperation({ summary: 'Busca um cliente por CPF (Rota Pública - Rate Limited).' })
   @ApiResponse({ status: 200, description: 'Cliente encontrado.' })
   @ApiResponse({ status: 404, description: 'Cliente não encontrado.' })
+  @ApiResponse({ status: 429, description: 'Muitas requisições. Tente novamente em 1 minuto.' })
   findByCpfPublic(@Query('cpf') cpf: string) {
     return this.clienteService.findByCpf(cpf); // Assumindo que findByCpf lança 404
   }
 
   // NOVA ROTA PÚBLICA PARA BUSCA FLEXÍVEL
+  // ✅ CORREÇÃO: Rate limiting restritivo para evitar abuso
   @Public()
   @Get('buscar') // Novo endpoint: /clientes/buscar?q=termo
-  @ApiOperation({ summary: 'Busca clientes por nome ou CPF (Rota Pública).' })
+  @Throttle({ default: { limit: 15, ttl: 60000 } }) // Máximo 15 buscas por minuto
+  @ApiOperation({ summary: 'Busca clientes por nome ou CPF (Rota Pública - Rate Limited).' })
   @ApiResponse({ status: 200, description: 'Lista de clientes encontrados.' })
+  @ApiResponse({ status: 429, description: 'Muitas requisições. Tente novamente em 1 minuto.' })
   buscar(@Query('q') termo: string) {
     return this.clienteService.buscar(termo);
   }

@@ -28,6 +28,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Comandas')
 // ✅ MUDANÇA: A proteção geral foi movida para cada rota individualmente,
@@ -37,15 +38,17 @@ export class ComandaController {
   constructor(private readonly comandaService: ComandaService) {}
 
   // =======================================================
-  // ✅ ROTA CORRIGIDA PARA SER PÚBLICA
+  // ✅ ROTA PÚBLICA COM RATE LIMITING
   // =======================================================
   @Public() // Permite que qualquer pessoa (incluindo novos clientes) acesse esta rota.
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // Máximo 10 comandas por minuto por IP
   @ApiOperation({
     summary:
-      'Cria uma nova comanda (Rota Pública para novos clientes ou privada para funcionários)',
+      'Cria uma nova comanda (Rota Pública - Rate Limited)',
   })
   @ApiResponse({ status: 201, description: 'Comanda criada com sucesso.' })
+  @ApiResponse({ status: 429, description: 'Muitas requisições. Tente novamente em 1 minuto.' })
   create(@Body() createComandaDto: CreateComandaDto) {
     return this.comandaService.create(createComandaDto);
   }
@@ -146,11 +149,13 @@ export class ComandaController {
     return this.comandaService.remove(id);
   }
 
+  // ✅ CORREÇÃO: Rate limiting para evitar abuso
   @Public()
   @Patch(':id/local')
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // Máximo 20 atualizações por minuto
   @ApiOperation({
     summary:
-      'Atualizar local da comanda - mesa ou ponto de entrega (Rota Pública)',
+      'Atualizar local da comanda - mesa ou ponto de entrega (Rota Pública - Rate Limited)',
   })
   @ApiResponse({ status: 200, description: 'Local atualizado com sucesso' })
   @ApiResponse({
@@ -161,6 +166,7 @@ export class ComandaController {
     status: 404,
     description: 'Comanda, mesa ou ponto de entrega não encontrado',
   })
+  @ApiResponse({ status: 429, description: 'Muitas requisições. Tente novamente em 1 minuto.' })
   updateLocal(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: { mesaId?: string | null; pontoEntregaId?: string | null },
@@ -168,11 +174,13 @@ export class ComandaController {
     return this.comandaService.updateLocal(id, dto);
   }
 
+  // ✅ CORREÇÃO: Rate limiting para evitar abuso
   @Public()
   @Patch(':id/ponto-entrega')
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // Máximo 20 atualizações por minuto
   @ApiOperation({
     summary:
-      'Atualizar ponto de entrega da comanda (cliente pode mudar de local)',
+      'Atualizar ponto de entrega da comanda (cliente pode mudar de local - Rate Limited)',
   })
   @ApiResponse({
     status: 200,
@@ -190,6 +198,7 @@ export class ComandaController {
     status: 404,
     description: 'Comanda ou ponto de entrega não encontrado',
   })
+  @ApiResponse({ status: 429, description: 'Muitas requisições. Tente novamente em 1 minuto.' })
   updatePontoEntrega(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePontoEntregaComandaDto,

@@ -24,6 +24,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Funcionários') // Agrupa todos os endpoints sob a tag "Funcionários"
 @Controller('funcionarios')
@@ -44,9 +45,11 @@ export class FuncionarioController {
   }
 
   // --- REGISTRO PÚBLICO (Primeiro usuário vira ADMIN) ---
+  // ✅ CORREÇÃO: Rate limiting muito restritivo para evitar brute force
   @Post('registro')
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // Máximo 3 tentativas por minuto
   @ApiOperation({
-    summary: 'Registro público de primeiro acesso',
+    summary: 'Registro público de primeiro acesso (Rate Limited)',
     description:
       'O primeiro usuário a se registrar automaticamente vira ADMIN. Depois disso, apenas ADMIN pode criar novos funcionários.',
   })
@@ -57,6 +60,7 @@ export class FuncionarioController {
       'Já existe um usuário no sistema. Use o endpoint /funcionarios para criar novos.',
   })
   @ApiResponse({ status: 409, description: 'Conflito. O e-mail já existe.' })
+  @ApiResponse({ status: 429, description: 'Muitas tentativas. Aguarde 1 minuto.' })
   async registro(@Body() createFuncionarioDto: CreateFuncionarioDto) {
     return this.funcionarioService.registroPrimeiroAcesso(createFuncionarioDto);
   }
