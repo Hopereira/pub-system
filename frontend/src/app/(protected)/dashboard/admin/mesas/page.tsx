@@ -23,7 +23,7 @@ import { useRouter } from 'next/navigation';
 
 const formSchema = z.object({
   numero: z.coerce.number().min(1, { message: 'O número da mesa é obrigatório.' }),
-  ambienteId: z.string({ required_error: 'Por favor, selecione um ambiente.' }),
+  ambienteId: z.string({ message: 'Por favor, selecione um ambiente.' }),
 });
 type FormValues = z.infer<typeof formSchema>;
 
@@ -39,7 +39,7 @@ const GestaoMesasPage = () => {
   const [mesaToDelete, setMesaToDelete] = useState<Mesa | null>(null);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: { numero: undefined, ambienteId: undefined },
   });
 

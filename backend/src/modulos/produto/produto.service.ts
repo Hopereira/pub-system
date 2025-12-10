@@ -23,12 +23,19 @@ export class ProdutoService {
   ) {}
 
   // --- 3. MÉTODO 'CREATE' ATUALIZADO ---
-  async create(createProdutoDto: CreateProdutoDto, imagemFile?: Express.Multer.File): Promise<Produto> {
+  async create(
+    createProdutoDto: CreateProdutoDto,
+    imagemFile?: Express.Multer.File,
+  ): Promise<Produto> {
     const { ambienteId, ...restoDoDto } = createProdutoDto;
-    const ambiente = await this.ambienteRepository.findOne({ where: { id: ambienteId } });
-    
+    const ambiente = await this.ambienteRepository.findOne({
+      where: { id: ambienteId },
+    });
+
     if (!ambiente) {
-      throw new NotFoundException(`Ambiente com ID ${ambienteId} não encontrado.`);
+      throw new NotFoundException(
+        `Ambiente com ID ${ambienteId} não encontrado.`,
+      );
     }
 
     const produto = this.produtoRepository.create({
@@ -46,7 +53,11 @@ export class ProdutoService {
   }
 
   // --- 4. MÉTODO 'UPDATE' ATUALIZADO ---
-  async update(id: string, updateProdutoDto: UpdateProdutoDto, imagemFile?: Express.Multer.File): Promise<Produto> {
+  async update(
+    id: string,
+    updateProdutoDto: UpdateProdutoDto,
+    imagemFile?: Express.Multer.File,
+  ): Promise<Produto> {
     const produto = await this.produtoRepository.preload({
       id: id,
       ...updateProdutoDto,
@@ -62,20 +73,29 @@ export class ProdutoService {
       if (produto.urlImagem) {
         try {
           await this.storageService.deleteFile(produto.urlImagem);
-          this.logger.log(`Imagem antiga deletada do GCS: ${produto.urlImagem}`);
+          this.logger.log(
+            `Imagem antiga deletada do GCS: ${produto.urlImagem}`,
+          );
         } catch (error) {
-          this.logger.error(`Falha ao deletar imagem antiga do GCS: ${produto.urlImagem}`, error);
+          this.logger.error(
+            `Falha ao deletar imagem antiga do GCS: ${produto.urlImagem}`,
+            error,
+          );
         }
       }
       // Faz o upload da nova imagem e atualiza a URL
       produto.urlImagem = await this.storageService.uploadFile(imagemFile);
       this.logger.log(`Nova URL de imagem do GCS: ${produto.urlImagem}`);
     }
-    
+
     if (updateProdutoDto.ambienteId) {
-      const ambiente = await this.ambienteRepository.findOne({ where: { id: updateProdutoDto.ambienteId } });
+      const ambiente = await this.ambienteRepository.findOne({
+        where: { id: updateProdutoDto.ambienteId },
+      });
       if (!ambiente) {
-        throw new NotFoundException(`Ambiente com ID "${updateProdutoDto.ambienteId}" não encontrado.`);
+        throw new NotFoundException(
+          `Ambiente com ID "${updateProdutoDto.ambienteId}" não encontrado.`,
+        );
       }
       produto.ambiente = ambiente;
     }
@@ -86,14 +106,19 @@ export class ProdutoService {
   // --- 5. MÉTODO 'REMOVE' ATUALIZADO ---
   async remove(id: string): Promise<Produto> {
     const produto = await this.findOne(id);
-    
+
     // Se o produto que está a ser inativado tem uma imagem, deleta-a do GCS
     if (produto.urlImagem) {
       try {
         await this.storageService.deleteFile(produto.urlImagem);
-        this.logger.log(`Imagem do produto inativado deletada do GCS: ${produto.urlImagem}`);
+        this.logger.log(
+          `Imagem do produto inativado deletada do GCS: ${produto.urlImagem}`,
+        );
       } catch (error) {
-        this.logger.error(`Falha ao deletar imagem do GCS: ${produto.urlImagem}`, error);
+        this.logger.error(
+          `Falha ao deletar imagem do GCS: ${produto.urlImagem}`,
+          error,
+        );
       }
     }
 

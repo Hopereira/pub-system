@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-import { Mesa } from '@/types/mesa';
+import { Mesa, MesaStatus } from '@/types/mesa';
 import { getMesas } from '@/services/mesaService';
 import { abrirComanda, getComandaAbertaPorMesa } from '@/services/comandaService';
 import MesaCard from './MesaCard';
@@ -68,7 +68,7 @@ export default function MapaMesasClient() {
       await abrirComanda({ mesaId: mesaParaAbrir.id });
       setMesas(currentMesas =>
         currentMesas.map(m =>
-          m.id === mesaParaAbrir.id ? { ...m, status: 'OCUPADA' } : m,
+          m.id === mesaParaAbrir.id ? { ...m, status: MesaStatus.OCUPADA } : m,
         ),
       );
     } catch (err) {

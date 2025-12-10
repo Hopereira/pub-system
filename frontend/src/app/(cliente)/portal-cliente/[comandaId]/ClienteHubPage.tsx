@@ -12,25 +12,17 @@ import { MapPin, ShoppingBag, Receipt, Calendar, User } from 'lucide-react';
 import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
 import { getPublicComandaById } from '@/services/comandaService';
 
-interface ClienteHubPageProps {
+export interface ClienteHubPageProps {
   comanda: Comanda;
+  paginaAtiva?: import('@/types/pagina-evento').PaginaEvento | null;
 }
 
-export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
+export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageProps) {
   const [isEventosModalOpen, setIsEventosModalOpen] = useState(false);
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [comandaAtualizada, setComandaAtualizada] = useState(comanda); 
   
   const comandaId = comanda.id;
-
-  // Debug: verificar estado da comanda
-  console.log('🔍 ClienteHubPage - Estado da comanda:', {
-    temPontoEntrega: !!comandaAtualizada.pontoEntrega,
-    temMesa: !!comandaAtualizada.mesa,
-    pontoEntrega: comandaAtualizada.pontoEntrega,
-    mesa: comandaAtualizada.mesa,
-    deveriaMostrarBotoes: !!(comandaAtualizada.pontoEntrega || comandaAtualizada.mesa)
-  });
 
   const nomeAmigavel = comanda.cliente?.nome 
     ? comanda.cliente.nome 
@@ -217,23 +209,12 @@ export default function ClienteHubPage({ comanda }: ClienteHubPageProps) {
         open={isLocalModalOpen}
         onOpenChange={setIsLocalModalOpen}
         onSuccess={async () => {
-          // Recarregar dados da comanda
-          console.log('✅ Modal fechado com sucesso, recarregando dados...');
           try {
             const comandaNova = await getPublicComandaById(comandaId);
-            console.log('📦 Dados recarregados:', {
-              temPontoEntrega: !!comandaNova?.pontoEntrega,
-              temMesa: !!comandaNova?.mesa,
-              pontoEntrega: comandaNova?.pontoEntrega,
-              mesa: comandaNova?.mesa
-            });
             if (comandaNova) {
               setComandaAtualizada(comandaNova);
-              console.log('✅ Estado atualizado!');
             }
-          } catch (error) {
-            console.error('❌ Erro ao recarregar comanda:', error);
-            // Fallback: recarrega a página
+          } catch {
             window.location.reload();
           }
         }}

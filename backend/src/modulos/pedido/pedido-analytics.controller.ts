@@ -26,7 +26,7 @@ export class PedidoAnalyticsController {
     if (filtro.dataFim) {
       filtro.dataFim = new Date(filtro.dataFim);
     }
-    
+
     return this.analyticsService.gerarRelatorioGeral(filtro);
   }
 
@@ -44,7 +44,7 @@ export class PedidoAnalyticsController {
     if (filtro.dataFim) {
       filtro.dataFim = new Date(filtro.dataFim);
     }
-    
+
     return this.analyticsService.getTemposPedidos(filtro);
   }
 }

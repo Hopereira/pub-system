@@ -10,7 +10,12 @@ import {
   UseGuards,
   Put,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PontoEntregaService } from './ponto-entrega.service';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
 import { UpdatePontoEntregaDto } from './dto/update-ponto-entrega.dto';
@@ -54,7 +59,9 @@ export class PontoEntregaController {
 
   @Get('ambiente/:ambienteId')
   @Roles(Cargo.ADMIN, Cargo.GARCOM)
-  @ApiOperation({ summary: 'Listar pontos de entrega de um ambiente específico' })
+  @ApiOperation({
+    summary: 'Listar pontos de entrega de um ambiente específico',
+  })
   @ApiResponse({ status: 200, description: 'Lista de pontos do ambiente' })
   findByAmbiente(@Param('ambienteId') ambienteId: string) {
     return this.pontoEntregaService.findByAmbiente(ambienteId);
@@ -100,7 +107,10 @@ export class PontoEntregaController {
   @Roles(Cargo.ADMIN)
   @ApiOperation({ summary: 'Atualizar posição do ponto no mapa (Admin)' })
   @ApiResponse({ status: 200, description: 'Posição atualizada com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Apenas Administradores.',
+  })
   @ApiResponse({ status: 404, description: 'Ponto não encontrado.' })
   atualizarPosicao(
     @Param('id') id: string,

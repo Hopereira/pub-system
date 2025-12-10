@@ -16,21 +16,25 @@ import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
+// ✅ 2. Importar CaixaModule para integração com sistema de pagamentos
+import { CaixaModule } from '../caixa/caixa.module';
+
 @Module({
   imports: [
-    // ✅ 2. Adicionar TODAS as entidades que o ComandaService agora utiliza
+    // ✅ 3. Adicionar TODAS as entidades que o ComandaService agora utiliza
     TypeOrmModule.forFeature([
-      Comanda, 
-      Mesa, 
-      Cliente, 
+      Comanda,
+      Mesa,
+      Cliente,
       PaginaEvento,
       Evento,
       Pedido,
       ItemPedido,
       PontoEntrega,
       ComandaAgregado,
-    ]), 
+    ]),
     PedidoModule, // Mantemos a importação do PedidoModule para acesso ao Gateway
+    CaixaModule, // ✅ Módulo de caixa para registrar vendas
   ],
   controllers: [ComandaController],
   providers: [ComandaService],

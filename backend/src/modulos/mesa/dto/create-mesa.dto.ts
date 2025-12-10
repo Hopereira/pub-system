@@ -1,7 +1,16 @@
 // Caminho: backend/src/modulos/mesa/dto/create-mesa.dto.ts
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsPositive, IsUUID, IsOptional, ValidateNested, IsInt, Min, Max } from 'class-validator';
+import {
+  IsNumber,
+  IsPositive,
+  IsUUID,
+  IsOptional,
+  ValidateNested,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PosicaoDto, TamanhoDto } from './mapa.dto';
 

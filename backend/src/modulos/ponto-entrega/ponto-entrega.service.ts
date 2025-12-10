@@ -1,5 +1,10 @@
 // Caminho: backend/src/modulos/ponto-entrega/ponto-entrega.service.ts
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
@@ -19,7 +24,10 @@ export class PontoEntregaService {
     private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
-  async create(createDto: CreatePontoEntregaDto, empresaId?: string): Promise<PontoEntrega> {
+  async create(
+    createDto: CreatePontoEntregaDto,
+    empresaId?: string,
+  ): Promise<PontoEntrega> {
     this.logger.log(`📍 Criando ponto de entrega: ${createDto.nome}`);
 
     // Se empresaId não foi fornecido, buscar a primeira empresa
@@ -30,7 +38,9 @@ export class PontoEntregaService {
         throw new BadRequestException('Nenhuma empresa cadastrada no sistema');
       }
       finalEmpresaId = empresa.id;
-      this.logger.log(`🏢 Usando empresa padrão: ${empresa.nomeFantasia} (${finalEmpresaId})`);
+      this.logger.log(
+        `🏢 Usando empresa padrão: ${empresa.nomeFantasia} (${finalEmpresaId})`,
+      );
     }
 
     const ponto = this.pontoEntregaRepository.create({
@@ -40,8 +50,10 @@ export class PontoEntregaService {
 
     const novoPonto = await this.pontoEntregaRepository.save(ponto);
 
-    this.logger.log(`✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id})`);
-    
+    this.logger.log(
+      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id})`,
+    );
+
     return this.findOne(novoPonto.id);
   }
 
@@ -62,7 +74,7 @@ export class PontoEntregaService {
     });
 
     this.logger.log(`📋 Listando ${pontos.length} pontos de entrega`);
-    
+
     return pontos;
   }
 
@@ -77,7 +89,9 @@ export class PontoEntregaService {
     }
 
     const pontos = await this.pontoEntregaRepository.find({
-      where: finalEmpresaId ? { empresaId: finalEmpresaId, ativo: true } : { ativo: true },
+      where: finalEmpresaId
+        ? { empresaId: finalEmpresaId, ativo: true }
+        : { ativo: true },
       relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
       order: { nome: 'ASC' },
     });
@@ -87,7 +101,7 @@ export class PontoEntregaService {
 
   async findByAmbiente(ambienteId: string): Promise<PontoEntrega[]> {
     this.logger.log(`🔍 Buscando pontos de entrega do ambiente: ${ambienteId}`);
-    
+
     // Buscar pontos que estão fisicamente neste ambiente (atendimento)
     // OU que têm este ambiente como preparo (para compatibilidade)
     const pontos = await this.pontoEntregaRepository.find({
@@ -100,25 +114,35 @@ export class PontoEntregaService {
     });
 
     this.logger.log(`📋 Encontrados ${pontos.length} pontos no ambiente`);
-    
+
     return pontos;
   }
 
   async findOne(id: string): Promise<PontoEntrega> {
     const ponto = await this.pontoEntregaRepository.findOne({
       where: { id },
-      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo', 'empresa'],
+      relations: [
+        'mesaProxima',
+        'ambienteAtendimento',
+        'ambientePreparo',
+        'empresa',
+      ],
     });
 
     if (!ponto) {
       this.logger.warn(`⚠️ Ponto de entrega não encontrado: ${id}`);
-      throw new NotFoundException(`Ponto de entrega com ID "${id}" não encontrado.`);
+      throw new NotFoundException(
+        `Ponto de entrega com ID "${id}" não encontrado.`,
+      );
     }
 
     return ponto;
   }
 
-  async update(id: string, updateDto: UpdatePontoEntregaDto): Promise<PontoEntrega> {
+  async update(
+    id: string,
+    updateDto: UpdatePontoEntregaDto,
+  ): Promise<PontoEntrega> {
     const ponto = await this.findOne(id);
 
     this.logger.log(`🔄 Atualizando ponto de entrega: ${ponto.nome}`);
@@ -143,31 +167,38 @@ export class PontoEntregaService {
       .getCount();
 
     if (comandasUsando > 0) {
-      this.logger.warn(`⚠️ Tentativa de excluir ponto com ${comandasUsando} comandas ativas`);
+      this.logger.warn(
+        `⚠️ Tentativa de excluir ponto com ${comandasUsando} comandas ativas`,
+      );
       throw new BadRequestException(
-        `Não é possível excluir o ponto "${ponto.nome}" pois existem ${comandasUsando} comandas ativas usando-o.`
+        `Não é possível excluir o ponto "${ponto.nome}" pois existem ${comandasUsando} comandas ativas usando-o.`,
       );
     }
 
     this.logger.log(`🗑️ Excluindo ponto de entrega: ${ponto.nome}`);
-    
+
     await this.pontoEntregaRepository.remove(ponto);
-    
+
     this.logger.log(`✅ Ponto de entrega excluído: ${ponto.nome}`);
   }
 
   async toggleAtivo(id: string): Promise<PontoEntrega> {
     const ponto = await this.findOne(id);
-    
+
     ponto.ativo = !ponto.ativo;
     await this.pontoEntregaRepository.save(ponto);
 
-    this.logger.log(`🔄 Ponto ${ponto.nome} ${ponto.ativo ? 'ativado' : 'desativado'}`);
+    this.logger.log(
+      `🔄 Ponto ${ponto.nome} ${ponto.ativo ? 'ativado' : 'desativado'}`,
+    );
 
     return ponto;
   }
 
-  async atualizarPosicao(id: string, dto: AtualizarPosicaoMesaDto): Promise<PontoEntrega> {
+  async atualizarPosicao(
+    id: string,
+    dto: AtualizarPosicaoMesaDto,
+  ): Promise<PontoEntrega> {
     const ponto = await this.findOne(id);
 
     ponto.posicao = dto.posicao;
@@ -176,8 +207,10 @@ export class PontoEntregaService {
     }
 
     const pontoAtualizado = await this.pontoEntregaRepository.save(ponto);
-    this.logger.log(`📍 Ponto ${ponto.nome} posição atualizada: (${dto.posicao.x}, ${dto.posicao.y})`);
-    
+    this.logger.log(
+      `📍 Ponto ${ponto.nome} posição atualizada: (${dto.posicao.x}, ${dto.posicao.y})`,
+    );
+
     return pontoAtualizado;
   }
 }

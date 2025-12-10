@@ -107,16 +107,55 @@ export const caixaService = {
   },
 
   /**
-   * Obter caixa aberto do funcionário
+   * Obter caixa aberto (com ou sem turnoId)
+   * Se não informar turnoId, busca qualquer caixa aberto
    */
-  async getCaixaAberto(turnoFuncionarioId: string): Promise<AberturaCaixa | null> {
+  async getCaixaAberto(turnoFuncionarioId?: string): Promise<AberturaCaixa | null> {
     try {
-      const response = await api.get(`/caixa/aberto/${turnoFuncionarioId}`);
+      const url = turnoFuncionarioId 
+        ? `/caixa/aberto?turnoId=${turnoFuncionarioId}`
+        : '/caixa/aberto';
+      const response = await api.get(url);
       return response.data;
     } catch (error: unknown) {
       console.error('Erro ao buscar caixa aberto:', error);
       return null;
     }
+  },
+
+  /**
+   * Obter caixa aberto do funcionário específico (isolamento de caixas)
+   */
+  async getCaixaAbertoPorFuncionario(funcionarioId: string): Promise<AberturaCaixa | null> {
+    try {
+      const response = await api.get(`/caixa/aberto?funcionarioId=${funcionarioId}`);
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Erro ao buscar caixa aberto do funcionário:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Obter todos os caixas abertos (apenas para admin/gestor)
+   */
+  async getTodosCaixasAbertos(): Promise<AberturaCaixa[]> {
+    try {
+      const response = await api.get('/caixa/aberto/todos');
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Erro ao buscar todos os caixas abertos:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Obter qualquer caixa aberto no momento (não requer turnoId)
+   * Alias para getCaixaAberto() sem parâmetros
+   * @deprecated Use getCaixaAbertoPorFuncionario para garantir isolamento
+   */
+  async getCaixaAbertoAtual(): Promise<AberturaCaixa | null> {
+    return this.getCaixaAberto();
   },
 
   /**

@@ -6,10 +6,7 @@ import { Funcionario } from './entities/funcionario.entity';
 import { ConfigModule } from '@nestjs/config'; // Importar
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Funcionario]),
-    ConfigModule, 
-],
+  imports: [TypeOrmModule.forFeature([Funcionario]), ConfigModule],
   controllers: [FuncionarioController],
   providers: [FuncionarioService],
   exports: [FuncionarioService],

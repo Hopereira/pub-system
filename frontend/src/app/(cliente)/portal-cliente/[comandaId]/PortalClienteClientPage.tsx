@@ -25,5 +25,5 @@ export default async function PortalClientePage({ params }: { params: { comandaI
   }
 
   // Passa os dados já prontos para o componente de cliente
-  return <ClienteHubPage comanda={comanda} paginaAtiva={paginaAtiva} />;
+  return <ClienteHubPage comanda={comanda} paginaAtiva={paginaAtiva ?? null} />;
 }

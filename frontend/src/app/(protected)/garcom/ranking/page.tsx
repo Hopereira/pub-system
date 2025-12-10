@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, Clock, Zap, Target, RefreshCw, Award } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 type Periodo = 'hoje' | 'semana' | 'mes';
 
@@ -24,7 +24,6 @@ interface ProgressoMedalhas {
 
 export default function RankingPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [periodo, setPeriodo] = useState<Periodo>('hoje');
   const [ranking, setRanking] = useState<RankingGarcom[]>([]);
   const [estatisticas, setEstatisticas] = useState<EstatisticasGarcom | null>(null);
@@ -55,9 +54,7 @@ export default function RankingPage() {
       }
     } catch (error) {
       console.error('Erro ao carregar ranking:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar ranking',
+      toast.error('Erro ao carregar ranking', {
         description: 'Não foi possível carregar os dados do ranking.',
       });
     } finally {

@@ -37,7 +37,7 @@ export default async function PortalClientePage({ params }: PortalClientePagePro
   return (
     <ClienteHubPage 
       comanda={comanda} 
-      paginaAtiva={comanda.paginaEvento} 
+      paginaAtiva={comanda.paginaEvento ?? null} 
     />
   );
 }

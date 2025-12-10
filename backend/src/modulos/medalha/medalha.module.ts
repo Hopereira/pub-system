@@ -10,12 +10,7 @@ import { Funcionario } from '../funcionario/entities/funcionario.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Medalha,
-      MedalhaGarcom,
-      ItemPedido,
-      Funcionario,
-    ]),
+    TypeOrmModule.forFeature([Medalha, MedalhaGarcom, ItemPedido, Funcionario]),
   ],
   controllers: [MedalhaController],
   providers: [MedalhaService, MedalhaScheduler],

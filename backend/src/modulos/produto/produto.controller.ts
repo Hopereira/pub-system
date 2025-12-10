@@ -1,17 +1,36 @@
 import {
-  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards,
-  UploadedFile, UseInterceptors, ParseUUIDPipe, Logger, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  UploadedFile,
+  UseInterceptors,
+  ParseUUIDPipe,
+  Logger,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 // import { diskStorage } from 'multer'; // <-- REMOVIDO
 import { ProdutoService } from './produto.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
 
@@ -31,7 +50,10 @@ export class ProdutoController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Cria um novo produto com imagem opcional' })
   @ApiResponse({ status: 201, description: 'Produto criado com sucesso.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Administradores.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Apenas Administradores.',
+  })
   // --- MUDANÇA: O FileInterceptor agora é mais simples, sem 'diskStorage' ---
   @UseInterceptors(FileInterceptor('imagemFile'))
   create(
@@ -74,7 +96,8 @@ export class ProdutoController {
         ],
         fileIsRequired: false,
       }),
-    ) imagemFile?: Express.Multer.File,
+    )
+    imagemFile?: Express.Multer.File,
   ) {
     // --- MUDANÇA: A lógica de criar a URL foi removida ---
     // Passamos o ID, o DTO e o novo arquivo (se existir) para o serviço.
@@ -92,11 +115,14 @@ export class ProdutoController {
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.produtoService.remove(id);
   }
-  
+
   @Public()
   @Get()
   @ApiOperation({ summary: 'Lista todos os produtos (rota pública)' })
-  @ApiResponse({ status: 200, description: 'Lista de produtos retornada com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de produtos retornada com sucesso.',
+  })
   findAll() {
     return this.produtoService.findAll();
   }

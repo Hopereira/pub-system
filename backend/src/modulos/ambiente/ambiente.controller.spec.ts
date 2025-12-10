@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, ParseUUIDPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Put,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { AmbienteService } from './ambiente.service';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
@@ -23,7 +34,10 @@ export class AmbienteController {
   }
 
   @Put(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateAmbienteDto: UpdateAmbienteDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateAmbienteDto: UpdateAmbienteDto,
+  ) {
     return this.ambienteService.update(id, updateAmbienteDto);
   }
 

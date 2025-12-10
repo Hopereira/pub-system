@@ -30,7 +30,7 @@ const formSchema = z.object({
   descricao: z.string().optional(),
   categoria: z.string().min(2, { message: "A categoria é obrigatória." }),
   preco: z.coerce.number().positive({ message: "O preço deve ser um número positivo." }),
-  ambienteId: z.string({ required_error: "Por favor, selecione um ambiente." }).uuid({ message: "Seleção de ambiente inválida."}),
+  ambienteId: z.string({ message: "Por favor, selecione um ambiente." }).uuid({ message: "Seleção de ambiente inválida."}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -40,8 +40,9 @@ export default function ProdutoFormDialog({ open, onOpenChange, onSuccess, produ
   const [imagemFile, setImagemFile] = useState<File | null>(null);
   const isEditMode = !!produtoToEdit;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     // --- CORREÇÃO APLICADA AQUI ---
     // Garantimos que o valor padrão NUNCA é uma string vazia se houver ambientes.
     defaultValues: {

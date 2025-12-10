@@ -17,17 +17,20 @@ export class CreateItemPedidoDto {
   @IsUUID()
   produtoId: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Quantidade do produto a ser pedida.',
     minimum: 1,
-    maximum: 100
+    maximum: 100,
   })
   @IsNumber()
   @IsPositive()
   @Max(100, { message: 'Quantidade máxima é 100 unidades por item' })
   quantidade: number;
 
-  @ApiProperty({ description: 'Observação opcional para o item.', required: false })
+  @ApiProperty({
+    description: 'Observação opcional para o item.',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   observacao?: string;

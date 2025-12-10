@@ -22,9 +22,9 @@ import {
   FuncionarioAtivoDto,
   EstatisticasTurnoDto,
 } from './dto/turno-response.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 
 @ApiTags('Turnos')
@@ -111,5 +111,20 @@ export class TurnoController {
     const inicio = dataInicio ? new Date(dataInicio) : undefined;
     const fim = dataFim ? new Date(dataFim) : undefined;
     return this.turnoService.getEstatisticasFuncionario(id, inicio, fim);
+  }
+
+  @Get('funcionario/:id/ativo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verificar se funcionário tem turno ativo' })
+  @ApiResponse({
+    status: 200,
+    description: 'Turno ativo do funcionário ou null',
+    type: TurnoResponseDto,
+  })
+  async getTurnoAtivo(
+    @Param('id') id: string,
+  ): Promise<TurnoResponseDto | null> {
+    return this.turnoService.getTurnoAtivo(id);
   }
 }

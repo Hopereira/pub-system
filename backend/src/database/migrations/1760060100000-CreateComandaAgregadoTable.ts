@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
-export class CreateComandaAgregadoTable1760060100000 implements MigrationInterface {
+export class CreateComandaAgregadoTable1760060100000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({
@@ -59,7 +66,10 @@ export class CreateComandaAgregadoTable1760060100000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropForeignKey('comanda_agregados', 'FK_agregado_comanda');
+    await queryRunner.dropForeignKey(
+      'comanda_agregados',
+      'FK_agregado_comanda',
+    );
     await queryRunner.dropTable('comanda_agregados');
   }
 }

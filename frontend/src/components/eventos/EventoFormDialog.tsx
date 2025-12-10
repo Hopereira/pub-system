@@ -33,9 +33,7 @@ interface EventoFormDialogProps {
 const formSchema = z.object({
   titulo: z.string().min(3, { message: "O título é obrigatório." }),
   descricao: z.string().optional().nullable(),
-  dataEvento: z.date({
-    required_error: "A data do evento é obrigatória.",
-  }),
+  dataEvento: z.date({ message: "A data do evento é obrigatória." }),
   hora: z.coerce.number().min(0, { message: 'Hora deve ser no mínimo 0' }).max(23, { message: 'Hora deve ser no máximo 23' }),
   minuto: z.coerce.number().min(0, { message: 'Minuto deve ser no mínimo 0' }).max(59, { message: 'Minuto deve ser no máximo 59' }),
   valor: z.coerce.number().min(0, { message: "O valor não pode ser negativo." }).default(0),
@@ -47,8 +45,9 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
   const isEditMode = !!eventoToEdit;
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     // ✅ ALTERAÇÃO: Adicionamos valores padrão para hora e minuto
     defaultValues: {
       titulo: '',
@@ -103,8 +102,6 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
       valor: values.valor,
     };
     
-    console.log("Enviando para a API com data e hora combinadas:", payload);
-
     try {
       if (isEditMode && eventoToEdit) {
         await updateEvento(eventoToEdit.id, payload as UpdateEventoDto);
@@ -142,7 +139,7 @@ export default function EventoFormDialog({ open, onOpenChange, onSuccess, evento
             )}
             
             <FormField control={form.control} name="titulo" render={({ field }) => ( <FormItem><FormLabel>Título do Evento</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-            <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+            <FormField control={form.control} name="descricao" render={({ field }) => ( <FormItem><FormLabel>Descrição</FormLabel><FormControl><Textarea className="resize-none" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )}/>
 
             <FormField
               control={form.control}

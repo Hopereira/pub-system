@@ -5,19 +5,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, ReactNode } from "react";
 
 export default function AuthGuard({ children }: { children: ReactNode }) {
-  const { authData, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (isLoading) {
       return;
     }
-    if (!authData) {
+    if (!user) {
       router.push("/login");
     }
-  }, [isLoading, authData, router]);
+  }, [isLoading, user, router]);
 
-  if (isLoading || !authData) {
+  if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>A verificar autenticação...</p>

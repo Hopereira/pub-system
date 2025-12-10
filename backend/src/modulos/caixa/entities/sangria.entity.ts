@@ -18,7 +18,9 @@ export class Sangria {
   @Column({ name: 'abertura_caixa_id' })
   aberturaCaixaId: string;
 
-  @ManyToOne(() => AberturaCaixa, (aberturaCaixa) => aberturaCaixa.sangrias, { eager: true })
+  @ManyToOne(() => AberturaCaixa, (aberturaCaixa) => aberturaCaixa.sangrias, {
+    eager: true,
+  })
   @JoinColumn({ name: 'abertura_caixa_id' })
   aberturaCaixa: AberturaCaixa;
 

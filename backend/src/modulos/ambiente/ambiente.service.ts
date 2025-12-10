@@ -1,6 +1,10 @@
 // Caminho: backend/src/modulos/ambiente/ambiente.service.ts
 
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
@@ -40,7 +44,7 @@ export class AmbienteService {
 
     // A conversão de `isPontoDeRetirada` para booleano é feita automaticamente pelo driver.
     // O resto da lógica permanece a mesma.
-    return ambientes.map(ambiente => ({
+    return ambientes.map((ambiente) => ({
       ...ambiente,
       productCount: parseInt(ambiente.productCount, 10),
       tableCount: parseInt(ambiente.tableCount, 10),
@@ -56,7 +60,10 @@ export class AmbienteService {
     return ambiente;
   }
 
-  async update(id: string, updateAmbienteDto: UpdateAmbienteDto): Promise<Ambiente> {
+  async update(
+    id: string,
+    updateAmbienteDto: UpdateAmbienteDto,
+  ): Promise<Ambiente> {
     const ambiente = await this.ambienteRepository.preload({
       id,
       ...updateAmbienteDto,

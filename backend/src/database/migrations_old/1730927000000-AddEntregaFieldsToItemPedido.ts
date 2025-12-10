@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  TableColumn,
+  TableForeignKey,
+} from 'typeorm';
 
-export class AddEntregaFieldsToItemPedido1730927000000 implements MigrationInterface {
+export class AddEntregaFieldsToItemPedido1730927000000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Adiciona coluna garcom_entrega_id
     await queryRunner.addColumn(
@@ -37,7 +44,10 @@ export class AddEntregaFieldsToItemPedido1730927000000 implements MigrationInter
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remove foreign key
-    await queryRunner.dropForeignKey('itens_pedido', 'FK_item_pedido_garcom_entrega');
+    await queryRunner.dropForeignKey(
+      'itens_pedido',
+      'FK_item_pedido_garcom_entrega',
+    );
 
     // Remove colunas
     await queryRunner.dropColumn('itens_pedido', 'tempoEntregaMinutos');

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useTurno } from './TurnoContext';
 import caixaService from '@/services/caixaService';
 import { AberturaCaixa, ResumoCaixa, FormaPagamento } from '@/types/caixa';
+import { io, Socket } from 'socket.io-client';
 
 interface CaixaContextData {
   caixaAberto: AberturaCaixa | null;
@@ -39,13 +40,19 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
   const [resumoCaixa, setResumoCaixa] = useState<ResumoCaixa | null>(null);
   const [verificandoCaixa, setVerificandoCaixa] = useState(true);
 
-  // Verificar caixa aberto quando turno mudar
-  useEffect(() => {
-    verificarCaixaAberto();
-  }, [turnoAtivo?.id]);
+  const atualizarResumo = useCallback(async () => {
+    if (!caixaAberto?.id) return;
 
-  const verificarCaixaAberto = async () => {
-    if (!temCheckIn || !turnoAtivo?.id) {
+    try {
+      const resumo = await caixaService.getResumoCaixa(caixaAberto.id);
+      setResumoCaixa(resumo);
+    } catch (error) {
+      console.error('Erro ao atualizar resumo:', error);
+    }
+  }, [caixaAberto?.id]);
+
+  const verificarCaixaAberto = useCallback(async () => {
+    if (!temCheckIn || !turnoAtivo?.funcionarioId) {
       setCaixaAberto(null);
       setResumoCaixa(null);
       setVerificandoCaixa(false);
@@ -54,12 +61,16 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
 
     try {
       setVerificandoCaixa(true);
-      const caixa = await caixaService.getCaixaAberto(turnoAtivo.id);
+      // Busca caixa aberto DO FUNCIONÁRIO ESPECÍFICO (isolamento de caixas)
+      const caixa = await caixaService.getCaixaAbertoPorFuncionario(turnoAtivo.funcionarioId);
       setCaixaAberto(caixa);
       
       // Se tem caixa aberto, buscar resumo
       if (caixa) {
-        await atualizarResumo();
+        const resumo = await caixaService.getResumoCaixa(caixa.id);
+        setResumoCaixa(resumo);
+      } else {
+        setResumoCaixa(null);
       }
     } catch (error) {
       console.error('Erro ao verificar caixa:', error);
@@ -68,7 +79,51 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
     } finally {
       setVerificandoCaixa(false);
     }
-  };
+  }, [temCheckIn, turnoAtivo?.funcionarioId]);
+
+  // Verificar caixa aberto quando componente montar ou turno mudar
+  useEffect(() => {
+    verificarCaixaAberto();
+  }, [verificarCaixaAberto]);
+
+  // Polling para atualizar resumo do caixa automaticamente a cada 10 segundos
+  useEffect(() => {
+    if (!caixaAberto?.id) return;
+
+    const interval = setInterval(() => {
+      atualizarResumo();
+    }, 10000); // 10 segundos
+
+    return () => clearInterval(interval);
+  }, [caixaAberto?.id, atualizarResumo]);
+
+  // WebSocket: Escutar eventos de atualização do caixa em tempo real
+  useEffect(() => {
+    if (!caixaAberto?.id) return;
+
+    const socket: Socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000', {
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('connect', () => {
+      // Socket conectado
+    });
+
+    socket.on('caixa_atualizado', (data: { aberturaCaixaId: string }) => {
+      // Atualizar apenas se for o caixa atual
+      if (data.aberturaCaixaId === caixaAberto.id) {
+        atualizarResumo();
+      }
+    });
+
+    socket.on('disconnect', () => {
+      // Socket desconectado
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [caixaAberto?.id, atualizarResumo]);
 
   const abrirCaixa = async (valorInicial: number, observacao?: string) => {
     if (!turnoAtivo?.id) {
@@ -145,17 +200,6 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erro ao registrar venda:', error);
       throw error;
-    }
-  };
-
-  const atualizarResumo = async () => {
-    if (!caixaAberto?.id) return;
-
-    try {
-      const resumo = await caixaService.getResumoCaixa(caixaAberto.id);
-      setResumoCaixa(resumo);
-    } catch (error) {
-      console.error('Erro ao atualizar resumo:', error);
     }
   };
 

@@ -39,6 +39,6 @@ export class Funcionario {
 
   //@BeforeInsert()
   //async hashPassword() {
-   // this.senha = await bcrypt.hash(this.senha, 10);
+  // this.senha = await bcrypt.hash(this.senha, 10);
   //} --->>>>>  comentei para testes
 }

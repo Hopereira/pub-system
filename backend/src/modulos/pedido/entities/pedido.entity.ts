@@ -49,7 +49,12 @@ export class Pedido {
   @Column({ name: 'criado_por_id', type: 'uuid', nullable: true })
   criadoPorId: string;
 
-  @Column({ name: 'criado_por_tipo', type: 'varchar', length: 20, default: 'CLIENTE' })
+  @Column({
+    name: 'criado_por_tipo',
+    type: 'varchar',
+    length: 20,
+    default: 'CLIENTE',
+  })
   criadoPorTipo: 'GARCOM' | 'CLIENTE';
 
   @ManyToOne(() => Funcionario, { nullable: true })

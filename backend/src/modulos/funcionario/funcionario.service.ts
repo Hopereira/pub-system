@@ -1,6 +1,13 @@
 // Caminho: backend/src/modulos/funcionario/funcionario.service.ts
 
-import { Injectable, OnModuleInit, Logger, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  ConflictException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -22,26 +29,24 @@ export class FuncionarioService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    try {
-      const contador = await this.funcionarioRepository.count();
-      if (contador === 0) {
-        this.logger.log('Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...');
-        const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
-        const senhaHash = await bcrypt.hash(senhaPlana, 10);
-        const admin = this.funcionarioRepository.create({
-          nome: 'Administrador Padrão',
-          email: this.configService.get<string>('ADMIN_EMAIL'),
-          senha: senhaHash,
-          cargo: Cargo.ADMIN,
-        });
-        await this.funcionarioRepository.save(admin);
-        this.logger.log('Usuário ADMIN padrão criado com sucesso!');
-      }
-    } catch (error) {
-      this.logger.warn('⚠️ Não foi possível criar usuário ADMIN padrão (tabela pode não existir ainda)');
+    const contador = await this.funcionarioRepository.count();
+    if (contador === 0) {
+      this.logger.log(
+        'Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...',
+      );
+      const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
+      const senhaHash = await bcrypt.hash(senhaPlana, 10);
+      const admin = this.funcionarioRepository.create({
+        nome: 'Administrador Padrão',
+        email: this.configService.get<string>('ADMIN_EMAIL'),
+        senha: senhaHash,
+        cargo: Cargo.ADMIN,
+      });
+      await this.funcionarioRepository.save(admin);
+      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
     }
   }
-  
+
   /**
    * Verifica se é o primeiro acesso (não há usuários no sistema)
    */
@@ -54,14 +59,18 @@ export class FuncionarioService implements OnModuleInit {
    * Registro público - Primeiro usuário vira ADMIN automaticamente
    * Depois do primeiro, bloqueia e exige que seja criado por ADMIN
    */
-  async registroPrimeiroAcesso(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
+  async registroPrimeiroAcesso(
+    createFuncionarioDto: CreateFuncionarioDto,
+  ): Promise<Funcionario> {
     // Verifica se já existe algum usuário
     const contador = await this.funcionarioRepository.count();
-    
+
     if (contador > 0) {
-      this.logger.warn('❌ Tentativa de registro bloqueada - já existe usuário no sistema');
+      this.logger.warn(
+        '❌ Tentativa de registro bloqueada - já existe usuário no sistema',
+      );
       throw new ForbiddenException(
-        'Já existe um usuário no sistema. Novos funcionários devem ser criados por um administrador.'
+        'Já existe um usuário no sistema. Novos funcionários devem ser criados por um administrador.',
       );
     }
 
@@ -75,8 +84,11 @@ export class FuncionarioService implements OnModuleInit {
     });
 
     try {
-      const usuarioCriado = await this.funcionarioRepository.save(primeiroUsuario);
-      this.logger.log(`✅ Primeiro usuário ADMIN criado: ${usuarioCriado.email}`);
+      const usuarioCriado =
+        await this.funcionarioRepository.save(primeiroUsuario);
+      this.logger.log(
+        `✅ Primeiro usuário ADMIN criado: ${usuarioCriado.email}`,
+      );
       return usuarioCriado;
     } catch (error) {
       if (error.code === '23505') {
@@ -86,7 +98,9 @@ export class FuncionarioService implements OnModuleInit {
     }
   }
 
-  async create(createFuncionarioDto: CreateFuncionarioDto): Promise<Funcionario> {
+  async create(
+    createFuncionarioDto: CreateFuncionarioDto,
+  ): Promise<Funcionario> {
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
       ...createFuncionarioDto,
@@ -118,7 +132,10 @@ export class FuncionarioService implements OnModuleInit {
       .getOne();
   }
 
-  async update(id: string, updateFuncionarioDto: UpdateFuncionarioDto): Promise<Funcionario> {
+  async update(
+    id: string,
+    updateFuncionarioDto: UpdateFuncionarioDto,
+  ): Promise<Funcionario> {
     const funcionario = await this.funcionarioRepository.preload({
       id,
       ...updateFuncionarioDto,
@@ -139,7 +156,7 @@ export class FuncionarioService implements OnModuleInit {
   async remove(id: string): Promise<void> {
     const funcionario = await this.findOne(id);
     if (!funcionario) {
-        throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
+      throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
     }
     await this.funcionarioRepository.remove(funcionario);
   }

@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Avaliacao } from './entities/avaliacao.entity';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
-import { AvaliacaoResponseDto, EstatisticasSatisfacaoDto } from './dto/avaliacao-response.dto';
+import {
+  AvaliacaoResponseDto,
+  EstatisticasSatisfacaoDto,
+} from './dto/avaliacao-response.dto';
 import { Comanda } from '../comanda/entities/comanda.entity';
 
 @Injectable()
@@ -23,7 +31,13 @@ export class AvaliacaoService {
     // Busca a comanda com todas as relações necessárias
     const comanda = await this.comandaRepository.findOne({
       where: { id: comandaId },
-      relations: ['cliente', 'mesa', 'mesa.ambiente', 'pedidos', 'pedidos.itens'],
+      relations: [
+        'cliente',
+        'mesa',
+        'mesa.ambiente',
+        'pedidos',
+        'pedidos.itens',
+      ],
     });
 
     if (!comanda) {
@@ -31,7 +45,9 @@ export class AvaliacaoService {
     }
 
     if (comanda.status !== 'FECHADA') {
-      throw new BadRequestException('Apenas comandas fechadas podem ser avaliadas');
+      throw new BadRequestException(
+        'Apenas comandas fechadas podem ser avaliadas',
+      );
     }
 
     // Verifica se já existe avaliação para esta comanda
@@ -45,16 +61,20 @@ export class AvaliacaoService {
 
     // Calcula tempo de estadia em minutos (do momento da abertura até agora)
     const tempoEstadia = comanda.dataAbertura
-      ? Math.round((new Date().getTime() - comanda.dataAbertura.getTime()) / 60000)
+      ? Math.round(
+          (new Date().getTime() - comanda.dataAbertura.getTime()) / 60000,
+        )
       : null;
 
     // Calcula valor total da comanda somando todos os itens dos pedidos
-    const valorGasto = comanda.pedidos?.reduce((total, pedido) => {
-      const valorPedido = pedido.itens?.reduce((subtotal, item) => {
-        return subtotal + (Number(item.precoUnitario) * item.quantidade);
+    const valorGasto =
+      comanda.pedidos?.reduce((total, pedido) => {
+        const valorPedido =
+          pedido.itens?.reduce((subtotal, item) => {
+            return subtotal + Number(item.precoUnitario) * item.quantidade;
+          }, 0) || 0;
+        return total + valorPedido;
       }, 0) || 0;
-      return total + valorPedido;
-    }, 0) || 0;
 
     // Cria a avaliação
     const avaliacao = this.avaliacaoRepository.create({
@@ -75,7 +95,10 @@ export class AvaliacaoService {
     return avaliacaoSalva;
   }
 
-  async findAll(dataInicio?: Date, dataFim?: Date): Promise<AvaliacaoResponseDto[]> {
+  async findAll(
+    dataInicio?: Date,
+    dataFim?: Date,
+  ): Promise<AvaliacaoResponseDto[]> {
     const queryBuilder = this.avaliacaoRepository
       .createQueryBuilder('avaliacao')
       .leftJoinAndSelect('avaliacao.comanda', 'comanda')
@@ -85,10 +108,13 @@ export class AvaliacaoService {
       .orderBy('avaliacao.criadoEm', 'DESC');
 
     if (dataInicio && dataFim) {
-      queryBuilder.where('avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim', {
-        dataInicio,
-        dataFim,
-      });
+      queryBuilder.where(
+        'avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim',
+        {
+          dataInicio,
+          dataFim,
+        },
+      );
     }
 
     const avaliacoes = await queryBuilder.getMany();
@@ -107,14 +133,21 @@ export class AvaliacaoService {
     }));
   }
 
-  async getEstatisticas(dataInicio?: Date, dataFim?: Date): Promise<EstatisticasSatisfacaoDto> {
-    const queryBuilder = this.avaliacaoRepository.createQueryBuilder('avaliacao');
+  async getEstatisticas(
+    dataInicio?: Date,
+    dataFim?: Date,
+  ): Promise<EstatisticasSatisfacaoDto> {
+    const queryBuilder =
+      this.avaliacaoRepository.createQueryBuilder('avaliacao');
 
     if (dataInicio && dataFim) {
-      queryBuilder.where('avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim', {
-        dataInicio,
-        dataFim,
-      });
+      queryBuilder.where(
+        'avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim',
+        {
+          dataInicio,
+          dataFim,
+        },
+      );
     }
 
     const avaliacoes = await queryBuilder.getMany();
@@ -150,7 +183,9 @@ export class AvaliacaoService {
     };
 
     // Tempo médio de estadia
-    const avaliacoesComTempo = avaliacoes.filter((av) => av.tempoEstadia !== null);
+    const avaliacoesComTempo = avaliacoes.filter(
+      (av) => av.tempoEstadia !== null,
+    );
     const tempoMedioEstadia =
       avaliacoesComTempo.length > 0
         ? Math.round(
@@ -161,14 +196,17 @@ export class AvaliacaoService {
 
     // Valor médio gasto
     const valorMedioGasto = Number(
-      (avaliacoes.reduce((sum, av) => sum + Number(av.valorGasto), 0) / avaliacoes.length).toFixed(
-        2,
-      ),
+      (
+        avaliacoes.reduce((sum, av) => sum + Number(av.valorGasto), 0) /
+        avaliacoes.length
+      ).toFixed(2),
     );
 
     // Taxa de satisfação (% de notas 4 e 5)
     const notasPositivas = avaliacoes.filter((av) => av.nota >= 4).length;
-    const taxaSatisfacao = Number(((notasPositivas / avaliacoes.length) * 100).toFixed(1));
+    const taxaSatisfacao = Number(
+      ((notasPositivas / avaliacoes.length) * 100).toFixed(1),
+    );
 
     this.logger.log(
       `📊 Estatísticas calculadas | Média: ${mediaSatisfacao}/5 | Taxa: ${taxaSatisfacao}% | Total: ${avaliacoes.length}`,

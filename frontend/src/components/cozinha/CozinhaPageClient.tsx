@@ -22,12 +22,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { CardCheckIn } from '@/components/turno/CardCheckIn';
+import { useAuth } from '@/context/AuthContext';
 
 interface CozinhaPageClientProps {
   ambienteId?: string;
 }
 
 export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: CozinhaPageClientProps) {
+  const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
@@ -179,6 +182,16 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
           </div>
         )}
       </div>
+
+      {/* Card de Check-In/Check-Out do Funcionário */}
+      {user && (
+        <div className="mb-6">
+          <CardCheckIn
+            funcionarioId={user.id}
+            funcionarioNome={user.nome}
+          />
+        </div>
+      )}
 
       {pedidosFiltrados.length === 0 ? (
         <p className='text-center text-muted-foreground mt-10'>

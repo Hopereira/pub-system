@@ -46,26 +46,17 @@ export default function PaginaEventoFormDialog({ open, onOpenChange, onSuccess, 
   }, [open, isEditMode, paginaToEdit, form]);
 
   const onSubmit = async (values: FormValues) => {
-    // DIAGNÓSTICO 1: Confirmar que a função é chamada e ver os dados.
-    console.log('[DIAGNÓSTICO] Formulário submetido com os valores:', values);
-
     try {
       if (isEditMode && paginaToEdit) {
-        console.log(`[DIAGNÓSTICO] Tentando ATUALIZAR a página ID: ${paginaToEdit.id}`);
         await updatePaginaEvento(paginaToEdit.id, { titulo: values.titulo });
         toast.success('Página atualizada com sucesso!');
       } else {
-        console.log('[DIAGNÓSTICO] Tentando CRIAR uma nova página...');
         await createPaginaEvento({ titulo: values.titulo });
         toast.success('Nova página criada com sucesso!');
       }
       onSuccess();
     } catch (err) {
-      // DIAGNÓSTICO 2: EXPOR O ERRO SILENCIOSO!
-      // Esta linha vai mostrar o erro completo no console do navegador.
-      console.error('[DIAGNÓSTICO] O ERRO É ESTE:', err);
-
-      toast.error(`Falha ao ${isEditMode ? 'atualizar' : 'criar'} a página. Verifique o console.`);
+      toast.error(`Falha ao ${isEditMode ? 'atualizar' : 'criar'} a página.`);
     }
   };
 

@@ -1,6 +1,13 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  TableColumn,
+  TableForeignKey,
+} from 'typeorm';
 
-export class AddDeixadoNoAmbienteStatus1760060300000 implements MigrationInterface {
+export class AddDeixadoNoAmbienteStatus1760060300000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Adicionar novo enum value 'DEIXADO_NO_AMBIENTE' ao tipo itens_pedido_status_enum
     await queryRunner.query(`
@@ -31,9 +38,12 @@ export class AddDeixadoNoAmbienteStatus1760060300000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropForeignKey('itens_pedido', 'FK_item_pedido_ambiente_retirada');
+    await queryRunner.dropForeignKey(
+      'itens_pedido',
+      'FK_item_pedido_ambiente_retirada',
+    );
     await queryRunner.dropColumn('itens_pedido', 'ambiente_retirada_id');
-    
+
     // Nota: Não podemos remover um valor de enum no PostgreSQL facilmente
     // Seria necessário recriar o tipo, o que é complexo e arriscado
     // Por isso, deixamos o valor no enum mesmo no rollback

@@ -46,12 +46,34 @@ export const createPedidoFromCliente = async (payload: CreatePedidoDto): Promise
   }
 };
 
-export const getPedidos = async (): Promise<Pedido[]> => {
+/**
+ * Interface para filtros de busca de pedidos
+ */
+export interface GetPedidosFilters {
+  ambienteId?: string;
+  status?: string;
+  comandaId?: string;
+}
+
+/**
+ * Busca pedidos com filtros opcionais
+ * @param filters - Filtros opcionais (ambienteId, status, comandaId)
+ */
+export const getPedidos = async (filters?: GetPedidosFilters): Promise<Pedido[]> => {
   try {
-    logger.debug('🔍 Buscando todos os pedidos', { 
-      module: 'PedidoService'
+    const params: Record<string, string> = {};
+    
+    if (filters?.ambienteId) params.ambienteId = filters.ambienteId;
+    if (filters?.status) params.status = filters.status;
+    if (filters?.comandaId) params.comandaId = filters.comandaId;
+
+    logger.debug('🔍 Buscando pedidos', { 
+      module: 'PedidoService',
+      data: { filters: params }
     });
-    const response = await api.get<Pedido[]>(`/pedidos`);
+    
+    const response = await api.get<Pedido[]>('/pedidos', { params });
+    
     logger.debug(`✅ ${response.data.length} pedidos encontrados`, { 
       module: 'PedidoService' 
     });

@@ -41,6 +41,7 @@ export default function CaixaPage() {
     totalVendas: 0,
     pedidosPendentes: 0,
   });
+  const [carregandoEstatisticas, setCarregandoEstatisticas] = useState(true);
 
   // Estados dos modais
   const [showAbertura, setShowAbertura] = useState(false);
@@ -63,13 +64,40 @@ export default function CaixaPage() {
 
   // Buscar estatísticas do dia
   useEffect(() => {
-    // TODO: Implementar busca de estatísticas da API
-    setEstatisticas({
-      comandasAbertas: 12,
-      totalVendas: 2450.80,
-      pedidosPendentes: 5,
-    });
-  }, []);
+    const buscarEstatisticas = async () => {
+      try {
+        setCarregandoEstatisticas(true);
+        
+        // Importar dinamicamente para evitar circular dependency
+        const { getComandasAbertas } = await import('@/services/comandaService');
+        const { getPedidos } = await import('@/services/pedidoService');
+        
+        // Buscar comandas abertas
+        const comandas = await getComandasAbertas();
+        
+        // Buscar todos os pedidos para contar pendentes
+        const pedidos = await getPedidos();
+        const pedidosPendentes = pedidos.filter(
+          p => p.status === 'FEITO' || p.status === 'EM_PREPARO'
+        );
+        
+        // Total de vendas vem do resumo do caixa
+        const totalVendas = resumoCaixa?.totalVendas || 0;
+        
+        setEstatisticas({
+          comandasAbertas: comandas.length,
+          totalVendas,
+          pedidosPendentes: pedidosPendentes.length,
+        });
+      } catch (error) {
+        console.error('Erro ao buscar estatísticas:', error);
+      } finally {
+        setCarregandoEstatisticas(false);
+      }
+    };
+
+    buscarEstatisticas();
+  }, [resumoCaixa]);
 
   // Saudação baseada no horário
   const getSaudacao = () => {
@@ -143,10 +171,18 @@ export default function CaixaPage() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{estatisticas.comandasAbertas}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Aguardando fechamento
-            </p>
+            {carregandoEstatisticas ? (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{estatisticas.comandasAbertas}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Aguardando fechamento
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -158,12 +194,20 @@ export default function CaixaPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              R$ {estatisticas.totalVendas.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Hoje
-            </p>
+            {carregandoEstatisticas ? (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  R$ {estatisticas.totalVendas.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Hoje
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -175,10 +219,18 @@ export default function CaixaPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{estatisticas.pedidosPendentes}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Em preparo/aguardando
-            </p>
+            {carregandoEstatisticas ? (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-10 bg-muted animate-pulse rounded" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{estatisticas.pedidosPendentes}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Em preparo/aguardando
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -258,6 +310,28 @@ export default function CaixaPage() {
               </CardHeader>
             </Card>
           </Link>
+
+          {/* Gestão de Caixas (Admin/Gerente) */}
+          {(user?.cargo === 'ADMIN' || user?.cargo === 'GERENTE') && (
+            <Link href="/caixa/gestao">
+              <Card className="transition-all border-2 hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-primary border-yellow-500/50 bg-yellow-500/5">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-yellow-500/10 rounded-lg">
+                      <DollarSign className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        Gestão de Caixas
+                        <Badge variant="secondary" className="ml-2">Admin</Badge>
+                      </CardTitle>
+                      <CardDescription>Ver todos os caixas abertos</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
+          )}
 
           {/* Clientes */}
           <Link href={temCheckIn ? "/caixa/clientes" : "#"} onClick={(e) => !temCheckIn && e.preventDefault()}>

@@ -3,6 +3,7 @@
 'use client';
 
 import { useAuth } from '@/context/AuthContext';
+import { useTurno } from '@/context/TurnoContext';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -15,7 +16,14 @@ import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 
-const baseNavLinks = [
+interface NavLink {
+    href: string;
+    label: string;
+    icon: React.ElementType;
+    roles: string[];
+}
+
+const baseNavLinks: NavLink[] = [
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
   { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
@@ -23,9 +31,13 @@ const baseNavLinks = [
   { href: '/garcom/qrcode-comanda', label: 'Gerar QR Code', icon: QrCode, roles: ['GARCOM'] },
   
   // --- Área do Caixa ---
-  { href: '/caixa', label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA'] },
-  { href: '/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA'] },
-  { href: '/caixa/comandas-abertas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA'] },
+  { href: '/caixa', label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+  { href: '/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+  { href: '/caixa/comandas-abertas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+  { href: '/caixa/gestao', label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
+  
+  // --- Área da Cozinha ---
+  { href: '/cozinha', label: 'Ambiente de Preparo', icon: ChefHat, roles: ['COZINHA'] },
   
   // --- Área da Cozinha ---
   { href: '/cozinha', label: 'Área da Cozinha', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO'] },
@@ -53,15 +65,9 @@ const baseNavLinks = [
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
 ];
 
-interface NavLink {
-    href: string;
-    label: string;
-    icon: React.ElementType;
-    roles: string[];
-}
-
 export function Sidebar() {
   const { user } = useAuth();
+  const { temCheckIn } = useTurno(); // Adicionar para atualização dinâmica
   const pathname = usePathname();
   const [operationalLinks, setOperationalLinks] = useState<NavLink[]>([]);
 
@@ -102,21 +108,16 @@ export function Sidebar() {
     } else {
         setOperationalLinks([]);
     }
-  }, [user]);
+  }, [user, temCheckIn]); // Atualizar quando temCheckIn mudar
 
   const allLinks = useMemo(() => {
-    const caixaLinkDashboard = { 
-      href: '/dashboard/operacional/caixa',
-      label: 'Caixa (Dashboard)', 
-      icon: Landmark, 
-      roles: ['ADMIN', 'GERENTE']
-    };
-    
     const combinedLinks = [...baseNavLinks];
     
-    // Adiciona o link do caixa do dashboard e os links operacionais dinâmicos
-    const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
-    combinedLinks.splice(insertIndexOp, 0, caixaLinkDashboard, ...operationalLinks);
+    // Adiciona apenas os links operacionais dinâmicos (painéis de cozinha)
+    if (operationalLinks.length > 0) {
+      const insertIndexOp = combinedLinks.findIndex(link => link.href.includes('Pedidos')) + 1;
+      combinedLinks.splice(insertIndexOp, 0, ...operationalLinks);
+    }
 
     return combinedLinks;
   }, [operationalLinks]);

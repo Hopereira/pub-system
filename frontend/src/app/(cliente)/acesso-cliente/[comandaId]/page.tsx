@@ -11,13 +11,20 @@ import { useComandaSubscription } from '@/hooks/useComandaSubscription';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Volume2, AlertCircle, MapPin, RefreshCw } from 'lucide-react';
 import { ComandaStatus } from '@/types/comanda';
-import { ItemPedido, Pedido } from '@/types/pedido';
 import { MudarLocalModal } from '@/components/pontos-entrega/MudarLocalModal';
 import ModalAvaliacao from '@/components/avaliacao/ModalAvaliacao';
 
 // Interface para garantir que nosso item processado tem a referência ao pedido pai
-interface EnrichedItemPedido extends ItemPedido {
-    pedido: Pedido;
+interface EnrichedItemPedido {
+    id: string;
+    quantidade: number;
+    observacao?: string | null;
+    produto: { id: string; nome: string; };
+    precoUnitario: number;
+    pedidoId: string;
+    status?: string;
+    ambienteRetirada?: { id: string; nome: string; };
+    pedido: { id: string };
 }
 
 const formatCurrency = (value: number) => {
@@ -35,7 +42,7 @@ export default function ComandaClientePage() {
     const comandaId = Array.isArray(params.comandaId) ? params.comandaId[0] : params.comandaId;
     // ==================================================================
 
-    const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId);
+    const { comanda, isLoading, error, changedPedidos, audioConsentNeeded, handleAllowAudio } = useComandaSubscription(comandaId ?? null);
     const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
     const [isAvaliacaoModalOpen, setIsAvaliacaoModalOpen] = useState(false);
     const [avaliacaoJaExibida, setAvaliacaoJaExibida] = useState(false);
@@ -276,7 +283,6 @@ export default function ComandaClientePage() {
                     open={isLocalModalOpen}
                     onOpenChange={setIsLocalModalOpen}
                     onSuccess={async () => {
-                        console.log('✅ Local alterado, recarregando...');
                         window.location.reload();
                     }}
                 />

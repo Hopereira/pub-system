@@ -2,7 +2,14 @@
 
 // ✅ CORREÇÃO: O caminho agora é relativo, subindo dois níveis de pasta.
 import { PaginaEvento } from '../../pagina-evento/entities/pagina-evento.entity';
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('eventos')
 export class Evento {

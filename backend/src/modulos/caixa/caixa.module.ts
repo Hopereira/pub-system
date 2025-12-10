@@ -7,6 +7,7 @@ import { FechamentoCaixa } from './entities/fechamento-caixa.entity';
 import { Sangria } from './entities/sangria.entity';
 import { MovimentacaoCaixa } from './entities/movimentacao-caixa.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
+import { PedidoModule } from '../pedido/pedido.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
       MovimentacaoCaixa,
       TurnoFuncionario,
     ]),
+    PedidoModule, // Importar PedidoModule para usar PedidosGateway
   ],
   controllers: [CaixaController],
   providers: [CaixaService],

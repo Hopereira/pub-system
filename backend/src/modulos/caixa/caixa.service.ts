@@ -9,12 +9,17 @@ import { Repository, IsNull } from 'typeorm';
 import { AberturaCaixa, StatusCaixa } from './entities/abertura-caixa.entity';
 import { FechamentoCaixa } from './entities/fechamento-caixa.entity';
 import { Sangria } from './entities/sangria.entity';
-import { MovimentacaoCaixa, TipoMovimentacao, FormaPagamento } from './entities/movimentacao-caixa.entity';
+import {
+  MovimentacaoCaixa,
+  TipoMovimentacao,
+  FormaPagamento,
+} from './entities/movimentacao-caixa.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
 import { CreateVendaDto } from './dto/create-venda.dto';
+import { PedidosGateway } from '../pedido/pedidos.gateway';
 
 @Injectable()
 export class CaixaService {
@@ -31,6 +36,7 @@ export class CaixaService {
     private movimentacaoRepository: Repository<MovimentacaoCaixa>,
     @InjectRepository(TurnoFuncionario)
     private turnoRepository: Repository<TurnoFuncionario>,
+    private pedidosGateway: PedidosGateway,
   ) {}
 
   /**
@@ -59,7 +65,9 @@ export class CaixaService {
     });
 
     if (caixaAberto) {
-      throw new BadRequestException('Já existe um caixa aberto para este turno');
+      throw new BadRequestException(
+        'Já existe um caixa aberto para este turno',
+      );
     }
 
     // Cria abertura de caixa
@@ -113,12 +121,21 @@ export class CaixaService {
       where: { aberturaCaixaId: abertura.id, tipo: TipoMovimentacao.VENDA },
     });
 
-    const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
-
     // Busca sangrias
     const sangrias = await this.sangriaRepository.find({
       where: { aberturaCaixaId: abertura.id },
     });
+
+    // Validação: Não permite fechar caixa sem nenhuma movimentação
+    // (exceto se forçar fechamento via flag)
+    if (movimentacoes.length === 0 && sangrias.length === 0 && !dto.forcarFechamento) {
+      throw new BadRequestException(
+        'Não é possível fechar o caixa sem movimentações. ' +
+        'Se deseja fechar mesmo assim, marque a opção "Forçar fechamento".'
+      );
+    }
+
+    const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
 
     const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
 
@@ -132,12 +149,18 @@ export class CaixaService {
       Number(dto.valorInformadoValeAlimentacao);
 
     // Calcula diferenças
-    const diferencaDinheiro = Number(dto.valorInformadoDinheiro) - valoresEsperados.dinheiro;
+    const diferencaDinheiro =
+      Number(dto.valorInformadoDinheiro) - valoresEsperados.dinheiro;
     const diferencaPix = Number(dto.valorInformadoPix) - valoresEsperados.pix;
-    const diferencaDebito = Number(dto.valorInformadoDebito) - valoresEsperados.debito;
-    const diferencaCredito = Number(dto.valorInformadoCredito) - valoresEsperados.credito;
-    const diferencaValeRefeicao = Number(dto.valorInformadoValeRefeicao) - valoresEsperados.valeRefeicao;
-    const diferencaValeAlimentacao = Number(dto.valorInformadoValeAlimentacao) - valoresEsperados.valeAlimentacao;
+    const diferencaDebito =
+      Number(dto.valorInformadoDebito) - valoresEsperados.debito;
+    const diferencaCredito =
+      Number(dto.valorInformadoCredito) - valoresEsperados.credito;
+    const diferencaValeRefeicao =
+      Number(dto.valorInformadoValeRefeicao) - valoresEsperados.valeRefeicao;
+    const diferencaValeAlimentacao =
+      Number(dto.valorInformadoValeAlimentacao) -
+      valoresEsperados.valeAlimentacao;
     const diferencaTotal = valorInformadoTotal - valoresEsperados.total;
 
     // Calcula estatísticas
@@ -227,7 +250,7 @@ export class CaixaService {
 
     // Valida se valor da sangria não excede o saldo disponível
     const saldoAtual = await this.calcularSaldoAtual(abertura.id);
-    
+
     if (dto.valor > saldoAtual) {
       throw new BadRequestException(
         `Valor da sangria (R$ ${dto.valor.toFixed(2)}) excede o saldo disponível (R$ ${saldoAtual.toFixed(2)})`,
@@ -262,7 +285,50 @@ export class CaixaService {
       `💸 Sangria registrada | Valor: R$ ${dto.valor.toFixed(2)} | Motivo: ${dto.motivo}`,
     );
 
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
     return sangriaSalva;
+  }
+
+  /**
+   * Registra um suprimento (entrada de dinheiro no caixa)
+   */
+  async registrarSuprimento(dto: {
+    aberturaCaixaId: string;
+    valor: number;
+    motivo?: string;
+  }): Promise<MovimentacaoCaixa> {
+    const abertura = await this.aberturaRepository.findOne({
+      where: { id: dto.aberturaCaixaId },
+    });
+
+    if (!abertura) {
+      throw new NotFoundException('Abertura de caixa não encontrada');
+    }
+
+    if (abertura.status !== StatusCaixa.ABERTO) {
+      throw new BadRequestException('Caixa não está aberto');
+    }
+
+    // Registra movimentação de suprimento
+    const movimentacao = await this.registrarMovimentacao({
+      aberturaCaixaId: abertura.id,
+      tipo: TipoMovimentacao.SUPRIMENTO,
+      formaPagamento: FormaPagamento.DINHEIRO,
+      valor: dto.valor,
+      descricao: dto.motivo || 'Suprimento de caixa',
+      funcionarioId: abertura.funcionarioId,
+    });
+
+    this.logger.log(
+      `💵 Suprimento registrado | Valor: R$ ${dto.valor.toFixed(2)} | Motivo: ${dto.motivo || 'Não informado'}`,
+    );
+
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
+    return movimentacao;
   }
 
   /**
@@ -284,12 +350,12 @@ export class CaixaService {
 
     // Mapeia forma de pagamento do DTO para a entidade
     const formaPagamentoMap: Record<string, FormaPagamento> = {
-      'DINHEIRO': FormaPagamento.DINHEIRO,
-      'PIX': FormaPagamento.PIX,
-      'DEBITO': FormaPagamento.DEBITO,
-      'CREDITO': FormaPagamento.CREDITO,
-      'VALE_REFEICAO': FormaPagamento.VALE_REFEICAO,
-      'VALE_ALIMENTACAO': FormaPagamento.VALE_ALIMENTACAO,
+      DINHEIRO: FormaPagamento.DINHEIRO,
+      PIX: FormaPagamento.PIX,
+      DEBITO: FormaPagamento.DEBITO,
+      CREDITO: FormaPagamento.CREDITO,
+      VALE_REFEICAO: FormaPagamento.VALE_REFEICAO,
+      VALE_ALIMENTACAO: FormaPagamento.VALE_ALIMENTACAO,
     };
 
     const formaPagamento = formaPagamentoMap[dto.formaPagamento];
@@ -304,7 +370,9 @@ export class CaixaService {
       tipo: TipoMovimentacao.VENDA,
       formaPagamento: formaPagamento,
       valor: dto.valor,
-      descricao: dto.descricao || `Venda - Comanda ${dto.comandaNumero || dto.comandaId}`,
+      descricao:
+        dto.descricao ||
+        `Venda - Comanda ${dto.comandaNumero || dto.comandaId}`,
       funcionarioId: abertura.funcionarioId,
       comandaId: dto.comandaId,
     });
@@ -313,17 +381,71 @@ export class CaixaService {
       `💰 Venda registrada | Valor: R$ ${dto.valor.toFixed(2)} | Forma: ${dto.formaPagamento} | Comanda: ${dto.comandaNumero || dto.comandaId}`,
     );
 
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
     return movimentacao;
   }
 
   /**
    * Busca caixa aberto por turno
    */
-  async getCaixaAberto(turnoFuncionarioId: string): Promise<AberturaCaixa | null> {
+  async getCaixaAberto(
+    turnoFuncionarioId: string,
+  ): Promise<AberturaCaixa | null> {
     return await this.aberturaRepository.findOne({
       where: {
         turnoFuncionarioId,
         status: StatusCaixa.ABERTO,
+      },
+    });
+  }
+
+  /**
+   * Busca caixa aberto do funcionário específico
+   */
+  async getCaixaAbertoPorFuncionario(
+    funcionarioId: string,
+  ): Promise<AberturaCaixa | null> {
+    return await this.aberturaRepository.findOne({
+      where: {
+        funcionarioId,
+        status: StatusCaixa.ABERTO,
+      },
+      order: {
+        dataAbertura: 'DESC',
+        horaAbertura: 'DESC',
+      },
+    });
+  }
+
+  /**
+   * Busca todos os caixas abertos (apenas para admin/gestor)
+   */
+  async getTodosCaixasAbertos(): Promise<AberturaCaixa[]> {
+    return await this.aberturaRepository.find({
+      where: {
+        status: StatusCaixa.ABERTO,
+      },
+      order: {
+        dataAbertura: 'DESC',
+        horaAbertura: 'DESC',
+      },
+    });
+  }
+
+  /**
+   * Busca qualquer caixa aberto no momento (para fechamento de comandas)
+   * @deprecated Use getCaixaAbertoPorFuncionario para garantir isolamento
+   */
+  async getCaixaAbertoAtual(): Promise<AberturaCaixa | null> {
+    return await this.aberturaRepository.findOne({
+      where: {
+        status: StatusCaixa.ABERTO,
+      },
+      order: {
+        dataAbertura: 'DESC', // Pega o mais recente
+        horaAbertura: 'DESC',
       },
     });
   }
@@ -352,10 +474,13 @@ export class CaixaService {
       where: { aberturaCaixaId },
     });
 
-    const vendas = movimentacoes.filter((m) => m.tipo === TipoMovimentacao.VENDA);
+    const vendas = movimentacoes.filter(
+      (m) => m.tipo === TipoMovimentacao.VENDA,
+    );
     const totalVendas = vendas.reduce((acc, v) => acc + Number(v.valor), 0);
     const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
-    const saldoFinal = Number(abertura.valorInicial) + totalVendas - totalSangrias;
+    const saldoFinal =
+      Number(abertura.valorInicial) + totalVendas - totalSangrias;
 
     const resumoPorFormaPagamento = this.agruparPorFormaPagamento(vendas);
 
@@ -489,10 +614,13 @@ export class CaixaService {
 
   private agruparPorFormaPagamento(vendas: MovimentacaoCaixa[]) {
     const formas = Object.values(FormaPagamento);
-    
+
     return formas.map((forma) => {
       const vendasPorForma = vendas.filter((v) => v.formaPagamento === forma);
-      const valorEsperado = vendasPorForma.reduce((acc, v) => acc + Number(v.valor), 0);
+      const valorEsperado = vendasPorForma.reduce(
+        (acc, v) => acc + Number(v.valor),
+        0,
+      );
 
       return {
         formaPagamento: forma,

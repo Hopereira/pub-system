@@ -1,17 +1,33 @@
 // Caminho: backend/src/modulos/comanda/comanda.controller.ts
 import {
-  Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ParseUUIDPipe, Query
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  ParseUUIDPipe,
+  Query,
 } from '@nestjs/common';
 import { ComandaService } from './comanda.service';
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { FecharComandaDto } from './dto/fechar-comanda.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
-import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from 'src/auth/decorators/public.decorator';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 @ApiTags('Comandas')
 // ✅ MUDANÇA: A proteção geral foi movida para cada rota individualmente,
@@ -25,7 +41,10 @@ export class ComandaController {
   // =======================================================
   @Public() // Permite que qualquer pessoa (incluindo novos clientes) acesse esta rota.
   @Post()
-  @ApiOperation({ summary: 'Cria uma nova comanda (Rota Pública para novos clientes ou privada para funcionários)' })
+  @ApiOperation({
+    summary:
+      'Cria uma nova comanda (Rota Pública para novos clientes ou privada para funcionários)',
+  })
   @ApiResponse({ status: 201, description: 'Comanda criada com sucesso.' })
   create(@Body() createComandaDto: CreateComandaDto) {
     return this.comandaService.create(createComandaDto);
@@ -37,14 +56,18 @@ export class ComandaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Busca comandas abertas por número da mesa ou nome/CPF do cliente' })
+  @ApiOperation({
+    summary: 'Busca comandas abertas por número da mesa ou nome/CPF do cliente',
+  })
   search(@Query('term') term: string) {
     return this.comandaService.search(term);
   }
 
   @Public()
   @Get(':id/public')
-  @ApiOperation({ summary: 'Busca dados públicos de uma comanda (para cliente via QR Code)' })
+  @ApiOperation({
+    summary: 'Busca dados públicos de uma comanda (para cliente via QR Code)',
+  })
   findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.comandaService.findPublicOne(id);
   }
@@ -71,16 +94,33 @@ export class ComandaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Fecha uma comanda e libera a mesa associada, se houver' })
-  fecharComanda(@Param('id', ParseUUIDPipe) id: string) {
-    return this.comandaService.fecharComanda(id);
+  @ApiOperation({
+    summary:
+      'Fecha uma comanda, registra venda no caixa e libera a mesa associada',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Comanda fechada e venda registrada no caixa com sucesso.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Comanda já fechada ou não há caixa aberto.',
+  })
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
+  fecharComanda(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: FecharComandaDto,
+  ) {
+    return this.comandaService.fecharComanda(id, dto);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Busca uma comanda específica por ID (visão do funcionário)' })
+  @ApiOperation({
+    summary: 'Busca uma comanda específica por ID (visão do funcionário)',
+  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.comandaService.findOne(id);
   }
@@ -90,7 +130,10 @@ export class ComandaController {
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza os dados de uma comanda' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateComandaDto: UpdateComandaDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateComandaDto: UpdateComandaDto,
+  ) {
     return this.comandaService.update(id, updateComandaDto);
   }
 
@@ -105,10 +148,19 @@ export class ComandaController {
 
   @Public()
   @Patch(':id/local')
-  @ApiOperation({ summary: 'Atualizar local da comanda - mesa ou ponto de entrega (Rota Pública)' })
+  @ApiOperation({
+    summary:
+      'Atualizar local da comanda - mesa ou ponto de entrega (Rota Pública)',
+  })
   @ApiResponse({ status: 200, description: 'Local atualizado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Comanda não está aberta ou dados inválidos' })
-  @ApiResponse({ status: 404, description: 'Comanda, mesa ou ponto de entrega não encontrado' })
+  @ApiResponse({
+    status: 400,
+    description: 'Comanda não está aberta ou dados inválidos',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Comanda, mesa ou ponto de entrega não encontrado',
+  })
   updateLocal(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: { mesaId?: string | null; pontoEntregaId?: string | null },
@@ -118,11 +170,26 @@ export class ComandaController {
 
   @Public()
   @Patch(':id/ponto-entrega')
-  @ApiOperation({ summary: 'Atualizar ponto de entrega da comanda (cliente pode mudar de local)' })
-  @ApiResponse({ status: 200, description: 'Ponto de entrega atualizado com sucesso' })
-  @ApiResponse({ status: 200, description: 'Ponto atualizado com alerta (pedidos em preparo)' })
-  @ApiResponse({ status: 400, description: 'Comanda não está aberta ou ponto inválido' })
-  @ApiResponse({ status: 404, description: 'Comanda ou ponto de entrega não encontrado' })
+  @ApiOperation({
+    summary:
+      'Atualizar ponto de entrega da comanda (cliente pode mudar de local)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Ponto de entrega atualizado com sucesso',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Ponto atualizado com alerta (pedidos em preparo)',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Comanda não está aberta ou ponto inválido',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Comanda ou ponto de entrega não encontrado',
+  })
   updatePontoEntrega(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePontoEntregaComandaDto,
