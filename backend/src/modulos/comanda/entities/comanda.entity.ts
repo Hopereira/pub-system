@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -27,9 +28,13 @@ export class Comanda {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  // ✅ CORREÇÃO DBA: Índice para busca de comandas abertas
+  @Index('idx_comanda_status')
   @Column({ type: 'enum', enum: ComandaStatus, default: ComandaStatus.ABERTA })
   status: ComandaStatus;
 
+  // ✅ CORREÇÃO DBA: Índice para relatórios por período
+  @Index('idx_comanda_data_abertura')
   @CreateDateColumn()
   dataAbertura: Date;
 

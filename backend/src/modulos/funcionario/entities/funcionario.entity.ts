@@ -1,6 +1,16 @@
-import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Cargo } from '../enums/cargo.enum';
 import { FuncionarioStatus } from '../enums/funcionario-status.enum';
+import { Empresa } from '../../empresa/entities/empresa.entity';
+import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import * as bcrypt from 'bcrypt';
 
 @Entity('funcionarios')
@@ -11,6 +21,8 @@ export class Funcionario {
   @Column()
   nome: string;
 
+  // ✅ CORREÇÃO DBA: Índice para busca por email
+  @Index('idx_funcionario_email')
   @Column({ unique: true })
   email: string;
 
@@ -31,11 +43,21 @@ export class Funcionario {
   })
   status: FuncionarioStatus;
 
+  // ✅ CORREÇÃO DBA: Adicionada relação ManyToOne para integridade referencial
   @Column({ type: 'uuid', nullable: true, name: 'empresa_id' })
   empresaId: string;
 
+  @ManyToOne(() => Empresa, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'empresa_id' })
+  empresa: Empresa;
+
+  // ✅ CORREÇÃO DBA: Adicionada relação ManyToOne para integridade referencial
   @Column({ type: 'uuid', nullable: true, name: 'ambiente_id' })
   ambienteId: string;
+
+  @ManyToOne(() => Ambiente, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'ambiente_id' })
+  ambiente: Ambiente;
 
   //@BeforeInsert()
   //async hashPassword() {

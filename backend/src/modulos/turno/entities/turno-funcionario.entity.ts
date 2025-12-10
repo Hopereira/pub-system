@@ -2,6 +2,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  Index,
   ManyToOne,
   CreateDateColumn,
   JoinColumn,
@@ -10,6 +11,8 @@ import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { Evento } from '../../evento/entities/evento.entity';
 
 @Entity('turnos_funcionario')
+// ✅ CORREÇÃO DBA: Índice composto para busca de turno ativo por funcionário
+@Index('idx_turno_funcionario_ativo', ['funcionarioId', 'ativo'])
 export class TurnoFuncionario {
   @PrimaryGeneratedColumn('uuid')
   id: string;

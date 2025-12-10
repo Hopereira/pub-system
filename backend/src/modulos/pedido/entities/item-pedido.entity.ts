@@ -1,10 +1,12 @@
 // Caminho: backend/src/modulos/pedido/entities/item-pedido.entity.ts
 import {
+  Check,
   Column,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
-  JoinColumn, // É uma boa prática adicionar o JoinColumn
+  JoinColumn,
 } from 'typeorm';
 import { Pedido } from './pedido.entity';
 // --- CORREÇÃO APLICADA AQUI ---
@@ -14,6 +16,7 @@ import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
 
 @Entity('itens_pedido')
+@Check('chk_quantidade_positiva', '"quantidade" > 0')
 export class ItemPedido {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -26,7 +29,8 @@ export class ItemPedido {
   @JoinColumn({ name: 'produtoId' })
   produto: Produto;
 
-  @Column()
+  // ✅ CORREÇÃO DBA: Quantidade deve ser > 0 (constraint na entity)
+  @Column({ type: 'int', default: 1 })
   quantidade: number;
 
   @Column('numeric', { precision: 10, scale: 2 })
@@ -35,6 +39,8 @@ export class ItemPedido {
   @Column({ type: 'varchar', length: 255, nullable: true })
   observacao: string;
 
+  // ✅ CORREÇÃO DBA: Índice para busca de itens por status (cozinha)
+  @Index('idx_item_pedido_status')
   @Column({
     type: 'enum',
     enum: PedidoStatus,

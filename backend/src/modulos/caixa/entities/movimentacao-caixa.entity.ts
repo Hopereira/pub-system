@@ -2,6 +2,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  Index,
   ManyToOne,
   CreateDateColumn,
   JoinColumn,
@@ -48,6 +49,8 @@ export class MovimentacaoCaixa {
   })
   tipo: TipoMovimentacao;
 
+  // ✅ CORREÇÃO DBA: Índice para relatórios por período
+  @Index('idx_movimentacao_data')
   @Column({ type: 'date' })
   data: Date;
 
