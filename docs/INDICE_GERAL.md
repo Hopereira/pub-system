@@ -92,7 +92,7 @@ Guias definitivos para configuração e uso do sistema.
 | `GUIA-TESTES-FASE1.md` | Como testar o sistema |
 | `CONFIGURACAO_EXPIRACAO_TOKEN.md` | Configuração de JWT |
 
-### 🔧 `tecnico/` (10 arquivos)
+### 🔧 `tecnico/` (11 arquivos)
 Documentação técnica, arquitetura e migrations.
 
 | Arquivo | Descrição |
@@ -100,6 +100,7 @@ Documentação técnica, arquitetura e migrations.
 | `MIGRATIONS.md` | Guia de migrations do banco |
 | `SECURITY.md` | Políticas de segurança |
 | `DOCUMENTACAO_TECNICA_COMPLETA.md` | Arquitetura detalhada |
+| `AUDITORIA_CAIXA_SERVICE.md` | Auditoria QA do módulo de caixa ✨ |
 
 ### 🔥 `troubleshooting/` (18 arquivos)
 Soluções para problemas conhecidos. **Ouro puro!**

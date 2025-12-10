@@ -20,6 +20,8 @@ import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
 import { CreateVendaDto } from './dto/create-venda.dto';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
+// ✅ CORREÇÃO: Importar Decimal.js para cálculos monetários precisos
+import Decimal from 'decimal.js';
 
 @Injectable()
 export class CaixaService {
@@ -68,6 +70,11 @@ export class CaixaService {
       throw new BadRequestException(
         'Já existe um caixa aberto para este turno',
       );
+    }
+
+    // ✅ CORREÇÃO: Validação de valor inicial não negativo
+    if (dto.valorInicial < 0) {
+      throw new BadRequestException('Valor inicial não pode ser negativo');
     }
 
     // Cria abertura de caixa
@@ -137,36 +144,50 @@ export class CaixaService {
 
     const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
 
-    const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
+    // ✅ CORREÇÃO: Usar Decimal.js para cálculos monetários precisos
+    const totalSangrias = sangrias.reduce(
+      (acc, s) => acc.plus(new Decimal(s.valor)),
+      new Decimal(0),
+    ).toNumber();
 
-    // Calcula valores informados
-    const valorInformadoTotal =
-      Number(dto.valorInformadoDinheiro) +
-      Number(dto.valorInformadoPix) +
-      Number(dto.valorInformadoDebito) +
-      Number(dto.valorInformadoCredito) +
-      Number(dto.valorInformadoValeRefeicao) +
-      Number(dto.valorInformadoValeAlimentacao);
+    // ✅ CORREÇÃO: Calcula valores informados com Decimal.js
+    const valorInformadoTotal = new Decimal(dto.valorInformadoDinheiro)
+      .plus(new Decimal(dto.valorInformadoPix))
+      .plus(new Decimal(dto.valorInformadoDebito))
+      .plus(new Decimal(dto.valorInformadoCredito))
+      .plus(new Decimal(dto.valorInformadoValeRefeicao))
+      .plus(new Decimal(dto.valorInformadoValeAlimentacao))
+      .toNumber();
 
-    // Calcula diferenças
-    const diferencaDinheiro =
-      Number(dto.valorInformadoDinheiro) - valoresEsperados.dinheiro;
-    const diferencaPix = Number(dto.valorInformadoPix) - valoresEsperados.pix;
-    const diferencaDebito =
-      Number(dto.valorInformadoDebito) - valoresEsperados.debito;
-    const diferencaCredito =
-      Number(dto.valorInformadoCredito) - valoresEsperados.credito;
-    const diferencaValeRefeicao =
-      Number(dto.valorInformadoValeRefeicao) - valoresEsperados.valeRefeicao;
-    const diferencaValeAlimentacao =
-      Number(dto.valorInformadoValeAlimentacao) -
-      valoresEsperados.valeAlimentacao;
-    const diferencaTotal = valorInformadoTotal - valoresEsperados.total;
+    // ✅ CORREÇÃO: Calcula diferenças com Decimal.js
+    const diferencaDinheiro = new Decimal(dto.valorInformadoDinheiro)
+      .minus(new Decimal(valoresEsperados.dinheiro))
+      .toNumber();
+    const diferencaPix = new Decimal(dto.valorInformadoPix)
+      .minus(new Decimal(valoresEsperados.pix))
+      .toNumber();
+    const diferencaDebito = new Decimal(dto.valorInformadoDebito)
+      .minus(new Decimal(valoresEsperados.debito))
+      .toNumber();
+    const diferencaCredito = new Decimal(dto.valorInformadoCredito)
+      .minus(new Decimal(valoresEsperados.credito))
+      .toNumber();
+    const diferencaValeRefeicao = new Decimal(dto.valorInformadoValeRefeicao)
+      .minus(new Decimal(valoresEsperados.valeRefeicao))
+      .toNumber();
+    const diferencaValeAlimentacao = new Decimal(dto.valorInformadoValeAlimentacao)
+      .minus(new Decimal(valoresEsperados.valeAlimentacao))
+      .toNumber();
+    const diferencaTotal = new Decimal(valorInformadoTotal)
+      .minus(new Decimal(valoresEsperados.total))
+      .toNumber();
 
-    // Calcula estatísticas
+    // ✅ CORREÇÃO: Calcula estatísticas com Decimal.js
     const vendas = movimentacoes.length;
     const totalVendas = valoresEsperados.total;
-    const ticketMedio = vendas > 0 ? totalVendas / vendas : 0;
+    const ticketMedio = vendas > 0 
+      ? new Decimal(totalVendas).dividedBy(vendas).toNumber() 
+      : 0;
 
     // Cria fechamento
     const fechamento = this.fechamentoRepository.create({
@@ -248,6 +269,11 @@ export class CaixaService {
       throw new BadRequestException('Caixa não está aberto');
     }
 
+    // ✅ CORREÇÃO: Validação de valor positivo
+    if (dto.valor <= 0) {
+      throw new BadRequestException('Valor da sangria deve ser maior que zero');
+    }
+
     // Valida se valor da sangria não excede o saldo disponível
     const saldoAtual = await this.calcularSaldoAtual(abertura.id);
 
@@ -311,6 +337,11 @@ export class CaixaService {
       throw new BadRequestException('Caixa não está aberto');
     }
 
+    // ✅ CORREÇÃO: Validação de valor positivo
+    if (dto.valor <= 0) {
+      throw new BadRequestException('Valor do suprimento deve ser maior que zero');
+    }
+
     // Registra movimentação de suprimento
     const movimentacao = await this.registrarMovimentacao({
       aberturaCaixaId: abertura.id,
@@ -362,6 +393,11 @@ export class CaixaService {
 
     if (!formaPagamento) {
       throw new BadRequestException('Forma de pagamento inválida');
+    }
+
+    // ✅ CORREÇÃO: Validação de valor positivo
+    if (dto.valor <= 0) {
+      throw new BadRequestException('Valor da venda deve ser maior que zero');
     }
 
     // Registra movimentação de venda
@@ -477,10 +513,34 @@ export class CaixaService {
     const vendas = movimentacoes.filter(
       (m) => m.tipo === TipoMovimentacao.VENDA,
     );
-    const totalVendas = vendas.reduce((acc, v) => acc + Number(v.valor), 0);
-    const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
-    const saldoFinal =
-      Number(abertura.valorInicial) + totalVendas - totalSangrias;
+    
+    // ✅ CORREÇÃO: Buscar suprimentos
+    const suprimentos = movimentacoes.filter(
+      (m) => m.tipo === TipoMovimentacao.SUPRIMENTO,
+    );
+
+    // ✅ CORREÇÃO: Usar Decimal.js para cálculos monetários precisos
+    const totalVendas = vendas.reduce(
+      (acc, v) => acc.plus(new Decimal(v.valor)),
+      new Decimal(0),
+    ).toNumber();
+    
+    const totalSangrias = sangrias.reduce(
+      (acc, s) => acc.plus(new Decimal(s.valor)),
+      new Decimal(0),
+    ).toNumber();
+    
+    const totalSuprimentos = suprimentos.reduce(
+      (acc, s) => acc.plus(new Decimal(s.valor)),
+      new Decimal(0),
+    ).toNumber();
+    
+    // ✅ CORREÇÃO: Incluir suprimentos no cálculo do saldo final
+    const saldoFinal = new Decimal(abertura.valorInicial)
+      .plus(new Decimal(totalVendas))
+      .plus(new Decimal(totalSuprimentos))
+      .minus(new Decimal(totalSangrias))
+      .toNumber();
 
     const resumoPorFormaPagamento = this.agruparPorFormaPagamento(vendas);
 
@@ -489,11 +549,11 @@ export class CaixaService {
       fechamento,
       movimentacoes,
       sangrias,
-      suprimentos: [], // TODO: Implementar suprimentos
+      suprimentos,
       resumoPorFormaPagamento,
       totalVendas,
       totalSangrias,
-      totalSuprimentos: 0,
+      totalSuprimentos,
       saldoFinal,
     };
   }
@@ -553,46 +613,57 @@ export class CaixaService {
     return await this.movimentacaoRepository.save(movimentacao);
   }
 
+  // ✅ CORREÇÃO: Usar Decimal.js para cálculos monetários precisos
   private calcularValoresEsperados(movimentacoes: MovimentacaoCaixa[]) {
     const valores = {
-      dinheiro: 0,
-      pix: 0,
-      debito: 0,
-      credito: 0,
-      valeRefeicao: 0,
-      valeAlimentacao: 0,
-      total: 0,
+      dinheiro: new Decimal(0),
+      pix: new Decimal(0),
+      debito: new Decimal(0),
+      credito: new Decimal(0),
+      valeRefeicao: new Decimal(0),
+      valeAlimentacao: new Decimal(0),
+      total: new Decimal(0),
     };
 
     movimentacoes.forEach((mov) => {
-      const valor = Number(mov.valor);
-      valores.total += valor;
+      const valor = new Decimal(mov.valor);
+      valores.total = valores.total.plus(valor);
 
       switch (mov.formaPagamento) {
         case FormaPagamento.DINHEIRO:
-          valores.dinheiro += valor;
+          valores.dinheiro = valores.dinheiro.plus(valor);
           break;
         case FormaPagamento.PIX:
-          valores.pix += valor;
+          valores.pix = valores.pix.plus(valor);
           break;
         case FormaPagamento.DEBITO:
-          valores.debito += valor;
+          valores.debito = valores.debito.plus(valor);
           break;
         case FormaPagamento.CREDITO:
-          valores.credito += valor;
+          valores.credito = valores.credito.plus(valor);
           break;
         case FormaPagamento.VALE_REFEICAO:
-          valores.valeRefeicao += valor;
+          valores.valeRefeicao = valores.valeRefeicao.plus(valor);
           break;
         case FormaPagamento.VALE_ALIMENTACAO:
-          valores.valeAlimentacao += valor;
+          valores.valeAlimentacao = valores.valeAlimentacao.plus(valor);
           break;
       }
     });
 
-    return valores;
+    // Retorna valores convertidos para number
+    return {
+      dinheiro: valores.dinheiro.toNumber(),
+      pix: valores.pix.toNumber(),
+      debito: valores.debito.toNumber(),
+      credito: valores.credito.toNumber(),
+      valeRefeicao: valores.valeRefeicao.toNumber(),
+      valeAlimentacao: valores.valeAlimentacao.toNumber(),
+      total: valores.total.toNumber(),
+    };
   }
 
+  // ✅ CORREÇÃO: Usar Decimal.js e incluir suprimentos
   private async calcularSaldoAtual(aberturaCaixaId: string): Promise<number> {
     const abertura = await this.aberturaRepository.findOne({
       where: { id: aberturaCaixaId },
@@ -602,25 +673,46 @@ export class CaixaService {
       where: { aberturaCaixaId, tipo: TipoMovimentacao.VENDA },
     });
 
+    const suprimentos = await this.movimentacaoRepository.find({
+      where: { aberturaCaixaId, tipo: TipoMovimentacao.SUPRIMENTO },
+    });
+
     const sangrias = await this.sangriaRepository.find({
       where: { aberturaCaixaId },
     });
 
-    const totalVendas = vendas.reduce((acc, v) => acc + Number(v.valor), 0);
-    const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
+    const totalVendas = vendas.reduce(
+      (acc, v) => acc.plus(new Decimal(v.valor)),
+      new Decimal(0),
+    );
+    
+    const totalSuprimentos = suprimentos.reduce(
+      (acc, s) => acc.plus(new Decimal(s.valor)),
+      new Decimal(0),
+    );
+    
+    const totalSangrias = sangrias.reduce(
+      (acc, s) => acc.plus(new Decimal(s.valor)),
+      new Decimal(0),
+    );
 
-    return Number(abertura.valorInicial) + totalVendas - totalSangrias;
+    return new Decimal(abertura.valorInicial)
+      .plus(totalVendas)
+      .plus(totalSuprimentos)
+      .minus(totalSangrias)
+      .toNumber();
   }
 
+  // ✅ CORREÇÃO: Usar Decimal.js para cálculos monetários precisos
   private agruparPorFormaPagamento(vendas: MovimentacaoCaixa[]) {
     const formas = Object.values(FormaPagamento);
 
     return formas.map((forma) => {
       const vendasPorForma = vendas.filter((v) => v.formaPagamento === forma);
       const valorEsperado = vendasPorForma.reduce(
-        (acc, v) => acc + Number(v.valor),
-        0,
-      );
+        (acc, v) => acc.plus(new Decimal(v.valor)),
+        new Decimal(0),
+      ).toNumber();
 
       return {
         formaPagamento: forma,

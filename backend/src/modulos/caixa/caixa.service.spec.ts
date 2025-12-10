@@ -391,7 +391,7 @@ describe('CaixaService', () => {
       const result = await service.getResumoCaixa(aberturaCaixaId);
 
       expect(result).toBeDefined();
-      expect(result.aberturaCaixa).toBeDefined();
+      expect(result.abertura).toBeDefined();
       expect(result.movimentacoes).toHaveLength(2);
       expect(result.sangrias).toHaveLength(1);
       expect(result.totalVendas).toBe(150);
