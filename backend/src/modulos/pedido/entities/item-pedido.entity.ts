@@ -88,7 +88,7 @@ export class ItemPedido {
   garcomEntrega: Funcionario;
 
   // ✅ NOVO: Tempo de entrega em minutos (calculado automaticamente)
-  @Column({ type: 'int', nullable: true })
+  @Column({ name: 'tempoentregaminutos', type: 'int', nullable: true })
   tempoEntregaMinutos: number;
 
   // Tempo de preparo em minutos (do início ao pronto)

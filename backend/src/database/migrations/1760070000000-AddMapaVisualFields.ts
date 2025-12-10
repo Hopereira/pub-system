@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddMapaVisualFields1730770000000 implements MigrationInterface {
+export class AddMapaVisualFields1760070000000 implements MigrationInterface {
+  name = 'AddMapaVisualFields1760070000000'
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Adicionar campos de posição em mesas
     await queryRunner.addColumn(

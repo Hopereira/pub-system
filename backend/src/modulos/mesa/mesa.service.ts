@@ -44,6 +44,24 @@ export class MesaService {
       );
     }
 
+    // Verifica se já existe uma mesa com este número em qualquer ambiente
+    const mesaExistente = await this.mesaRepository.findOne({
+      where: { numero },
+      relations: ['ambiente'],
+    });
+
+    if (mesaExistente) {
+      if (mesaExistente.ambiente.id === ambienteId) {
+        throw new ConflictException(
+          `A mesa ${numero} já existe no ambiente "${ambiente.nome}".`
+        );
+      } else {
+        throw new ConflictException(
+          `A mesa ${numero} já existe no ambiente "${mesaExistente.ambiente.nome}". Por favor, escolha outro número.`
+        );
+      }
+    }
+
     // Cria mesa com posição, tamanho e rotação (se fornecidos)
     const mesa = this.mesaRepository.create({
       numero,
@@ -65,7 +83,7 @@ export class MesaService {
     } catch (error) {
       if (error.code === '23505') {
         throw new ConflictException(
-          'Já existe uma mesa com este número neste ambiente.',
+          `A mesa ${numero} já existe no ambiente "${ambiente.nome}".`,
         );
       }
       throw error;

@@ -1,5 +1,5 @@
 // frontend/src/services/comandaService.ts
-import { Comanda } from "@/types/comanda";
+import { Comanda, ComandaStatus } from "@/types/comanda";
 import { CreateComandaDto } from "@/types/comanda.dto";
 import { UpdatePontoComandaDto } from "@/types/ponto-entrega.dto";
 import api, { publicApi } from "./api";
@@ -147,7 +147,7 @@ export const getComandasByPontoEntrega = async (pontoEntregaId: string): Promise
     // Buscar todas as comandas e filtrar no frontend
     const response = await api.get<Comanda[]>('/comandas');
     const comandasFiltradas = response.data.filter(
-      (comanda) => comanda.pontoEntrega?.id === pontoEntregaId && comanda.status === 'ABERTA'
+      (comanda) => comanda.pontoEntrega?.id === pontoEntregaId && comanda.status === ComandaStatus.ABERTA
     );
     
     logger.log(`✅ ${comandasFiltradas.length} comandas encontradas no ponto`, { module: 'ComandaService' });

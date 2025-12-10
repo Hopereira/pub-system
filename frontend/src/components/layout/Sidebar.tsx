@@ -39,9 +39,12 @@ const baseNavLinks: NavLink[] = [
   // --- Área da Cozinha ---
   { href: '/cozinha', label: 'Ambiente de Preparo', icon: ChefHat, roles: ['COZINHA'] },
   
+  // --- Área da Cozinha ---
+  { href: '/cozinha', label: 'Área da Cozinha', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO'] },
+  
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
-  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE', 'COZINHA'] },
+  { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE'] },
   // --- Links de Administração ---
@@ -72,21 +75,35 @@ export function Sidebar() {
     const fetchOperationalLinks = async () => {
       try {
         const ambientes = await getAmbientes();
-        const dynamicLinks = ambientes
-          .filter(ambiente => ambiente.tipo === 'PREPARO') // Mostra apenas painéis para ambientes de preparo
-          .map(ambiente => ({
-            href: `/dashboard/operacional/${ambiente.id}`,
-            label: `Painel ${ambiente.nome}`,
-            icon: ChefHat,
-            roles: ['ADMIN', 'COZINHA'],
+        
+        let dynamicLinks = ambientes
+          .filter(ambiente => ambiente.tipo === 'PREPARO'); // Filtra apenas ambientes de preparo
+        
+        // Se for COZINHA/COZINHEIRO, mostra apenas o ambiente onde trabalha
+        if (['COZINHA', 'COZINHEIRO'].includes(user?.cargo || '')) {
+          if (user?.ambienteId) {
+            dynamicLinks = dynamicLinks.filter(ambiente => ambiente.id === user.ambienteId);
+          } else {
+            // Se não tiver ambienteId configurado, não mostra nenhum painel
+            dynamicLinks = [];
+          }
+        }
+        // ADMIN vê todos os painéis (sem filtro adicional)
+        
+        const links = dynamicLinks.map(ambiente => ({
+          href: `/dashboard/operacional/${ambiente.id}`,
+          label: `Painel ${ambiente.nome}`,
+          icon: ChefHat,
+          roles: ['ADMIN', 'COZINHA', 'COZINHEIRO'],
         }));
-        setOperationalLinks(dynamicLinks);
+        
+        setOperationalLinks(links);
       } catch (error) {
         console.error('Erro ao buscar links operacionais:', error);
       }
     };
 
-    if (user?.cargo && ['ADMIN', 'COZINHA'].includes(user.cargo)) {
+    if (user?.cargo && ['ADMIN', 'COZINHA', 'COZINHEIRO'].includes(user.cargo)) {
         fetchOperationalLinks();
     } else {
         setOperationalLinks([]);

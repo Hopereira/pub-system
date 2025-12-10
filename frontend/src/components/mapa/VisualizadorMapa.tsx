@@ -6,7 +6,7 @@ import { getPontosEntregaAtivos } from '@/services/pontoEntregaService';
 import { getComandasByPontoEntrega } from '@/services/comandaService';
 import { Mesa } from '@/types/mesa';
 import { PontoEntrega } from '@/types/ponto-entrega';
-import { Comanda } from '@/types/comanda';
+import { Comanda, ComandaStatus } from '@/types/comanda';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -532,7 +532,7 @@ export function VisualizadorMapa({ ambienteId, ambienteNome }: VisualizadorMapaP
                       </div>
 
                       <Badge 
-                        variant={comanda.status === 'ABERTA' ? 'default' : 'secondary'}
+                        variant={comanda.status === ComandaStatus.ABERTA ? 'default' : 'secondary'}
                         className="ml-2"
                       >
                         {comanda.status}

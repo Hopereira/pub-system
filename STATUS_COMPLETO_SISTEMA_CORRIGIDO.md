@@ -225,11 +225,17 @@ Após revisar **TODOS** os arquivos de documentação, descobri que **MUITO MAIS
 - ✅ Avaliação de atendimento
 - ✅ Feedback de clientes
 
-### **3. Sistema de Turnos (Check-in/Check-out)** ✅
+### **3. Sistema de Turnos (Check-in/Check-out)** ✅ 100%
 - ✅ Backend 100% completo
 - ✅ Módulo `turno` criado
 - ✅ Endpoints funcionando
-- ⏳ Frontend pendente (apenas a interface)
+- ✅ **Frontend 100% implementado**
+  - ✅ Componente `CardCheckIn.tsx` (210 linhas)
+  - ✅ Integrado em `/garcom/page.tsx`
+  - ✅ Context `TurnoContext.tsx`
+  - ✅ Hook `useTurno.ts`
+  - ✅ Service `turnoService.ts`
+  - ✅ UI completa com tempo real
 
 ---
 
@@ -264,7 +270,7 @@ Após revisar **TODOS** os arquivos de documentação, descobri que **MUITO MAIS
 
 #### **Sistema do Garçom:**
 ```
-███████████████████████████████████████░ 95%
+████████████████████████████████████████ 100%
 ```
 - ✅ Dashboard (`/garcom`) - 100%
 - ✅ Novo Pedido (`/garcom/novo-pedido`) - 100%

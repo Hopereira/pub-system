@@ -20,9 +20,16 @@ services:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}?schema=public
       - JWT_SECRET=${JWT_SECRET}
       - BACKEND_URL=http://localhost:3000
+      - NODE_OPTIONS=--max-old-space-size=1024
     env_file:
       - ./.env
     command: npm run start:dev
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 512M
 
   # --- Serviço do Banco de Dados PostgreSQL ---
   db:
@@ -41,6 +48,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   # --- Serviço do PGAdmin ---
   pgadmin:
@@ -71,8 +84,16 @@ services:
     environment:
       - API_URL_SERVER=http://backend:3000
       - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NODE_OPTIONS=--max-old-space-size=2048
+      - WATCHPACK_POLLING=true
     stdin_open: true
     tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
+        reservations:
+          memory: 1G
 
 networks:
   pub_network:

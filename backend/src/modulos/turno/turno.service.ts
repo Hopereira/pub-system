@@ -16,6 +16,7 @@ import {
   FuncionarioAtivoDto,
   EstatisticasTurnoDto,
 } from './dto/turno-response.dto';
+import { TurnoGateway } from './turno.gateway';
 
 @Injectable()
 export class TurnoService {
@@ -26,6 +27,7 @@ export class TurnoService {
     private turnoRepository: Repository<TurnoFuncionario>,
     @InjectRepository(Funcionario)
     private funcionarioRepository: Repository<Funcionario>,
+    private readonly turnoGateway: TurnoGateway,
   ) {}
 
   async checkIn(checkInDto: CheckInDto): Promise<TurnoResponseDto> {
@@ -73,6 +75,17 @@ export class TurnoService {
       `✅ Check-in realizado | Funcionário: ${funcionario.nome} | Status: ATIVO | ${new Date().toLocaleTimeString('pt-BR')}`,
     );
 
+    // Emite evento WebSocket para atualização em tempo real
+    this.turnoGateway.emitCheckIn({
+      ...turnoSalvo,
+      funcionario: {
+        id: funcionario.id,
+        nome: funcionario.nome,
+        cargo: funcionario.cargo,
+      },
+    });
+    this.turnoGateway.emitFuncionariosAtualizados();
+
     return turnoSalvo;
   }
 
@@ -115,6 +128,17 @@ export class TurnoService {
     this.logger.log(
       `⏹️ Check-out realizado | Funcionário: ${turno.funcionario.nome} | Status: INATIVO | Tempo: ${this.formatarTempo(horasTrabalhadas)}`,
     );
+
+    // Emite evento WebSocket para atualização em tempo real
+    this.turnoGateway.emitCheckOut({
+      ...turnoAtualizado,
+      funcionario: {
+        id: turno.funcionario.id,
+        nome: turno.funcionario.nome,
+        cargo: turno.funcionario.cargo,
+      },
+    });
+    this.turnoGateway.emitFuncionariosAtualizados();
 
     return turnoAtualizado;
   }

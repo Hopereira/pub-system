@@ -4,6 +4,7 @@ import { AddItemDrawer } from "@/components/comandas/AddItemDrawer";
 import { Button } from "@/components/ui/button";
 import { getComandaById, fecharComanda } from "@/services/comandaService";
 import { Comanda } from "@/types/comanda";
+import { ComandaStatus } from "@/types/comanda"; // Adicionado import de ComandaStatus
 import { PlusCircle, Banknote, ShieldAlert } from "lucide-react"; 
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -171,7 +172,7 @@ export default function ComandaDetalhePage() {
         </div>
       </div>
 
-      {isCaixa && comanda.status === 'ABERTA' && (
+      {isCaixa && comanda.status === ComandaStatus.ABERTA && (
         <div className="mt-8 p-6 border-2 border-dashed rounded-lg">
           <h2 className="text-2xl font-bold text-center mb-4">Painel de Pagamento</h2>
           <div className="flex flex-col items-center">
@@ -191,7 +192,7 @@ export default function ComandaDetalhePage() {
         </div>
       )}
       
-      {isGarcom && comanda.status === 'ABERTA' && (
+      {isGarcom && comanda.status === ComandaStatus.ABERTA && (
         <Button onClick={() => setIsDrawerOpen(true)} className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg">
           <PlusCircle className="h-8 w-8" />
         </Button>
