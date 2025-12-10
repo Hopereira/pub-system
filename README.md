@@ -41,10 +41,10 @@
 ![Garçom](https://img.shields.io/badge/Sistema%20Garçom-100%25-success)
 ![Analytics](https://img.shields.io/badge/Analytics-100%25-success)
 
-**Última Atualização:** 06 de novembro de 2025
+**Última Atualização:** 10 de dezembro de 2025
 
 ### 📊 Implementação Completa:
-- ✅ **Backend:** 15 módulos funcionais (100%)
+- ✅ **Backend:** 17 módulos funcionais (100%)
 - ✅ **Frontend Core:** Dashboard, operacional, relatórios (100%)
 - ✅ **Sistema do Garçom:** Check-in, pedidos, mapa visual, gestão (100%)
 - ✅ **Rastreamento:** Timestamps e responsáveis completos (100%)
@@ -320,22 +320,24 @@ pub-system/
 │   ├── src/
 │   │   ├── auth/           # Autenticação e autorização (JWT + Passport)
 │   │   ├── database/       # Migrations e configurações do BD
-│   │   ├── modulos/        # 15 Módulos de funcionalidades
-│   │   │   ├── ambiente/   # Gestão de ambientes dinâmicos
-│   │   │   ├── analytics/  # Relatórios e métricas ✨
-│   │   │   ├── avaliacao/  # Sistema de avaliações
-│   │   │   ├── cliente/    # Gestão de clientes
-│   │   │   ├── comanda/    # Sistema de comandas
-│   │   │   ├── empresa/    # Dados do estabelecimento
-│   │   │   ├── estabelecimento/ # Configurações gerais
-│   │   │   ├── evento/     # Eventos especiais
-│   │   │   ├── funcionario/# Gestão de funcionários
-│   │   │   ├── mesa/       # Gestão de mesas
-│   │   │   ├── pagina-evento/ # Landing pages de eventos
-│   │   │   ├── pedido/     # Sistema de pedidos + WebSocket
-│   │   │   ├── ponto-entrega/ # Pontos de entrega ✨
-│   │   │   ├── produto/    # Gestão de produtos
-│   │   │   └── turno/      # Check-in/Check-out ✨
+│   │   ├── modulos/        # 17 Módulos de funcionalidades
+│   │   │   ├── ambiente/   # Gestão de ambientes dinâmicos (/ambientes)
+│   │   │   ├── analytics/  # Relatórios e métricas (/analytics) ✨
+│   │   │   ├── avaliacao/  # Sistema de avaliações (/avaliacoes)
+│   │   │   ├── caixa/      # Gestão financeira do caixa (/caixa) ✨
+│   │   │   ├── cliente/    # Gestão de clientes (/clientes)
+│   │   │   ├── comanda/    # Sistema de comandas (/comandas)
+│   │   │   ├── empresa/    # Dados do estabelecimento (/empresa)
+│   │   │   ├── estabelecimento/ # Entity de layout (sem controller)
+│   │   │   ├── evento/     # Eventos especiais (/eventos)
+│   │   │   ├── funcionario/# Gestão de funcionários (/funcionarios)
+│   │   │   ├── medalha/    # Sistema de gamificação (/medalhas) ✨
+│   │   │   ├── mesa/       # Gestão de mesas (/mesas)
+│   │   │   ├── pagina-evento/ # Landing pages (/paginas-evento)
+│   │   │   ├── pedido/     # Sistema de pedidos (/pedidos) + WebSocket
+│   │   │   ├── ponto-entrega/ # Pontos de entrega (/pontos-entrega) ✨
+│   │   │   ├── produto/    # Gestão de produtos (/produtos)
+│   │   │   └── turno/      # Check-in/Check-out (/turnos) ✨
 │   │   ├── shared/         # Módulos compartilhados
 │   │   └── types/          # Definições de tipos
 │   ├── test/               # Testes automatizados
@@ -356,11 +358,17 @@ pub-system/
 │   │   │   │   │   ├── mapa/     # Mapa visual + configuração
 │   │   │   │   │   ├── operacional/ # Área operacional
 │   │   │   │   │   └── relatorios/  # Analytics ✨
+│   │   │   │   ├── caixa/       # Área do Caixa ✨
+│   │   │   │   │   ├── terminal/    # Terminal de busca
+│   │   │   │   │   ├── comandas-abertas/ # Lista comandas
+│   │   │   │   │   └── page.tsx     # Dashboard do caixa
 │   │   │   │   └── garcom/     # Sistema do Garçom ✨
-│   │   │   │       ├── gestao-pedidos/ # Gestão de pedidos
-│   │   │   │       ├── mapa/     # Redirecionamento
+│   │   │   │       ├── mapa/        # Mapa visual
+│   │   │   │       ├── mapa-visual/ # Visualização espacial
 │   │   │   │       ├── novo-pedido/ # Criar pedido
-│   │   │   │       └── page.tsx  # Dashboard do garçom
+│   │   │   │       ├── qrcode-comanda/ # QR Code
+│   │   │   │       ├── ranking/     # Ranking gamificação
+│   │   │   │       └── page.tsx     # Dashboard do garçom
 │   │   │   ├── comanda/   # Visualização pública (QR Code)
 │   │   │   ├── entrada/   # Página inicial
 │   │   │   └── evento/    # Landing pages de eventos
@@ -412,10 +420,9 @@ GET  /auth/profile           # Perfil do usuário logado
 
 ### 🏢 Gestão
 ```http
-GET    /empresas             # Listar empresas
-POST   /empresas             # Criar empresa
-PUT    /empresas/:id         # Atualizar empresa
-DELETE /empresas/:id         # Deletar empresa
+GET    /empresa              # Obter dados da empresa
+POST   /empresa              # Criar empresa
+PATCH  /empresa/:id          # Atualizar empresa
 ```
 
 ### 🍽️ Operacional
@@ -435,9 +442,27 @@ GET    /evento/:slug         # Landing page de eventos
 
 ### 📁 Upload e Mídia
 ```http
-POST   /upload               # Upload de imagens (GCS)
-GET    /pagina-evento        # Gerenciamento de landing pages
-POST   /pagina-evento        # Criar landing page
+# Upload integrado nos endpoints específicos:
+POST   /produtos             # Upload via campo 'imagem' (multipart)
+POST   /eventos/:id/imagem   # Upload imagem de evento
+POST   /paginas-evento       # Upload com imagens de landing page
+GET    /paginas-evento       # Listar landing pages
+```
+
+### 💰 Caixa
+```http
+POST   /caixa/abertura       # Abrir caixa
+POST   /caixa/fechamento     # Fechar caixa
+POST   /caixa/sangria        # Registrar sangria
+POST   /caixa/suprimento     # Registrar suprimento
+GET    /caixa/resumo/:id     # Resumo do caixa
+```
+
+### 🏆 Medalhas (Gamificação)
+```http
+GET    /medalhas/garcom/:id           # Medalhas do garçom
+GET    /medalhas/garcom/:id/progresso # Progresso das medalhas
+GET    /medalhas/garcom/:id/verificar # Verificar novas medalhas
 ```
 > 📖 **Documentação completa da API:** Disponível via Swagger em `http://localhost:3000/api` (quando configurado)
 
