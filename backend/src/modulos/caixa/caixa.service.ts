@@ -121,12 +121,21 @@ export class CaixaService {
       where: { aberturaCaixaId: abertura.id, tipo: TipoMovimentacao.VENDA },
     });
 
-    const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
-
     // Busca sangrias
     const sangrias = await this.sangriaRepository.find({
       where: { aberturaCaixaId: abertura.id },
     });
+
+    // Validação: Não permite fechar caixa sem nenhuma movimentação
+    // (exceto se forçar fechamento via flag)
+    if (movimentacoes.length === 0 && sangrias.length === 0 && !dto.forcarFechamento) {
+      throw new BadRequestException(
+        'Não é possível fechar o caixa sem movimentações. ' +
+        'Se deseja fechar mesmo assim, marque a opção "Forçar fechamento".'
+      );
+    }
+
+    const valoresEsperados = this.calcularValoresEsperados(movimentacoes);
 
     const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
 
@@ -280,6 +289,46 @@ export class CaixaService {
     this.pedidosGateway.emitCaixaAtualizado(abertura.id);
 
     return sangriaSalva;
+  }
+
+  /**
+   * Registra um suprimento (entrada de dinheiro no caixa)
+   */
+  async registrarSuprimento(dto: {
+    aberturaCaixaId: string;
+    valor: number;
+    motivo?: string;
+  }): Promise<MovimentacaoCaixa> {
+    const abertura = await this.aberturaRepository.findOne({
+      where: { id: dto.aberturaCaixaId },
+    });
+
+    if (!abertura) {
+      throw new NotFoundException('Abertura de caixa não encontrada');
+    }
+
+    if (abertura.status !== StatusCaixa.ABERTO) {
+      throw new BadRequestException('Caixa não está aberto');
+    }
+
+    // Registra movimentação de suprimento
+    const movimentacao = await this.registrarMovimentacao({
+      aberturaCaixaId: abertura.id,
+      tipo: TipoMovimentacao.SUPRIMENTO,
+      formaPagamento: FormaPagamento.DINHEIRO,
+      valor: dto.valor,
+      descricao: dto.motivo || 'Suprimento de caixa',
+      funcionarioId: abertura.funcionarioId,
+    });
+
+    this.logger.log(
+      `💵 Suprimento registrado | Valor: R$ ${dto.valor.toFixed(2)} | Motivo: ${dto.motivo || 'Não informado'}`,
+    );
+
+    // Emitir evento WebSocket para atualizar caixa em tempo real
+    this.pedidosGateway.emitCaixaAtualizado(abertura.id);
+
+    return movimentacao;
   }
 
   /**

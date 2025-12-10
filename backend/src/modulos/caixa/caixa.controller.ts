@@ -15,12 +15,17 @@ import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
 import { CreateVendaDto } from './dto/create-venda.dto';
+import { CreateSuprimentoDto } from './dto/create-suprimento.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { Cargo } from '../funcionario/enums/cargo.enum';
 
 @ApiTags('Caixa')
 @ApiBearerAuth()
 @Controller('caixa')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Cargo.ADMIN, Cargo.CAIXA)
 export class CaixaController {
   constructor(private readonly caixaService: CaixaService) {}
 
@@ -78,6 +83,20 @@ export class CaixaController {
   @ApiResponse({ status: 401, description: 'Não autenticado' })
   async registrarVenda(@Body() dto: CreateVendaDto) {
     return await this.caixaService.registrarVenda(dto);
+  }
+
+  /**
+   * POST /caixa/suprimento
+   * Registra um suprimento (entrada de dinheiro)
+   */
+  @Post('suprimento')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Registrar suprimento', description: 'Registra uma entrada de dinheiro no caixa (suprimento)' })
+  @ApiResponse({ status: 201, description: 'Suprimento registrado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
+  async registrarSuprimento(@Body() dto: CreateSuprimentoDto) {
+    return await this.caixaService.registrarSuprimento(dto);
   }
 
   /**

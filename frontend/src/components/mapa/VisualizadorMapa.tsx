@@ -56,9 +56,8 @@ export function VisualizadorMapa({ ambienteId, ambienteNome }: VisualizadorMapaP
       const pontosAtivos = await getPontosEntregaAtivos();
       setPontosEntrega(pontosAtivos);
       
-      console.log('📍 Pontos de entrega carregados:', pontosAtivos.length);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      // Erro silencioso - dados não carregados
     } finally {
       setIsLoading(false);
     }
@@ -78,9 +77,8 @@ export function VisualizadorMapa({ ambienteId, ambienteNome }: VisualizadorMapaP
       setLoadingComandas(true);
       const comandas = await getComandasByPontoEntrega(ponto.id);
       setComandasPonto(comandas);
-      console.log(`📋 ${comandas.length} comandas encontradas no ponto ${ponto.nome}`);
     } catch (error) {
-      console.error('Erro ao carregar comandas do ponto:', error);
+      // Erro silencioso - comandas não carregadas
       setComandasPonto([]);
     } finally {
       setLoadingComandas(false);

@@ -50,7 +50,6 @@ export default function SupervisaoPedidos() {
   // Recarrega quando recebe novo pedido
   useEffect(() => {
     if (novoPedido) {
-      console.log('🆕 Novo pedido recebido, recarregando...');
       loadPedidos();
     }
   }, [novoPedido]);
@@ -58,7 +57,6 @@ export default function SupervisaoPedidos() {
   // Recarrega quando pedido é atualizado
   useEffect(() => {
     if (pedidoAtualizado) {
-      console.log('🔄 Pedido atualizado, recarregando...');
       loadPedidos();
     }
   }, [pedidoAtualizado]);
@@ -67,7 +65,6 @@ export default function SupervisaoPedidos() {
   useEffect(() => {
     if (!isConnected && !isLoading) {
       const intervalId = setInterval(() => {
-        console.log('🔄 Polling de fallback...');
         loadPedidos();
       }, 30000); // 30 segundos
       

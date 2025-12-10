@@ -12,10 +12,9 @@ export const getEmpresa = async (): Promise<Empresa | null> => {
     return response.data;
   } catch (error) {
     if (error instanceof AxiosError && error.response?.status === 404) {
-      console.log('Empresa ainda não cadastrada (comportamento esperado).');
+      // Empresa ainda não cadastrada (comportamento esperado)
       return null;
     }
-    console.error('Erro ao buscar empresa:', error);
     throw error;
   }
 };

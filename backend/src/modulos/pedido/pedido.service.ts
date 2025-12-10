@@ -212,7 +212,13 @@ export class PedidoService {
     return pedidoCompleto;
   }
 
-  async findAll(ambienteId?: string): Promise<Pedido[]> {
+  async findAll(filters?: {
+    ambienteId?: string;
+    status?: string;
+    comandaId?: string;
+  }): Promise<Pedido[]> {
+    const { ambienteId, status, comandaId } = filters || {};
+
     const queryBuilder = this.pedidoRepository
       .createQueryBuilder('pedido')
       .leftJoinAndSelect('pedido.comanda', 'comanda')
@@ -224,29 +230,40 @@ export class PedidoService {
       .leftJoinAndSelect('produto.ambiente', 'ambiente')
       .leftJoinAndSelect('itemPedido.ambienteRetirada', 'ambienteRetirada')
       .select([
-        // ✅ A CORREÇÃO ESTÁ AQUI
         'pedido',
         'comanda',
         'mesa',
         'cliente',
         'pontoEntrega',
-        'itemPedido', // ✅ Isso garante que TODOS os campos de ItemPedido (incluindo id e status) sejam retornados
+        'itemPedido',
         'produto',
         'ambiente',
         'ambienteRetirada',
-      ])
-      .where('itemPedido.status IN (:...statuses)', {
+      ]);
+
+    // Filtro por status específico ou padrão
+    if (status) {
+      queryBuilder.where('itemPedido.status = :status', { status });
+    } else {
+      queryBuilder.where('itemPedido.status IN (:...statuses)', {
         statuses: [
           PedidoStatus.FEITO,
           PedidoStatus.EM_PREPARO,
-          PedidoStatus.QUASE_PRONTO, // ✅ ADICIONADO
+          PedidoStatus.QUASE_PRONTO,
           PedidoStatus.PRONTO,
-          PedidoStatus.RETIRADO, // ✅ ADICIONADO
+          PedidoStatus.RETIRADO,
           PedidoStatus.ENTREGUE,
           PedidoStatus.DEIXADO_NO_AMBIENTE,
         ],
-      })
-      .orderBy('pedido.data', 'ASC');
+      });
+    }
+
+    // Filtro por comanda
+    if (comandaId) {
+      queryBuilder.andWhere('comanda.id = :comandaId', { comandaId });
+    }
+
+    queryBuilder.orderBy('pedido.data', 'ASC');
 
     if (ambienteId) {
       queryBuilder.andWhere('ambiente.id = :ambienteId', { ambienteId });

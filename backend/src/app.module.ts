@@ -22,6 +22,8 @@ import { TurnoModule } from './modulos/turno/turno.module';
 import { AnalyticsModule } from './modulos/analytics/analytics.module';
 import { MedalhaModule } from './modulos/medalha/medalha.module';
 import { CaixaModule } from './modulos/caixa/caixa.module';
+import { LoggerModule } from './common/logger/logger.module';
+import { JobsModule } from './jobs/jobs.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { CaixaModule } from './modulos/caixa/caixa.module';
     AnalyticsModule,
     MedalhaModule,
     CaixaModule,
+    LoggerModule,
+    JobsModule,
   ],
   controllers: [],
   providers: [],

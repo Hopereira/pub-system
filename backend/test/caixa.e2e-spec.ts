@@ -8,6 +8,7 @@ describe('Caixa (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let authToken: string;
+  let garcomToken: string; // Token de garçom para testar acesso negado
   let turnoFuncionarioId: string;
   let aberturaCaixaId: string;
 
@@ -37,6 +38,16 @@ describe('Caixa (e2e)', () => {
       });
 
     authToken = loginResponse.body.access_token;
+
+    // Fazer login como garçom para testar acesso negado
+    const garcomLoginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: 'garcom@test.com',
+        senha: 'senha123',
+      });
+
+    garcomToken = garcomLoginResponse.body.access_token;
     
     // Criar turno para os testes
     const turnoResponse = await request(app.getHttpServer())
@@ -361,6 +372,140 @@ describe('Caixa (e2e)', () => {
         .expect((res) => {
           expect(Array.isArray(res.body)).toBe(true);
         });
+    });
+  });
+
+  // ============================================
+  // TESTES DE SEGURANÇA - RolesGuard
+  // ============================================
+  describe('Segurança - RolesGuard', () => {
+    it('deve retornar 403 quando GARCOM tenta acessar /caixa/aberto', () => {
+      return request(app.getHttpServer())
+        .get('/caixa/aberto')
+        .set('Authorization', `Bearer ${garcomToken}`)
+        .expect(403);
+    });
+
+    it('deve retornar 403 quando GARCOM tenta abrir caixa', () => {
+      return request(app.getHttpServer())
+        .post('/caixa/abertura')
+        .set('Authorization', `Bearer ${garcomToken}`)
+        .send({
+          turnoFuncionarioId: 'qualquer-id',
+          valorInicial: 100,
+        })
+        .expect(403);
+    });
+
+    it('deve retornar 403 quando GARCOM tenta registrar sangria', () => {
+      return request(app.getHttpServer())
+        .post('/caixa/sangria')
+        .set('Authorization', `Bearer ${garcomToken}`)
+        .send({
+          aberturaCaixaId: 'qualquer-id',
+          valor: 100,
+          motivo: 'Teste de acesso negado',
+        })
+        .expect(403);
+    });
+
+    it('deve retornar 403 quando GARCOM tenta fechar caixa', () => {
+      return request(app.getHttpServer())
+        .post('/caixa/fechamento')
+        .set('Authorization', `Bearer ${garcomToken}`)
+        .send({
+          aberturaCaixaId: 'qualquer-id',
+          valorInformadoDinheiro: 0,
+          valorInformadoPix: 0,
+          valorInformadoDebito: 0,
+          valorInformadoCredito: 0,
+          valorInformadoValeRefeicao: 0,
+          valorInformadoValeAlimentacao: 0,
+        })
+        .expect(403);
+    });
+
+    it('deve retornar 403 quando GARCOM tenta ver histórico', () => {
+      return request(app.getHttpServer())
+        .get('/caixa/historico')
+        .set('Authorization', `Bearer ${garcomToken}`)
+        .expect(403);
+    });
+  });
+
+  // ============================================
+  // TESTES DE MENSAGENS DE ERRO AMIGÁVEIS
+  // ============================================
+  describe('Mensagens de Erro Amigáveis', () => {
+    it('deve retornar mensagem amigável quando sangria excede saldo', async () => {
+      // Primeiro, criar um novo caixa para este teste
+      const turnoResponse = await request(app.getHttpServer())
+        .post('/turnos/check-in')
+        .send({
+          funcionarioId: 'func-teste-erro',
+        });
+
+      // Tentar sangria maior que saldo
+      const response = await request(app.getHttpServer())
+        .post('/caixa/sangria')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          aberturaCaixaId: aberturaCaixaId,
+          valor: 999999, // Valor absurdo
+          motivo: 'Teste de erro',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('excede o saldo disponível');
+      // Não deve conter stack trace ou erro técnico
+      expect(response.body.message).not.toContain('Error:');
+      expect(response.body.message).not.toContain('at ');
+    });
+
+    it('deve retornar mensagem amigável quando caixa não encontrado', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/caixa/00000000-0000-0000-0000-000000000000/resumo')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBeDefined();
+      // Não deve expor detalhes internos
+      expect(response.body).not.toHaveProperty('stack');
+    });
+
+    it('deve retornar mensagem amigável para fechamento sem movimentações', async () => {
+      // Criar novo caixa vazio para teste
+      const novoTurnoResponse = await request(app.getHttpServer())
+        .post('/turnos/check-in')
+        .send({
+          funcionarioId: 'func-teste-vazio',
+        });
+
+      const novoCaixaResponse = await request(app.getHttpServer())
+        .post('/caixa/abertura')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          turnoFuncionarioId: novoTurnoResponse.body?.id || 'turno-teste',
+          valorInicial: 50,
+        });
+
+      if (novoCaixaResponse.status === 201) {
+        const response = await request(app.getHttpServer())
+          .post('/caixa/fechamento')
+          .set('Authorization', `Bearer ${authToken}`)
+          .send({
+            aberturaCaixaId: novoCaixaResponse.body.id,
+            valorInformadoDinheiro: 50,
+            valorInformadoPix: 0,
+            valorInformadoDebito: 0,
+            valorInformadoCredito: 0,
+            valorInformadoValeRefeicao: 0,
+            valorInformadoValeAlimentacao: 0,
+          });
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toContain('sem movimentações');
+      }
     });
   });
 });
