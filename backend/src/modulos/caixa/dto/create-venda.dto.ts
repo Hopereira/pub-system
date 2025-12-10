@@ -29,11 +29,11 @@ export class CreateVendaDto {
   @ApiProperty({
     description: 'Valor da venda em reais',
     example: 125.50,
-    minimum: 0,
+    minimum: 0.01,
   })
   @IsNotEmpty()
   @IsNumber()
-  @Min(0)
+  @Min(0.01, { message: 'Valor da venda deve ser maior que zero' })
   valor: number;
 
   @ApiProperty({
