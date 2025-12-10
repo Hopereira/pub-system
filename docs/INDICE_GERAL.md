@@ -100,8 +100,10 @@ Documentação técnica, arquitetura e migrations.
 | `MIGRATIONS.md` | Guia de migrations do banco |
 | `SECURITY.md` | Políticas de segurança |
 | `DOCUMENTACAO_TECNICA_COMPLETA.md` | Arquitetura detalhada |
+| `AUDITORIA_CAIXA_SERVICE.md` | Auditoria QA do módulo de caixa |
+| `AUDITORIA_SEGURANCA_CONTROLLERS.md` | Auditoria de segurança dos controllers |
 
-### 🔥 `troubleshooting/` (18 arquivos)
+### `troubleshooting/` (18 arquivos)
 Soluções para problemas conhecidos. **Ouro puro!**
 
 | Prefixo | Quantidade | Descrição |

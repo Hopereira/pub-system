@@ -32,7 +32,11 @@ import { Cargo } from '../funcionario/enums/cargo.enum';
 export class TurnoController {
   constructor(private readonly turnoService: TurnoService) {}
 
+  // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-in')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA, Cargo.CAIXA)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-in (iniciar turno)' })
   @ApiResponse({
     status: 201,
@@ -40,12 +44,17 @@ export class TurnoController {
     type: TurnoResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Já existe check-in ativo' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado' })
   async checkIn(@Body() checkInDto: CheckInDto): Promise<TurnoResponseDto> {
     return this.turnoService.checkIn(checkInDto);
   }
 
+  // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-out')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA, Cargo.CAIXA)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-out (finalizar turno)' })
   @ApiResponse({
     status: 200,
@@ -53,6 +62,7 @@ export class TurnoController {
     type: TurnoResponseDto,
   })
   @ApiResponse({ status: 400, description: 'Nenhum check-in ativo encontrado' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
   async checkOut(@Body() checkOutDto: CheckOutDto): Promise<TurnoResponseDto> {
     return this.turnoService.checkOut(checkOutDto);
   }
