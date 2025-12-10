@@ -102,6 +102,7 @@ Documentação técnica, arquitetura e migrations.
 | `DOCUMENTACAO_TECNICA_COMPLETA.md` | Arquitetura detalhada |
 | `AUDITORIA_CAIXA_SERVICE.md` | Auditoria QA do módulo de caixa |
 | `AUDITORIA_SEGURANCA_CONTROLLERS.md` | Auditoria de segurança dos controllers |
+| `AUDITORIA_DBA_ENTIDADES.md` | Auditoria DBA das entidades TypeORM ✨ |
 
 ### `troubleshooting/` (18 arquivos)
 Soluções para problemas conhecidos. **Ouro puro!**
