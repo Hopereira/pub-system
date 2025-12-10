@@ -9,13 +9,24 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Pedido } from './entities/pedido.entity';
-import { Comanda } from '../comanda/entities/comanda.entity'; // Importamos a Comanda
+import { Comanda } from '../comanda/entities/comanda.entity';
+
+// ✅ NOVO: Interface para tracking de eventos pendentes
+interface PendingEvent {
+  eventName: string;
+  data: unknown;
+  timestamp: Date;
+  retryCount: number;
+}
 
 @WebSocketGateway({
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3001',
     credentials: true,
   },
+  // ✅ NOVO: Configurações de ping/pong para detectar conexões mortas
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 export class PedidosGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -24,17 +35,27 @@ export class PedidosGateway
   server: Server;
 
   private readonly logger = new Logger(PedidosGateway.name);
+  
+  // ✅ NOVO: Contador de clientes conectados
+  private connectedClients = 0;
 
   afterInit(server: Server) {
-    this.logger.log('Gateway de Pedidos inicializado!');
+    this.logger.log('🔌 Gateway de Pedidos inicializado!');
   }
 
   handleConnection(client: Socket, ...args: any[]) {
-    this.logger.log(`Cliente conectado: ${client.id}`);
+    this.connectedClients++;
+    this.logger.log(`✅ Cliente conectado: ${client.id} | Total: ${this.connectedClients}`);
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Cliente desconectado: ${client.id}`);
+    this.connectedClients--;
+    this.logger.log(`❌ Cliente desconectado: ${client.id} | Total: ${this.connectedClients}`);
+  }
+  
+  // ✅ NOVO: Getter para verificar se há clientes conectados
+  get hasConnectedClients(): boolean {
+    return this.connectedClients > 0;
   }
 
   /**
@@ -60,9 +81,19 @@ export class PedidosGateway
     return { success: true, room: roomName };
   }
 
+  /**
+   * ✅ MELHORADO: Emite evento de novo pedido com logging aprimorado
+   * Verifica se há clientes conectados antes de emitir
+   */
   emitNovoPedido(pedido: Pedido) {
+    if (!this.hasConnectedClients) {
+      this.logger.warn(
+        `⚠️ Nenhum cliente conectado para receber 'novo_pedido' | Pedido ID: ${pedido.id}`,
+      );
+    }
+    
     this.logger.log(
-      `Emitindo evento 'novo_pedido' para o pedido ID: ${pedido.id}`,
+      `📤 Emitindo 'novo_pedido' | ID: ${pedido.id} | Clientes: ${this.connectedClients}`,
     );
     this.server.emit('novo_pedido', pedido);
 
@@ -77,7 +108,7 @@ export class PedidosGateway
         ) {
           const ambienteId = item.produto.ambiente.id;
           this.logger.log(
-            `Emitindo 'novo_pedido_ambiente:${ambienteId}' para o pedido ID: ${pedido.id}`,
+            `📤 Emitindo 'novo_pedido_ambiente:${ambienteId}' | Pedido ID: ${pedido.id}`,
           );
           this.server.emit(`novo_pedido_ambiente:${ambienteId}`, pedido);
           ambientesNotificados.add(ambienteId);
@@ -86,9 +117,18 @@ export class PedidosGateway
     }
   }
 
+  /**
+   * ✅ MELHORADO: Emite evento de status atualizado com logging aprimorado
+   */
   emitStatusAtualizado(pedido: Pedido) {
+    if (!this.hasConnectedClients) {
+      this.logger.warn(
+        `⚠️ Nenhum cliente conectado para receber 'status_atualizado' | Pedido ID: ${pedido.id}`,
+      );
+    }
+    
     this.logger.log(
-      `Emitindo evento 'status_atualizado' para o pedido ID: ${pedido.id}`,
+      `📤 Emitindo 'status_atualizado' | ID: ${pedido.id} | Status: ${pedido.status} | Clientes: ${this.connectedClients}`,
     );
     this.server.emit('status_atualizado', pedido);
 
@@ -103,7 +143,7 @@ export class PedidosGateway
         ) {
           const ambienteId = item.produto.ambiente.id;
           this.logger.log(
-            `Emitindo 'status_atualizado_ambiente:${ambienteId}' para o pedido ID: ${pedido.id}`,
+            `📤 Emitindo 'status_atualizado_ambiente:${ambienteId}' | Pedido ID: ${pedido.id}`,
           );
           this.server.emit(`status_atualizado_ambiente:${ambienteId}`, pedido);
           ambientesNotificados.add(ambienteId);

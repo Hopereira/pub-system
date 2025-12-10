@@ -49,9 +49,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionDelayMax: 10000, // Máximo 10 segundos entre tentativas
+      reconnectionAttempts: Infinity, // ✅ CORREÇÃO: Reconexão infinita para produção
       timeout: 20000,
+      // ✅ NOVO: Randomização para evitar thundering herd
+      randomizationFactor: 0.5,
     });
 
     socketRef.current.on('connect', () => {
@@ -81,6 +83,21 @@ export function SocketProvider({ children }: SocketProviderProps) {
       logger.log('🔄 WebSocket reconectado', {
         module: 'SocketContext',
         data: { attemptNumber },
+      });
+    });
+
+    // ✅ NOVO: Log de tentativas de reconexão
+    socketRef.current.on('reconnect_attempt', (attemptNumber) => {
+      logger.warn(`🔄 Tentativa de reconexão #${attemptNumber}`, {
+        module: 'SocketContext',
+        data: { attemptNumber },
+      });
+    });
+
+    // ✅ NOVO: Log quando reconexão falha
+    socketRef.current.on('reconnect_failed', () => {
+      logger.error('❌ Reconexão falhou após todas as tentativas', {
+        module: 'SocketContext',
       });
     });
 

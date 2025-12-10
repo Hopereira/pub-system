@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Pedido } from './entities/pedido.entity';
 import { Comanda, ComandaStatus } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
@@ -48,8 +48,14 @@ export class PedidoService {
     @InjectRepository(TurnoFuncionario)
     private readonly turnoRepository: Repository<TurnoFuncionario>,
     private readonly pedidosGateway: PedidosGateway,
+    // ✅ NOVO: DataSource para transações
+    private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * ✅ CORREÇÃO: Método create agora usa transação para garantir atomicidade
+   * O evento WebSocket só é emitido APÓS o commit bem-sucedido
+   */
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
     const { comandaId, itens } = createPedidoDto;
 
@@ -57,6 +63,7 @@ export class PedidoService {
       `📝 Criando novo pedido | Comanda: ${comandaId} | ${itens.length} itens`,
     );
 
+    // Validações antes de iniciar a transação
     const comanda = await this.comandaRepository.findOne({
       where: { id: comandaId },
     });
@@ -75,51 +82,79 @@ export class PedidoService {
       throw new BadRequestException('Um pedido não pode ser criado sem itens.');
     }
 
-    const itensPedidoPromise = itens.map(async (itemDto) => {
-      const produto = await this.produtoRepository.findOne({
-        where: { id: itemDto.produtoId },
+    // ✅ TRANSAÇÃO: Garante que o pedido só é salvo se todos os itens forem válidos
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let pedidoCompleto: Pedido;
+
+    try {
+      // Busca produtos e cria itens dentro da transação
+      const itensPedidoPromise = itens.map(async (itemDto) => {
+        const produto = await queryRunner.manager.findOne(Produto, {
+          where: { id: itemDto.produtoId },
+        });
+        if (!produto) {
+          this.logger.warn(
+            `⚠️ Tentativa de criar item de pedido para produto inexistente: ${itemDto.produtoId}`,
+          );
+          throw new NotFoundException(
+            `Produto com ID "${itemDto.produtoId}" não encontrado.`,
+          );
+        }
+        return queryRunner.manager.create(ItemPedido, {
+          produto,
+          quantidade: itemDto.quantidade,
+          precoUnitario: produto.preco,
+          observacao: itemDto.observacao,
+          status: PedidoStatus.FEITO,
+        });
       });
-      if (!produto) {
-        this.logger.warn(
-          `⚠️ Tentativa de criar item de pedido para produto inexistente: ${itemDto.produtoId}`,
+
+      const itensPedido = await Promise.all(itensPedidoPromise);
+
+      // Usar Decimal.js para cálculos monetários precisos
+      const total = itensPedido.reduce((sum, item) => {
+        const itemTotal = new Decimal(item.quantidade).times(
+          new Decimal(item.precoUnitario),
         );
-        throw new NotFoundException(
-          `Produto com ID "${itemDto.produtoId}" não encontrado.`,
-        );
-      }
-      return this.itemPedidoRepository.create({
-        produto,
-        quantidade: itemDto.quantidade,
-        precoUnitario: produto.preco,
-        observacao: itemDto.observacao,
+        return sum.plus(itemTotal);
+      }, new Decimal(0));
+
+      const pedido = queryRunner.manager.create(Pedido, {
+        comanda,
+        itens: itensPedido,
+        total: total.toNumber(),
         status: PedidoStatus.FEITO,
       });
-    });
 
-    const itensPedido = await Promise.all(itensPedidoPromise);
+      const novoPedido = await queryRunner.manager.save(pedido);
+      
+      // ✅ COMMIT: Só confirma se tudo deu certo
+      await queryRunner.commitTransaction();
 
-    // Usar Decimal.js para cálculos monetários precisos
-    const total = itensPedido.reduce((sum, item) => {
-      const itemTotal = new Decimal(item.quantidade).times(
-        new Decimal(item.precoUnitario),
+      // Busca o pedido completo com todas as relações
+      pedidoCompleto = await this.findOne(novoPedido.id);
+
+      this.logger.log(
+        `✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`,
       );
-      return sum.plus(itemTotal);
-    }, new Decimal(0));
 
-    const pedido = this.pedidoRepository.create({
-      comanda,
-      itens: itensPedido,
-      total: total.toNumber(),
-      status: PedidoStatus.FEITO,
-    });
+    } catch (error) {
+      // ✅ ROLLBACK: Desfaz tudo se houver erro
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`❌ Erro ao criar pedido - Rollback executado`, {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        comandaId,
+      });
+      throw error;
+    } finally {
+      // ✅ LIBERA: Sempre libera o queryRunner
+      await queryRunner.release();
+    }
 
-    const novoPedido = await this.pedidoRepository.save(pedido);
-    const pedidoCompleto = await this.findOne(novoPedido.id);
-
-    this.logger.log(
-      `✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`,
-    );
-
+    // ✅ EVENTO: Só emite APÓS commit bem-sucedido (fora do try/catch da transação)
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
 
     return pedidoCompleto;
