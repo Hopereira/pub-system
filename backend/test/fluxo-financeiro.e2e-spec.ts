@@ -102,7 +102,7 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
           await dataSource.query('DELETE FROM aberturas_caixa WHERE id = $1', [aberturaCaixaId]);
         }
         if (pedidoId) {
-          await dataSource.query('DELETE FROM itens_pedido WHERE pedido_id = $1', [pedidoId]);
+          await dataSource.query('DELETE FROM itens_pedido WHERE "pedidoId" = $1', [pedidoId]);
           await dataSource.query('DELETE FROM pedidos WHERE id = $1', [pedidoId]);
         }
         if (comandaId) {

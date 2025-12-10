@@ -39,10 +39,49 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Pub System API')
-    .setDescription('Documentação completa da API.')
-    .setVersion('1.0')
-    .addBearerAuth()
+    .setTitle('PUB System API')
+    .setDescription(`
+## Sistema de Gestão para Bares e Restaurantes
+
+### Módulos Principais:
+- **Caixa**: Abertura, fechamento, sangrias e vendas
+- **Pedidos**: Criação e gestão de pedidos
+- **Comandas**: Controle de comandas por mesa
+- **Funcionários**: Gestão de equipe e turnos
+- **Produtos**: Catálogo de produtos
+
+### Autenticação:
+Todas as rotas protegidas requerem token JWT no header:
+\`Authorization: Bearer <token>\`
+
+### Códigos de Resposta:
+- **200**: Sucesso
+- **201**: Criado com sucesso
+- **400**: Dados inválidos
+- **401**: Não autenticado
+- **403**: Sem permissão
+- **404**: Não encontrado
+- **500**: Erro interno
+    `)
+    .setVersion('1.0.0')
+    .setContact('Suporte', 'https://pubsystem.com.br', 'suporte@pubsystem.com.br')
+    .setLicense('Proprietário', 'https://pubsystem.com.br/licenca')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Insira o token JWT obtido no login',
+      },
+      'JWT-auth',
+    )
+    .addTag('Auth', 'Autenticação e login')
+    .addTag('Caixa', 'Gestão de caixa e movimentações financeiras')
+    .addTag('Pedidos', 'Criação e gestão de pedidos')
+    .addTag('Comandas', 'Controle de comandas')
+    .addTag('Funcionários', 'Gestão de funcionários e turnos')
+    .addTag('Produtos', 'Catálogo de produtos')
+    .addTag('Mesas', 'Gestão de mesas e ambientes')
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
