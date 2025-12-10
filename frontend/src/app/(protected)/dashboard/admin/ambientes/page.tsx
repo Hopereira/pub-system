@@ -290,7 +290,7 @@ const AmbientesPage = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Tem a certeza?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isto irá apagar permanentemente o ambiente "{ambiente.nome}".
+                            Esta ação não pode ser desfeita. Isto irá apagar permanentemente o ambiente &quot;{ambiente.nome}&quot;.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

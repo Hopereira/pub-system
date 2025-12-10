@@ -182,7 +182,7 @@ const TerminalCaixaPage = () => {
               <Card className="p-8">
                 <div className="text-center text-muted-foreground">
                   <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg">Nenhuma comanda encontrada para <strong>"{debouncedSearchTerm}"</strong></p>
+                  <p className="text-lg">Nenhuma comanda encontrada para <strong>&quot;{debouncedSearchTerm}&quot;</strong></p>
                   <p className="text-sm mt-2">Tente buscar por número da mesa, nome completo ou CPF do cliente.</p>
                 </div>
               </Card>
