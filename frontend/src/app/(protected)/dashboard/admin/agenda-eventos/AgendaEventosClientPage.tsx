@@ -107,7 +107,7 @@ export default function AgendaEventosClientPage() {
       <Dialog open={!!eventoParaQrCode} onOpenChange={() => setEventoParaQrCode(null)}>
         <DialogContent className="sm:max-w-md print:shadow-none">
           <DialogHeader>
-            <DialogTitle>QR Code para "{eventoParaQrCode?.titulo}"</DialogTitle>
+            <DialogTitle>QR Code para &quot;{eventoParaQrCode?.titulo}&quot;</DialogTitle>
             <DialogDescription>
               Aponte a câmara para este código para aceder à página de entrada com cobrança.
             </DialogDescription>
