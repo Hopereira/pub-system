@@ -55,28 +55,35 @@ export default function LoginPage() {
       
       // Decodifica o token para obter o cargo
       const token = localStorage.getItem('authToken');
-      if (token) {
-        const decodedUser = JSON.parse(atob(token.split('.')[1]));
-        const cargo = decodedUser.cargo || decodedUser.role;
-        
-        // Redireciona baseado no cargo
-        switch (cargo) {
-          case 'GARCOM':
-            router.push('/garcom');
-            break;
-          case 'ADMIN':
-          case 'GERENTE':
-            router.push('/dashboard');
-            break;
-          case 'CAIXA':
-            router.push('/caixa');
-            break;
-          case 'COZINHA':
-          case 'COZINHEIRO':
-            router.push('/cozinha');
-            break;
-          default:
-            router.push('/');
+      if (token && token.includes('.')) {
+        try {
+          const base64Payload = token.split('.')[1];
+          const decodedPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
+          const decodedUser = JSON.parse(decodedPayload);
+          const cargo = decodedUser.cargo || decodedUser.role;
+          
+          // Redireciona baseado no cargo
+          switch (cargo) {
+            case 'GARCOM':
+              router.push('/garcom');
+              break;
+            case 'ADMIN':
+            case 'GERENTE':
+              router.push('/dashboard');
+              break;
+            case 'CAIXA':
+              router.push('/caixa');
+              break;
+            case 'COZINHA':
+            case 'COZINHEIRO':
+              router.push('/cozinha');
+              break;
+            default:
+              router.push('/');
+          }
+        } catch (decodeErr) {
+          console.error('Erro ao decodificar token:', decodeErr);
+          router.push('/dashboard');
         }
       }
     } catch (err) {

@@ -1,4 +1,6 @@
 // DTOs para Analytics e Relatórios de Pedidos
+import { IsOptional, IsDateString, IsUUID, IsInt, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class PedidoTempoDto {
   pedidoId: string;
@@ -65,10 +67,30 @@ export class RelatorioGeralDto {
 }
 
 export class FiltroRelatorioDto {
+  @IsOptional()
+  @IsDateString()
   dataInicio?: Date;
+
+  @IsOptional()
+  @IsDateString()
   dataFim?: Date;
+
+  @IsOptional()
+  @IsUUID()
   ambienteId?: string;
+
+  @IsOptional()
+  @IsUUID()
   funcionarioId?: string;
+
+  @IsOptional()
+  @IsUUID()
   produtoId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
   limite?: number;
 }
