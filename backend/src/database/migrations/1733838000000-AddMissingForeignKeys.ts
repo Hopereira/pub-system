@@ -4,6 +4,23 @@ export class AddMissingForeignKeys1733838000000 implements MigrationInterface {
   name = 'AddMissingForeignKeys1733838000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // ✅ CORREÇÃO: Adicionar colunas se não existirem antes de criar FKs
+    const colEmpresa = await queryRunner.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'funcionarios' AND column_name = 'empresa_id'
+    `);
+    if (colEmpresa.length === 0) {
+      await queryRunner.query(`ALTER TABLE funcionarios ADD COLUMN empresa_id UUID`);
+    }
+
+    const colAmbiente = await queryRunner.query(`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'funcionarios' AND column_name = 'ambiente_id'
+    `);
+    if (colAmbiente.length === 0) {
+      await queryRunner.query(`ALTER TABLE funcionarios ADD COLUMN ambiente_id UUID`);
+    }
+
     // Verificar se FK já existe antes de criar
     const fkEmpresa = await queryRunner.query(`
       SELECT constraint_name FROM information_schema.table_constraints 

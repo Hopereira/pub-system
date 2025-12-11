@@ -7,6 +7,20 @@ import {
 
 export class CreateCaixaTables1731431000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // ✅ CORREÇÃO: Criar tabela turnos_funcionario se não existir (dependência)
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "turnos_funcionario" (
+        "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        "funcionario_id" UUID NOT NULL,
+        "checkIn" TIMESTAMP NOT NULL,
+        "checkOut" TIMESTAMP,
+        "ativo" BOOLEAN NOT NULL DEFAULT true,
+        "criadoEm" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "atualizadoEm" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "FK_turno_funcionario" FOREIGN KEY ("funcionario_id") REFERENCES "funcionarios"("id") ON DELETE CASCADE
+      )
+    `);
+
     // Tabela de aberturas_caixa
     await queryRunner.createTable(
       new Table({

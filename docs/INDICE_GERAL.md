@@ -106,7 +106,8 @@ Documentação técnica, arquitetura e migrations.
 | `AUDITORIA_FRONTEND_PEDIDOS.md` | Auditoria Frontend - Integração e UX |
 | `AUDITORIA_TIPOS_FRONTEND_BACKEND.md` | Comparação de tipos Frontend vs Backend |
 | `AUDITORIA_DEVOPS_PRODUCAO.md` | Segurança para produção - variáveis e CORS |
-| `AUDITORIA_BUILD_DEPLOY_DOCKER.md` | Otimização de Docker e Multi-Stage Build ✨ |
+| `AUDITORIA_BUILD_DEPLOY_DOCKER.md` | Otimização de Docker e Multi-Stage Build |
+| `AUDITORIA_APPSEC_MAIN_TS.md` | Segurança AppSec - Helmet, Rate Limit, Validation ✨ |
 
 ### `troubleshooting/` (18 arquivos)
 Soluções para problemas conhecidos. **Ouro puro!**

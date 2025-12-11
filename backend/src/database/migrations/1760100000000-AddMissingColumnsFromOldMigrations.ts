@@ -16,7 +16,7 @@ export class AddMissingColumnsFromOldMigrations1760100000000 implements Migratio
       ADD COLUMN IF NOT EXISTS "tempo_preparo_minutos" DECIMAL(5,2),
       ADD COLUMN IF NOT EXISTS "tempo_reacao_minutos" DECIMAL(5,2),
       ADD COLUMN IF NOT EXISTS "tempo_entrega_final_minutos" DECIMAL(5,2),
-      ADD COLUMN IF NOT EXISTS "tempoEntregaMinutos" DECIMAL(5,2),
+      ADD COLUMN IF NOT EXISTS "tempoentregaminutos" INTEGER,
       ADD COLUMN IF NOT EXISTS "responsavel_inicio_id" UUID,
       ADD COLUMN IF NOT EXISTS "responsavel_pronto_id" UUID,
       ADD COLUMN IF NOT EXISTS "responsavel_cancelamento_id" UUID
