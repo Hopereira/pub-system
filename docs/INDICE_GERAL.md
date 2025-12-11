@@ -52,6 +52,9 @@ pub-system/
 2. [01-VISAO-GERAL-SISTEMA.md](./01-VISAO-GERAL-SISTEMA.md) - Arquitetura
 3. [manuais/SETUP.md](./manuais/SETUP.md) - Como configurar
 
+### Se você quer fazer **deploy em produção**:
+1. [DEPLOY_ORACLE_CLOUD.md](./DEPLOY_ORACLE_CLOUD.md) - Guia completo Oracle Cloud ✨
+
 ### Se você é **desenvolvedor**:
 1. [tecnico/MIGRATIONS.md](./tecnico/MIGRATIONS.md) - Banco de dados
 2. [tecnico/DOCUMENTACAO_TECNICA_COMPLETA.md](./tecnico/DOCUMENTACAO_TECNICA_COMPLETA.md)
@@ -138,6 +141,7 @@ Logs de sessões antigas. Útil para contexto histórico.
 **Problema com Docker?** → `troubleshooting/SOLUCAO_COMPLETA_DOCKER_COMPOSE.md`  
 **Migrations não rodam?** → `tecnico/MIGRATIONS.md`  
 **Como configurar?** → `manuais/SETUP.md`  
+**Deploy Oracle Cloud?** → `DEPLOY_ORACLE_CLOUD.md` ✨  
 
 ---
 
