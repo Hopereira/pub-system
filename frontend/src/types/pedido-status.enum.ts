@@ -1,4 +1,5 @@
 // Caminho: frontend/src/types/pedido-status.enum.ts
+// ✅ CORREÇÃO: Ordem alinhada com backend
 export enum PedidoStatus {
   FEITO = 'FEITO',
   EM_PREPARO = 'EM_PREPARO',
@@ -6,6 +7,6 @@ export enum PedidoStatus {
   PRONTO = 'PRONTO',
   RETIRADO = 'RETIRADO', // Garçom pegou o item no ambiente
   ENTREGUE = 'ENTREGUE',
-  DEIXADO_NO_AMBIENTE = 'DEIXADO_NO_AMBIENTE',
-  CANCELADO = 'CANCELADO',
+  CANCELADO = 'CANCELADO', // ← Movido para antes de DEIXADO_NO_AMBIENTE (igual backend)
+  DEIXADO_NO_AMBIENTE = 'DEIXADO_NO_AMBIENTE', // Quando garçom não encontra cliente
 }
