@@ -65,5 +65,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Comando de produção (sem ts-node, direto no JavaScript compilado)
-CMD ["node", "dist/main"]
+# Comando de produção (roda migrations + inicia servidor)
+CMD ["npm", "run", "start:prod"]
