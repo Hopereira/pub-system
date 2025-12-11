@@ -1,0 +1,88 @@
+# ============================================
+# FRONTEND - Dockerfile de Produção (Multi-Stage)
+# ============================================
+# Tamanho final: ~300MB (vs ~2GB sem otimização)
+
+# ============================================
+# STAGE 1: Dependencies
+# ============================================
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copia apenas arquivos de dependência (otimiza cache)
+COPY package*.json ./
+
+# Instala dependências
+RUN npm ci
+
+# ============================================
+# STAGE 2: Build
+# ============================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copia node_modules do stage anterior
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copia código fonte
+COPY . .
+
+# Desabilita telemetria do Next.js
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build do Next.js (gera .next/)
+RUN npm run build
+
+# ============================================
+# STAGE 3: Production
+# ============================================
+FROM node:20-alpine AS production
+
+# Metadados da imagem
+LABEL maintainer="PUB System"
+LABEL description="Frontend - Next.js"
+LABEL version="1.0.0"
+
+# Adiciona usuário não-root para segurança
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+WORKDIR /app
+
+# Define variáveis de ambiente
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Copia arquivos públicos
+COPY --from=builder /app/public ./public
+
+# Copia build do Next.js
+# Se usar output: 'standalone' no next.config.js:
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Se NÃO usar standalone (fallback):
+# COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+# COPY --from=builder /app/node_modules ./node_modules
+# COPY --from=builder /app/package.json ./package.json
+
+# Define usuário não-root
+USER nextjs
+
+# Expõe porta
+EXPOSE 3000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+
+# Comando de produção
+# Se usar standalone:
+CMD ["node", "server.js"]
+
+# Se NÃO usar standalone:
+# CMD ["npm", "start"]

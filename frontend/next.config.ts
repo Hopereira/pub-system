@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ✅ CORREÇÃO: Habilita output standalone para Docker otimizado
+  // Gera uma pasta .next/standalone com servidor Node.js mínimo
+  output: 'standalone',
+
   // Ignorar erros de ESLint durante o build (warnings não bloqueiam)
   eslint: {
     ignoreDuringBuilds: true,
