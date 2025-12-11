@@ -104,7 +104,8 @@ Documentação técnica, arquitetura e migrations.
 | `AUDITORIA_SEGURANCA_CONTROLLERS.md` | Auditoria de segurança dos controllers |
 | `AUDITORIA_DBA_ENTIDADES.md` | Auditoria DBA das entidades TypeORM |
 | `AUDITORIA_FRONTEND_PEDIDOS.md` | Auditoria Frontend - Integração e UX |
-| `AUDITORIA_TIPOS_FRONTEND_BACKEND.md` | Comparação de tipos Frontend vs Backend ✨ |
+| `AUDITORIA_TIPOS_FRONTEND_BACKEND.md` | Comparação de tipos Frontend vs Backend |
+| `AUDITORIA_DEVOPS_PRODUCAO.md` | Segurança para produção - variáveis e CORS ✨ |
 
 ### `troubleshooting/` (18 arquivos)
 Soluções para problemas conhecidos. **Ouro puro!**
