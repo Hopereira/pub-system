@@ -1,19 +1,31 @@
 // Caminho: frontend/src/components/cozinha/PedidoCard.tsx
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ItemPedido, Pedido, PedidoStatus } from '@/types/pedido'; // 1. ItemPedido importado
-import { Check, Play, Clock, ChefHat, CheckCircle2, User, UserCheck } from 'lucide-react';
-import { Badge } from '../ui/badge'; // 2. Badge importado para o status
+import { ItemPedido, Pedido, PedidoStatus } from '@/types/pedido';
+import { Check, Play, Clock, ChefHat, CheckCircle2, UserCheck, Loader2 } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 interface PedidoCardProps {
   pedido: Pedido;
-  // 3. Assinatura da função alterada para receber o ID do ITEM
-  onItemStatusChange: (itemPedidoId: string, newStatus: PedidoStatus) => void;
+  onItemStatusChange: (itemPedidoId: string, newStatus: PedidoStatus) => Promise<void> | void;
 }
 
 export default function PedidoCard({ pedido, onItemStatusChange }: PedidoCardProps) {
+    // ✅ CORREÇÃO: Estado de loading individual por item
+    const [loadingItemId, setLoadingItemId] = useState<string | null>(null);
+
+    const handleStatusChange = async (itemId: string, newStatus: PedidoStatus) => {
+        setLoadingItemId(itemId);
+        try {
+            await onItemStatusChange(itemId, newStatus);
+        } finally {
+            setLoadingItemId(null);
+        }
+    };
+
     const tempoDesdePedido = () => {
         const agora = new Date();
         const dataPedido = new Date(pedido.data);
@@ -136,24 +148,50 @@ export default function PedidoCard({ pedido, onItemStatusChange }: PedidoCardPro
                                 )}
                             </div>
 
-                            {/* Botões de Ação */}
+                            {/* ✅ CORREÇÃO: Botões de Ação com loading individual */}
                             <div className='flex gap-2'>
                                 {item.status === PedidoStatus.FEITO && (
-                                    <Button size="sm" onClick={() => onItemStatusChange(item.id, PedidoStatus.EM_PREPARO)}>
-                                        <Play className='h-4 w-4 mr-2' />
-                                        Iniciar
+                                    <Button 
+                                        size="sm" 
+                                        onClick={() => handleStatusChange(item.id, PedidoStatus.EM_PREPARO)}
+                                        disabled={loadingItemId === item.id}
+                                    >
+                                        {loadingItemId === item.id ? (
+                                            <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                                        ) : (
+                                            <Play className='h-4 w-4 mr-2' />
+                                        )}
+                                        {loadingItemId === item.id ? 'Aguarde...' : 'Iniciar'}
                                     </Button>
                                 )}
                                 {item.status === PedidoStatus.EM_PREPARO && (
-                                    <Button size="sm" className='bg-green-600 hover:bg-green-700' onClick={() => onItemStatusChange(item.id, PedidoStatus.PRONTO)}>
-                                        <Check className='h-4 w-4 mr-2' />
-                                        Pronto
+                                    <Button 
+                                        size="sm" 
+                                        className='bg-green-600 hover:bg-green-700' 
+                                        onClick={() => handleStatusChange(item.id, PedidoStatus.PRONTO)}
+                                        disabled={loadingItemId === item.id}
+                                    >
+                                        {loadingItemId === item.id ? (
+                                            <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                                        ) : (
+                                            <Check className='h-4 w-4 mr-2' />
+                                        )}
+                                        {loadingItemId === item.id ? 'Aguarde...' : 'Pronto'}
                                     </Button>
                                 )}
                                 {item.status === PedidoStatus.QUASE_PRONTO && (
-                                    <Button size="sm" className='bg-orange-600 hover:bg-orange-700' onClick={() => onItemStatusChange(item.id, PedidoStatus.PRONTO)}>
-                                        <CheckCircle2 className='h-4 w-4 mr-2' />
-                                        Finalizar
+                                    <Button 
+                                        size="sm" 
+                                        className='bg-orange-600 hover:bg-orange-700' 
+                                        onClick={() => handleStatusChange(item.id, PedidoStatus.PRONTO)}
+                                        disabled={loadingItemId === item.id}
+                                    >
+                                        {loadingItemId === item.id ? (
+                                            <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                                        ) : (
+                                            <CheckCircle2 className='h-4 w-4 mr-2' />
+                                        )}
+                                        {loadingItemId === item.id ? 'Aguarde...' : 'Finalizar'}
                                     </Button>
                                 )}
                             </div>

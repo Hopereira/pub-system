@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin, ShoppingBag, CheckCheck } from 'lucide-react';
+import { RefreshCw, Package, Filter, Clock, Flame, CheckCircle, AlertCircle, Ban, MapPin, ShoppingBag, CheckCheck, WifiOff } from 'lucide-react';
 import { getPedidos, retirarItem, marcarComoEntregue } from '@/services/pedidoService';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
@@ -116,15 +116,19 @@ export default function MapaPedidos() {
     );
 
     if (novosProntos.length > 0 && pedidosProntosAnteriores.size > 0) {
-      // Toca som de notificação
+      // ✅ CORREÇÃO: Toca som com tratamento de erro melhorado
       const audio = new Audio('/sounds/notification.mp3');
-      audio.play().catch(() => { /* Erro silencioso ao tocar som */ });
+      audio.play().catch((e) => {
+        logger.warn('⚠️ Som de notificação não disponível', {
+          module: 'MapaPedidos',
+          error: e
+        });
+      });
 
       // Mostra toast
       toast.success(`🔔 ${novosProntos.length} pedido(s) pronto(s) para entrega!`, {
         duration: 5000,
       });
-
     }
 
     setPedidosProntosAnteriores(idsProntos);
@@ -376,6 +380,13 @@ export default function MapaPedidos() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* ✅ CORREÇÃO: Indicador visual de conexão WebSocket */}
+          {!isConnected && (
+            <Badge variant="destructive" className="animate-pulse flex items-center gap-1">
+              <WifiOff className="h-3 w-3" />
+              Offline - Atualizando a cada 60s
+            </Badge>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -611,9 +622,9 @@ export default function MapaPedidos() {
                       </Badge>
                     </div>
                     
-                    {/* Botões de Ação */}
+                    {/* ✅ CORREÇÃO: Botões de Ação - desabilitados se produto removido */}
                     <div className="flex gap-2">
-                      {item.status === PedidoStatus.PRONTO && (
+                      {item.produto && item.status === PedidoStatus.PRONTO && (
                         <Button
                           size="sm"
                           variant="default"
@@ -625,7 +636,7 @@ export default function MapaPedidos() {
                         </Button>
                       )}
                       
-                      {item.status === PedidoStatus.RETIRADO && (
+                      {item.produto && item.status === PedidoStatus.RETIRADO && (
                         <Button
                           size="sm"
                           variant="default"
@@ -635,6 +646,10 @@ export default function MapaPedidos() {
                           <CheckCheck className="h-3 w-3 mr-1" />
                           Entregar
                         </Button>
+                      )}
+                      {/* Aviso se produto foi removido */}
+                      {!item.produto && (
+                        <span className="text-xs text-red-500 italic">Produto indisponível</span>
                       )}
                     </div>
                   </div>

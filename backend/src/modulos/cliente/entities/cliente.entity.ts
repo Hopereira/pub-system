@@ -11,6 +11,7 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('clientes')
@@ -18,7 +19,9 @@ export class Cliente {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  // ✅ CORREÇÃO DBA: Índice para busca por CPF
+  @Index('idx_cliente_cpf')
+  @Column({ unique: true, length: 14 })
   cpf: string;
 
   @Column()
