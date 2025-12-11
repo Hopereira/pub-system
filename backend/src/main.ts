@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { json } from 'express';
+import helmet from 'helmet';
 import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -12,6 +13,15 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // ✅ SEGURANÇA: Helmet para headers HTTP seguros
+  app.use(
+    helmet({
+      contentSecurityPolicy: isProduction ? undefined : false, // Desabilita CSP em dev para Swagger
+      crossOriginEmbedderPolicy: false, // Necessário para algumas integrações
+    }),
+  );
 
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());
@@ -29,18 +39,25 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.use(json({ limit: '50mb' }));
+  // ✅ SEGURANÇA: Limite de JSON reduzido (era 50mb)
+  app.use(json({ limit: '10mb' }));
 
+  // ✅ SEGURANÇA: ValidationPipe completo com proteções adicionais
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       whitelist: true,
+      forbidNonWhitelisted: true, // ✅ Rejeita campos extras com erro 400
+      forbidUnknownValues: true, // ✅ Rejeita valores desconhecidos
+      disableErrorMessages: isProduction, // ✅ Esconde detalhes de erro em produção
     }),
   );
 
-  const config = new DocumentBuilder()
-    .setTitle('PUB System API')
-    .setDescription(`
+  // ✅ SEGURANÇA: Swagger apenas em desenvolvimento
+  if (!isProduction) {
+    const config = new DocumentBuilder()
+      .setTitle('PUB System API')
+      .setDescription(`
 ## Sistema de Gestão para Bares e Restaurantes
 
 ### Módulos Principais:
@@ -62,34 +79,37 @@ Todas as rotas protegidas requerem token JWT no header:
 - **403**: Sem permissão
 - **404**: Não encontrado
 - **500**: Erro interno
-    `)
-    .setVersion('1.0.0')
-    .setContact('Suporte', 'https://pubsystem.com.br', 'suporte@pubsystem.com.br')
-    .setLicense('Proprietário', 'https://pubsystem.com.br/licenca')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Insira o token JWT obtido no login',
-      },
-      'JWT-auth',
-    )
-    .addTag('Auth', 'Autenticação e login')
-    .addTag('Caixa', 'Gestão de caixa e movimentações financeiras')
-    .addTag('Pedidos', 'Criação e gestão de pedidos')
-    .addTag('Comandas', 'Controle de comandas')
-    .addTag('Funcionários', 'Gestão de funcionários e turnos')
-    .addTag('Produtos', 'Catálogo de produtos')
-    .addTag('Mesas', 'Gestão de mesas e ambientes')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+      `)
+      .setVersion('1.0.0')
+      .setContact('Suporte', 'https://pubsystem.com.br', 'suporte@pubsystem.com.br')
+      .setLicense('Proprietário', 'https://pubsystem.com.br/licenca')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Insira o token JWT obtido no login',
+        },
+        'JWT-auth',
+      )
+      .addTag('Auth', 'Autenticação e login')
+      .addTag('Caixa', 'Gestão de caixa e movimentações financeiras')
+      .addTag('Pedidos', 'Criação e gestão de pedidos')
+      .addTag('Comandas', 'Controle de comandas')
+      .addTag('Funcionários', 'Gestão de funcionários e turnos')
+      .addTag('Produtos', 'Catálogo de produtos')
+      .addTag('Mesas', 'Gestão de mesas e ambientes')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+    logger.log('📚 Swagger disponível em /api');
+  }
 
   const seeder = app.get(SeederService);
   await seeder.seed();
 
   await app.listen(3000);
-  logger.log(`Aplicação rodando em: ${await app.getUrl()}`);
+  logger.log(`🚀 Aplicação rodando em: ${await app.getUrl()}`);
+  logger.log(`🔒 Ambiente: ${isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'}`);
 }
 bootstrap();
