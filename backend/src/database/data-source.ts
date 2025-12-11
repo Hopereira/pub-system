@@ -2,12 +2,20 @@ import 'dotenv/config';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import * as path from 'path';
 
+// ✅ CORREÇÃO: Validação de variáveis obrigatórias para migrations
+const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_DATABASE'];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    throw new Error(`Variável de ambiente ${envVar} é obrigatória para executar migrations`);
+  }
+}
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '5432', 10),
   username: process.env.DB_USER,
-  password: String(process.env.DB_PASSWORD),
+  password: process.env.DB_PASSWORD, // ✅ CORREÇÃO: Removido String() que convertia undefined para "undefined"
   database: process.env.DB_DATABASE,
   extra: {
     extension: 'uuid-ossp',

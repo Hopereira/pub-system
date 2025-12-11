@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import * as Joi from 'joi';
 import { EmpresaModule } from './modulos/empresa/empresa.module';
 import { AmbienteModule } from './modulos/ambiente/ambiente.module';
 import { FuncionarioModule } from './modulos/funcionario/funcionario.module';
@@ -27,7 +28,67 @@ import { JobsModule } from './jobs/jobs.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    // ✅ CORREÇÃO: Validação de variáveis de ambiente obrigatórias
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+      validationSchema: Joi.object({
+        // Ambiente
+        NODE_ENV: Joi.string()
+          .valid('development', 'production', 'test')
+          .default('development'),
+
+        // Banco de dados (obrigatórios)
+        DB_HOST: Joi.string().required().messages({
+          'any.required': 'DB_HOST é obrigatório',
+        }),
+        DB_PORT: Joi.number().default(5432),
+        DB_USER: Joi.string().required().messages({
+          'any.required': 'DB_USER é obrigatório',
+        }),
+        DB_PASSWORD: Joi.string().required().messages({
+          'any.required': 'DB_PASSWORD é obrigatório',
+        }),
+        DB_DATABASE: Joi.string().required().messages({
+          'any.required': 'DB_DATABASE é obrigatório',
+        }),
+
+        // Segurança (obrigatório, mínimo 32 caracteres)
+        JWT_SECRET: Joi.string().min(32).required().messages({
+          'string.min': 'JWT_SECRET deve ter no mínimo 32 caracteres',
+          'any.required': 'JWT_SECRET é obrigatório',
+        }),
+
+        // CORS (obrigatório em produção)
+        FRONTEND_URL: Joi.string().uri().required().messages({
+          'string.uri': 'FRONTEND_URL deve ser uma URL válida',
+          'any.required': 'FRONTEND_URL é obrigatório',
+        }),
+
+        // Admin inicial (opcional - apenas primeiro deploy)
+        ADMIN_EMAIL: Joi.string().email().optional(),
+        ADMIN_SENHA: Joi.string().min(8).optional(),
+
+        // Google Cloud Storage (opcional)
+        GCS_BUCKET_NAME: Joi.string().optional(),
+        GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(),
+
+        // Logs e alertas (opcional)
+        LOG_DIR: Joi.string().optional(),
+        LOG_LEVEL: Joi.string()
+          .valid('error', 'warn', 'info', 'debug')
+          .default('info'),
+        ALERT_WEBHOOK_URL: Joi.string().uri().optional(),
+
+        // Backup (opcional)
+        BACKUP_DIR: Joi.string().optional(),
+        BACKUP_MAX_AGE_HOURS: Joi.number().default(24),
+      }),
+      validationOptions: {
+        abortEarly: false, // Mostra todos os erros de uma vez
+        allowUnknown: true, // Permite variáveis não listadas
+      },
+    }),
     ScheduleModule.forRoot(), // Habilita jobs agendados
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
