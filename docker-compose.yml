@@ -19,7 +19,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}?schema=public
       - JWT_SECRET=${JWT_SECRET}
-      - BACKEND_URL=http://localhost:3000
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:3000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
       - NODE_OPTIONS=--max-old-space-size=1024
     env_file:
       - ./.env
