@@ -45,6 +45,8 @@ export interface ItemPedido {
   tempoPreparoMinutos?: number | null;
   tempoReacaoMinutos?: number | null; // PRONTO -> RETIRADO
   tempoEntregaFinalMinutos?: number | null; // RETIRADO -> ENTREGUE
+  tempoEntregaMinutos?: number | null;
+  ambienteRetiradaId?: string | null;
 }
 
 // Interface simplificada para Comanda (evita import circular)
@@ -63,6 +65,12 @@ export interface ComandaSimples {
   } | null;
 }
 
+// Interface simplificada para Funcionário (evita import circular)
+export interface FuncionarioSimples {
+  id: string;
+  nome: string;
+}
+
 // Interface principal de Pedido
 export interface Pedido {
   id: string;
@@ -71,5 +79,14 @@ export interface Pedido {
   data: string;
   motivoCancelamento: string | null;
   itens: ItemPedido[];
-  comanda?: ComandaSimples; // Relação com comanda incluída
+  comanda?: ComandaSimples;
+  
+  // ✅ CORREÇÃO: Campos faltantes do backend
+  criadoPorId?: string | null;
+  criadoPorTipo?: 'GARCOM' | 'CLIENTE';
+  criadoPor?: FuncionarioSimples | null;
+  entreguePorId?: string | null;
+  entreguePor?: FuncionarioSimples | null;
+  entregueEm?: string | null;
+  tempoTotalMinutos?: number | null;
 }

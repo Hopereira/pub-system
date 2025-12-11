@@ -24,13 +24,20 @@ export interface UpdateItemPedidoStatusDto {
   motivoCancelamento?: string;
 }
 
-// DTO para atualizar status do pedido (obsoleto, mas mantido para compatibilidade)
+/**
+ * @deprecated Use UpdateItemPedidoStatusDto para atualizar status de itens individuais.
+ * Esta interface não deve ser usada pois a rota não existe no backend.
+ */
 export interface UpdatePedidoStatusDto {
   status: PedidoStatus;
 }
 
-// DTO para atualizar dados gerais do pedido
+/**
+ * DTO para atualizar dados gerais do pedido.
+ * ✅ CORREÇÃO: Alinhado com backend (herda de CreatePedidoDto)
+ * Backend NÃO aceita status/motivoCancelamento aqui.
+ */
 export interface UpdatePedidoDto {
-  status?: PedidoStatus;
-  motivoCancelamento?: string;
+  comandaId?: string;
+  itens?: CreateItemPedidoDto[];
 }
