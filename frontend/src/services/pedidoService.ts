@@ -1,8 +1,14 @@
-import { Pedido } from '@/types/pedido';
-import { AddItemPedidoDto, CreatePedidoDto, UpdateItemPedidoStatusDto, UpdatePedidoStatusDto } from '@/types/pedido.dto';
+import { Pedido, ItemPedido } from '@/types/pedido';
+import { AddItemPedidoDto, CreatePedidoDto, UpdateItemPedidoStatusDto } from '@/types/pedido.dto';
 import { DeixarNoAmbienteDto } from '@/types/ponto-entrega.dto';
 import { logger } from '@/lib/logger';
 import api from './api';
+
+// ✅ CORREÇÃO: Interfaces tipadas para retornos de API
+export interface ItemPedidoAtualizado extends ItemPedido {
+  tempoReacaoMinutos?: number;
+  tempoEntregaFinalMinutos?: number;
+}
 
 export const adicionarItensAoPedido = async (data: AddItemPedidoDto): Promise<Pedido> => {
   try {
@@ -89,14 +95,16 @@ export const getPedidos = async (filters?: GetPedidosFilters): Promise<Pedido[]>
 
 export const getPedidosPorAmbiente = async (ambienteId: string): Promise<Pedido[]> => {
   try {
-    // Validação: verificar se ambienteId é um UUID válido
+    // ✅ CORREÇÃO: Validação com erro explícito ao invés de falha silenciosa
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(ambienteId)) {
-      logger.warn('⚠️ ambienteId inválido, retornando array vazio', {
+      const error = new Error('ID de ambiente inválido. Selecione um ambiente válido.');
+      logger.error('❌ ambienteId inválido', {
         module: 'PedidoService',
-        data: { ambienteId }
+        data: { ambienteId },
+        error
       });
-      return [];
+      throw error;
     }
 
     logger.debug('🔍 Buscando pedidos por ambiente', { 
@@ -121,7 +129,7 @@ export const getPedidosPorAmbiente = async (ambienteId: string): Promise<Pedido[
 export const updateItemStatus = async (
   itemPedidoId: string,
   data: UpdateItemPedidoStatusDto,
-): Promise<any> => {
+): Promise<ItemPedidoAtualizado> => {
   try {
     logger.log('🔄 Atualizando status do item', { 
       module: 'PedidoService',
@@ -143,37 +151,26 @@ export const updateItemStatus = async (
   }
 };
 
-// Função legada (obsoleta, mantida para compatibilidade)
-export const updatePedidoStatus = async (id: string, data: UpdatePedidoStatusDto): Promise<Pedido> => {
-  try {
-    logger.warn('⚠️ Usando função obsoleta updatePedidoStatus', { 
-      module: 'PedidoService',
-      data: { pedidoId: id } 
-    });
-    const response = await api.patch<Pedido>(`/pedidos/${id}/status`, data);
-    return response.data;
-  } catch (error) {
-    logger.error('Erro ao atualizar status do pedido (legado)', { 
-      module: 'PedidoService',
-      data: { pedidoId: id },
-      error: error as Error 
-    });
-    throw error;
-  }
+/**
+ * @deprecated Esta função está obsoleta. Use updateItemStatus para atualizar itens individuais.
+ * A rota /pedidos/:id/status não existe mais no backend.
+ */
+export const updatePedidoStatus = async (): Promise<never> => {
+  throw new Error('Função obsoleta: use updateItemStatus para atualizar status de itens individuais');
 };
 
 /**
  * Lista pedidos prontos para entrega (status PRONTO)
  * Opcionalmente filtra por ambiente de preparo
  */
-export const getPedidosProntos = async (ambienteId?: string): Promise<any[]> => {
+export const getPedidosProntos = async (ambienteId?: string): Promise<Pedido[]> => {
   try {
     logger.debug('🔍 Buscando pedidos prontos', { 
       module: 'PedidoService',
       data: { ambienteId: ambienteId || 'Todos' } 
     });
     const params = ambienteId ? { ambienteId } : {};
-    const response = await api.get<any[]>('/pedidos/prontos', { params });
+    const response = await api.get<Pedido[]>('/pedidos/prontos', { params });
     logger.log(`✅ ${response.data.length} pedidos prontos encontrados`, { 
       module: 'PedidoService' 
     });
@@ -193,7 +190,7 @@ export const getPedidosProntos = async (ambienteId?: string): Promise<any[]> => 
 export const deixarNoAmbiente = async (
   itemPedidoId: string,
   data: DeixarNoAmbienteDto
-): Promise<any> => {
+): Promise<ItemPedidoAtualizado> => {
   try {
     logger.log('📦 Deixando item no ambiente', { 
       module: 'PedidoService',
@@ -257,7 +254,7 @@ export const criarPedidoGarcom = async (data: {
 export const retirarItem = async (
   itemPedidoId: string,
   garcomId: string,
-): Promise<any> => {
+): Promise<ItemPedidoAtualizado> => {
   try {
     logger.log('🎯 Marcando item como retirado', {
       module: 'PedidoService',
@@ -288,7 +285,7 @@ export const retirarItem = async (
 export const marcarComoEntregue = async (
   itemPedidoId: string,
   garcomId: string,
-): Promise<any> => {
+): Promise<ItemPedidoAtualizado> => {
   try {
     logger.log('🚚 Marcando item como entregue', {
       module: 'PedidoService',

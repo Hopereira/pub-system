@@ -3,17 +3,9 @@
 import { Produto } from "./produto";
 import { Mesa } from "./mesa";
 
-// Enum de status de pedido (fonte da verdade)
-export enum PedidoStatus {
-  FEITO = 'FEITO',
-  EM_PREPARO = 'EM_PREPARO',
-  QUASE_PRONTO = 'QUASE_PRONTO', // Sinal antecipado 30-60s antes de pronto
-  PRONTO = 'PRONTO',
-  RETIRADO = 'RETIRADO', // Garçom pegou o item no ambiente
-  ENTREGUE = 'ENTREGUE',
-  DEIXADO_NO_AMBIENTE = 'DEIXADO_NO_AMBIENTE',
-  CANCELADO = 'CANCELADO',
-}
+// ✅ CORREÇÃO: Re-exporta enum de arquivo único (fonte da verdade)
+import { PedidoStatus } from './pedido-status.enum';
+export { PedidoStatus };
 
 // Interface para Item de Pedido
 export interface ItemPedido {
