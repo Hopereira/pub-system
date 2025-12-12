@@ -1,0 +1,52 @@
+# ============================================
+# Dockerfile - Backend Otimizado para E2.1.Micro
+# ============================================
+# Imagem final: ~150MB
+# RAM em execução: ~300-400MB
+
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Instalar dependências de build
+COPY package*.json ./
+RUN npm ci --force --only=production=false
+
+# Copiar código e buildar
+COPY . .
+RUN npm run build
+
+# Remover devDependencies
+RUN npm prune --production --force
+
+# Stage 2: Production
+FROM node:20-alpine AS production
+
+# Instalar apenas o necessário
+RUN apk add --no-cache wget
+
+WORKDIR /app
+
+# Copiar apenas o necessário do builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+# Usuário não-root para segurança
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001 -G nodejs
+
+USER nestjs
+
+# Configurações de memória otimizadas
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=384 --optimize-for-size"
+
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+CMD ["node", "dist/main.js"]
