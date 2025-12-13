@@ -29,9 +29,11 @@ services:
       - FRONTEND_URL=${FRONTEND_URL}
       # Google Cloud Storage (opcional)
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs-credentials.json
     env_file:
       - ./.env.micro
+    volumes:
+      - ./gcs-credentials.json:/app/gcs-credentials.json:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
