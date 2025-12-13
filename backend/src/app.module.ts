@@ -71,9 +71,9 @@ import { JobsModule } from './jobs/jobs.module';
         ADMIN_EMAIL: Joi.string().email().optional(),
         ADMIN_SENHA: Joi.string().min(8).optional(),
 
-        // Google Cloud Storage (opcional)
-        GCS_BUCKET_NAME: Joi.string().optional(),
-        GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(),
+        // Google Cloud Storage (opcional - permite vazio)
+        GCS_BUCKET_NAME: Joi.string().allow('').optional(),
+        GOOGLE_APPLICATION_CREDENTIALS: Joi.string().allow('').optional(),
 
         // Logs e alertas (opcional)
         LOG_DIR: Joi.string().optional(),
