@@ -33,9 +33,11 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
-# Usuário não-root para segurança
+# Criar pasta de logs e usuário não-root para segurança
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001 -G nodejs
+    adduser -S nestjs -u 1001 -G nodejs && \
+    mkdir -p /app/logs && \
+    chown -R nestjs:nodejs /app/logs
 
 USER nestjs
 
