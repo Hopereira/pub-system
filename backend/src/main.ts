@@ -33,8 +33,26 @@ async function bootstrap() {
     prefix: '/public/',
   });
 
+  // CORS: Permitir múltiplas origens (Vercel, localhost, etc)
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:3001',
+    'https://pub-system.vercel.app',
+    'https://pub-system-git-main-hopereiras-projects.vercel.app',
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: (origin, callback) => {
+      // Permitir requisições sem origin (ex: mobile apps, Postman)
+      if (!origin) return callback(null, true);
+      
+      // Verificar se a origem está na lista ou é um subdomínio do Vercel
+      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      callback(null, false);
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
