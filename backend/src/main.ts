@@ -33,12 +33,14 @@ async function bootstrap() {
     prefix: '/public/',
   });
 
-  // CORS: Permitir múltiplas origens (Vercel, localhost, etc)
+  // CORS: Permitir múltiplas origens (Vercel, localhost, domínio próprio, etc)
   const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:3001',
     'https://pub-system.vercel.app',
     'https://pub-system-git-main-hopereiras-projects.vercel.app',
+    'https://pubsystem.com.br',
+    'https://www.pubsystem.com.br',
   ].filter(Boolean);
 
   app.enableCors({
@@ -46,8 +48,8 @@ async function bootstrap() {
       // Permitir requisições sem origin (ex: mobile apps, Postman)
       if (!origin) return callback(null, true);
       
-      // Verificar se a origem está na lista ou é um subdomínio do Vercel
-      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      // Verificar se a origem está na lista ou é um subdomínio do Vercel/pubsystem
+      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.pubsystem.com.br')) {
         return callback(null, true);
       }
       
