@@ -121,7 +121,7 @@ import { JobsModule } from './jobs/jobs.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true, // Garante que todas as entidades sejam carregadas
-        synchronize: false, // Importante para usar migrations
+        synchronize: process.env.DB_SYNC === 'true', // Habilitar apenas no primeiro deploy para criar tabelas
         // SSL para Neon e outros provedores cloud
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
