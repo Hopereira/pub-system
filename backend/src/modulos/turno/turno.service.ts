@@ -281,7 +281,18 @@ export class TurnoService {
    * Só retorna turno se o funcionário também estiver com status ATIVO
    */
   async getTurnoAtivo(funcionarioId: string): Promise<TurnoFuncionario | null> {
-    const turno = await this.turnoRepository.findOne({
+    // Primeiro busca o funcionário para verificar o status atual
+    const funcionario = await this.funcionarioRepository.findOne({
+      where: { id: funcionarioId },
+    });
+
+    // Se funcionário não existe ou está INATIVO, não tem turno ativo
+    if (!funcionario || funcionario.status !== FuncionarioStatus.ATIVO) {
+      return null;
+    }
+
+    // Só busca turno se funcionário estiver ATIVO
+    return await this.turnoRepository.findOne({
       where: {
         funcionarioId,
         ativo: true,
@@ -289,14 +300,6 @@ export class TurnoService {
       },
       relations: ['funcionario', 'evento'],
     });
-
-    // Verifica se o funcionário está com status ATIVO
-    // Se o funcionário estiver INATIVO, não considera o turno como ativo
-    if (turno && turno.funcionario?.status !== FuncionarioStatus.ATIVO) {
-      return null;
-    }
-
-    return turno;
   }
 
   private formatarTempo(minutos: number): string {
