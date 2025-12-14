@@ -286,13 +286,20 @@ export class TurnoService {
       where: { id: funcionarioId },
     });
 
+    this.logger.log(
+      `🔍 getTurnoAtivo | Funcionário: ${funcionario?.nome} | Status: ${funcionario?.status}`,
+    );
+
     // Se funcionário não existe ou está INATIVO, não tem turno ativo
     if (!funcionario || funcionario.status !== FuncionarioStatus.ATIVO) {
+      this.logger.log(
+        `⛔ getTurnoAtivo | Funcionário INATIVO ou não encontrado - retornando null`,
+      );
       return null;
     }
 
     // Só busca turno se funcionário estiver ATIVO
-    return await this.turnoRepository.findOne({
+    const turno = await this.turnoRepository.findOne({
       where: {
         funcionarioId,
         ativo: true,
@@ -300,6 +307,12 @@ export class TurnoService {
       },
       relations: ['funcionario', 'evento'],
     });
+
+    this.logger.log(
+      `✅ getTurnoAtivo | Turno encontrado: ${turno ? 'SIM' : 'NÃO'}`,
+    );
+
+    return turno;
   }
 
   private formatarTempo(minutos: number): string {
