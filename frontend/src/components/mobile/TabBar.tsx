@@ -35,7 +35,7 @@ const adminTabs: TabItem[] = [
 // Tabs para GARCOM
 const garcomTabs: TabItem[] = [
   { label: 'Início', icon: Home, href: '/garcom' },
-  { label: 'Mesas', icon: UtensilsCrossed, href: '/garcom/mapa-visual' },
+  { label: 'Mesas', icon: UtensilsCrossed, href: '/dashboard/mapa/visualizar' },
   { label: 'Pedidos', icon: ShoppingBag, href: '/dashboard/gestaopedidos' },
   { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
 ];
