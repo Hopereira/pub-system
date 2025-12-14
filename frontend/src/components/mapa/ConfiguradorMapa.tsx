@@ -374,15 +374,18 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
         mesas: mesasAtualizadas,
       });
 
-      // 2. Depois, atualizar posição de todas as mesas (agora todas têm ID real)
-      for (const mesa of mesasAtualizadas) {
-        if (mesa.posicao && !mesa.id.startsWith('temp-')) {
-          await mapaService.atualizarPosicaoMesa(mesa.id, {
-            posicao: mesa.posicao,
-            tamanho: mesa.tamanho,
-            rotacao: mesa.rotacao,
-          });
-        }
+      // 2. Depois, atualizar posição de todas as mesas em batch (evita rate limiting)
+      const mesasParaAtualizar = mesasAtualizadas
+        .filter((mesa) => mesa.posicao && !mesa.id.startsWith('temp-'))
+        .map((mesa) => ({
+          id: mesa.id,
+          posicao: mesa.posicao!,
+          tamanho: mesa.tamanho,
+          rotacao: mesa.rotacao,
+        }));
+
+      if (mesasParaAtualizar.length > 0) {
+        await mapaService.atualizarPosicoesMesasBatch(mesasParaAtualizar);
       }
 
       // 3. Salvar posição de cada ponto

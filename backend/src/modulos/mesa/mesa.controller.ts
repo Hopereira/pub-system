@@ -14,7 +14,11 @@ import {
 import { MesaService } from './mesa.service';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
-import { AtualizarPosicaoMesaDto, MapaCompletoDto } from './dto/mapa.dto';
+import {
+  AtualizarPosicaoMesaDto,
+  AtualizarPosicoesBatchDto,
+  MapaCompletoDto,
+} from './dto/mapa.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -145,5 +149,22 @@ export class MesaController {
     @Body() dto: AtualizarPosicaoMesaDto,
   ) {
     return this.mesaService.atualizarPosicao(id, dto);
+  }
+
+  @Put('posicoes/batch')
+  @Roles(Cargo.ADMIN)
+  @ApiOperation({
+    summary: 'Atualizar posições de múltiplas mesas em uma única requisição',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Posições atualizadas com sucesso.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Acesso negado. Apenas Administradores.',
+  })
+  atualizarPosicoesBatch(@Body() dto: AtualizarPosicoesBatchDto) {
+    return this.mesaService.atualizarPosicoesBatch(dto);
   }
 }

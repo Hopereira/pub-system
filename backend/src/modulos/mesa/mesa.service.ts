@@ -14,6 +14,7 @@ import { UpdateMesaDto } from './dto/update-mesa.dto';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import {
   AtualizarPosicaoMesaDto,
+  AtualizarPosicoesBatchDto,
   MesaMapaDto,
   MapaCompletoDto,
 } from './dto/mapa.dto';
@@ -217,6 +218,34 @@ export class MesaService {
     );
 
     return mesaAtualizada;
+  }
+
+  /**
+   * Atualiza posições de múltiplas mesas em uma única operação
+   * Evita rate limiting ao fazer batch update
+   */
+  async atualizarPosicoesBatch(
+    dto: AtualizarPosicoesBatchDto,
+  ): Promise<{ atualizadas: number }> {
+    let atualizadas = 0;
+
+    for (const item of dto.mesas) {
+      const mesa = await this.mesaRepository.findOne({ where: { id: item.id } });
+      if (mesa) {
+        mesa.posicao = item.posicao;
+        if (item.tamanho) {
+          mesa.tamanho = item.tamanho;
+        }
+        if (item.rotacao !== undefined) {
+          mesa.rotacao = item.rotacao;
+        }
+        await this.mesaRepository.save(mesa);
+        atualizadas++;
+      }
+    }
+
+    Logger.log(`Batch update: ${atualizadas} mesas atualizadas`);
+    return { atualizadas };
   }
 
   async getMapa(ambienteId: string): Promise<MapaCompletoDto> {

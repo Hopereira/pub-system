@@ -46,6 +46,27 @@ export const mapaService = {
       throw error;
     }
   },
+
+  /**
+   * Atualizar posições de múltiplas mesas em uma única requisição (Admin)
+   * Evita rate limiting do Cloudflare
+   */
+  async atualizarPosicoesMesasBatch(
+    mesas: Array<{
+      id: string;
+      posicao: { x: number; y: number };
+      tamanho?: { width: number; height: number };
+      rotacao?: number;
+    }>,
+  ): Promise<{ atualizadas: number }> {
+    try {
+      const response = await api.put('/mesas/posicoes/batch', { mesas });
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Erro ao atualizar posições das mesas em batch:', error);
+      throw error;
+    }
+  },
 };
 
 export default mapaService;

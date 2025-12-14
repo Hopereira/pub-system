@@ -130,6 +130,43 @@ export class MapaCompletoDto {
   layout: LayoutEstabelecimentoDto;
 }
 
+export class PosicaoMesaBatchItemDto {
+  @ApiProperty({ description: 'ID da mesa' })
+  @IsUUID()
+  id: string;
+
+  @ApiProperty({ description: 'Posição da mesa no mapa' })
+  @ValidateNested()
+  @Type(() => PosicaoDto)
+  posicao: PosicaoDto;
+
+  @ApiPropertyOptional({ description: 'Tamanho da mesa' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TamanhoDto)
+  tamanho?: TamanhoDto;
+
+  @ApiPropertyOptional({
+    description: 'Rotação em graus (0, 90, 180, 270)',
+    example: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(270)
+  rotacao?: number;
+}
+
+export class AtualizarPosicoesBatchDto {
+  @ApiProperty({
+    description: 'Lista de mesas com suas posições',
+    type: [PosicaoMesaBatchItemDto],
+  })
+  @ValidateNested({ each: true })
+  @Type(() => PosicaoMesaBatchItemDto)
+  mesas: PosicaoMesaBatchItemDto[];
+}
+
 export class AtualizarLayoutDto {
   @ApiProperty({ description: 'Largura do mapa em pixels', example: 1200 })
   @IsNumber()
