@@ -34,7 +34,7 @@ interface FuncionarioFormDialogProps {
   funcionarioToEdit?: Funcionario | null; // NOVO: Prop para receber o funcionário a ser editado
 }
 
-const cargos = ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHA'];
+const cargos = ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'];
 const initialFormData: CreateFuncionarioDto = { nome: '', email: '', senha: '', cargo: 'GARCOM' };
 
 export default function FuncionarioFormDialog({
@@ -72,7 +72,7 @@ export default function FuncionarioFormDialog({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (value: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHA') => {
+  const handleSelectChange = (value: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHEIRO' | 'BARTENDER') => {
     setFormData((prev) => ({ ...prev, cargo: value }));
   };
 

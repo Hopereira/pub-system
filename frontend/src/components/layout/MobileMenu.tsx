@@ -79,7 +79,7 @@ export function MobileMenu() {
         
         let dynamicLinks = ambientes.filter(ambiente => ambiente.tipo === 'PREPARO');
         
-        if (['COZINHA', 'COZINHEIRO'].includes(user?.cargo || '')) {
+        if (['COZINHEIRO', 'BARTENDER'].includes(user?.cargo || '')) {
           if (user?.ambienteId) {
             dynamicLinks = dynamicLinks.filter(ambiente => ambiente.id === user.ambienteId);
           } else {

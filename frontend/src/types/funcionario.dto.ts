@@ -5,7 +5,7 @@ export interface CreateFuncionarioDto {
   nome: string;
   email: string;
   senha?: string; // Obrigatório na criação
-  cargo: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHA';
+  cargo: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHEIRO' | 'BARTENDER';
 }
 
 // NOVO: Já vamos deixar pronto o DTO para ATUALIZAÇÃO.
@@ -14,6 +14,6 @@ export interface UpdateFuncionarioDto {
   nome?: string;
   email?: string;
   senha?: string;
-  cargo?: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHA';
+  cargo?: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHEIRO' | 'BARTENDER';
   ativo?: boolean;
 }

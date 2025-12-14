@@ -70,8 +70,8 @@ export const RoleGuard = ({
           return '/dashboard';
         case 'CAIXA':
           return '/caixa';
-        case 'COZINHA':
         case 'COZINHEIRO':
+        case 'BARTENDER':
           return '/cozinha';
         default:
           return '/';

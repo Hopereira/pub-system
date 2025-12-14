@@ -35,7 +35,7 @@ export const hasRole = (user: User | null, roles: UserRole[]): boolean => {
 
 // Helper para verificar se é role de preparo
 export const isPreparoRole = (user: User | null): boolean => {
-  return hasRole(user, ['COZINHEIRO', 'COZINHA']);
+  return hasRole(user, ['COZINHEIRO', 'BARTENDER']);
 };
 
 // Helper para verificar se é role gerencial

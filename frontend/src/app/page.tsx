@@ -42,8 +42,8 @@ export default function LoginPage() {
             case 'CAIXA':
               router.push('/caixa');
               break;
-            case 'COZINHA':
             case 'COZINHEIRO':
+            case 'BARTENDER':
               router.push('/cozinha');
               break;
             default:
