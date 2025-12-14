@@ -57,10 +57,19 @@ export const getEventoById = async (id: string, token?: string): Promise<Evento 
  * Cria um novo evento (API POST).
  */
 export const createEvento = async (data: CreateEventoDto): Promise<Evento> => {
-  const payload = {
-    ...data,
+  // Monta payload removendo campos undefined/null que não devem ser enviados
+  const payload: Record<string, unknown> = {
+    titulo: data.titulo,
+    descricao: data.descricao,
     dataEvento: data.dataEvento.toISOString(),
+    valor: data.valor,
   };
+  
+  // Só envia paginaEventoId se for um UUID válido (não null/undefined)
+  if (data.paginaEventoId && data.paginaEventoId !== 'null') {
+    payload.paginaEventoId = data.paginaEventoId;
+  }
+  
   const response = await api.post<Evento>('/eventos', payload);
   return response.data;
 };
