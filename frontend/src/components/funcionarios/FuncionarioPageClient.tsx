@@ -21,6 +21,7 @@ import {
 
 import { Funcionario } from '@/types/funcionario';
 import { getFuncionarios, deleteFuncionario } from '@/services/funcionarioService';
+import { turnoService } from '@/services/turnoService';
 import FuncionariosTable from './FuncionariosTable';
 import FuncionarioFormDialog from './FuncionarioFormDialog';
 
@@ -31,9 +32,11 @@ export default function FuncionarioPageClient() {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [funcionarioToEdit, setFuncionarioToEdit] = useState<Funcionario | null>(null);
 
-  // --- NOVO: Estados para o diálogo de confirmação de exclusão ---
+  // --- Estados para o diálogo de confirmação de exclusão ---
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [funcionarioToDelete, setFuncionarioToDelete] = useState<Funcionario | null>(null);
+  const [hasTurnoAtivo, setHasTurnoAtivo] = useState(false);
+  const [isCheckingTurno, setIsCheckingTurno] = useState(false);
 
   useEffect(() => {
     const fetchFuncionarios = async () => {
@@ -60,11 +63,24 @@ export default function FuncionarioPageClient() {
     setFuncionarioToEdit(funcionario);
     setIsFormDialogOpen(true);
   };
-  
-  // --- NOVO: Funções para controlar a exclusão ---
-  const handleOpenDeleteDialog = (funcionario: Funcionario) => {
+
+  // --- Funções para controlar a exclusão ---
+  const handleOpenDeleteDialog = async (funcionario: Funcionario) => {
     setFuncionarioToDelete(funcionario);
-    setIsConfirmOpen(true);
+    setIsCheckingTurno(true);
+    setHasTurnoAtivo(false);
+
+    try {
+      // Verifica se o funcionário tem turno ativo
+      const turnoAtivo = await turnoService.getTurnoAtivo(funcionario.id);
+      setHasTurnoAtivo(turnoAtivo !== null);
+    } catch {
+      // Se der erro na verificação, assume que não tem turno ativo
+      setHasTurnoAtivo(false);
+    } finally {
+      setIsCheckingTurno(false);
+      setIsConfirmOpen(true);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -142,19 +158,48 @@ export default function FuncionarioPageClient() {
         funcionarioToEdit={funcionarioToEdit}
       />
 
-      {/* --- NOVO: Diálogo de confirmação de exclusão --- */}
+      {/* --- Diálogo de confirmação de exclusão --- */}
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário 
-              <span className="font-bold"> {funcionarioToDelete?.nome}</span>.
+            <AlertDialogTitle>
+              {hasTurnoAtivo ? '⚠️ Funcionário em Trabalho' : 'Você tem certeza?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {hasTurnoAtivo ? (
+                  <div className="space-y-3">
+                    <p>
+                      O funcionário <span className="font-bold">{funcionarioToDelete?.nome}</span> está 
+                      <span className="text-orange-500 font-semibold"> atualmente trabalhando</span> (turno ativo).
+                    </p>
+                    <p>
+                      Para excluir este funcionário, é necessário que ele faça <span className="font-semibold">check-out</span> primeiro.
+                    </p>
+                    <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md p-3 mt-2">
+                      <p className="text-sm text-orange-700 dark:text-orange-300">
+                        💡 Peça ao funcionário para encerrar seu turno no aplicativo ou finalize o turno manualmente.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p>
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário 
+                    <span className="font-bold"> {funcionarioToDelete?.nome}</span> e todos os seus registros associados.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setFuncionarioToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Confirmar Exclusão</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setFuncionarioToDelete(null)}>
+              {hasTurnoAtivo ? 'Entendi' : 'Cancelar'}
+            </AlertDialogCancel>
+            {!hasTurnoAtivo && (
+              <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
+                Confirmar Exclusão
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
