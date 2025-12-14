@@ -85,7 +85,11 @@ export const turnoService = {
   async getTurnoAtivo(funcionarioId: string): Promise<TurnoFuncionario | null> {
     try {
       const response = await api.get(`/turnos/funcionario/${funcionarioId}/ativo`);
-      return response.data;
+      // Verifica se a resposta tem dados válidos (não é null, undefined, ou string vazia)
+      if (response.data && typeof response.data === 'object' && response.data.id) {
+        return response.data;
+      }
+      return null;
     } catch {
       return null;
     }
