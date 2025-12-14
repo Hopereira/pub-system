@@ -2,12 +2,16 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Home, 
   UtensilsCrossed, 
   ShoppingBag, 
   Receipt, 
   User,
+  Users,
+  Settings,
+  BarChart2,
   LucideIcon 
 } from 'lucide-react';
 
@@ -16,19 +20,61 @@ interface TabItem {
   icon: LucideIcon;
   href: string;
   badge?: number;
+  roles?: string[];
 }
 
-const tabs: TabItem[] = [
+// Tabs para ADMIN/GERENTE
+const adminTabs: TabItem[] = [
   { label: 'Início', icon: Home, href: '/dashboard' },
   { label: 'Mesas', icon: UtensilsCrossed, href: '/dashboard/operacional/mesas' },
-  { label: 'Pedidos', icon: ShoppingBag, href: '/dashboard/operacional/todos-pedidos' },
-  { label: 'Conta', icon: Receipt, href: '/dashboard/operacional/caixa' },
+  { label: 'Pedidos', icon: ShoppingBag, href: '/dashboard/gestaopedidos' },
+  { label: 'Gestão', icon: Settings, href: '/dashboard/admin/mesas' },
+  { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
+];
+
+// Tabs para GARCOM
+const garcomTabs: TabItem[] = [
+  { label: 'Início', icon: Home, href: '/garcom' },
+  { label: 'Mesas', icon: UtensilsCrossed, href: '/garcom/mapa-visual' },
+  { label: 'Pedidos', icon: ShoppingBag, href: '/dashboard/gestaopedidos' },
+  { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
+];
+
+// Tabs para CAIXA
+const caixaTabs: TabItem[] = [
+  { label: 'Início', icon: Home, href: '/caixa' },
+  { label: 'Terminal', icon: Receipt, href: '/caixa/terminal' },
+  { label: 'Comandas', icon: ShoppingBag, href: '/caixa/comandas-abertas' },
+  { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
+];
+
+// Tabs padrão
+const defaultTabs: TabItem[] = [
+  { label: 'Início', icon: Home, href: '/dashboard' },
   { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
 ];
 
 export function TabBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Seleciona tabs baseado no cargo
+  const getTabs = (): TabItem[] => {
+    switch (user?.cargo) {
+      case 'ADMIN':
+      case 'GERENTE':
+        return adminTabs;
+      case 'GARCOM':
+        return garcomTabs;
+      case 'CAIXA':
+        return caixaTabs;
+      default:
+        return defaultTabs;
+    }
+  };
+
+  const tabs = getTabs();
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
