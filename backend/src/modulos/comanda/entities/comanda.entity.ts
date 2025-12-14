@@ -85,7 +85,7 @@ export class Comanda {
   })
   criadoPorTipo: 'GARCOM' | 'CLIENTE';
 
-  @ManyToOne(() => Funcionario, { nullable: true })
+  @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'criado_por_id' })
   criadoPor: Funcionario;
 }

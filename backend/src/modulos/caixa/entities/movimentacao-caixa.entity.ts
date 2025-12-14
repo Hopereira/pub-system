@@ -73,7 +73,7 @@ export class MovimentacaoCaixa {
   @Column({ name: 'funcionario_id' })
   funcionarioId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true })
+  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionario_id' })
   funcionario: Funcionario;
 

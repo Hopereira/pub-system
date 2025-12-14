@@ -60,7 +60,7 @@ export class Pedido {
   })
   criadoPorTipo: 'GARCOM' | 'CLIENTE';
 
-  @ManyToOne(() => Funcionario, { nullable: true })
+  @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'criado_por_id' })
   criadoPor: Funcionario;
 
@@ -68,7 +68,7 @@ export class Pedido {
   @Column({ name: 'entregue_por_id', type: 'uuid', nullable: true })
   entreguePorId: string;
 
-  @ManyToOne(() => Funcionario, { nullable: true })
+  @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'entregue_por_id' })
   entreguePor: Funcionario;
 

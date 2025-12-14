@@ -27,14 +27,14 @@ export class AberturaCaixa {
   @Column({ name: 'turno_funcionario_id' })
   turnoFuncionarioId: string;
 
-  @ManyToOne(() => TurnoFuncionario, { eager: true })
+  @ManyToOne(() => TurnoFuncionario, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'turno_funcionario_id' })
   turnoFuncionario: TurnoFuncionario;
 
   @Column({ name: 'funcionario_id' })
   funcionarioId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true })
+  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionario_id' })
   funcionario: Funcionario;
 
