@@ -136,6 +136,15 @@ export class FuncionarioService implements OnModuleInit {
     id: string,
     updateFuncionarioDto: UpdateFuncionarioDto,
   ): Promise<Funcionario> {
+    // Se a senha foi enviada, faz o hash antes de salvar
+    if (updateFuncionarioDto.senha) {
+      updateFuncionarioDto.senha = await bcrypt.hash(
+        updateFuncionarioDto.senha,
+        10,
+      );
+      this.logger.log(`🔐 Senha do funcionário ${id} será atualizada (hash)`);
+    }
+
     const funcionario = await this.funcionarioRepository.preload({
       id,
       ...updateFuncionarioDto,
