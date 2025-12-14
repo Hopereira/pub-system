@@ -107,7 +107,7 @@ export class PedidoController {
 
   @Patch('/item/:itemPedidoId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.COZINHA, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.COZINHEIRO, Cargo.BARTENDER, Cargo.GARCOM)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Atualiza o status de um item de pedido específico',
@@ -129,7 +129,7 @@ export class PedidoController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHEIRO, Cargo.BARTENDER)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Lista todos os pedidos, com filtros opcionais',
@@ -190,7 +190,7 @@ export class PedidoController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHEIRO, Cargo.BARTENDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Busca um pedido específico por ID' })
   @ApiResponse({ status: 200, description: 'Pedido encontrado.' })
@@ -204,7 +204,7 @@ export class PedidoController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.BARTENDER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza dados gerais de um pedido' })
   @ApiResponse({ status: 200, description: 'Pedido atualizado.' })

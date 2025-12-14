@@ -36,11 +36,8 @@ const baseNavLinks: NavLink[] = [
   { href: '/caixa/comandas-abertas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
   { href: '/caixa/gestao', label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
   
-  // --- Área da Cozinha ---
-  { href: '/cozinha', label: 'Ambiente de Preparo', icon: ChefHat, roles: ['COZINHA'] },
-  
-  // --- Área da Cozinha ---
-  { href: '/cozinha', label: 'Área da Cozinha', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO'] },
+  // --- Área de Preparo (Cozinha/Bar) ---
+  { href: '/cozinha', label: 'Área de Preparo', icon: ChefHat, roles: ['COZINHEIRO', 'BARTENDER'] },
   
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
@@ -80,7 +77,7 @@ export function Sidebar() {
           .filter(ambiente => ambiente.tipo === 'PREPARO'); // Filtra apenas ambientes de preparo
         
         // Se for COZINHA/COZINHEIRO, mostra apenas o ambiente onde trabalha
-        if (['COZINHA', 'COZINHEIRO'].includes(user?.cargo || '')) {
+        if (['COZINHEIRO', 'BARTENDER'].includes(user?.cargo || '')) {
           if (user?.ambienteId) {
             dynamicLinks = dynamicLinks.filter(ambiente => ambiente.id === user.ambienteId);
           } else {
@@ -94,7 +91,7 @@ export function Sidebar() {
           href: `/dashboard/operacional/${ambiente.id}`,
           label: `Painel ${ambiente.nome}`,
           icon: ChefHat,
-          roles: ['ADMIN', 'COZINHA', 'COZINHEIRO'],
+          roles: ['ADMIN', 'COZINHEIRO', 'BARTENDER'],
         }));
         
         setOperationalLinks(links);
@@ -103,7 +100,7 @@ export function Sidebar() {
       }
     };
 
-    if (user?.cargo && ['ADMIN', 'COZINHA', 'COZINHEIRO'].includes(user.cargo)) {
+    if (user?.cargo && ['ADMIN', 'COZINHEIRO', 'BARTENDER'].includes(user.cargo)) {
         fetchOperationalLinks();
     } else {
         setOperationalLinks([]);

@@ -35,7 +35,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-in')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-in (iniciar turno)' })
   @ApiResponse({
@@ -53,7 +53,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-out')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHA, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-out (finalizar turno)' })
   @ApiResponse({

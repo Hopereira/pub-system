@@ -47,7 +47,7 @@ export class AmbienteController {
   }
 
   @Get()
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHEIRO, Cargo.BARTENDER)
   @ApiOperation({ summary: 'Lista todos os ambientes cadastrados' })
   @ApiResponse({
     status: 200,

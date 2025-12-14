@@ -1,5 +1,5 @@
 // Roles disponíveis no sistema
-export type UserRole = 'ADMIN' | 'GERENTE' | 'CAIXA' | 'GARCOM' | 'COZINHEIRO' | 'COZINHA';
+export type UserRole = 'ADMIN' | 'GERENTE' | 'CAIXA' | 'GARCOM' | 'COZINHEIRO' | 'BARTENDER';
 
 // Usuário decodificado do JWT
 export interface User {
