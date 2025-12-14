@@ -106,8 +106,16 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
   }, [eventoId, isEditMode, form]);
 
   const onSubmit = async (values: FormValues) => {
-    let dataFinal = setMinutes(setHours(values.dataEvento, values.hora), values.minuto);
-    const payload = { ...values, dataEvento: dataFinal };
+    const dataFinal = setMinutes(setHours(values.dataEvento, values.hora), values.minuto);
+
+    // Monta payload apenas com os campos que o backend espera
+    const payload = {
+      titulo: values.titulo,
+      descricao: values.descricao,
+      dataEvento: dataFinal,
+      valor: values.valor,
+      paginaEventoId: values.paginaEventoId,
+    };
 
     try {
       if (isEditMode) {
@@ -123,7 +131,7 @@ export default function EventoFormPage({ eventoId }: EventoFormPageProps) {
       toast.error("Falha ao salvar o evento.");
     }
   };
-  
+
   if (isLoadingData) {
     return <div className="text-center p-8">Carregando dados do evento...</div>
   }
