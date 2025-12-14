@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { MobileMenu } from './MobileMenu';
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -24,8 +25,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-white px-4 dark:bg-gray-800 md:px-6">
-      <div>
-        {/* Placeholder para o Logo ou nome do sistema */}
+      <div className="flex items-center gap-2">
+        {/* Menu Hamburger para Mobile */}
+        <MobileMenu />
+        {/* Logo ou nome do sistema */}
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Pub System</h1>
       </div>
       <div className="flex items-center gap-4">
