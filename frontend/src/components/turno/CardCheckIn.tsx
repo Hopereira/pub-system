@@ -41,8 +41,17 @@ export function CardCheckIn({
 
     const agora = new Date();
     const checkIn = new Date(turnoAtivo.checkIn);
+    
+    // Calcula diferença em milissegundos
+    // O Date já converte automaticamente UTC para local
     const diffMs = agora.getTime() - checkIn.getTime();
     const diffMins = Math.floor(diffMs / 60000);
+
+    // Garante que não mostra valores negativos
+    if (diffMins < 0) {
+      setTempoTrabalhado('0h 0min');
+      return;
+    }
 
     const horas = Math.floor(diffMins / 60);
     const minutos = diffMins % 60;

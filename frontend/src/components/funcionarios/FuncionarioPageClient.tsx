@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'; // NOVO: Importamos o AlertDialog
+import { io, Socket } from 'socket.io-client';
 
 import { Funcionario } from '@/types/funcionario';
 import { getFuncionarios, deleteFuncionario } from '@/services/funcionarioService';
@@ -38,21 +39,45 @@ export default function FuncionarioPageClient() {
   const [hasTurnoAtivo, setHasTurnoAtivo] = useState(false);
   const [isCheckingTurno, setIsCheckingTurno] = useState(false);
 
-  useEffect(() => {
-    const fetchFuncionarios = async () => {
-      try {
-        setIsLoading(true);
-        const data = await getFuncionarios();
-        setFuncionarios(data);
-        setError(null);
-      } catch (err) {
-        setError('Não foi possível carregar a lista de funcionários. Tente novamente mais tarde.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchFuncionarios();
+  const fetchFuncionarios = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await getFuncionarios();
+      setFuncionarios(data);
+      setError(null);
+    } catch (err) {
+      setError('Não foi possível carregar a lista de funcionários. Tente novamente mais tarde.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Carrega funcionários na montagem
+  useEffect(() => {
+    fetchFuncionarios();
+  }, [fetchFuncionarios]);
+
+  // Escuta eventos WebSocket para atualizar lista automaticamente
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const socket: Socket = io(apiUrl, {
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('connect', () => {
+      console.log('[Funcionarios] WebSocket conectado');
+    });
+
+    // Atualiza lista quando funcionário faz check-in ou check-out
+    socket.on('funcionarios_ativos_atualizado', () => {
+      console.log('[Funcionarios] Recebido evento de atualização');
+      fetchFuncionarios();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [fetchFuncionarios]);
 
   const handleOpenCreateDialog = () => {
     setFuncionarioToEdit(null);

@@ -10,6 +10,9 @@ import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
+// Configura timezone para São Paulo (UTC-3)
+process.env.TZ = 'America/Sao_Paulo';
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
