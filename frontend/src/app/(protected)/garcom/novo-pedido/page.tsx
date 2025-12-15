@@ -156,10 +156,16 @@ export default function NovoPedidoPage() {
       return;
     }
 
+    const cpfLimpo = cpfRapido.replace(/\D/g, '');
+    if (!cpfLimpo || cpfLimpo.length !== 11) {
+      toast.error('CPF é obrigatório (11 dígitos)');
+      return;
+    }
+
     try {
       const novoCliente = await criarClienteRapido({
         nome: nomeRapido,
-        cpf: cpfRapido.replace(/\D/g, '') || undefined,
+        cpf: cpfLimpo,
         telefone: telefoneRapido || undefined,
         ambienteId: ambienteRapido || undefined,
         pontoEntregaId: pontoEntregaRapido || undefined,
@@ -324,7 +330,7 @@ export default function NovoPedidoPage() {
                         onChange={(e) => setNomeRapido(e.target.value)}
                       />
                       <Input
-                        placeholder="CPF (opcional)"
+                        placeholder="CPF *"
                         value={cpfRapido}
                         onChange={(e) => setCpfRapido(formatarCPF(e.target.value))}
                         maxLength={14}
