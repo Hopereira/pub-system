@@ -5,11 +5,17 @@ import { logger } from '@/lib/logger';
 
 const isServer = typeof window === 'undefined';
 
+// URL da API - usa API_URL_SERVER no servidor, ou fallback para NEXT_PUBLIC_API_URL
+const getApiBaseUrl = () => {
+  if (isServer) {
+    return process.env.API_URL_SERVER || process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
+};
+
 // --- Instância 1: API Autenticada (para o admin) ---
 const api = axios.create({
-  baseURL: isServer
-    ? process.env.API_URL_SERVER
-    : process.env.NEXT_PUBLIC_API_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 30000, // 30 segundos
 });
 
@@ -129,9 +135,7 @@ export default api;
 
 // --- Instância 2: API Pública (para o cliente) ---
 export const publicApi = axios.create({
-  baseURL: isServer
-    ? process.env.API_URL_SERVER
-    : process.env.NEXT_PUBLIC_API_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 30000, // 30 segundos
 });
 
