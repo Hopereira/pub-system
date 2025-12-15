@@ -477,10 +477,13 @@ export class CaixaService {
     const vendas = movimentacoes.filter(
       (m) => m.tipo === TipoMovimentacao.VENDA,
     );
+    const suprimentos = movimentacoes.filter(
+      (m) => m.tipo === TipoMovimentacao.SUPRIMENTO || m.tipo === TipoMovimentacao.ABERTURA,
+    );
     const totalVendas = vendas.reduce((acc, v) => acc + Number(v.valor), 0);
     const totalSangrias = sangrias.reduce((acc, s) => acc + Number(s.valor), 0);
-    const saldoFinal =
-      Number(abertura.valorInicial) + totalVendas - totalSangrias;
+    const totalSuprimentos = suprimentos.reduce((acc, s) => acc + Number(s.valor), 0);
+    const saldoFinal = totalSuprimentos + totalVendas - totalSangrias;
 
     const resumoPorFormaPagamento = this.agruparPorFormaPagamento(vendas);
 
@@ -489,11 +492,11 @@ export class CaixaService {
       fechamento,
       movimentacoes,
       sangrias,
-      suprimentos: [], // TODO: Implementar suprimentos
+      suprimentos,
       resumoPorFormaPagamento,
       totalVendas,
       totalSangrias,
-      totalSuprimentos: 0,
+      totalSuprimentos,
       saldoFinal,
     };
   }
