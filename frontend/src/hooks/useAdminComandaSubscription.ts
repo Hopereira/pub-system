@@ -7,7 +7,7 @@ import { io, Socket } from 'socket.io-client';
 import { Pedido } from '@/types/pedido';
 import { logger } from '@/lib/logger';
 
-const SOCKET_URL = 'http://localhost:3000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const useAdminComandaSubscription = (comandaId: string | null) => {
   const [comanda, setComanda] = useState<Comanda | null>(null);
