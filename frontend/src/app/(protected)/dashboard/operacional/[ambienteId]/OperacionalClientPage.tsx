@@ -1,20 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PedidoCard } from '@/components/operacional/PedidoCard';
 import { Pedido } from '@/types/pedido';
 import { PedidoStatus } from '@/types/pedido-status.enum';
 import { getPedidosPorAmbiente, updateItemStatus } from '@/services/pedidoService';
-import { getAmbienteById } from '@/services/ambienteService';
+import { getAmbienteById, getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 import { useAmbienteNotification } from '@/hooks/useAmbienteNotification';
 import { Button } from '@/components/ui/button';
-import { Bell, BellOff } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Bell, BellOff, Clock, ChefHat } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { CardCheckIn } from '@/components/turno/CardCheckIn';
+import { useAuth } from '@/context/AuthContext';
 
 export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
+  const { user } = useAuth();
+  const router = useRouter();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [ambiente, setAmbiente] = useState<Ambiente | null>(null);
+  const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -29,12 +36,14 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
   const fetchDados = async () => {
     try {
-      const [pedidosData, ambienteData] = await Promise.all([
+      const [pedidosData, ambienteData, ambientesData] = await Promise.all([
         getPedidosPorAmbiente(ambienteId),
         getAmbienteById(ambienteId),
+        getAmbientes(),
       ]);
       setPedidos(Array.isArray(pedidosData) ? pedidosData : []);
       setAmbiente(ambienteData);
+      setAmbientes(ambientesData.filter((a: Ambiente) => a.tipo === 'PREPARO'));
     } catch (err: any) {
       setError(err.message || 'Falha ao buscar os dados.');
       toast.error('Falha ao carregar dados do painel.');
@@ -42,6 +51,18 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
       setLoading(false);
     }
   };
+
+  // Calcula métricas do ambiente atual
+  const metricas = useMemo(() => {
+    const itens = pedidos.flatMap(p => p.itens);
+    return {
+      aFazer: itens.filter(i => i.status === PedidoStatus.FEITO).length,
+      emPreparo: itens.filter(i => i.status === PedidoStatus.EM_PREPARO).length,
+      quasePronto: itens.filter(i => i.status === PedidoStatus.QUASE_PRONTO).length,
+      prontos: itens.filter(i => i.status === PedidoStatus.PRONTO).length,
+      aguardandoRetirada: itens.filter(i => i.status === PedidoStatus.DEIXADO_NO_AMBIENTE).length,
+    };
+  }, [pedidos]);
 
   useEffect(() => {
     fetchDados();
@@ -96,31 +117,77 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
 
   return (
     <>
-      <div className="mb-6 flex-shrink-0 flex items-center justify-between">
+      <div className="mb-4 flex-shrink-0 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{ambiente?.nome || 'Painel Operacional'}</h1>
-          <p className="text-muted-foreground">Acompanhe e gerencie os pedidos em tempo real.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{ambiente?.nome || 'Painel Operacional'}</h1>
+          <p className="text-muted-foreground text-sm">Acompanhe e gerencie os pedidos em tempo real.</p>
         </div>
         
-        {/* Botão para ativar notificações sonoras */}
         {audioConsentNeeded ? (
-          <Button 
-            onClick={handleAllowAudio}
-            variant="default"
-            size="lg"
-            className="gap-2"
-          >
-            <Bell className="h-5 w-5" />
+          <Button onClick={handleAllowAudio} variant="default" size="sm" className="gap-2">
+            <Bell className="h-4 w-4" />
             Ativar Som de Notificações
           </Button>
         ) : (
           <div className="flex items-center gap-2 text-sm text-green-600">
-            <BellOff className="h-5 w-5" />
+            <BellOff className="h-4 w-4" />
             <span>Notificações ativadas</span>
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 flex-grow h-full">
+
+      {/* Card de Check-In/Check-Out */}
+      {user && (
+        <div className="mb-4">
+          <CardCheckIn funcionarioId={user.id} funcionarioNome={user.nome} />
+        </div>
+      )}
+
+      {/* Cards de Ambientes de Preparo */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 mb-4">
+        {ambientes.map(amb => {
+          const isSelected = amb.id === ambienteId;
+          return (
+            <Card 
+              key={amb.id}
+              className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-primary border-primary bg-primary/5' : 'hover:border-primary/50'}`}
+              onClick={() => router.push(`/dashboard/operacional/${amb.id}`)}
+            >
+              <CardContent className="p-3 text-center">
+                <ChefHat className={`h-5 w-5 mx-auto mb-1 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                <p className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : ''}`}>{amb.nome}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Métricas do Ambiente Atual */}
+      <div className="grid grid-cols-5 gap-2 mb-4">
+        <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-yellow-700 dark:text-yellow-400">{metricas.aFazer}</div>
+          <div className="text-xs text-yellow-600 dark:text-yellow-500">A Fazer</div>
+        </div>
+        <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-blue-700 dark:text-blue-400">{metricas.emPreparo}</div>
+          <div className="text-xs text-blue-600 dark:text-blue-500">Em Preparo</div>
+        </div>
+        <div className="bg-orange-100 dark:bg-orange-900/30 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-orange-700 dark:text-orange-400">{metricas.quasePronto}</div>
+          <div className="text-xs text-orange-600 dark:text-orange-500">Quase Pronto</div>
+        </div>
+        <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-green-700 dark:text-green-400">{metricas.prontos}</div>
+          <div className="text-xs text-green-600 dark:text-green-500">Prontos</div>
+        </div>
+        <div className="bg-purple-100 dark:bg-purple-900/30 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-purple-700 dark:text-purple-400">{metricas.aguardandoRetirada}</div>
+          <div className="text-xs text-purple-600 dark:text-purple-500">Retirada</div>
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 flex-grow">
         {Object.entries(colunas).map(([titulo, status]) => (
           <div key={status} className="bg-card rounded-lg p-4 flex flex-col shadow">
             <h2 className="text-xl font-semibold mb-4 text-center">{titulo}</h2>
