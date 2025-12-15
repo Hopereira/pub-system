@@ -49,6 +49,10 @@ export function FechamentoCaixaModal({
     return acc;
   }, {} as Record<string, number>);
 
+  // Adiciona o valor inicial (suprimentos) ao esperado de dinheiro
+  // pois o caixa é aberto com dinheiro físico
+  const dinheiroEsperado = (esperados.dinheiro || 0) + resumoCaixa.totalSuprimentos - resumoCaixa.totalSangrias;
+
   const calcularDiferenca = (esperado: number, informado: string) => {
     const valor = parseFloat(informado.replace(',', '.')) || 0;
     return valor - esperado;
@@ -75,7 +79,7 @@ export function FechamentoCaixaModal({
 
   const handlePreencherAutomatico = () => {
     setValores({
-      dinheiro: (esperados.dinheiro || 0).toFixed(2),
+      dinheiro: dinheiroEsperado.toFixed(2),
       pix: (esperados.pix || 0).toFixed(2),
       debito: (esperados.debito || 0).toFixed(2),
       credito: (esperados.credito || 0).toFixed(2),
@@ -195,7 +199,7 @@ export function FechamentoCaixaModal({
               <Label className="flex items-center justify-between">
                 <span>💵 {formasPagamentoLabels.DINHEIRO}</span>
                 <span className="text-xs text-muted-foreground">
-                  Esperado: {formatCurrency(esperados.dinheiro || 0)}
+                  Esperado: {formatCurrency(dinheiroEsperado)}
                 </span>
               </Label>
               <div className="flex gap-2 items-center">
@@ -206,10 +210,10 @@ export function FechamentoCaixaModal({
                   onChange={(e) => setValores({...valores, dinheiro: e.target.value.replace(/[^0-9.,]/g, '')})}
                   className="flex-1"
                 />
-                {getDiferencaIcon(calcularDiferenca(esperados.dinheiro || 0, valores.dinheiro))}
-                <span className={`text-sm font-semibold min-w-[80px] text-right ${getDiferencaColor(calcularDiferenca(esperados.dinheiro || 0, valores.dinheiro))}`}>
-                  {calcularDiferenca(esperados.dinheiro || 0, valores.dinheiro) >= 0 ? '+' : ''}
-                  {formatCurrency(calcularDiferenca(esperados.dinheiro || 0, valores.dinheiro))}
+                {getDiferencaIcon(calcularDiferenca(dinheiroEsperado, valores.dinheiro))}
+                <span className={`text-sm font-semibold min-w-[80px] text-right ${getDiferencaColor(calcularDiferenca(dinheiroEsperado, valores.dinheiro))}`}>
+                  {calcularDiferenca(dinheiroEsperado, valores.dinheiro) >= 0 ? '+' : ''}
+                  {formatCurrency(calcularDiferenca(dinheiroEsperado, valores.dinheiro))}
                 </span>
               </div>
             </div>
