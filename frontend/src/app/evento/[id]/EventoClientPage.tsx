@@ -20,15 +20,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
-import { Loader2 } from 'lucide-react';
+import { Loader2, KeyRound } from 'lucide-react';
+import Link from 'next/link';
 
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'Por favor, insira o seu nome completo.' }),
-  cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos (apenas números).' }).regex(/^\d+$/, 'CPF deve conter apenas números.'),
+  cpf: z.string().min(14, { message: 'CPF inválido.' }).max(14, { message: 'CPF inválido.' }),
   email: z.string().email({ message: 'Por favor, insira um email válido.' }).optional().or(z.literal('')),
   celular: z.string().min(10, { message: 'O celular deve ter pelo menos 10 dígitos.' }).optional().or(z.literal('')),
 });
 type FormValues = z.infer<typeof formSchema>;
+
+// Função para formatar CPF enquanto digita
+const formatarCpf = (valor: string) => {
+  const numeros = valor.replace(/\D/g, '').slice(0, 11);
+  if (numeros.length <= 3) return numeros;
+  if (numeros.length <= 6) return `${numeros.slice(0, 3)}.${numeros.slice(3)}`;
+  if (numeros.length <= 9) return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6)}`;
+  return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6, 9)}-${numeros.slice(9)}`;
+};
 
 interface EventoClientPageProps {
   // ✅ ADICIONADO: Agora este componente recebe o objeto Evento completo
@@ -48,14 +58,16 @@ export default function EventoClientPage({ evento, paginaEvento, mesaId }: Event
 
   // ✅ LÓGICA DE BUSCAR OU CRIAR CLIENTE (COPIADA DE NOSSA CORREÇÃO ANTERIOR)
   const findOrCreateClient = async (values: FormValues): Promise<Cliente> => {
+    // Remove máscara do CPF antes de enviar
+    const cpfLimpo = values.cpf.replace(/\D/g, '');
     try {
-      const clienteExistente = await getClienteByCpf(values.cpf);
+      const clienteExistente = await getClienteByCpf(cpfLimpo);
       return clienteExistente; 
     } catch (error: any) {
       if (error.response?.status === 404) {
         const novoCliente = await createCliente({
             nome: values.nome,
-            cpf: values.cpf,
+            cpf: cpfLimpo,
             email: values.email || undefined,
             celular: values.celular || undefined,
         });
@@ -149,8 +161,16 @@ export default function EventoClientPage({ evento, paginaEvento, mesaId }: Event
                   name="cpf"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>CPF (apenas números)</FormLabel>
-                      <FormControl><Input type="text" placeholder="12345678900" {...field} /></FormControl>
+                      <FormLabel>CPF</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="text" 
+                          placeholder="000.000.000-00" 
+                          maxLength={14}
+                          value={field.value}
+                          onChange={(e) => field.onChange(formatarCpf(e.target.value))}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -182,6 +202,17 @@ export default function EventoClientPage({ evento, paginaEvento, mesaId }: Event
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting ? 'Aguarde...' : 'Criar Acesso e Entrar'}
               </Button>
+
+              {/* Link para recuperar comanda */}
+              <div className="mt-4 pt-4 border-t text-center">
+                <p className="text-sm text-muted-foreground mb-2">Já tem uma comanda aberta?</p>
+                <Link href="/recuperar-comanda">
+                  <Button variant="outline" type="button" className="w-full">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Recuperar Minha Comanda
+                  </Button>
+                </Link>
+              </div>
             </form>
           </Form>
         </CardContent>
