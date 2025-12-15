@@ -225,3 +225,25 @@ docker stats
 ---
 
 *Guia criado em: 13 de Dezembro de 2025*
+*Última atualização: 15 de Dezembro de 2025*
+
+---
+
+## 🆕 Correções Recentes (15 Dez 2025)
+
+### Auto-Atendimento do Cliente
+- ✅ Rota `/evento/[id]` corrigida para Next.js 15 (params como Promise)
+- ✅ Fallback para `API_URL_SERVER` no SSR (Vercel)
+- ✅ QR Codes funcionando: `/evento/[paginaEventoId]` e `/entrada/[eventoId]`
+
+### Variáveis de Ambiente Vercel
+| Variável | Valor | Descrição |
+|----------|-------|-----------|
+| `NEXT_PUBLIC_API_URL` | `https://api.pubsystem.com.br` | URL da API (cliente) |
+| `API_URL_SERVER` | `https://api.pubsystem.com.br` | URL da API (SSR) - opcional, tem fallback |
+
+### Fluxo de QR Codes
+| QR Code | Gerado em | Rota | Cobrança |
+|---------|-----------|------|----------|
+| Boas-Vindas | Páginas de Boas-Vindas | `/evento/[paginaEventoId]` | ❌ Sem |
+| Entrada Paga | Agenda de Eventos | `/entrada/[eventoId]` | ✅ Com valor |

@@ -41,7 +41,7 @@
 ![Garçom](https://img.shields.io/badge/Sistema%20Garçom-100%25-success)
 ![Analytics](https://img.shields.io/badge/Analytics-100%25-success)
 
-**Última Atualização:** 10 de dezembro de 2025
+**Última Atualização:** 15 de dezembro de 2025
 
 ### 📊 Implementação Completa:
 - ✅ **Backend:** 17 módulos funcionais (100%)
@@ -81,6 +81,23 @@
 - ✅ Health check endpoint
 
 **📊 Total:** 20 de 23 correções (87%) - 3 opcionais pendentes
+
+### 🆕 Correções Recentes (15 Dez 2025)
+
+**Auto-Atendimento do Cliente**
+- ✅ Rota `/evento/[id]` corrigida para Next.js 15 (params como Promise)
+- ✅ Fallback para `API_URL_SERVER` no SSR (Vercel)
+- ✅ QR Code de boas-vindas funcionando corretamente
+- ✅ QR Code de entrada paga funcionando corretamente
+
+**TabBar e Navegação**
+- ✅ TabBar do cozinheiro: "Pedidos" duplicado trocado por "Prontos"
+- ✅ Rota `/cozinha` redireciona para painel Kanban operacional
+
+**Caixa e Financeiro**
+- ✅ Fechamento de caixa sem movimentações (checkbox de confirmação)
+- ✅ Valor do suprimento exibido no modal de fechamento
+- ✅ Dinheiro esperado inclui valor inicial corretamente
 
 > 📖 **Documentação Completa:** Ver [STATUS_PROJETO.md](./STATUS_PROJETO.md) para detalhes
 
