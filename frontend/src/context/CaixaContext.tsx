@@ -20,6 +20,7 @@ interface CaixaContextData {
     valorInformadoValeRefeicao: number;
     valorInformadoValeAlimentacao: number;
     observacao?: string;
+    forcarFechamento?: boolean;
   }) => Promise<void>;
   registrarSangria: (valor: number, motivo: string, observacao?: string) => Promise<void>;
   registrarVenda: (dados: {
@@ -148,6 +149,7 @@ export function CaixaProvider({ children }: { children: ReactNode }) {
     valorInformadoValeRefeicao: number;
     valorInformadoValeAlimentacao: number;
     observacao?: string;
+    forcarFechamento?: boolean;
   }) => {
     if (!caixaAberto?.id) {
       throw new Error('Caixa não está aberto');

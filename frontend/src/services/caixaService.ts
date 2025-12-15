@@ -39,6 +39,7 @@ export const caixaService = {
     valorInformadoValeRefeicao: number;
     valorInformadoValeAlimentacao: number;
     observacao?: string;
+    forcarFechamento?: boolean;
   }): Promise<FechamentoCaixa> {
     try {
       const response = await api.post('/caixa/fechamento', data);

@@ -21,6 +21,7 @@ interface FechamentoCaixaModalProps {
     valorInformadoValeRefeicao: number;
     valorInformadoValeAlimentacao: number;
     observacao?: string;
+    forcarFechamento?: boolean;
   }) => Promise<void>;
   resumoCaixa: ResumoCaixa;
 }
@@ -85,35 +86,48 @@ export function FechamentoCaixaModal({
   };
 
   const handleConfirm = async () => {
-    // Validar se todos os valores foram informados
-    const todosPreenchidos = Object.values(valores).every(v => v.trim() !== '');
+    // Verifica se há movimentações
+    const semMovimentacoes = resumoCaixa.totalVendas === 0 && resumoCaixa.totalSangrias === 0 && resumoCaixa.totalSuprimentos === 0;
     
-    if (!todosPreenchidos) {
-      toast.error('Preencha todos os valores');
+    // Se não há movimentações, exigir observação
+    if (semMovimentacoes && !observacao.trim()) {
+      toast.error('Fechamento sem movimentações requer observação');
       return;
     }
 
-    // Se diferença > R$ 50, exigir observação
-    if (Math.abs(diferencaTotal) > 50 && !observacao.trim()) {
-      toast.error('Diferença maior que R$ 50,00 requer observação detalhada');
-      return;
+    // Validar se todos os valores foram informados (apenas se houver movimentações)
+    if (!semMovimentacoes) {
+      const todosPreenchidos = Object.values(valores).every(v => v.trim() !== '');
+      
+      if (!todosPreenchidos) {
+        toast.error('Preencha todos os valores');
+        return;
+      }
+
+      // Se diferença > R$ 50, exigir observação
+      if (Math.abs(diferencaTotal) > 50 && !observacao.trim()) {
+        toast.error('Diferença maior que R$ 50,00 requer observação detalhada');
+        return;
+      }
     }
 
     try {
       setLoading(true);
       await onConfirm({
-        valorInformadoDinheiro: parseFloat(valores.dinheiro.replace(',', '.')),
-        valorInformadoPix: parseFloat(valores.pix.replace(',', '.')),
-        valorInformadoDebito: parseFloat(valores.debito.replace(',', '.')),
-        valorInformadoCredito: parseFloat(valores.credito.replace(',', '.')),
-        valorInformadoValeRefeicao: parseFloat(valores.valeRefeicao.replace(',', '.')),
-        valorInformadoValeAlimentacao: parseFloat(valores.valeAlimentacao.replace(',', '.')),
+        valorInformadoDinheiro: parseFloat(valores.dinheiro.replace(',', '.')) || 0,
+        valorInformadoPix: parseFloat(valores.pix.replace(',', '.')) || 0,
+        valorInformadoDebito: parseFloat(valores.debito.replace(',', '.')) || 0,
+        valorInformadoCredito: parseFloat(valores.credito.replace(',', '.')) || 0,
+        valorInformadoValeRefeicao: parseFloat(valores.valeRefeicao.replace(',', '.')) || 0,
+        valorInformadoValeAlimentacao: parseFloat(valores.valeAlimentacao.replace(',', '.')) || 0,
         observacao: observacao || undefined,
+        forcarFechamento: semMovimentacoes,
       });
       toast.success('Caixa fechado com sucesso!');
       onClose();
-    } catch (error) {
-      toast.error('Erro ao fechar caixa');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Erro ao fechar caixa');
       console.error(error);
     } finally {
       setLoading(false);
