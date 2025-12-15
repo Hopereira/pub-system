@@ -241,12 +241,16 @@ export default function MapaPedidos() {
   const pedidosFiltrados = useMemo(() => {
     return pedidos
       .filter((pedido) => {
-        // ✅ FILTRO POR GARÇOM: Se for garçom, mostra apenas pedidos que ELE entregou
+        // ✅ CORREÇÃO: Garçom vê pedidos PRONTOS, RETIRADOS ou que ele entregou
         if (isGarcom) {
-          const temItemEntregueporEle = pedido.itens.some(
-            (item) => item.garcomEntregaId === user?.id
+          const temItemRelevante = pedido.itens.some(
+            (item) => 
+              item.status === PedidoStatus.PRONTO || // Prontos para retirar
+              item.status === PedidoStatus.RETIRADO || // Retirados para entregar
+              item.status === PedidoStatus.QUASE_PRONTO || // Quase prontos
+              item.garcomEntregaId === user?.id // Entregues por ele
           );
-          if (!temItemEntregueporEle) return false;
+          if (!temItemRelevante) return false;
         }
 
         // Filtro por ambiente
@@ -373,7 +377,7 @@ export default function MapaPedidos() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Pedidos</h1>
           <p className="text-muted-foreground mt-1">
             {isGarcom 
-              ? 'Seus pedidos entregues'
+              ? 'Pedidos prontos para retirar e entregar'
               : 'Veja onde pegar cada pedido e localize seus clientes'
             }
           </p>
