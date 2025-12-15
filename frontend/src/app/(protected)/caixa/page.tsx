@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTurno } from '@/context/TurnoContext';
 import { useCaixa } from '@/context/CaixaContext';
@@ -17,7 +17,11 @@ import {
   Package,
   Lock,
   AlertTriangle,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
+import { Comanda } from '@/types/comanda';
 import Link from 'next/link';
 import { CardCheckIn } from '@/components/turno/CardCheckIn';
 import { ResumoCaixaCard } from '@/components/caixa/ResumoCaixaCard';
@@ -42,6 +46,7 @@ export default function CaixaPage() {
     pedidosPendentes: 0,
   });
   const [carregandoEstatisticas, setCarregandoEstatisticas] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Estados dos modais
   const [showAbertura, setShowAbertura] = useState(false);
@@ -63,41 +68,100 @@ export default function CaixaPage() {
   }, [temCheckIn]);
 
   // Buscar estatísticas do dia
-  useEffect(() => {
-    const buscarEstatisticas = async () => {
-      try {
-        setCarregandoEstatisticas(true);
-        
-        // Importar dinamicamente para evitar circular dependency
-        const { getComandasAbertas } = await import('@/services/comandaService');
-        const { getPedidos } = await import('@/services/pedidoService');
-        
-        // Buscar comandas abertas
-        const comandas = await getComandasAbertas();
-        
-        // Buscar todos os pedidos para contar pendentes
-        const pedidos = await getPedidos();
-        const pedidosPendentes = pedidos.filter(
-          p => p.status === 'FEITO' || p.status === 'EM_PREPARO'
-        );
-        
-        // Total de vendas vem do resumo do caixa
-        const totalVendas = resumoCaixa?.totalVendas || 0;
-        
-        setEstatisticas({
-          comandasAbertas: comandas.length,
-          totalVendas,
-          pedidosPendentes: pedidosPendentes.length,
-        });
-      } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
-      } finally {
-        setCarregandoEstatisticas(false);
-      }
-    };
-
-    buscarEstatisticas();
+  const buscarEstatisticas = useCallback(async () => {
+    try {
+      setCarregandoEstatisticas(true);
+      
+      // Importar dinamicamente para evitar circular dependency
+      const { getComandasAbertas } = await import('@/services/comandaService');
+      const { getPedidos } = await import('@/services/pedidoService');
+      
+      // Buscar comandas abertas
+      const comandas = await getComandasAbertas();
+      
+      // Buscar todos os pedidos para contar pendentes
+      const pedidos = await getPedidos();
+      const pedidosPendentes = pedidos.filter(
+        p => p.status === 'FEITO' || p.status === 'EM_PREPARO'
+      );
+      
+      // Total de vendas vem do resumo do caixa
+      const totalVendas = resumoCaixa?.totalVendas || 0;
+      
+      setEstatisticas({
+        comandasAbertas: comandas.length,
+        totalVendas,
+        pedidosPendentes: pedidosPendentes.length,
+      });
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+    } finally {
+      setCarregandoEstatisticas(false);
+    }
   }, [resumoCaixa]);
+
+  useEffect(() => {
+    buscarEstatisticas();
+  }, [buscarEstatisticas]);
+
+  // WebSocket para atualização em tempo real
+  useEffect(() => {
+    const socketUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const socket: Socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+    });
+
+    socket.on('connect', () => {
+      setIsConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    // Nova comanda criada - incrementa contador
+    socket.on('nova_comanda', (comanda: Comanda) => {
+      if (comanda.status === 'ABERTA') {
+        setEstatisticas((prev) => ({
+          ...prev,
+          comandasAbertas: prev.comandasAbertas + 1,
+        }));
+      }
+    });
+
+    // Comanda atualizada (fechada, etc) - decrementa contador
+    socket.on('comanda_atualizada', (comanda: Comanda) => {
+      if (comanda.status !== 'ABERTA') {
+        setEstatisticas((prev) => ({
+          ...prev,
+          comandasAbertas: Math.max(0, prev.comandasAbertas - 1),
+        }));
+      }
+    });
+
+    // Novo pedido - incrementa pendentes
+    socket.on('novo_pedido', () => {
+      setEstatisticas((prev) => ({
+        ...prev,
+        pedidosPendentes: prev.pedidosPendentes + 1,
+      }));
+    });
+
+    // Status atualizado - pode decrementar pendentes
+    socket.on('status_atualizado', (data: { status: string }) => {
+      if (data.status === 'PRONTO' || data.status === 'ENTREGUE' || data.status === 'CANCELADO') {
+        setEstatisticas((prev) => ({
+          ...prev,
+          pedidosPendentes: Math.max(0, prev.pedidosPendentes - 1),
+        }));
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // Saudação baseada no horário
   const getSaudacao = () => {
@@ -111,10 +175,21 @@ export default function CaixaPage() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Cabeçalho com Saudação */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold">
-            {getSaudacao()}, {user?.nome?.split(' ')[0]}! 👋
-          </h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold">
+              {getSaudacao()}, {user?.nome?.split(' ')[0]}! 👋
+            </h1>
+          </div>
+          {/* Indicador de conexão WebSocket */}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {isConnected ? (
+              <Wifi className="h-4 w-4 text-green-500" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-red-500" />
+            )}
+            <span className="hidden sm:inline">{isConnected ? 'Tempo real' : 'Offline'}</span>
+          </div>
         </div>
         <p className="text-muted-foreground">
           Área do Caixa - Terminal de Pagamentos
