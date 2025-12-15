@@ -42,6 +42,7 @@ export default function NovoPedidoPage() {
   // Estados de cliente rápido
   const [mostrarFormRapido, setMostrarFormRapido] = useState(false);
   const [nomeRapido, setNomeRapido] = useState('');
+  const [cpfRapido, setCpfRapido] = useState('');
   const [telefoneRapido, setTelefoneRapido] = useState('');
   const [ambienteRapido, setAmbienteRapido] = useState('');
   const [pontoEntregaRapido, setPontoEntregaRapido] = useState('');
@@ -141,6 +142,14 @@ export default function NovoPedidoPage() {
     setMostrarFormRapido(false);
   };
 
+  const formatarCPF = (valor: string) => {
+    const apenasNumeros = valor.replace(/\D/g, '').slice(0, 11);
+    return apenasNumeros
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  };
+
   const criarClienteRapidoHandler = async () => {
     if (!nomeRapido.trim()) {
       toast.error('Nome é obrigatório');
@@ -150,6 +159,7 @@ export default function NovoPedidoPage() {
     try {
       const novoCliente = await criarClienteRapido({
         nome: nomeRapido,
+        cpf: cpfRapido.replace(/\D/g, '') || undefined,
         telefone: telefoneRapido || undefined,
         ambienteId: ambienteRapido || undefined,
         pontoEntregaId: pontoEntregaRapido || undefined,
@@ -157,6 +167,7 @@ export default function NovoPedidoPage() {
       toast.success('Cliente criado!');
       selecionarCliente(novoCliente);
       setNomeRapido('');
+      setCpfRapido('');
       setTelefoneRapido('');
       setAmbienteRapido('');
       setPontoEntregaRapido('');
@@ -313,6 +324,12 @@ export default function NovoPedidoPage() {
                         onChange={(e) => setNomeRapido(e.target.value)}
                       />
                       <Input
+                        placeholder="CPF (opcional)"
+                        value={cpfRapido}
+                        onChange={(e) => setCpfRapido(formatarCPF(e.target.value))}
+                        maxLength={14}
+                      />
+                      <Input
                         placeholder="Telefone (opcional)"
                         value={telefoneRapido}
                         onChange={(e) => setTelefoneRapido(e.target.value)}
@@ -351,6 +368,7 @@ export default function NovoPedidoPage() {
                           onClick={() => {
                             setMostrarFormRapido(false);
                             setNomeRapido('');
+                            setCpfRapido('');
                             setTelefoneRapido('');
                             setAmbienteRapido('');
                             setPontoEntregaRapido('');
