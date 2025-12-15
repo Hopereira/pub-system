@@ -1,18 +1,17 @@
 // Caminho: frontend/src/components/cozinha/CozinhaPageClient.tsx
 'use client';
 
-// 1. Importamos o novo serviço e DTO
 import { getPedidos, updateItemStatus } from '@/services/pedidoService';
 import { UpdateItemPedidoStatusDto } from '@/types/pedido.dto';
 import { Pedido, PedidoStatus } from '@/types/pedido';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import PedidoCard from './PedidoCard';
 import { Skeleton } from '../ui/skeleton';
 import { socket } from '@/lib/socket';
 import { toast } from 'sonner';
 import { useAmbienteNotification } from '@/hooks/useAmbienteNotification';
 import { Button } from '../ui/button';
-import { Bell, BellOff, Filter } from 'lucide-react';
+import { Bell, Filter, Clock, ChefHat, CheckCircle2 } from 'lucide-react';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 import {
@@ -24,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { CardCheckIn } from '@/components/turno/CardCheckIn';
 import { useAuth } from '@/context/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface CozinhaPageClientProps {
   ambienteId?: string;
@@ -36,34 +36,47 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string | null>(initialAmbienteId || null);
   
-  // Hook de notificação de ambiente - atualiza quando muda a seleção
   const { 
     novoPedidoId, 
     audioConsentNeeded, 
     handleAllowAudio,
-    clearNotification 
   } = useAmbienteNotification(ambienteSelecionado);
 
-  // Carrega a lista de ambientes disponíveis
   useEffect(() => {
     const fetchAmbientes = async () => {
       try {
         const data = await getAmbientes();
-        setAmbientes(data);
-        
-        // Se não tem ambiente selecionado e há ambientes disponíveis, seleciona o primeiro
-        if (!ambienteSelecionado && data.length > 0) {
-          setAmbienteSelecionado(data[0].id);
+        const ambientesPreparo = data.filter((a: Ambiente) => a.tipo === 'PREPARO');
+        setAmbientes(ambientesPreparo);
+        if (!ambienteSelecionado && ambientesPreparo.length > 0) {
+          setAmbienteSelecionado(ambientesPreparo[0].id);
         }
       } catch (error) {
         toast.error('Erro ao carregar ambientes');
       }
     };
-    
     fetchAmbientes();
   }, []);
 
-  // Carrega pedidos inicialmente
+  const metricasPorAmbiente = useMemo(() => {
+    const metricas: Record<string, { aguardando: number; emPreparo: number; prontos: number; tempoMedioEspera: number }> = {};
+    ambientes.forEach(ambiente => {
+      const itensPorAmbiente = pedidos.flatMap(p => p.itens.filter(item => item.produto?.ambiente?.id === ambiente.id));
+      const aguardando = itensPorAmbiente.filter(i => i.status === 'FEITO').length;
+      const emPreparo = itensPorAmbiente.filter(i => i.status === 'EM_PREPARO').length;
+      const prontos = itensPorAmbiente.filter(i => i.status === 'PRONTO').length;
+      const itensAguardando = pedidos.filter(p => p.itens.some(item => item.produto?.ambiente?.id === ambiente.id && (item.status === 'FEITO' || item.status === 'EM_PREPARO')));
+      let tempoMedioEspera = 0;
+      if (itensAguardando.length > 0) {
+        const agora = new Date().getTime();
+        const tempoTotal = itensAguardando.reduce((acc, p) => acc + (agora - new Date(p.data).getTime()), 0);
+        tempoMedioEspera = Math.floor(tempoTotal / itensAguardando.length / 60000);
+      }
+      metricas[ambiente.id] = { aguardando, emPreparo, prontos, tempoMedioEspera };
+    });
+    return metricas;
+  }, [ambientes, pedidos]);
+
   useEffect(() => {
     const fetchPedidos = async () => {
       setIsLoading(true);
@@ -76,106 +89,65 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
         setIsLoading(false);
       }
     };
-
     fetchPedidos();
   }, []);
 
-  // WebSocket - escuta novos pedidos e atualizações
   useEffect(() => {
-    socket.on('novo_pedido', (novoPedido: Pedido) => {
-      setPedidos(prev => [novoPedido, ...prev]);
-    });
-
-    socket.on('status_atualizado', (pedidoAtualizado: Pedido) => {
-      setPedidos(prev => 
-        prev.map(p => p.id === pedidoAtualizado.id ? pedidoAtualizado : p)
-      );
-    });
-
-    return () => {
-      socket.off('novo_pedido');
-      socket.off('status_atualizado');
-    };
+    socket.on('novo_pedido', (novoPedido: Pedido) => setPedidos(prev => [novoPedido, ...prev]));
+    socket.on('status_atualizado', (pedidoAtualizado: Pedido) => setPedidos(prev => prev.map(p => p.id === pedidoAtualizado.id ? pedidoAtualizado : p)));
+    return () => { socket.off('novo_pedido'); socket.off('status_atualizado'); };
   }, []);
 
-  // --- FUNÇÃO DE ATUALIZAÇÃO REFEITA ---
   const handleItemStatusChange = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
-      try {
-        const data: UpdateItemPedidoStatusDto = { status: novoStatus };
-        // 2. Chamamos o novo serviço que atualiza um item específico
-        await updateItemStatus(itemPedidoId, data);
-        toast.success(`Item atualizado para ${novoStatus.replace('_', ' ')}!`);
-        
-        // A mágica do WebSocket continua a funcionar: o backend emitirá um evento
-        // 'status_atualizado' que será capturado pelo nosso useEffect,
-        // atualizando a UI com o pedido completo e os novos status dos itens.
-      } catch (err: any) {
-        toast.error(err.message || 'Falha ao atualizar o status do item.');
-      }
+    try {
+      const data: UpdateItemPedidoStatusDto = { status: novoStatus };
+      await updateItemStatus(itemPedidoId, data);
+      toast.success(`Item atualizado para ${novoStatus.replace('_', ' ')}!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Falha ao atualizar o status do item.');
+    }
   };
-  // --- FIM DA REATORAÇÃO ---
 
   if (isLoading) {
     return (
       <div className="container mx-auto p-4">
         <Skeleton className="h-12 w-64 mb-6" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-64" />
-          ))}
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-64" />)}
         </div>
       </div>
     );
   }
 
-  // Filtra pedidos que contêm itens do ambiente selecionado
   const pedidosFiltrados = ambienteSelecionado
-    ? pedidos.filter(pedido => 
-        pedido.itens.some(item => item.produto?.ambiente?.id === ambienteSelecionado)
-      )
+    ? pedidos.filter(pedido => pedido.itens.some(item => item.produto?.ambiente?.id === ambienteSelecionado))
     : pedidos;
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">Pedidos de Preparo</h1>
-          
-          {/* Seletor de Ambiente */}
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pedidos de Preparo</h1>
           <div className="flex items-center gap-2">
             <Filter className="h-5 w-5 text-muted-foreground" />
-            <Select 
-              value={ambienteSelecionado || undefined} 
-              onValueChange={setAmbienteSelecionado}
-            >
-              <SelectTrigger className="w-[200px]">
+            <Select value={ambienteSelecionado || undefined} onValueChange={setAmbienteSelecionado}>
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Selecione o ambiente" />
               </SelectTrigger>
               <SelectContent>
                 {ambientes.map(ambiente => (
-                  <SelectItem key={ambiente.id} value={ambiente.id}>
-                    {ambiente.nome}
-                  </SelectItem>
+                  <SelectItem key={ambiente.id} value={ambiente.id}>{ambiente.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         </div>
-        
-        {/* Botão para ativar som de notificação */}
-        {audioConsentNeeded && (
-          <Button 
-            onClick={handleAllowAudio} 
-            variant="secondary" 
-            size="sm"
-            className="flex items-center gap-2"
-          >
+        {audioConsentNeeded ? (
+          <Button onClick={handleAllowAudio} variant="secondary" size="sm" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            Ativar Som de Notificações
+            Ativar Som de Notific
           </Button>
-        )}
-        
-        {!audioConsentNeeded && (
+        ) : (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Bell className="h-4 w-4 text-green-600" />
             <span>Notificações ativadas</span>
@@ -183,42 +155,85 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
         )}
       </div>
 
-      {/* Card de Check-In/Check-Out do Funcionário */}
       {user && (
         <div className="mb-6">
-          <CardCheckIn
-            funcionarioId={user.id}
-            funcionarioNome={user.nome}
-          />
+          <CardCheckIn funcionarioId={user.id} funcionarioNome={user.nome} />
         </div>
       )}
 
-      {pedidosFiltrados.length === 0 ? (
-        <p className='text-center text-muted-foreground mt-10'>
-          {ambienteSelecionado 
-            ? 'Nenhum pedido aguardando preparo neste ambiente.' 
-            : 'Selecione um ambiente para ver os pedidos.'}
-        </p>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {pedidosFiltrados.map(pedido => (
-            // 3. Passamos a nova função com o nome correto para o PedidoCard
-            // Destaca o pedido se for novo
-            <div 
-              key={pedido.id}
-              className={`transition-all duration-500 ${
-                novoPedidoId === pedido.id 
-                  ? 'ring-4 ring-green-500 ring-opacity-50 animate-pulse' 
-                  : ''
-              }`}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mb-6">
+        {ambientes.map(ambiente => {
+          const metricas = metricasPorAmbiente[ambiente.id] || { aguardando: 0, emPreparo: 0, prontos: 0, tempoMedioEspera: 0 };
+          const isSelected = ambienteSelecionado === ambiente.id;
+          const temPedidos = metricas.aguardando > 0 || metricas.emPreparo > 0;
+          return (
+            <Card 
+              key={ambiente.id}
+              className={`cursor-pointer transition-all hover:shadow-lg ${isSelected ? 'ring-2 ring-primary border-primary' : 'hover:border-primary/50'} ${temPedidos ? 'border-orange-300 bg-orange-50/50 dark:bg-orange-950/20' : ''}`}
+              onClick={() => setAmbienteSelecionado(ambiente.id)}
             >
-              <PedidoCard 
-                pedido={pedido} 
-                onItemStatusChange={handleItemStatusChange} 
-              />
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between text-lg">
+                  <span className="flex items-center gap-2">
+                    <ChefHat className="h-5 w-5" />
+                    {ambiente.nome}
+                  </span>
+                  {temPedidos && (
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-lg p-2">
+                    <div className="text-xl font-bold text-yellow-700 dark:text-yellow-400">{metricas.aguardando}</div>
+                    <div className="text-xs text-yellow-600 dark:text-yellow-500">Aguardando</div>
+                  </div>
+                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-2">
+                    <div className="text-xl font-bold text-blue-700 dark:text-blue-400">{metricas.emPreparo}</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-500">Em Preparo</div>
+                  </div>
+                  <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-2">
+                    <div className="text-xl font-bold text-green-700 dark:text-green-400">{metricas.prontos}</div>
+                    <div className="text-xs text-green-600 dark:text-green-500">Prontos</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <Clock className={`h-4 w-4 ${metricas.tempoMedioEspera > 15 ? 'text-red-500' : metricas.tempoMedioEspera > 10 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+                  <span className={metricas.tempoMedioEspera > 15 ? 'text-red-600 font-semibold' : metricas.tempoMedioEspera > 10 ? 'text-orange-600 font-semibold' : 'text-muted-foreground'}>
+                    {metricas.tempoMedioEspera > 0 ? `${metricas.tempoMedioEspera} min espera` : 'Sem espera'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {ambienteSelecionado && (
+        <>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <ChefHat className="h-5 w-5" />
+            Pedidos - {ambientes.find(a => a.id === ambienteSelecionado)?.nome}
+          </h2>
+          {pedidosFiltrados.length === 0 ? (
+            <div className="text-center py-10 bg-muted/30 rounded-lg">
+              <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-3" />
+              <p className="text-muted-foreground">Nenhum pedido aguardando preparo neste ambiente.</p>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {pedidosFiltrados.map(pedido => (
+                <div key={pedido.id} className={`transition-all duration-500 ${novoPedidoId === pedido.id ? 'ring-4 ring-green-500 ring-opacity-50 animate-pulse' : ''}`}>
+                  <PedidoCard pedido={pedido} onItemStatusChange={handleItemStatusChange} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
