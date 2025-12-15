@@ -79,11 +79,20 @@ export default function CaixaPage() {
       // Buscar comandas abertas
       const comandas = await getComandasAbertas();
       
-      // Buscar todos os pedidos para contar pendentes
+      // Buscar todos os pedidos para contar itens pendentes
       const pedidos = await getPedidos();
-      const pedidosPendentes = pedidos.filter(
-        p => p.status === 'FEITO' || p.status === 'EM_PREPARO'
-      );
+      
+      // Contar ITENS pendentes (não pedidos) - status FEITO ou EM_PREPARO
+      let itensPendentes = 0;
+      pedidos.forEach(pedido => {
+        if (pedido.itens && Array.isArray(pedido.itens)) {
+          pedido.itens.forEach(item => {
+            if (item.status === 'FEITO' || item.status === 'EM_PREPARO' || item.status === 'QUASE_PRONTO') {
+              itensPendentes++;
+            }
+          });
+        }
+      });
       
       // Total de vendas vem do resumo do caixa
       const totalVendas = resumoCaixa?.totalVendas || 0;
@@ -91,7 +100,7 @@ export default function CaixaPage() {
       setEstatisticas({
         comandasAbertas: comandas.length,
         totalVendas,
-        pedidosPendentes: pedidosPendentes.length,
+        pedidosPendentes: itensPendentes,
       });
     } catch (error) {
       console.error('Erro ao buscar estatísticas:', error);
@@ -140,28 +149,26 @@ export default function CaixaPage() {
       }
     });
 
-    // Novo pedido - incrementa pendentes
-    socket.on('novo_pedido', () => {
+    // Novo pedido - incrementa pendentes pelo número de itens
+    socket.on('novo_pedido', (pedido: { itens?: { status: string }[] }) => {
+      const novosItens = pedido?.itens?.length || 1;
       setEstatisticas((prev) => ({
         ...prev,
-        pedidosPendentes: prev.pedidosPendentes + 1,
+        pedidosPendentes: prev.pedidosPendentes + novosItens,
       }));
     });
 
-    // Status atualizado - pode decrementar pendentes
-    socket.on('status_atualizado', (data: { status: string }) => {
-      if (data.status === 'PRONTO' || data.status === 'ENTREGUE' || data.status === 'CANCELADO') {
-        setEstatisticas((prev) => ({
-          ...prev,
-          pedidosPendentes: Math.max(0, prev.pedidosPendentes - 1),
-        }));
-      }
+    // Status atualizado - recalcula pendentes baseado nos itens do pedido
+    socket.on('status_atualizado', (pedido: { itens?: { status: string }[] }) => {
+      // Quando um status é atualizado, recarrega as estatísticas para ter o valor correto
+      // Isso é mais preciso do que tentar calcular incrementalmente
+      buscarEstatisticas();
     });
 
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [buscarEstatisticas]);
 
   // Saudação baseada no horário
   const getSaudacao = () => {
