@@ -193,18 +193,11 @@ export default function RecuperarComandaPage() {
             )}
           </Button>
 
-          {/* Link para Portal */}
+          {/* Dica para escanear QR Code */}
           <div className="pt-4 border-t text-center">
-            <p className="text-sm text-gray-600 mb-3">
-              Ou escaneie o QR Code novamente
+            <p className="text-sm text-gray-600">
+              💡 Não encontrou? Escaneie o QR Code da mesa novamente.
             </p>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/')}
-              className="w-full"
-            >
-              Voltar ao Portal do Cliente
-            </Button>
           </div>
 
           {/* Exemplos */}
