@@ -63,6 +63,19 @@ export class ComandaController {
     return this.comandaService.search(term);
   }
 
+  // ===== ENDPOINT PÚBLICO PARA CLIENTES RECUPERAREM COMANDA =====
+  @Public()
+  @Get('recuperar')
+  @ApiOperation({
+    summary: 'Busca comanda por código ou CPF (Rota Pública para clientes)',
+  })
+  @ApiQuery({ name: 'q', description: 'Código da comanda ou CPF do cliente' })
+  @ApiResponse({ status: 200, description: 'Comanda encontrada.' })
+  @ApiResponse({ status: 404, description: 'Comanda não encontrada.' })
+  recuperarComanda(@Query('q') termo: string) {
+    return this.comandaService.recuperarComandaPublica(termo);
+  }
+
   @Public()
   @Get(':id/public')
   @ApiOperation({

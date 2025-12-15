@@ -354,6 +354,71 @@ export class ComandaService {
     return this.findOne(comanda.id);
   }
 
+  // Método público para clientes recuperarem comanda por ID ou CPF
+  async recuperarComandaPublica(termo: string) {
+    if (!termo || termo.trim().length === 0) {
+      throw new NotFoundException('Termo de busca não informado');
+    }
+
+    const searchTerm = termo.trim();
+    
+    // Verifica se é um CPF (apenas números, 11 dígitos)
+    const cpfNumeros = searchTerm.replace(/\D/g, '');
+    const isCpf = cpfNumeros.length === 11;
+    
+    // Verifica se é um UUID (formato de ID da comanda)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isUuid = uuidRegex.test(searchTerm);
+
+    let comanda: Comanda | null = null;
+
+    if (isCpf) {
+      // Busca por CPF - retorna a comanda ABERTA mais recente
+      comanda = await this.comandaRepository.findOne({
+        where: {
+          cliente: { cpf: cpfNumeros },
+          status: ComandaStatus.ABERTA,
+        },
+        relations: ['cliente', 'mesa', 'pontoEntrega'],
+        order: { dataAbertura: 'DESC' },
+      });
+    } else if (isUuid) {
+      // Busca por ID da comanda (UUID)
+      comanda = await this.comandaRepository.findOne({
+        where: {
+          id: searchTerm,
+          status: ComandaStatus.ABERTA,
+        },
+        relations: ['cliente', 'mesa', 'pontoEntrega'],
+      });
+    } else {
+      throw new NotFoundException(
+        'Formato inválido. Use o CPF (11 dígitos) ou o ID da comanda.',
+      );
+    }
+
+    if (!comanda) {
+      throw new NotFoundException(
+        isCpf
+          ? 'Nenhuma comanda aberta encontrada para este CPF'
+          : 'Comanda não encontrada ou já foi fechada.',
+      );
+    }
+
+    // Retorna dados básicos para o cliente
+    return {
+      id: comanda.id,
+      status: comanda.status,
+      cliente: comanda.cliente ? { nome: comanda.cliente.nome } : null,
+      mesa: comanda.mesa
+        ? { id: comanda.mesa.id, numero: comanda.mesa.numero }
+        : null,
+      pontoEntrega: comanda.pontoEntrega
+        ? { id: comanda.pontoEntrega.id, nome: comanda.pontoEntrega.nome }
+        : null,
+    };
+  }
+
   async findPublicOne(id: string) {
     const comanda = await this.findOne(id);
 

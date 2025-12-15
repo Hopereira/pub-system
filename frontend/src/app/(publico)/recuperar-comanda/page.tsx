@@ -32,7 +32,7 @@ export default function RecuperarComandaPage() {
     const termoBusca = buscaTipo === 'codigo' ? codigo.trim() : cpf.replace(/\D/g, '');
     
     if (!termoBusca) {
-      toast.error(buscaTipo === 'codigo' ? 'Digite o código da comanda' : 'Digite o CPF');
+      toast.error(buscaTipo === 'codigo' ? 'Digite o ID da comanda' : 'Digite o CPF');
       return;
     }
 
@@ -44,46 +44,25 @@ export default function RecuperarComandaPage() {
     setLoading(true);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/comandas/search?q=${encodeURIComponent(termoBusca)}`);
+      // Usa o endpoint público /comandas/recuperar
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/comandas/recuperar?q=${encodeURIComponent(termoBusca)}`);
       
       if (!response.ok) {
-        throw new Error('Comanda não encontrada');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Comanda não encontrada');
       }
 
-      const data = await response.json();
-      
-      let comanda;
-      
-      if (buscaTipo === 'codigo') {
-        // Busca comanda que corresponde ao código exato
-        comanda = data.find((c: any) => 
-          c.codigo.toLowerCase() === codigo.toLowerCase().trim()
-        );
-      } else {
-        // Busca por CPF - pega a comanda aberta mais recente
-        const comandasAbertas = data.filter((c: any) => c.status === 'ABERTA');
-        comanda = comandasAbertas[0]; // Já vem ordenado por data
-      }
-
-      if (!comanda) {
-        toast.error(
-          buscaTipo === 'codigo' 
-            ? 'Comanda não encontrada. Verifique o código digitado.'
-            : 'Nenhuma comanda aberta encontrada para este CPF.'
-        );
-        setLoading(false);
-        return;
-      }
+      const comanda = await response.json();
 
       // Redireciona para a página de acompanhamento
-      toast.success('Comanda encontrada! Redirecionando...');
+      toast.success(`Comanda encontrada! Bem-vindo(a)${comanda.cliente?.nome ? ', ' + comanda.cliente.nome : ''}!`);
       setTimeout(() => {
-        router.push(`/acesso-cliente/${comanda.id}`);
+        router.push(`/portal-cliente/${comanda.id}`);
       }, 500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao buscar comanda:', error);
-      toast.error('Erro ao buscar comanda. Tente novamente.');
+      toast.error(error.message || 'Erro ao buscar comanda. Tente novamente.');
       setLoading(false);
     }
   };
@@ -142,8 +121,8 @@ export default function RecuperarComandaPage() {
             <div className="text-sm text-blue-900">
               {buscaTipo === 'codigo' ? (
                 <>
-                  <p className="font-semibold mb-1">Onde encontrar o código?</p>
-                  <p>O código da comanda está no QR Code que o garçom te entregou ou na tela do seu pedido.</p>
+                  <p className="font-semibold mb-1">Onde encontrar o ID?</p>
+                  <p>O ID da comanda está na URL do seu pedido ou no QR Code que o garçom te entregou.</p>
                 </>
               ) : (
                 <>
@@ -159,16 +138,16 @@ export default function RecuperarComandaPage() {
             {buscaTipo === 'codigo' ? (
               <>
                 <label htmlFor="codigo" className="text-sm font-medium text-gray-700 block">
-                  Código da Comanda
+                  ID da Comanda
                 </label>
                 <Input
                   id="codigo"
                   type="text"
-                  placeholder="Ex: COM-2024-001"
+                  placeholder="Ex: a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                   value={codigo}
-                  onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+                  onChange={(e) => setCodigo(e.target.value.toLowerCase())}
                   onKeyPress={handleKeyPress}
-                  className="text-lg font-mono tracking-wider text-center"
+                  className="text-sm font-mono tracking-wider text-center"
                   disabled={loading}
                   autoFocus
                 />
@@ -234,8 +213,8 @@ export default function RecuperarComandaPage() {
             <ul className="space-y-1 list-disc list-inside">
               {buscaTipo === 'codigo' ? (
                 <>
-                  <li>O código geralmente começa com "COM-"</li>
-                  <li>Maiúsculas e minúsculas não fazem diferença</li>
+                  <li>O ID está na URL após /portal-cliente/</li>
+                  <li>Formato: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</li>
                   <li>Tire uma foto do QR Code para não perder o acesso</li>
                 </>
               ) : (
