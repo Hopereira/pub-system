@@ -10,7 +10,13 @@ import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:3001',
+      'http://localhost:3001',
+      'https://pub-system.vercel.app',
+      'https://pubsystem.com.br',
+      'https://www.pubsystem.com.br',
+    ].filter(Boolean),
     credentials: true,
   },
 })
