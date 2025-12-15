@@ -217,11 +217,13 @@ export const caixaService = {
 
   /**
    * Relatório de vendas por caixa (funcionário)
+   * ADMIN vê todos os caixas, CAIXA vê apenas o próprio
    */
   async getRelatorioVendasPorCaixa(params?: {
     periodo?: 'hoje' | 'semana' | 'mes' | 'personalizado';
     dataInicio?: string;
     dataFim?: string;
+    funcionarioId?: string;
   }): Promise<RelatorioVendasPorCaixa> {
     try {
       const response = await api.get('/caixa/relatorio/vendas-por-caixa', { params });

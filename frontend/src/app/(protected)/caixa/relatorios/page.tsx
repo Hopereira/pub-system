@@ -15,28 +15,39 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import caixaService, { RelatorioVendasPorCaixa, CaixaVendas } from '@/services/caixaService';
+import { useAuth } from '@/context/AuthContext';
 
 type Periodo = 'hoje' | 'semana' | 'mes';
 
 export default function CaixaRelatoriosPage() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>('hoje');
   const [relatorio, setRelatorio] = useState<RelatorioVendasPorCaixa | null>(null);
 
+  // ADMIN vê todos os caixas, outros funcionários veem apenas o próprio
+  const isAdmin = user?.cargo === 'ADMIN';
+
   const carregarRelatorio = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await caixaService.getRelatorioVendasPorCaixa({ periodo });
+      // Se não for ADMIN, filtra pelo próprio funcionário
+      const params: { periodo: Periodo; funcionarioId?: string } = { periodo };
+      if (!isAdmin && user?.id) {
+        params.funcionarioId = user.id;
+      }
+      const data = await caixaService.getRelatorioVendasPorCaixa(params);
       setRelatorio(data);
     } catch (error) {
       console.error('Erro ao carregar relatório:', error);
     } finally {
       setLoading(false);
     }
-  }, [periodo]);
+  }, [periodo, isAdmin, user?.id]);
 
   useEffect(() => {
     carregarRelatorio();
@@ -99,10 +110,22 @@ export default function CaixaRelatoriosPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold">Relatório de Vendas por Caixa</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              {isAdmin ? 'Relatório de Vendas por Caixa' : 'Meu Relatório de Vendas'}
+            </h1>
           </div>
-          <p className="text-muted-foreground mt-2">
-            Acompanhe o desempenho de cada operador de caixa
+          <p className="text-muted-foreground mt-2 flex items-center gap-2">
+            {isAdmin ? (
+              <>
+                <Users className="h-4 w-4" />
+                Acompanhe o desempenho de todos os operadores de caixa
+              </>
+            ) : (
+              <>
+                <User className="h-4 w-4" />
+                Suas vendas como operador: <strong>{user?.nome}</strong>
+              </>
+            )}
           </p>
         </div>
         <Button onClick={carregarRelatorio} disabled={loading} variant="outline">
@@ -172,22 +195,24 @@ export default function CaixaRelatoriosPage() {
             </CardContent>
           </Card>
 
-          {/* Caixas Ativos */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Operadores</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{relatorio.resumo.quantidadeCaixas}</div>
-              <p className="text-xs text-muted-foreground">Caixas com vendas</p>
-            </CardContent>
-          </Card>
+          {/* Caixas Ativos - Apenas para ADMIN */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Operadores</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{relatorio.resumo.quantidadeCaixas}</div>
+                <p className="text-xs text-muted-foreground">Caixas com vendas</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
-      {/* Vendas por Caixa (Funcionário) */}
-      {relatorio && relatorio.caixas.length > 0 && (
+      {/* Vendas por Caixa (Funcionário) - Apenas para ADMIN */}
+      {isAdmin && relatorio && relatorio.caixas.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -243,6 +268,64 @@ export default function CaixaRelatoriosPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Detalhes do Meu Caixa - Apenas para funcionários não-ADMIN */}
+      {!isAdmin && relatorio && relatorio.caixas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Detalhes das Minhas Vendas
+            </CardTitle>
+            <CardDescription>
+              Período: {formatDate(relatorio.periodo.dataInicio)} a {formatDate(relatorio.periodo.dataFim)}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {relatorio.caixas.map((caixa: CaixaVendas) => (
+              <div key={caixa.funcionarioId} className="space-y-4">
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Total de vendas:</span>
+                  <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(caixa.totalVendas)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Quantidade de vendas:</span>
+                  <span className="font-semibold">{caixa.quantidadeVendas}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Ticket médio:</span>
+                  <span className="font-semibold">
+                    {formatCurrency(caixa.quantidadeVendas > 0 ? caixa.totalVendas / caixa.quantidadeVendas : 0)}
+                  </span>
+                </div>
+                {/* Detalhamento por forma de pagamento */}
+                <div className="pt-2">
+                  <p className="text-sm font-medium mb-3">Por forma de pagamento:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Object.entries(caixa.porFormaPagamento).map(([forma, dados]) => (
+                      <div
+                        key={forma}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                      >
+                        <div className="flex items-center gap-2">
+                          {getFormaPagamentoIcon(forma)}
+                          <span className="text-sm">{getFormaPagamentoLabel(forma)}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency(dados.valor)}</p>
+                          <p className="text-xs text-muted-foreground">{dados.quantidade}x</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

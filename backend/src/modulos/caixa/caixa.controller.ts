@@ -207,12 +207,13 @@ export class CaixaController {
   /**
    * GET /caixa/relatorio/vendas-por-caixa
    * Relatório consolidado de vendas por caixa (funcionário)
+   * ADMIN vê todos os caixas, CAIXA vê apenas o próprio
    */
   @Get('relatorio/vendas-por-caixa')
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
   @ApiOperation({ 
     summary: 'Relatório de vendas por caixa', 
-    description: 'Relatório consolidado de vendas agrupado por funcionário (caixa) com filtros de período' 
+    description: 'Relatório consolidado de vendas agrupado por funcionário (caixa) com filtros de período. ADMIN vê todos, CAIXA vê apenas o próprio.' 
   })
   @ApiQuery({ 
     name: 'periodo', 
@@ -222,17 +223,20 @@ export class CaixaController {
   })
   @ApiQuery({ name: 'dataInicio', required: false, description: 'Data inicial (YYYY-MM-DD) - apenas para período personalizado' })
   @ApiQuery({ name: 'dataFim', required: false, description: 'Data final (YYYY-MM-DD) - apenas para período personalizado' })
+  @ApiQuery({ name: 'funcionarioId', required: false, description: 'ID do funcionário para filtrar (apenas ADMIN pode filtrar por outros)' })
   @ApiResponse({ status: 200, description: 'Relatório de vendas por caixa' })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
   async getRelatorioVendasPorCaixa(
     @Query('periodo') periodo?: 'hoje' | 'semana' | 'mes' | 'personalizado',
     @Query('dataInicio') dataInicio?: string,
     @Query('dataFim') dataFim?: string,
+    @Query('funcionarioId') funcionarioId?: string,
   ) {
     return await this.caixaService.getRelatorioVendasPorCaixa({
       periodo,
       dataInicio: dataInicio ? new Date(dataInicio) : undefined,
       dataFim: dataFim ? new Date(dataFim) : undefined,
+      funcionarioId,
     });
   }
 }

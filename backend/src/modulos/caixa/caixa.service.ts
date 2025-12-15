@@ -538,11 +538,13 @@ export class CaixaService {
   /**
    * Relatório consolidado de vendas por caixa (funcionário)
    * Agrupa vendas por funcionário com totais e filtros de período
+   * @param funcionarioId - Se informado, filtra apenas vendas deste funcionário
    */
   async getRelatorioVendasPorCaixa(params?: {
     periodo?: 'hoje' | 'semana' | 'mes' | 'personalizado';
     dataInicio?: Date;
     dataFim?: Date;
+    funcionarioId?: string;
   }) {
     // Calcula datas baseado no período
     let dataInicio: Date;
@@ -576,9 +578,17 @@ export class CaixaService {
     const query = this.movimentacaoRepository
       .createQueryBuilder('mov')
       .leftJoinAndSelect('mov.funcionario', 'funcionario')
+      .leftJoinAndSelect('mov.aberturaCaixa', 'abertura')
       .where('mov.tipo = :tipo', { tipo: TipoMovimentacao.VENDA })
       .andWhere('mov.data >= :dataInicio', { dataInicio })
       .andWhere('mov.data <= :dataFim', { dataFim });
+
+    // Filtro por funcionário específico (para caixas não-admin)
+    if (params?.funcionarioId) {
+      query.andWhere('mov.funcionarioId = :funcionarioId', {
+        funcionarioId: params.funcionarioId,
+      });
+    }
 
     const movimentacoes = await query.getMany();
 
