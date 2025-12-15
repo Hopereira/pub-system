@@ -99,6 +99,26 @@
 - ✅ Valor do suprimento exibido no modal de fechamento
 - ✅ Dinheiro esperado inclui valor inicial corretamente
 
+**Recuperação de Comanda (NOVO)**
+- ✅ Endpoint público `POST /comandas/recuperar` criado
+- ✅ Busca por ID da comanda (UUID) ou CPF do cliente
+- ✅ Página `/recuperar-comanda` atualizada para usar endpoint público
+- ✅ Link "Recuperar Comanda" adicionado nas páginas `/evento` e `/entrada`
+- ✅ CPF com máscara visual (XXX.XXX.XXX-XX)
+
+**WebSocket e Tempo Real (NOVO)**
+- ✅ Evento `nova_comanda` emitido ao criar comanda
+- ✅ Comandas abertas atualizam dinamicamente (ADM + Caixa)
+- ✅ Gestão de Pedidos do garçom mostra TODOS os pedidos (igual ADM)
+- ✅ WebSocket envia pedido completo com todas as relações
+- ✅ Cozinha atualiza em tempo real quando garçom entrega pedido
+- ✅ Indicador visual de conexão WebSocket nas páginas
+
+**Endpoints Públicos (NOVO)**
+- ✅ `GET /ambientes/publico` - Lista ambientes sem autenticação
+- ✅ `GET /mesas/publico` - Lista mesas sem autenticação
+- ✅ `POST /comandas/recuperar` - Recupera comanda por ID ou CPF
+
 > 📖 **Documentação Completa:** Ver [STATUS_PROJETO.md](./STATUS_PROJETO.md) para detalhes
 
 ---
