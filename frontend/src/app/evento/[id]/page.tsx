@@ -12,16 +12,15 @@ interface EventoClientData {
 
 
 interface EventoPageProps {
-  params: {
-    id: string; // ID da PaginaEvento
-  };
-  searchParams: { [key: string]: string | string[] | undefined };
+  params: Promise<{ id: string }>; // Next.js 15: params é Promise
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 // O componente de servidor para a página pública de evento
 export default async function EventoPage({ params, searchParams }: EventoPageProps) {
-  const { id } = params; // Este ID é o ID da PaginaEvento!
-  const mesaId = typeof searchParams.mesaId === 'string' ? searchParams.mesaId : undefined;
+  const { id } = await params; // Next.js 15: await params
+  const sp = await searchParams;
+  const mesaId = typeof sp.mesaId === 'string' ? sp.mesaId : undefined;
 
   // Buscamos os dados da página de evento usando o ID
   const paginaEvento = await getPublicPaginaEvento(id);
