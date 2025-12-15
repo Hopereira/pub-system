@@ -241,17 +241,8 @@ export default function MapaPedidos() {
   const pedidosFiltrados = useMemo(() => {
     return pedidos
       .filter((pedido) => {
-        // ✅ CORREÇÃO: Garçom vê pedidos PRONTOS, RETIRADOS ou que ele entregou
-        if (isGarcom) {
-          const temItemRelevante = pedido.itens.some(
-            (item) => 
-              item.status === PedidoStatus.PRONTO || // Prontos para retirar
-              item.status === PedidoStatus.RETIRADO || // Retirados para entregar
-              item.status === PedidoStatus.QUASE_PRONTO || // Quase prontos
-              item.garcomEntregaId === user?.id // Entregues por ele
-          );
-          if (!temItemRelevante) return false;
-        }
+        // ✅ CORREÇÃO: Garçom vê TODOS os pedidos (igual ao ADM)
+        // Removido filtro restritivo - garçom precisa acompanhar todos os pedidos
 
         // Filtro por ambiente
         if (ambienteSelecionado !== 'todos') {
@@ -280,7 +271,7 @@ export default function MapaPedidos() {
       })
       // Ordena do mais recente para o mais antigo
       .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-  }, [pedidos, isGarcom, user?.id, ambienteSelecionado, statusFiltro]);
+  }, [pedidos, ambienteSelecionado, statusFiltro]);
 
   // ✅ OTIMIZADO: useMemo para métricas (só recalcula quando pedidos filtrados mudam)
   const metricas = useMemo(() => ({
@@ -376,10 +367,7 @@ export default function MapaPedidos() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Pedidos</h1>
           <p className="text-muted-foreground mt-1">
-            {isGarcom 
-              ? 'Pedidos prontos para retirar e entregar'
-              : 'Veja onde pegar cada pedido e localize seus clientes'
-            }
+            Acompanhe todos os pedidos e localize seus clientes
           </p>
         </div>
 
