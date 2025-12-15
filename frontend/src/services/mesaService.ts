@@ -2,7 +2,7 @@
 
 import { Mesa } from '@/types/mesa';
 import { CreateMesaDto, UpdateMesaDto } from '@/types/mesa.dto';
-import api from './api';
+import api, { publicApi } from './api';
 import { AxiosError } from 'axios'; // ALTERAÇÃO 1: Importamos o tipo AxiosError
 
 export const getMesas = async (): Promise<Mesa[]> => {
@@ -11,6 +11,17 @@ export const getMesas = async (): Promise<Mesa[]> => {
     return response.data;
   } catch (error) {
     console.error('Erro ao buscar mesas:', error);
+    throw error;
+  }
+};
+
+// Endpoint público para clientes - retorna apenas mesas livres
+export const getMesasLivresPublic = async (): Promise<Mesa[]> => {
+  try {
+    const response = await publicApi.get('/mesas/publicas/livres');
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar mesas livres (público):', error);
     throw error;
   }
 };

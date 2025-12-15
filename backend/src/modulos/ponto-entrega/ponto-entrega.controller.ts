@@ -23,6 +23,7 @@ import { AtualizarPosicaoMesaDto } from '../mesa/dto/mapa.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { Public } from '../../auth/decorators/public.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 
 @ApiTags('Pontos de Entrega')
@@ -31,6 +32,15 @@ import { Cargo } from '../funcionario/enums/cargo.enum';
 @Controller('pontos-entrega')
 export class PontoEntregaController {
   constructor(private readonly pontoEntregaService: PontoEntregaService) {}
+
+  // ===== ENDPOINT PÚBLICO PARA CLIENTES =====
+  @Public()
+  @Get('publicos/ativos')
+  @ApiOperation({ summary: 'Lista pontos de entrega ativos (Rota Pública para clientes)' })
+  @ApiResponse({ status: 200, description: 'Lista de pontos ativos retornada.' })
+  findAtivosPublic() {
+    return this.pontoEntregaService.findAllAtivos();
+  }
 
   @Post()
   @Roles(Cargo.ADMIN)

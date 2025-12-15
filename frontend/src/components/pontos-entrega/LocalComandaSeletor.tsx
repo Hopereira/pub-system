@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { MapPin, Users, UtensilsCrossed } from 'lucide-react';
 import { Mesa, MesaStatus } from '@/types/mesa';
 import { PontoEntrega } from '@/types/ponto-entrega';
-import { getMesas } from '@/services/mesaService';
-import { getPontosEntregaAtivos } from '@/services/pontoEntregaService';
+import { getMesasLivresPublic } from '@/services/mesaService';
+import { getPontosEntregaAtivosPublic } from '@/services/pontoEntregaService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -42,19 +42,19 @@ export const LocalComandaSeletor = ({
   const loadData = async () => {
     try {
       setIsLoading(true);
+      // Usar endpoints públicos para clientes não autenticados
       const [mesasData, pontosData] = await Promise.all([
-        getMesas(),
-        getPontosEntregaAtivos(),
+        getMesasLivresPublic(),
+        getPontosEntregaAtivosPublic(),
       ]);
 
-      // Filtrar apenas mesas livres
-      const mesasLivres = mesasData.filter((mesa) => mesa.status === MesaStatus.LIVRE);
-      setMesas(mesasLivres);
+      // Mesas já vêm filtradas (apenas livres) do endpoint público
+      setMesas(mesasData);
       setPontos(pontosData);
 
-      logger.log(`✅ Dados carregados`, {
+      logger.log(`✅ Dados carregados (público)`, {
         module: 'LocalComandaSeletor',
-        data: { mesasLivres: mesasLivres.length, pontos: pontosData.length },
+        data: { mesasLivres: mesasData.length, pontos: pontosData.length },
       });
     } catch (error) {
       logger.error('❌ Erro ao carregar dados', {

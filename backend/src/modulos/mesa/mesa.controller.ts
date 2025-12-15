@@ -22,6 +22,7 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { Public } from '../../auth/decorators/public.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 
 // --- DECORADORES DO SWAGGER ---
@@ -38,6 +39,15 @@ import {
 @Controller('mesas')
 export class MesaController {
   constructor(private readonly mesaService: MesaService) {}
+
+  // ===== ENDPOINT PÚBLICO PARA CLIENTES =====
+  @Public()
+  @Get('publicas/livres')
+  @ApiOperation({ summary: 'Lista mesas livres (Rota Pública para clientes)' })
+  @ApiResponse({ status: 200, description: 'Lista de mesas livres retornada.' })
+  findMesasLivresPublic() {
+    return this.mesaService.findMesasLivres();
+  }
 
   @Post()
   @Roles(Cargo.ADMIN)

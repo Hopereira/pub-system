@@ -1,8 +1,26 @@
 import { PontoEntrega } from '@/types/ponto-entrega';
 import { CreatePontoEntregaDto, UpdatePontoEntregaDto, UpdatePontoComandaDto } from '@/types/ponto-entrega.dto';
-import api from './api';
+import api, { publicApi } from './api';
 import { logger } from '@/lib/logger';
 import { AxiosError } from 'axios';
+
+/**
+ * Lista pontos de entrega ativos (Rota Pública para clientes)
+ */
+export const getPontosEntregaAtivosPublic = async (): Promise<PontoEntrega[]> => {
+  try {
+    logger.debug('🔍 Buscando pontos de entrega ativos (público)', { module: 'PontoEntregaService' });
+    const response = await publicApi.get<PontoEntrega[]>('/pontos-entrega/publicos/ativos');
+    logger.log(`✅ ${response.data.length} pontos ativos encontrados (público)`, { module: 'PontoEntregaService' });
+    return response.data;
+  } catch (error) {
+    logger.error('❌ Erro ao buscar pontos ativos (público)', {
+      module: 'PontoEntregaService',
+      error,
+    });
+    throw error;
+  }
+};
 
 /**
  * Lista todos os pontos de entrega

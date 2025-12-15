@@ -119,6 +119,28 @@ export class MesaService {
     });
   }
 
+  // Endpoint público para clientes - retorna apenas mesas livres
+  async findMesasLivres(): Promise<Mesa[]> {
+    const mesas = await this.mesaRepository.find({
+      relations: ['ambiente', 'comandas'],
+      order: { numero: 'ASC' },
+    });
+    
+    // Filtra apenas mesas sem comanda aberta (livres)
+    return mesas
+      .filter((mesa) => {
+        const comandaAberta = mesa.comandas?.find(
+          (comanda) => comanda.status === 'ABERTA',
+        );
+        return !comandaAberta;
+      })
+      .map((mesa) => ({
+        ...mesa,
+        status: MesaStatus.LIVRE,
+        comandas: undefined, // Remove comandas da resposta pública
+      }));
+  }
+
   // --- NOVO: Buscar mesas por ambiente ---
   async findByAmbiente(ambienteId: string): Promise<Mesa[]> {
     const ambiente = await this.ambienteRepository.findOne({
