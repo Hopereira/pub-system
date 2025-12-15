@@ -214,6 +214,48 @@ export const caixaService = {
       throw error;
     }
   },
+
+  /**
+   * Relatório de vendas por caixa (funcionário)
+   */
+  async getRelatorioVendasPorCaixa(params?: {
+    periodo?: 'hoje' | 'semana' | 'mes' | 'personalizado';
+    dataInicio?: string;
+    dataFim?: string;
+  }): Promise<RelatorioVendasPorCaixa> {
+    try {
+      const response = await api.get('/caixa/relatorio/vendas-por-caixa', { params });
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Erro ao buscar relatório de vendas por caixa:', error);
+      throw error;
+    }
+  },
 };
+
+// Tipos para o relatório de vendas por caixa
+export interface CaixaVendas {
+  funcionarioId: string;
+  funcionarioNome: string;
+  totalVendas: number;
+  quantidadeVendas: number;
+  porFormaPagamento: Record<string, { valor: number; quantidade: number }>;
+}
+
+export interface RelatorioVendasPorCaixa {
+  periodo: {
+    tipo: 'hoje' | 'semana' | 'mes' | 'personalizado';
+    dataInicio: string;
+    dataFim: string;
+  };
+  caixas: CaixaVendas[];
+  resumo: {
+    totalGeral: number;
+    quantidadeTotal: number;
+    ticketMedio: number;
+    quantidadeCaixas: number;
+    porFormaPagamento: Record<string, { valor: number; quantidade: number }>;
+  };
+}
 
 export default caixaService;

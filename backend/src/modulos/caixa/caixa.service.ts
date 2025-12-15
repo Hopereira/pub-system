@@ -535,6 +535,130 @@ export class CaixaService {
     return await query.getMany();
   }
 
+  /**
+   * Relatório consolidado de vendas por caixa (funcionário)
+   * Agrupa vendas por funcionário com totais e filtros de período
+   */
+  async getRelatorioVendasPorCaixa(params?: {
+    periodo?: 'hoje' | 'semana' | 'mes' | 'personalizado';
+    dataInicio?: Date;
+    dataFim?: Date;
+  }) {
+    // Calcula datas baseado no período
+    let dataInicio: Date;
+    let dataFim: Date = new Date();
+    dataFim.setHours(23, 59, 59, 999);
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    switch (params?.periodo) {
+      case 'semana':
+        // Início da semana (domingo)
+        dataInicio = new Date(hoje);
+        dataInicio.setDate(hoje.getDate() - hoje.getDay());
+        break;
+      case 'mes':
+        // Início do mês
+        dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        break;
+      case 'personalizado':
+        dataInicio = params?.dataInicio || hoje;
+        dataFim = params?.dataFim || dataFim;
+        break;
+      case 'hoje':
+      default:
+        dataInicio = hoje;
+        break;
+    }
+
+    // Busca todas as movimentações de venda no período
+    const query = this.movimentacaoRepository
+      .createQueryBuilder('mov')
+      .leftJoinAndSelect('mov.funcionario', 'funcionario')
+      .where('mov.tipo = :tipo', { tipo: TipoMovimentacao.VENDA })
+      .andWhere('mov.data >= :dataInicio', { dataInicio })
+      .andWhere('mov.data <= :dataFim', { dataFim });
+
+    const movimentacoes = await query.getMany();
+
+    // Agrupa por funcionário
+    const vendasPorFuncionario = new Map<
+      string,
+      {
+        funcionarioId: string;
+        funcionarioNome: string;
+        totalVendas: number;
+        quantidadeVendas: number;
+        porFormaPagamento: Record<string, { valor: number; quantidade: number }>;
+      }
+    >();
+
+    movimentacoes.forEach((mov) => {
+      const funcionarioId = mov.funcionarioId;
+      const funcionarioNome = mov.funcionario?.nome || 'Não identificado';
+
+      if (!vendasPorFuncionario.has(funcionarioId)) {
+        vendasPorFuncionario.set(funcionarioId, {
+          funcionarioId,
+          funcionarioNome,
+          totalVendas: 0,
+          quantidadeVendas: 0,
+          porFormaPagamento: {},
+        });
+      }
+
+      const dados = vendasPorFuncionario.get(funcionarioId)!;
+      dados.totalVendas += Number(mov.valor);
+      dados.quantidadeVendas += 1;
+
+      // Agrupa por forma de pagamento
+      const forma = mov.formaPagamento || 'OUTROS';
+      if (!dados.porFormaPagamento[forma]) {
+        dados.porFormaPagamento[forma] = { valor: 0, quantidade: 0 };
+      }
+      dados.porFormaPagamento[forma].valor += Number(mov.valor);
+      dados.porFormaPagamento[forma].quantidade += 1;
+    });
+
+    // Converte para array e ordena por total de vendas (maior primeiro)
+    const caixas = Array.from(vendasPorFuncionario.values()).sort(
+      (a, b) => b.totalVendas - a.totalVendas,
+    );
+
+    // Calcula totais gerais
+    const totalGeral = caixas.reduce((acc, c) => acc + c.totalVendas, 0);
+    const quantidadeTotal = caixas.reduce((acc, c) => acc + c.quantidadeVendas, 0);
+
+    // Agrupa totais por forma de pagamento
+    const totalPorFormaPagamento: Record<string, { valor: number; quantidade: number }> = {};
+    caixas.forEach((caixa) => {
+      Object.entries(caixa.porFormaPagamento).forEach(([forma, dados]) => {
+        if (!totalPorFormaPagamento[forma]) {
+          totalPorFormaPagamento[forma] = { valor: 0, quantidade: 0 };
+        }
+        totalPorFormaPagamento[forma].valor += dados.valor;
+        totalPorFormaPagamento[forma].quantidade += dados.quantidade;
+      });
+    });
+
+    return {
+      periodo: {
+        tipo: params?.periodo || 'hoje',
+        dataInicio,
+        dataFim,
+      },
+      caixas,
+      resumo: {
+        totalGeral,
+        quantidadeTotal,
+        ticketMedio: quantidadeTotal > 0 ? totalGeral / quantidadeTotal : 0,
+        quantidadeCaixas: caixas.length,
+        porFormaPagamento: totalPorFormaPagamento,
+      },
+    };
+  }
+
   // Métodos auxiliares privados
 
   private async registrarMovimentacao(data: {

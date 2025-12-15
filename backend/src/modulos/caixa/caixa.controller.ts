@@ -203,4 +203,36 @@ export class CaixaController {
       dataFim: dataFim ? new Date(dataFim) : undefined,
     });
   }
+
+  /**
+   * GET /caixa/relatorio/vendas-por-caixa
+   * Relatório consolidado de vendas por caixa (funcionário)
+   */
+  @Get('relatorio/vendas-por-caixa')
+  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @ApiOperation({ 
+    summary: 'Relatório de vendas por caixa', 
+    description: 'Relatório consolidado de vendas agrupado por funcionário (caixa) com filtros de período' 
+  })
+  @ApiQuery({ 
+    name: 'periodo', 
+    required: false, 
+    enum: ['hoje', 'semana', 'mes', 'personalizado'],
+    description: 'Período do relatório' 
+  })
+  @ApiQuery({ name: 'dataInicio', required: false, description: 'Data inicial (YYYY-MM-DD) - apenas para período personalizado' })
+  @ApiQuery({ name: 'dataFim', required: false, description: 'Data final (YYYY-MM-DD) - apenas para período personalizado' })
+  @ApiResponse({ status: 200, description: 'Relatório de vendas por caixa' })
+  @ApiResponse({ status: 401, description: 'Não autenticado' })
+  async getRelatorioVendasPorCaixa(
+    @Query('periodo') periodo?: 'hoje' | 'semana' | 'mes' | 'personalizado',
+    @Query('dataInicio') dataInicio?: string,
+    @Query('dataFim') dataFim?: string,
+  ) {
+    return await this.caixaService.getRelatorioVendasPorCaixa({
+      periodo,
+      dataInicio: dataInicio ? new Date(dataInicio) : undefined,
+      dataFim: dataFim ? new Date(dataFim) : undefined,
+    });
+  }
 }
