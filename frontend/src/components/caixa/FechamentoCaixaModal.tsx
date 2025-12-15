@@ -41,7 +41,11 @@ export function FechamentoCaixaModal({
     valeAlimentacao: '',
   });
   const [observacao, setObservacao] = useState('');
+  const [forcarFechamento, setForcarFechamento] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Verifica se não há movimentações de vendas
+  const semMovimentacoes = resumoCaixa.totalVendas === 0 && resumoCaixa.totalSangrias === 0;
 
   const esperados = resumoCaixa.resumoPorFormaPagamento.reduce((acc, item) => {
     const key = item.formaPagamento.toLowerCase().replace(/_/g, '');
@@ -90,29 +94,30 @@ export function FechamentoCaixaModal({
   };
 
   const handleConfirm = async () => {
-    // Verifica se há movimentações
-    const semMovimentacoes = resumoCaixa.totalVendas === 0 && resumoCaixa.totalSangrias === 0 && resumoCaixa.totalSuprimentos === 0;
-    
-    // Se não há movimentações, exigir observação
-    if (semMovimentacoes && !observacao.trim()) {
-      toast.error('Fechamento sem movimentações requer observação');
+    // Se não há vendas e não marcou forçar fechamento, exigir que marque
+    if (semMovimentacoes && !forcarFechamento) {
+      toast.error('Marque a opção "Forçar fechamento" para fechar sem movimentações');
       return;
     }
 
-    // Validar se todos os valores foram informados (apenas se houver movimentações)
-    if (!semMovimentacoes) {
-      const todosPreenchidos = Object.values(valores).every(v => v.trim() !== '');
-      
-      if (!todosPreenchidos) {
-        toast.error('Preencha todos os valores');
-        return;
-      }
+    // Se forçar fechamento, exigir observação
+    if (forcarFechamento && !observacao.trim()) {
+      toast.error('Fechamento forçado requer observação');
+      return;
+    }
 
-      // Se diferença > R$ 50, exigir observação
-      if (Math.abs(diferencaTotal) > 50 && !observacao.trim()) {
-        toast.error('Diferença maior que R$ 50,00 requer observação detalhada');
-        return;
-      }
+    // Validar se todos os valores foram informados
+    const todosPreenchidos = Object.values(valores).every(v => v.trim() !== '');
+    
+    if (!todosPreenchidos) {
+      toast.error('Preencha todos os valores');
+      return;
+    }
+
+    // Se diferença > R$ 50, exigir observação
+    if (Math.abs(diferencaTotal) > 50 && !observacao.trim()) {
+      toast.error('Diferença maior que R$ 50,00 requer observação detalhada');
+      return;
     }
 
     try {
@@ -125,7 +130,7 @@ export function FechamentoCaixaModal({
         valorInformadoValeRefeicao: parseFloat(valores.valeRefeicao.replace(',', '.')) || 0,
         valorInformadoValeAlimentacao: parseFloat(valores.valeAlimentacao.replace(',', '.')) || 0,
         observacao: observacao || undefined,
-        forcarFechamento: semMovimentacoes,
+        forcarFechamento: forcarFechamento,
       });
       toast.success('Caixa fechado com sucesso!');
       onClose();
@@ -361,10 +366,32 @@ export function FechamentoCaixaModal({
             </div>
           </div>
 
+          {/* Checkbox Forçar Fechamento (quando não há vendas) */}
+          {semMovimentacoes && (
+            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-300 dark:border-yellow-700 p-4 rounded-lg">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={forcarFechamento}
+                  onChange={(e) => setForcarFechamento(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <div>
+                  <span className="font-medium text-yellow-800 dark:text-yellow-200">
+                    Forçar fechamento sem movimentações
+                  </span>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    Não houve vendas neste turno. Marque esta opção para fechar o caixa mesmo assim.
+                  </p>
+                </div>
+              </label>
+            </div>
+          )}
+
           {/* Observação */}
           <div className="space-y-2">
             <Label htmlFor="observacao">
-              Observação {Math.abs(diferencaTotal) > 50 && <span className="text-red-500">*</span>}
+              Observação {(Math.abs(diferencaTotal) > 50 || forcarFechamento) && <span className="text-red-500">*</span>}
             </Label>
             <Textarea
               id="observacao"
@@ -376,6 +403,11 @@ export function FechamentoCaixaModal({
             {Math.abs(diferencaTotal) > 50 && (
               <p className="text-xs text-red-500">
                 * Diferença maior que R$ 50,00 requer observação obrigatória
+              </p>
+            )}
+            {forcarFechamento && (
+              <p className="text-xs text-yellow-600">
+                * Fechamento forçado requer observação obrigatória
               </p>
             )}
           </div>
