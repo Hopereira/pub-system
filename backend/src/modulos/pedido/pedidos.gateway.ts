@@ -128,6 +128,16 @@ export class PedidosGateway
     this.server.emit('comanda_atualizada', comanda);
   }
 
+  // ==================================================================
+  // ## Evento para nova comanda criada ##
+  // ==================================================================
+  emitNovaComanda(comanda: Comanda) {
+    this.logger.log(
+      `Emitindo evento 'nova_comanda' para a comanda ID: ${comanda.id}`,
+    );
+    this.server.emit('nova_comanda', comanda);
+  }
+
   /**
    * Emite evento quando uma nova movimentação é registrada no caixa
    * Atualiza em tempo real o resumo do caixa

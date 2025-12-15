@@ -236,7 +236,12 @@ export class ComandaService {
       })
       .then(async (novaComanda) => {
         // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
-        return this.findOne(novaComanda.id);
+        const comandaCompleta = await this.findOne(novaComanda.id);
+        
+        // Emite evento WebSocket para notificar nova comanda
+        this.pedidosGateway.emitNovaComanda(comandaCompleta);
+        
+        return comandaCompleta;
       });
   }
 
