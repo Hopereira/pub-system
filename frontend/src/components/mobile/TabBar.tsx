@@ -12,6 +12,7 @@ import {
   Users,
   Settings,
   BarChart2,
+  Bell,
   LucideIcon 
 } from 'lucide-react';
 
@@ -51,7 +52,7 @@ const caixaTabs: TabItem[] = [
 // Tabs para PREPARO (Cozinheiro, Bartender, etc.)
 const preparoTabs: TabItem[] = [
   { label: 'Início', icon: Home, href: '/cozinha' },
-  { label: 'Pedidos', icon: ShoppingBag, href: '/cozinha' },
+  { label: 'Prontos', icon: Bell, href: '/dashboard/operacional/pedidos-prontos' },
   { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
 ];
 
