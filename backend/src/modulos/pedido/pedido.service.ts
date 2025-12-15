@@ -685,7 +685,25 @@ export class PedidoService {
     // Emite evento WebSocket para atualização em tempo real
     const comanda = item.pedido?.comanda;
     if (comanda) {
-      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      // ✅ CORREÇÃO: Recarrega o pedido completo com todas as relações para o WebSocket
+      const pedidoCompleto = await this.pedidoRepository.findOne({
+        where: { id: item.pedido.id },
+        relations: [
+          'comanda',
+          'comanda.mesa',
+          'comanda.cliente',
+          'comanda.pontoEntrega',
+          'itens',
+          'itens.produto',
+          'itens.produto.ambiente',
+          'itens.garcomEntrega',
+          'itens.retiradoPorGarcom',
+        ],
+      });
+
+      if (pedidoCompleto) {
+        this.pedidosGateway.emitStatusAtualizado(pedidoCompleto);
+      }
 
       // Evento específico de item retirado
       this.pedidosGateway.server.emit('item_retirado', {
@@ -805,8 +823,25 @@ export class PedidoService {
     // Emite evento WebSocket para TODOS os clientes
     const comanda = item.pedido?.comanda;
     if (comanda) {
+      // ✅ CORREÇÃO: Recarrega o pedido completo com todas as relações para o WebSocket
+      const pedidoCompleto = await this.pedidoRepository.findOne({
+        where: { id: item.pedido.id },
+        relations: [
+          'comanda',
+          'comanda.mesa',
+          'comanda.cliente',
+          'comanda.pontoEntrega',
+          'itens',
+          'itens.produto',
+          'itens.produto.ambiente',
+          'itens.garcomEntrega',
+        ],
+      });
+
       // Atualiza status geral do pedido
-      this.pedidosGateway.emitStatusAtualizado(item.pedido);
+      if (pedidoCompleto) {
+        this.pedidosGateway.emitStatusAtualizado(pedidoCompleto);
+      }
 
       // Evento específico de item entregue (broadcast para todos)
       this.pedidosGateway.server.emit('item_entregue', {
