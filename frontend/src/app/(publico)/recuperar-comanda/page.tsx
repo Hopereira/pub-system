@@ -7,24 +7,44 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, QrCode, AlertCircle } from 'lucide-react';
+import { Search, QrCode, AlertCircle, User } from 'lucide-react';
 import { toast } from 'sonner';
+
+type BuscaTipo = 'codigo' | 'cpf';
 
 export default function RecuperarComandaPage() {
   const router = useRouter();
+  const [buscaTipo, setBuscaTipo] = useState<BuscaTipo>('codigo');
   const [codigo, setCodigo] = useState('');
+  const [cpf, setCpf] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Formata CPF enquanto digita (000.000.000-00)
+  const formatarCpf = (valor: string) => {
+    const numeros = valor.replace(/\D/g, '').slice(0, 11);
+    if (numeros.length <= 3) return numeros;
+    if (numeros.length <= 6) return `${numeros.slice(0, 3)}.${numeros.slice(3)}`;
+    if (numeros.length <= 9) return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6)}`;
+    return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6, 9)}-${numeros.slice(9)}`;
+  };
+
   const buscarComanda = async () => {
-    if (!codigo.trim()) {
-      toast.error('Digite o código da comanda');
+    const termoBusca = buscaTipo === 'codigo' ? codigo.trim() : cpf.replace(/\D/g, '');
+    
+    if (!termoBusca) {
+      toast.error(buscaTipo === 'codigo' ? 'Digite o código da comanda' : 'Digite o CPF');
+      return;
+    }
+
+    if (buscaTipo === 'cpf' && termoBusca.length !== 11) {
+      toast.error('CPF deve ter 11 dígitos');
       return;
     }
 
     setLoading(true);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/comandas/search?q=${encodeURIComponent(codigo)}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/comandas/search?q=${encodeURIComponent(termoBusca)}`);
       
       if (!response.ok) {
         throw new Error('Comanda não encontrada');
@@ -32,13 +52,25 @@ export default function RecuperarComandaPage() {
 
       const data = await response.json();
       
-      // Busca comanda que corresponde ao código exato
-      const comanda = data.find((c: any) => 
-        c.codigo.toLowerCase() === codigo.toLowerCase().trim()
-      );
+      let comanda;
+      
+      if (buscaTipo === 'codigo') {
+        // Busca comanda que corresponde ao código exato
+        comanda = data.find((c: any) => 
+          c.codigo.toLowerCase() === codigo.toLowerCase().trim()
+        );
+      } else {
+        // Busca por CPF - pega a comanda aberta mais recente
+        const comandasAbertas = data.filter((c: any) => c.status === 'ABERTA');
+        comanda = comandasAbertas[0]; // Já vem ordenado por data
+      }
 
       if (!comanda) {
-        toast.error('Comanda não encontrada. Verifique o código digitado.');
+        toast.error(
+          buscaTipo === 'codigo' 
+            ? 'Comanda não encontrada. Verifique o código digitado.'
+            : 'Nenhuma comanda aberta encontrada para este CPF.'
+        );
         setLoading(false);
         return;
       }
@@ -62,6 +94,8 @@ export default function RecuperarComandaPage() {
     }
   };
 
+  const valorBusca = buscaTipo === 'codigo' ? codigo : cpf;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
       <Card className="max-w-md w-full shadow-2xl">
@@ -71,42 +105,99 @@ export default function RecuperarComandaPage() {
           </div>
           <CardTitle className="text-3xl">Recuperar Comanda</CardTitle>
           <CardDescription className="text-base">
-            Digite o código da sua comanda para acessar seus pedidos e conta
+            Busque sua comanda pelo código ou CPF
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
+          {/* Seletor de Tipo de Busca */}
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+            <button
+              onClick={() => setBuscaTipo('codigo')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                buscaTipo === 'codigo'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <QrCode className="h-4 w-4" />
+              Código
+            </button>
+            <button
+              onClick={() => setBuscaTipo('cpf')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                buscaTipo === 'cpf'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <User className="h-4 w-4" />
+              CPF
+            </button>
+          </div>
+
           {/* Alerta Informativo */}
           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 flex gap-3">
             <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-900">
-              <p className="font-semibold mb-1">Onde encontrar o código?</p>
-              <p>O código da comanda está no QR Code que o garçom te entregou ou na tela do seu pedido.</p>
+              {buscaTipo === 'codigo' ? (
+                <>
+                  <p className="font-semibold mb-1">Onde encontrar o código?</p>
+                  <p>O código da comanda está no QR Code que o garçom te entregou ou na tela do seu pedido.</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold mb-1">Busca por CPF</p>
+                  <p>Digite o CPF cadastrado na sua comanda para acessar seus pedidos.</p>
+                </>
+              )}
             </div>
           </div>
 
           {/* Campo de Busca */}
           <div className="space-y-3">
-            <label htmlFor="codigo" className="text-sm font-medium text-gray-700 block">
-              Código da Comanda
-            </label>
-            <Input
-              id="codigo"
-              type="text"
-              placeholder="Ex: COM-2024-001"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              onKeyPress={handleKeyPress}
-              className="text-lg font-mono tracking-wider text-center"
-              disabled={loading}
-              autoFocus
-            />
+            {buscaTipo === 'codigo' ? (
+              <>
+                <label htmlFor="codigo" className="text-sm font-medium text-gray-700 block">
+                  Código da Comanda
+                </label>
+                <Input
+                  id="codigo"
+                  type="text"
+                  placeholder="Ex: COM-2024-001"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+                  onKeyPress={handleKeyPress}
+                  className="text-lg font-mono tracking-wider text-center"
+                  disabled={loading}
+                  autoFocus
+                />
+              </>
+            ) : (
+              <>
+                <label htmlFor="cpf" className="text-sm font-medium text-gray-700 block">
+                  CPF
+                </label>
+                <Input
+                  id="cpf"
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(formatarCpf(e.target.value))}
+                  onKeyPress={handleKeyPress}
+                  className="text-lg font-mono tracking-wider text-center"
+                  disabled={loading}
+                  autoFocus
+                  maxLength={14}
+                />
+              </>
+            )}
           </div>
 
           {/* Botão de Busca */}
           <Button
             onClick={buscarComanda}
-            disabled={loading || !codigo.trim()}
+            disabled={loading || !valorBusca.trim()}
             className="w-full h-12 text-base"
             size="lg"
           >
@@ -141,9 +232,19 @@ export default function RecuperarComandaPage() {
           <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-600">
             <p className="font-semibold mb-2">💡 Dicas:</p>
             <ul className="space-y-1 list-disc list-inside">
-              <li>O código geralmente começa com "COM-"</li>
-              <li>Maiúsculas e minúsculas não fazem diferença</li>
-              <li>Tire uma foto do QR Code para não perder o acesso</li>
+              {buscaTipo === 'codigo' ? (
+                <>
+                  <li>O código geralmente começa com "COM-"</li>
+                  <li>Maiúsculas e minúsculas não fazem diferença</li>
+                  <li>Tire uma foto do QR Code para não perder o acesso</li>
+                </>
+              ) : (
+                <>
+                  <li>Digite apenas os números do CPF</li>
+                  <li>Será exibida a comanda aberta mais recente</li>
+                  <li>O CPF deve ser o mesmo usado no cadastro</li>
+                </>
+              )}
             </ul>
           </div>
         </CardContent>
