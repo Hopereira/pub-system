@@ -3,9 +3,12 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { Pedido } from './entities/pedido.entity';
 import { Comanda, ComandaStatus } from '../comanda/entities/comanda.entity';
 import { Produto } from '../produto/entities/produto.entity';
@@ -23,6 +26,7 @@ import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
+import { PaginationDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -48,6 +52,8 @@ export class PedidoService {
     @InjectRepository(TurnoFuncionario)
     private readonly turnoRepository: Repository<TurnoFuncionario>,
     private readonly pedidosGateway: PedidosGateway,
+    @Inject(CACHE_MANAGER)
+    private cacheManager: Cache,
   ) {}
 
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
@@ -222,6 +228,18 @@ export class PedidoService {
     comandaId?: string;
   }): Promise<Pedido[]> {
     const { ambienteId, status, comandaId } = filters || {};
+    
+    // Cache key baseado nos filtros
+    const cacheKey = `pedidos:amb:${ambienteId || 'all'}:st:${status || 'all'}:cmd:${comandaId || 'all'}`;
+    
+    // Tentar buscar do cache
+    const cached = await this.cacheManager.get<Pedido[]>(cacheKey);
+    if (cached) {
+      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+      return cached;
+    }
+    
+    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     const queryBuilder = this.pedidoRepository
       .createQueryBuilder('pedido')
@@ -321,6 +339,9 @@ export class PedidoService {
         `🔍 DEPOIS do filtro JS | Ambiente: ${ambienteId} | Pedidos: ${pedidosFiltrados.length} | Total Itens: ${totalItensDepoisFiltro} | Status: ${JSON.stringify(statusDepois)}`,
       );
     }
+
+    // Armazenar no cache por 2 minutos (pedidos mudam muito frequentemente)
+    await this.cacheManager.set(cacheKey, pedidosFiltrados, 120000);
 
     return pedidosFiltrados;
   }

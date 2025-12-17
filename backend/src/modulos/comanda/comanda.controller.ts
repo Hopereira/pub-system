@@ -16,6 +16,7 @@ import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdateComandaDto } from './dto/update-comanda.dto';
 import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
 import { FecharComandaDto } from './dto/fechar-comanda.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
@@ -89,9 +90,13 @@ export class ComandaController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Lista todas as comandas do sistema' })
-  findAll() {
-    return this.comandaService.findAll();
+  @ApiOperation({ summary: 'Lista todas as comandas do sistema com paginação' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Página atual (padrão: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Itens por página (padrão: 20, máx: 100)' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, description: 'Campo para ordenação (padrão: criadoEm)' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], description: 'Direção da ordenação (padrão: DESC)' })
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.comandaService.findAll(paginationDto);
   }
 
   @Get('mesa/:mesaId/aberta')

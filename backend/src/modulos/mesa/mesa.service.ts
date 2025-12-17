@@ -5,9 +5,12 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
@@ -24,11 +27,15 @@ import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 
 @Injectable()
 export class MesaService {
+  private readonly logger = new Logger(MesaService.name);
+
   constructor(
     @InjectRepository(Mesa)
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
+    @Inject(CACHE_MANAGER)
+    private cacheManager: Cache,
   ) {}
 
   // --- MÉTODO ATUALIZADO: Aceita posição, tamanho e rotação opcionais ---
@@ -92,11 +99,23 @@ export class MesaService {
   }
 
   async findAll(): Promise<Mesa[]> {
+    const cacheKey = 'mesas:all';
+
+    // Tentar buscar do cache
+    const cached = await this.cacheManager.get<Mesa[]>(cacheKey);
+    if (cached) {
+      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+      return cached;
+    }
+
+    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
+
     const mesas = await this.mesaRepository.find({
       relations: ['ambiente', 'comandas', 'comandas.cliente'],
       order: { numero: 'ASC' },
     });
-    return mesas.map((mesa) => {
+    
+    const result = mesas.map((mesa) => {
       const comandaAberta = mesa.comandas?.find(
         (comanda) => comanda.status === 'ABERTA',
       );
@@ -117,6 +136,11 @@ export class MesaService {
           : undefined,
       };
     });
+
+    // Armazenar no cache por 3 minutos (mesas mudam frequentemente com comandas)
+    await this.cacheManager.set(cacheKey, result, 180000);
+
+    return result;
   }
 
   // Endpoint público para clientes - retorna apenas mesas livres

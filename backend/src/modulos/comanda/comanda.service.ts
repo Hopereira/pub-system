@@ -4,9 +4,12 @@ import {
   Injectable,
   NotFoundException,
   Logger,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 // Entidades de Módulos Associados
 import { Cliente } from '../cliente/entities/cliente.entity';
@@ -24,6 +27,7 @@ import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
 import { FecharComandaDto } from './dto/fechar-comanda.dto';
 import { Comanda, ComandaStatus } from './entities/comanda.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
+import { PaginationDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 
 // Gateways
 import { PedidosGateway } from '../pedido/pedidos.gateway';
@@ -58,6 +62,8 @@ export class ComandaService {
     private readonly comandaAgregadoRepository: Repository<ComandaAgregado>,
     private readonly pedidosGateway: PedidosGateway,
     private readonly caixaService: CaixaService,
+    @Inject(CACHE_MANAGER)
+    private cacheManager: Cache,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -245,10 +251,45 @@ export class ComandaService {
       });
   }
 
-  findAll(): Promise<Comanda[]> {
-    return this.comandaRepository.find({
+  async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Comanda>> {
+    const { page = 1, limit = 20, sortBy = 'criadoEm', sortOrder = 'DESC' } = paginationDto || {};
+    const cacheKey = `comandas:page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`;
+
+    // Tentar buscar do cache
+    const cached = await this.cacheManager.get<PaginatedResponse<Comanda>>(cacheKey);
+    if (cached) {
+      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+      return cached;
+    }
+
+    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
+
+    // Buscar do banco com paginação
+    const [data, total] = await this.comandaRepository.findAndCount({
       relations: ['mesa', 'cliente', 'paginaEvento'],
+      order: { [sortBy]: sortOrder },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    const totalPages = Math.ceil(total / limit);
+
+    const response: PaginatedResponse<Comanda> = {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
+
+    // Armazenar no cache por 5 minutos (comandas mudam frequentemente)
+    await this.cacheManager.set(cacheKey, response, 300000);
+
+    return response;
   }
 
   async search(term: string): Promise<Comanda[]> {
