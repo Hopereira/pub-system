@@ -70,10 +70,9 @@ export default function PerfilPage() {
   const handleSavePerfil = async () => {
     setIsSaving(true);
     try {
-      await api.patch(`/funcionarios/${user?.id}`, {
+      await api.patch('/funcionarios/meu-perfil', {
         telefone,
         endereco,
-        fotoUrl,
       });
       toast.success('Perfil atualizado com sucesso!');
       setIsEditing(false);

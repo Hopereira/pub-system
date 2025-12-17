@@ -133,6 +133,31 @@ export class FuncionarioController {
     return this.funcionarioService.alterarSenha(req.user.id, alterarSenhaDto);
   }
 
+  // --- ATUALIZAR PRÓPRIO PERFIL ---
+  @Patch('meu-perfil')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Atualiza o próprio perfil (telefone, endereço)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Perfil atualizado com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Não autenticado.',
+  })
+  atualizarMeuPerfil(
+    @Request() req: any,
+    @Body() updateDto: UpdateFuncionarioDto,
+  ) {
+    // Limitar campos que o usuário pode atualizar (não pode mudar cargo, email, etc)
+    const camposPermitidos = {
+      telefone: updateDto.telefone,
+      endereco: updateDto.endereco,
+    };
+    return this.funcionarioService.update(req.user.id, camposPermitidos);
+  }
+
   // --- UPLOAD DE FOTO DO PRÓPRIO FUNCIONÁRIO ---
   @Patch('upload-foto')
   @ApiBearerAuth()
