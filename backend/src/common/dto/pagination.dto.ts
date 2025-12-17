@@ -29,20 +29,20 @@ export class PaginationDto {
 
   @ApiPropertyOptional({
     description: 'Campo para ordenação',
-    default: 'criadoEm',
+    default: 'nome',
   })
   @IsOptional()
   @IsString()
-  sortBy?: string = 'criadoEm';
+  sortBy?: string = 'nome';
 
   @ApiPropertyOptional({
     description: 'Direção da ordenação',
     enum: ['ASC', 'DESC'],
-    default: 'DESC',
+    default: 'ASC',
   })
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
-  sortOrder?: 'ASC' | 'DESC' = 'DESC';
+  sortOrder?: 'ASC' | 'DESC' = 'ASC';
 }
 
 export interface PaginationMeta {

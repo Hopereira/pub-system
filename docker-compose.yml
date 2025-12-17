@@ -14,6 +14,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - pub_network
     environment:
@@ -22,6 +24,8 @@ services:
       - BACKEND_URL=${BACKEND_URL:-http://localhost:3000}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
       - NODE_OPTIONS=--max-old-space-size=1024
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     env_file:
       - ./.env
     command: npm run start:dev
@@ -31,6 +35,27 @@ services:
           memory: 1.5G
         reservations:
           memory: 512M
+
+  # --- Serviço Redis para Cache ---
+  redis:
+    image: redis:7-alpine
+    container_name: pub_system_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pub_network
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
   # --- Serviço do Banco de Dados PostgreSQL ---
   db:

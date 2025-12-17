@@ -27,10 +27,11 @@ import { MedalhaModule } from './modulos/medalha/medalha.module';
 import { CaixaModule } from './modulos/caixa/caixa.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
-// import { AppCacheModule } from './cache/cache.module';
+import { AppCacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
+    AppCacheModule,
     // ✅ CORREÇÃO: Validação de variáveis de ambiente obrigatórias
     ConfigModule.forRoot({
       isGlobal: true,
