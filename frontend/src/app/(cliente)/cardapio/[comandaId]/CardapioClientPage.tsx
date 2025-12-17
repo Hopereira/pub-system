@@ -3,20 +3,19 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Comanda } from '@/types/comanda';
-import { Produto } from '@/types/produto';
 import ProdutoCard from '@/components/cardapio/ProdutoCard';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ShoppingCart, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { ShoppingCart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { createPedidoFromCliente } from '@/services/pedidoService'; 
 import { CreateItemPedidoDto } from '@/types/pedido.dto';
 import { PedidoReviewSheet } from '@/components/pedidos/PedidoReviewSheet';
-import { PedidoStatus } from '@/types/pedido-status.enum';
 import { AddProdutoDialog } from '@/components/cardapio/AddProdutoDialog';
+import { EditItemDialog } from '@/components/cardapio/EditItemDialog';
+import { Produto } from '@/types/produto';
 
 interface CarrinhoItem {
   id?: string;
@@ -48,6 +47,7 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
   const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
+  const [itemEditando, setItemEditando] = useState<number | null>(null);
   const router = useRouter();
 
   const [termoBusca, setTermoBusca] = useState('');
@@ -84,6 +84,23 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
 
   const handleRemoveItem = (index: number) => {
     setCarrinho(prevCarrinho => prevCarrinho.filter((_, i) => i !== index));
+  };
+
+  const handleEditItem = (index: number) => {
+    setItemEditando(index);
+    setIsCarrinhoOpen(false);
+  };
+
+  const handleSaveEdit = (quantidade: number, observacao: string) => {
+    if (itemEditando === null) return;
+    setCarrinho(prevCarrinho =>
+      prevCarrinho.map((item, i) =>
+        i === itemEditando ? { ...item, quantidade, observacao } : item
+      )
+    );
+    toast.success('Item atualizado!');
+    setItemEditando(null);
+    setIsCarrinhoOpen(true);
   };
 
   const handleFinalizarPedido = async () => {
@@ -133,31 +150,34 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
             {comanda.mesa ? `Mesa ${comanda.mesa.numero}` : 'Balcão'}
           </p>
         </div>
-        
+      </div>
+
+      {/* Botão Flutuante Ver Carrinho */}
+      {carrinho.length > 0 && (
         <Button 
           onClick={() => setIsCarrinhoOpen(true)}
-          className="relative mt-4 sm:mt-0"
+          className="fixed bottom-6 right-6 z-50 h-14 px-6 rounded-full shadow-lg hover:shadow-xl transition-all"
+          size="lg"
         >
           <ShoppingCart className="h-5 w-5" />
           <span className="ml-2">Ver Carrinho</span>
-          {carrinho.length > 0 && (
-            <Badge className="absolute -top-2 -right-2" variant="destructive">
-              {carrinho.reduce((total, item) => total + item.quantidade, 0)}
-            </Badge>
-          )}
+          <Badge className="absolute -top-2 -right-2" variant="destructive">
+            {carrinho.reduce((total, item) => total + item.quantidade, 0)}
+          </Badge>
         </Button>
+      )}
         
-        <PedidoReviewSheet
-          open={isCarrinhoOpen}
-          onClose={() => setIsCarrinhoOpen(false)}
-          itens={carrinho}
-          onUpdateQuantidade={handleUpdateQuantidade}
-          onRemoveItem={handleRemoveItem}
-          onAssignPagador={() => {}}
-          onSubmit={handleFinalizarPedido}
-          isLoading={isLoading}
-        />
-      </div>
+      <PedidoReviewSheet
+        open={isCarrinhoOpen}
+        onClose={() => setIsCarrinhoOpen(false)}
+        itens={carrinho}
+        onUpdateQuantidade={handleUpdateQuantidade}
+        onRemoveItem={handleRemoveItem}
+        onAssignPagador={() => {}}
+        onSubmit={handleFinalizarPedido}
+        isLoading={isLoading}
+        onEditItem={handleEditItem}
+      />
 
       <div className="flex flex-col md:flex-row gap-4 mb-8 sticky top-4 bg-background/90 backdrop-blur-sm p-4 rounded-lg border z-10">
         <Input
@@ -207,6 +227,16 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
         open={!!produtoSelecionado}
         onClose={() => setProdutoSelecionado(null)}
         onAdd={handleConfirmAdd}
+      />
+
+      <EditItemDialog
+        item={itemEditando !== null ? carrinho[itemEditando] : null}
+        open={itemEditando !== null}
+        onClose={() => {
+          setItemEditando(null);
+          setIsCarrinhoOpen(true);
+        }}
+        onSave={handleSaveEdit}
       />
     </div>
   );

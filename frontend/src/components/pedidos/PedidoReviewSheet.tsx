@@ -38,6 +38,7 @@ interface PedidoReviewSheetProps {
   isLoading?: boolean;
   showDivisaoConta?: boolean;
   pagadores?: Array<{ id: string; nome: string }>;
+  onEditItem?: (index: number) => void;
 }
 
 export function PedidoReviewSheet({
@@ -51,6 +52,7 @@ export function PedidoReviewSheet({
   isLoading = false,
   showDivisaoConta = false,
   pagadores = [],
+  onEditItem,
 }: PedidoReviewSheetProps) {
   const [itemSelecionado, setItemSelecionado] = useState<number | null>(null);
 
@@ -116,7 +118,15 @@ export function PedidoReviewSheet({
                   {/* Cabeçalho do Item */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1">
-                      <h4 className="font-semibold">{item.produtoNome}</h4>
+                      <h4 
+                        className={cn(
+                          "font-semibold",
+                          onEditItem && "cursor-pointer hover:text-primary hover:underline transition-colors"
+                        )}
+                        onClick={() => onEditItem && onEditItem(index)}
+                      >
+                        {item.produtoNome}
+                      </h4>
                       {item.observacao && (
                         <p className="text-xs text-muted-foreground mt-1 italic">
                           Obs: {item.observacao}
