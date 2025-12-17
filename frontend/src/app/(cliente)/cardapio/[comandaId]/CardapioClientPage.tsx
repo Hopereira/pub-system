@@ -24,6 +24,7 @@ interface CarrinhoItem {
   preco: number;
   quantidade: number;
   observacao?: string;
+  urlImagem?: string;
 }
 
 const groupProdutosByCategoria = (produtos: Produto[]) => {
@@ -68,7 +69,8 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
         produtoNome: produtoSelecionado.nome, 
         preco: produtoSelecionado.preco, 
         quantidade, 
-        observacao 
+        observacao,
+        urlImagem: produtoSelecionado.urlImagem 
       }
     ]);
     setProdutoSelecionado(null);

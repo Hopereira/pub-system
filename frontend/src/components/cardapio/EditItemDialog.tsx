@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Plus, Minus, Save } from 'lucide-react';
+import Image from 'next/image';
 
 interface CarrinhoItem {
   id?: string;
@@ -21,6 +22,7 @@ interface CarrinhoItem {
   preco: number;
   quantidade: number;
   observacao?: string;
+  urlImagem?: string;
 }
 
 interface EditItemDialogProps {
@@ -79,11 +81,28 @@ export function EditItemDialog({
 
         <div className="space-y-4">
           {/* Info do Produto */}
-          <div className="bg-muted/50 rounded-lg p-4">
-            <h3 className="font-semibold text-lg">{item.produtoNome}</h3>
-            <p className="text-lg font-bold text-primary mt-1">
-              {precoFormatado}
-            </p>
+          <div className="bg-muted/50 rounded-lg p-4 flex gap-4">
+            {/* Imagem do Produto */}
+            <div className="relative w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+              {item.urlImagem ? (
+                <Image
+                  src={item.urlImagem}
+                  alt={item.produtoNome}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                  Sem foto
+                </div>
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">{item.produtoNome}</h3>
+              <p className="text-lg font-bold text-primary mt-1">
+                {precoFormatado}
+              </p>
+            </div>
           </div>
 
           {/* Quantidade */}

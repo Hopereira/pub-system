@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 interface ItemPedido {
   id?: string;
@@ -24,7 +25,8 @@ interface ItemPedido {
   preco: number;
   quantidade: number;
   observacao?: string;
-  pagador?: string; // ID do pagador (para divisão de conta)
+  pagador?: string;
+  urlImagem?: string;
 }
 
 interface PedidoReviewSheetProps {
@@ -117,6 +119,21 @@ export function PedidoReviewSheet({
                 >
                   {/* Cabeçalho do Item */}
                   <div className="flex items-start gap-3 mb-3">
+                    {/* Imagem do Produto */}
+                    <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+                      {item.urlImagem ? (
+                        <Image
+                          src={item.urlImagem}
+                          alt={item.produtoNome}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                          Sem foto
+                        </div>
+                      )}
+                    </div>
                     <div className="flex-1">
                       <h4 
                         className={cn(
