@@ -1,7 +1,7 @@
 // Caminho: frontend/src/app/portal-cliente/[comandaId]/ClienteHubPage.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,11 @@ export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageP
   const [isLocalModalOpen, setIsLocalModalOpen] = useState(false);
   const [comandaAtualizada, setComandaAtualizada] = useState(comanda); 
   const { theme, setTheme } = useTheme(); 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const comandaId = comanda.id;
 
@@ -37,19 +42,21 @@ export default function ClienteHubPage({ comanda, paginaAtiva }: ClienteHubPageP
   return (
     <div className="min-h-screen bg-background">
       {/* Botão Modo Escuro */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        className="fixed top-4 right-4 z-50 h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all"
-        aria-label="Alternar modo escuro"
-      >
-        {theme === 'dark' ? (
-          <Sun className="h-5 w-5 text-yellow-500" />
-        ) : (
-          <Moon className="h-5 w-5 text-gray-700" />
-        )}
-      </Button>
+      {mounted && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="fixed top-4 right-4 z-50 h-10 w-10 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all"
+          aria-label="Alternar modo escuro"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-5 w-5 text-yellow-500" />
+          ) : (
+            <Moon className="h-5 w-5 text-gray-700" />
+          )}
+        </Button>
+      )}
 
       {/* Hero Section com Imagem */}
       <div className="relative h-[45vh] min-h-[300px]">
