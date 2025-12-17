@@ -95,11 +95,27 @@ export default function ComandaClientePage() {
     }
 
     if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
+        const dataAtual = new Date();
+        const dataFormatada = dataAtual.toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+        const horaFormatada = dataAtual.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const nomeEvento = comanda.paginaEvento?.titulo || 'Pub System';
+
         return (
             <>
                 <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
                     <Card className="max-w-md w-full text-center p-8 animate-fade-in shadow-2xl border-0">
                         <CardHeader className="pb-2">
+                            {/* Nome do Evento */}
+                            <p className="text-lg font-semibold text-primary mb-2">{nomeEvento}</p>
+                            
                             <div className="mx-auto h-24 w-24 rounded-full bg-green-100 flex items-center justify-center mb-4">
                                 <CheckCircle className="h-16 w-16 text-green-500" />
                             </div>
@@ -109,7 +125,14 @@ export default function ComandaClientePage() {
                             <p className="text-lg text-gray-600">
                                 Sua comanda foi paga com sucesso. Agradecemos a sua visita!
                             </p>
-                            <div className="py-6">
+                            
+                            {/* Data e Hora */}
+                            <div className="text-sm text-muted-foreground">
+                                <p className="capitalize">{dataFormatada}</p>
+                                <p>{horaFormatada}</p>
+                            </div>
+                            
+                            <div className="py-4">
                                 <p className="text-2xl font-semibold text-primary">
                                     🍻 Volte Sempre! 🍻
                                 </p>
