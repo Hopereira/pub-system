@@ -1,7 +1,7 @@
 import { Module, Global } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import * as redisStore from 'cache-manager-redis-store';
+import { redisStore } from 'cache-manager-redis-store';
 
 @Global()
 @Module({
@@ -10,11 +10,11 @@ import * as redisStore from 'cache-manager-redis-store';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
-        store: redisStore,
+        store: redisStore as any,
         host: configService.get('REDIS_HOST', 'localhost'),
         port: configService.get('REDIS_PORT', 6379),
-        ttl: 3600, // 1 hora padrão
-        max: 100, // Máximo de itens no cache
+        ttl: 3600,
+        max: 100,
       }),
     }),
   ],
