@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { Cargo } from '../enums/cargo.enum'; // <-- LINHA CORRIGIDA
 
 export class CreateFuncionarioDto {
@@ -31,4 +31,28 @@ export class CreateFuncionarioDto {
   })
   @IsEnum(Cargo, { message: 'O cargo fornecido é inválido.' }) // <-- USO CORRIGIDO
   cargo: Cargo; // <-- USO CORRIGIDO
+
+  @ApiPropertyOptional({
+    description: 'Telefone do funcionário.',
+    example: '(11) 99999-9999',
+  })
+  @IsOptional()
+  @IsString()
+  telefone?: string;
+
+  @ApiPropertyOptional({
+    description: 'Endereço do funcionário.',
+    example: 'Rua das Flores, 123 - Centro',
+  })
+  @IsOptional()
+  @IsString()
+  endereco?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL da foto do funcionário.',
+    example: 'https://example.com/foto.jpg',
+  })
+  @IsOptional()
+  @IsString()
+  fotoUrl?: string;
 }

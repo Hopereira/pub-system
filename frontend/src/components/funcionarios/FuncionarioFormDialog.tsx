@@ -35,7 +35,7 @@ interface FuncionarioFormDialogProps {
 }
 
 const cargos = ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'];
-const initialFormData: CreateFuncionarioDto = { nome: '', email: '', senha: '', cargo: 'GARCOM' };
+const initialFormData: CreateFuncionarioDto = { nome: '', email: '', senha: '', cargo: 'GARCOM', telefone: '', endereco: '', fotoUrl: '' };
 
 export default function FuncionarioFormDialog({
   open,
@@ -58,6 +58,9 @@ export default function FuncionarioFormDialog({
           nome: funcionarioToEdit.nome,
           email: funcionarioToEdit.email,
           cargo: funcionarioToEdit.cargo,
+          telefone: funcionarioToEdit.telefone || '',
+          endereco: funcionarioToEdit.endereco || '',
+          fotoUrl: funcionarioToEdit.fotoUrl || '',
           senha: '', // Senha fica vazia por segurança e para ser opcional
         });
       } else {
@@ -152,6 +155,18 @@ export default function FuncionarioFormDialog({
                   {cargos.map(cargo => <SelectItem key={cargo} value={cargo}>{cargo}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="telefone" className="text-right">Telefone</Label>
+              <Input id="telefone" name="telefone" value={formData.telefone || ''} onChange={handleChange} className="col-span-3" placeholder="(11) 99999-9999" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="endereco" className="text-right">Endereço</Label>
+              <Input id="endereco" name="endereco" value={formData.endereco || ''} onChange={handleChange} className="col-span-3" placeholder="Rua, número, bairro" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="fotoUrl" className="text-right">Foto URL</Label>
+              <Input id="fotoUrl" name="fotoUrl" value={formData.fotoUrl || ''} onChange={handleChange} className="col-span-3" placeholder="https://exemplo.com/foto.jpg" />
             </div>
           </div>
           <DialogFooter>

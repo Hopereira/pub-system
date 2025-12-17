@@ -10,6 +10,9 @@ export interface User {
   role: UserRole; // Alias para compatibilidade
   empresaId: string;
   ambienteId?: string; // Ambiente específico para cozinheiros
+  telefone?: string;
+  endereco?: string;
+  fotoUrl?: string;
   iat?: number;
   exp?: number;
 }

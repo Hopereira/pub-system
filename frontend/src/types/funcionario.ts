@@ -6,6 +6,9 @@ export interface Funcionario {
   email: string;
   cargo: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHEIRO' | 'BARTENDER';
   status: 'ATIVO' | 'INATIVO';
-  criadoEm: string;
-  atualizadoEm: string;
+  telefone?: string;
+  endereco?: string;
+  fotoUrl?: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
 }

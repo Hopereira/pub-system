@@ -8,7 +8,9 @@ import {
   Delete,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
+import { AlterarSenhaDto } from './dto/alterar-senha.dto';
 import { FuncionarioService } from './funcionario.service';
 import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
 import { UpdateFuncionarioDto } from './dto/update-funcionario.dto';
@@ -98,6 +100,27 @@ export class FuncionarioController {
   })
   findAll() {
     return this.funcionarioService.findAll();
+  }
+
+  // --- ALTERAR PRÓPRIA SENHA ---
+  @Patch('alterar-senha')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Altera a senha do próprio funcionário logado' })
+  @ApiResponse({
+    status: 200,
+    description: 'Senha alterada com sucesso.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Senha atual incorreta.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Não autenticado.',
+  })
+  alterarSenha(@Request() req: any, @Body() alterarSenhaDto: AlterarSenhaDto) {
+    return this.funcionarioService.alterarSenha(req.user.id, alterarSenhaDto);
   }
 
   // --- BUSCAR UM FUNCIONÁRIO POR ID ---

@@ -25,6 +25,7 @@ import { getFuncionarios, deleteFuncionario } from '@/services/funcionarioServic
 import { turnoService } from '@/services/turnoService';
 import FuncionariosTable from './FuncionariosTable';
 import FuncionarioFormDialog from './FuncionarioFormDialog';
+import FuncionarioDetailsDrawer from './FuncionarioDetailsDrawer';
 
 export default function FuncionarioPageClient() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -38,6 +39,10 @@ export default function FuncionarioPageClient() {
   const [funcionarioToDelete, setFuncionarioToDelete] = useState<Funcionario | null>(null);
   const [hasTurnoAtivo, setHasTurnoAtivo] = useState(false);
   const [isCheckingTurno, setIsCheckingTurno] = useState(false);
+
+  // --- Estados para o drawer de detalhes ---
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
+  const [funcionarioToView, setFuncionarioToView] = useState<Funcionario | null>(null);
 
   const fetchFuncionarios = useCallback(async () => {
     try {
@@ -87,6 +92,18 @@ export default function FuncionarioPageClient() {
   const handleOpenEditDialog = (funcionario: Funcionario) => {
     setFuncionarioToEdit(funcionario);
     setIsFormDialogOpen(true);
+  };
+
+  const handleViewDetails = (funcionario: Funcionario) => {
+    setFuncionarioToView(funcionario);
+    setIsDetailsDrawerOpen(true);
+  };
+
+  const handleUpdateFromDrawer = (updatedFuncionario: Funcionario) => {
+    setFuncionarios(current =>
+      current.map(f => (f.id === updatedFuncionario.id ? updatedFuncionario : f))
+    );
+    setFuncionarioToView(updatedFuncionario);
   };
 
   // --- Funções para controlar a exclusão ---
@@ -156,7 +173,14 @@ export default function FuncionarioPageClient() {
       );
     }
     // Passamos as duas funções para a tabela
-    return <FuncionariosTable funcionarios={funcionarios} onEdit={handleOpenEditDialog} onDelete={handleOpenDeleteDialog} />;
+    return (
+      <FuncionariosTable
+        funcionarios={funcionarios}
+        onEdit={handleOpenEditDialog}
+        onDelete={handleOpenDeleteDialog}
+        onViewDetails={handleViewDetails}
+      />
+    );
   };
 
   return (
@@ -195,11 +219,12 @@ export default function FuncionarioPageClient() {
                 {hasTurnoAtivo ? (
                   <div className="space-y-3">
                     <p>
-                      O funcionário <span className="font-bold">{funcionarioToDelete?.nome}</span> está 
-                      <span className="text-orange-500 font-semibold"> atualmente trabalhando</span> (turno ativo).
+                      O funcionário <span className="font-bold">{funcionarioToDelete?.nome}</span> está{' '}
+                      <span className="text-orange-500 font-semibold">atualmente trabalhando</span> (turno ativo).
                     </p>
                     <p>
-                      Para excluir este funcionário, é necessário que ele faça <span className="font-semibold">check-out</span> primeiro.
+                      Para excluir este funcionário, é necessário que ele faça{' '}
+                      <span className="font-semibold">check-out</span> primeiro.
                     </p>
                     <div className="bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md p-3 mt-2">
                       <p className="text-sm text-orange-700 dark:text-orange-300">
@@ -209,7 +234,7 @@ export default function FuncionarioPageClient() {
                   </div>
                 ) : (
                   <p>
-                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário 
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o funcionário{' '}
                     <span className="font-bold"> {funcionarioToDelete?.nome}</span> e todos os seus registros associados.
                   </p>
                 )}
@@ -229,6 +254,13 @@ export default function FuncionarioPageClient() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* --- Drawer de detalhes do funcionário --- */}
+      <FuncionarioDetailsDrawer
+        funcionario={funcionarioToView}
+        open={isDetailsDrawerOpen}
+        onOpenChange={setIsDetailsDrawerOpen}
+        onUpdate={handleUpdateFromDrawer}
+      />
     </div>
   );
 }

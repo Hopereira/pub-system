@@ -19,10 +19,11 @@ import { Pencil, Trash2 } from 'lucide-react';
 interface FuncionariosTableProps {
   funcionarios: Funcionario[];
   onEdit: (funcionario: Funcionario) => void;
-  onDelete: (funcionario: Funcionario) => void; // NOVO: Prop para lidar com a exclusão
+  onDelete: (funcionario: Funcionario) => void;
+  onViewDetails: (funcionario: Funcionario) => void;
 }
 
-export default function FuncionariosTable({ funcionarios, onEdit, onDelete }: FuncionariosTableProps) {
+export default function FuncionariosTable({ funcionarios, onEdit, onDelete, onViewDetails }: FuncionariosTableProps) {
   return (
     <div className="rounded-lg border">
       <Table>
@@ -45,7 +46,12 @@ export default function FuncionariosTable({ funcionarios, onEdit, onDelete }: Fu
           ) : (
             funcionarios.map((funcionario) => (
               <TableRow key={funcionario.id}>
-                <TableCell className="font-medium">{funcionario.nome}</TableCell>
+                <TableCell 
+                  className="font-medium text-primary cursor-pointer hover:underline"
+                  onClick={() => onViewDetails(funcionario)}
+                >
+                  {funcionario.nome}
+                </TableCell>
                 <TableCell>{funcionario.email}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{funcionario.cargo}</Badge>

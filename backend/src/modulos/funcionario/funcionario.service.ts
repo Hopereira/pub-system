@@ -7,6 +7,7 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,7 @@ import * as bcrypt from 'bcrypt';
 
 import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
 import { UpdateFuncionarioDto } from './dto/update-funcionario.dto';
+import { AlterarSenhaDto } from './dto/alterar-senha.dto';
 import { Funcionario } from './entities/funcionario.entity';
 import { Cargo } from './enums/cargo.enum';
 
@@ -168,5 +170,42 @@ export class FuncionarioService implements OnModuleInit {
       throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
     }
     await this.funcionarioRepository.remove(funcionario);
+  }
+
+  /**
+   * Altera a senha do próprio funcionário logado
+   */
+  async alterarSenha(
+    funcionarioId: string,
+    alterarSenhaDto: AlterarSenhaDto,
+  ): Promise<{ message: string }> {
+    // Busca o funcionário com a senha (que normalmente não é retornada)
+    const funcionario = await this.funcionarioRepository
+      .createQueryBuilder('funcionario')
+      .where('funcionario.id = :id', { id: funcionarioId })
+      .addSelect('funcionario.senha')
+      .getOne();
+
+    if (!funcionario) {
+      throw new NotFoundException('Funcionário não encontrado.');
+    }
+
+    // Verifica se a senha atual está correta
+    const senhaCorreta = await bcrypt.compare(
+      alterarSenhaDto.senhaAtual,
+      funcionario.senha,
+    );
+
+    if (!senhaCorreta) {
+      throw new BadRequestException('Senha atual incorreta.');
+    }
+
+    // Gera hash da nova senha e salva
+    const novaSenhaHash = await bcrypt.hash(alterarSenhaDto.novaSenha, 10);
+    funcionario.senha = novaSenhaHash;
+    await this.funcionarioRepository.save(funcionario);
+
+    this.logger.log(`🔐 Funcionário ${funcionarioId} alterou sua senha`);
+    return { message: 'Senha alterada com sucesso!' };
   }
 }

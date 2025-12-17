@@ -43,6 +43,15 @@ export class Funcionario {
   })
   status: FuncionarioStatus;
 
+  @Column({ nullable: true })
+  telefone: string;
+
+  @Column({ nullable: true })
+  endereco: string;
+
+  @Column({ nullable: true, name: 'foto_url' })
+  fotoUrl: string;
+
   // ✅ CORREÇÃO DBA: Adicionada relação ManyToOne para integridade referencial
   @Column({ type: 'uuid', nullable: true, name: 'empresa_id' })
   empresaId: string;

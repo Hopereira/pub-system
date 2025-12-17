@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTurno } from '@/context/TurnoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   User, 
   Mail, 
@@ -18,7 +19,12 @@ import {
   Key,
   CheckCircle,
   XCircle,
-  Building2
+  Phone,
+  MapPin,
+  Camera,
+  Pencil,
+  Save,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
@@ -26,10 +32,62 @@ import api from '@/services/api';
 export default function PerfilPage() {
   const { user, logout } = useAuth();
   const { turnoAtivo, temCheckIn } = useTurno();
+  
+  // Estados para alteração de senha
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [alterandoSenha, setAlterandoSenha] = useState(false);
+
+  // Estados para edição de perfil
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [telefone, setTelefone] = useState('');
+  const [endereco, setEndereco] = useState('');
+  const [fotoUrl, setFotoUrl] = useState('');
+
+  // Carregar dados do usuário
+  useEffect(() => {
+    if (user) {
+      setTelefone(user.telefone || '');
+      setEndereco(user.endereco || '');
+      setFotoUrl(user.fotoUrl || '');
+    }
+  }, [user]);
+
+  const getInitials = (nome: string) => {
+    return nome
+      .split(' ')
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+  };
+
+  const handleSavePerfil = async () => {
+    setIsSaving(true);
+    try {
+      await api.patch(`/funcionarios/${user?.id}`, {
+        telefone,
+        endereco,
+        fotoUrl,
+      });
+      toast.success('Perfil atualizado com sucesso!');
+      setIsEditing(false);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Erro ao atualizar perfil');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setTelefone(user?.telefone || '');
+    setEndereco(user?.endereco || '');
+    setFotoUrl(user?.fotoUrl || '');
+    setIsEditing(false);
+  };
 
   const handleAlterarSenha = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,15 +149,44 @@ export default function PerfilPage() {
       {/* Informações do Usuário */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Informações Pessoais
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Informações Pessoais
+            </div>
+            {!isEditing ? (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={handleSavePerfil} disabled={isSaving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {isSaving ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-8 w-8 text-primary" />
+            <div className="relative">
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={fotoUrl} alt={user?.nome} />
+                <AvatarFallback className="text-xl bg-primary/10">
+                  {user?.nome ? getInitials(user.nome) : <User className="h-8 w-8" />}
+                </AvatarFallback>
+              </Avatar>
+              {isEditing && (
+                <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5">
+                  <Camera className="h-3 w-3 text-white" />
+                </div>
+              )}
             </div>
             <div>
               <h2 className="text-xl font-semibold">{user?.nome}</h2>
@@ -111,17 +198,63 @@ export default function PerfilPage() {
 
           <Separator />
 
-          <div className="grid gap-3">
+          <div className="grid gap-4">
             <div className="flex items-center gap-3 text-sm">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Email:</span>
+              <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground min-w-[70px]">Email:</span>
               <span>{user?.email}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Briefcase className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Cargo:</span>
+              <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground min-w-[70px]">Cargo:</span>
               <span>{getCargoLabel(user?.cargo || '')}</span>
             </div>
+            
+            {/* Telefone */}
+            <div className="flex items-center gap-3 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground min-w-[70px]">Telefone:</span>
+              {isEditing ? (
+                <Input
+                  value={telefone}
+                  onChange={(e) => setTelefone(e.target.value)}
+                  placeholder="(11) 99999-9999"
+                  className="flex-1"
+                />
+              ) : (
+                <span>{telefone || <span className="text-muted-foreground italic">Não informado</span>}</span>
+              )}
+            </div>
+
+            {/* Endereço */}
+            <div className="flex items-start gap-3 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+              <span className="text-muted-foreground min-w-[70px]">Endereço:</span>
+              {isEditing ? (
+                <Input
+                  value={endereco}
+                  onChange={(e) => setEndereco(e.target.value)}
+                  placeholder="Rua, número, bairro, cidade"
+                  className="flex-1"
+                />
+              ) : (
+                <span>{endereco || <span className="text-muted-foreground italic">Não informado</span>}</span>
+              )}
+            </div>
+
+            {/* URL da Foto (apenas em modo edição) */}
+            {isEditing && (
+              <div className="flex items-center gap-3 text-sm">
+                <Camera className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground min-w-[70px]">Foto URL:</span>
+                <Input
+                  value={fotoUrl}
+                  onChange={(e) => setFotoUrl(e.target.value)}
+                  placeholder="https://exemplo.com/foto.jpg"
+                  className="flex-1"
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
