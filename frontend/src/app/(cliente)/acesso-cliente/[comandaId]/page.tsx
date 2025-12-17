@@ -78,21 +78,23 @@ export default function ComandaClientePage() {
     if (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA) {
         return (
             <>
-                <div className="flex justify-center items-center h-screen bg-slate-50 p-4">
-                    <Card className="max-w-md w-full text-center p-6 animate-fade-in">
-                        <CardHeader>
-                            <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-                            <CardTitle className="text-2xl mt-4">Tudo Certo!</CardTitle>
+                <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+                    <Card className="max-w-md w-full text-center p-8 animate-fade-in shadow-2xl border-0">
+                        <CardHeader className="pb-2">
+                            <div className="mx-auto h-24 w-24 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                                <CheckCircle className="h-16 w-16 text-green-500" />
+                            </div>
+                            <CardTitle className="text-3xl font-bold text-green-800">Tudo Certo!</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-muted-foreground mb-4">Sua comanda foi paga com sucesso. Agradecemos a sua visita!</p>
-                            <Button 
-                                onClick={() => router.push('/')} 
-                                variant="outline"
-                                className="mt-4"
-                            >
-                                Portal do Cliente
-                            </Button>
+                        <CardContent className="space-y-4">
+                            <p className="text-lg text-gray-600">
+                                Sua comanda foi paga com sucesso. Agradecemos a sua visita!
+                            </p>
+                            <div className="py-6">
+                                <p className="text-2xl font-semibold text-primary">
+                                    🍻 Volte Sempre! 🍻
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

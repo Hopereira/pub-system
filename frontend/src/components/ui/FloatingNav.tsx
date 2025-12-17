@@ -2,10 +2,12 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Home } from 'lucide-react';
+import { getPublicComandaById } from '@/services/comandaService';
 
 // Define a estrutura de cada link de navegação
 type NavLink = {
@@ -26,12 +28,26 @@ const portalLink: NavLink = {
 export function FloatingNav() {
   const params = useParams();
   const pathname = usePathname();
+  const [comandaPaga, setComandaPaga] = useState(false);
 
   const idParam = params.comandaId || params.id;
   const comandaId = Array.isArray(idParam) ? idParam[0] : idParam;
 
-  // Não mostra nada se já estiver no portal ou não tiver comandaId
-  if (!comandaId || pathname.startsWith('/portal-cliente')) {
+  // Verifica se a comanda está paga/fechada
+  useEffect(() => {
+    if (comandaId) {
+      getPublicComandaById(comandaId).then(comanda => {
+        if (comanda && (comanda.status === 'PAGA' || comanda.status === 'FECHADA')) {
+          setComandaPaga(true);
+        }
+      }).catch(() => {
+        // Ignora erros
+      });
+    }
+  }, [comandaId]);
+
+  // Não mostra nada se já estiver no portal, não tiver comandaId, ou comanda estiver paga
+  if (!comandaId || pathname.startsWith('/portal-cliente') || comandaPaga) {
     return null;
   }
 
