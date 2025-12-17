@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator // Ícones importados
+    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator, User // Ícones importados
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -60,6 +60,9 @@ const baseNavLinks: NavLink[] = [
   { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'] },
   { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] }, // Rota corrigida
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
+  
+  // --- Perfil (todos os cargos) ---
+  { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'] },
 ];
 
 export function Sidebar() {
