@@ -58,6 +58,25 @@ export default function ComandaClientePage() {
             return () => clearTimeout(timer);
         }
     }, [comanda, avaliacaoJaExibida]);
+
+    // Bloqueia o botão voltar do navegador quando comanda está paga
+    useEffect(() => {
+        if (comanda && (comanda.status === ComandaStatus.PAGA || comanda.status === ComandaStatus.FECHADA)) {
+            // Substitui o histórico atual para impedir voltar
+            window.history.pushState(null, '', window.location.href);
+            
+            const handlePopState = () => {
+                // Quando tentar voltar, empurra de novo para frente
+                window.history.pushState(null, '', window.location.href);
+            };
+            
+            window.addEventListener('popstate', handlePopState);
+            
+            return () => {
+                window.removeEventListener('popstate', handlePopState);
+            };
+        }
+    }, [comanda]);
     
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen bg-slate-50">Carregando comanda...</div>;
