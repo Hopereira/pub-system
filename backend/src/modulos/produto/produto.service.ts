@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+// import { CACHE_MANAGER } from '@nestjs/cache-manager';
+// import { Cache } from 'cache-manager';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
@@ -21,8 +21,8 @@ export class ProdutoService {
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
     private readonly storageService: GcsStorageService,
-    @Inject(CACHE_MANAGER)
-    private cacheManager: Cache,
+    // @Inject(CACHE_MANAGER)
+    // private cacheManager: Cache,
   ) {}
 
   // --- 3. MÉTODO 'CREATE' ATUALIZADO ---
@@ -106,7 +106,7 @@ export class ProdutoService {
     const updatedProduto = await this.produtoRepository.save(produto);
     
     // Invalidar cache ao atualizar produto
-    await this.invalidateProductCache();
+    // await this.invalidateProductCache();
     
     return updatedProduto;
   }
@@ -136,7 +136,7 @@ export class ProdutoService {
     const removedProduto = await this.produtoRepository.save(produto);
     
     // Invalidar cache ao remover produto
-    await this.invalidateProductCache();
+    // await this.invalidateProductCache();
     
     return removedProduto;
   }
@@ -146,16 +146,16 @@ export class ProdutoService {
     const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
     // Criar chave de cache única baseada nos parâmetros
-    const cacheKey = `produtos:page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`;
+    // const cacheKey = `produtos:page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`;
     
     // Tentar buscar do cache
-    const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
-    }
+    // const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
+    // if (cached) {
+    //   this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+    //   return cached;
+    // }
     
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
+    // this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     const [data, total] = await this.produtoRepository.findAndCount({
       where: { ativo: true },
@@ -170,23 +170,23 @@ export class ProdutoService {
     const response = createPaginatedResponse(data, total, page, limit);
     
     // Armazenar no cache por 1 hora
-    await this.cacheManager.set(cacheKey, response, 3600);
+    // await this.cacheManager.set(cacheKey, response, 3600);
 
     return response;
   }
 
   // Método para buscar todos sem paginação (uso interno) com cache
   async findAllNoPagination(): Promise<Produto[]> {
-    const cacheKey = 'produtos:all:ativos';
+    // const cacheKey = 'produtos:all:ativos';
     
     // Tentar buscar do cache
-    const cached = await this.cacheManager.get<Produto[]>(cacheKey);
-    if (cached) {
-      this.logger.debug('🎯 Cache HIT: produtos:all:ativos');
-      return cached;
-    }
+    // const cached = await this.cacheManager.get<Produto[]>(cacheKey);
+    // if (cached) {
+    //   this.logger.debug('🎯 Cache HIT: produtos:all:ativos');
+    //   return cached;
+    // }
     
-    this.logger.debug('❌ Cache MISS: produtos:all:ativos');
+    // this.logger.debug('❌ Cache MISS: produtos:all:ativos');
     
     const produtos = await this.produtoRepository.find({
       where: { ativo: true },
@@ -195,19 +195,19 @@ export class ProdutoService {
     });
     
     // Armazenar no cache por 1 hora
-    await this.cacheManager.set(cacheKey, produtos, 3600);
+    // await this.cacheManager.set(cacheKey, produtos, 3600);
     
     return produtos;
   }
 
   // Método privado para invalidar cache de produtos
-  private async invalidateProductCache(): Promise<void> {
-    const keys = await this.cacheManager.store.keys('produtos:*');
-    if (keys && keys.length > 0) {
-      await Promise.all(keys.map(key => this.cacheManager.del(key)));
-      this.logger.log(`🗑️ Cache invalidado: ${keys.length} chaves de produtos`);
-    }
-  }
+  // private async invalidateProductCache(): Promise<void> {
+  //   const keys = await this.cacheManager.store.keys('produtos:*');
+  //   if (keys && keys.length > 0) {
+  //     await Promise.all(keys.map(key => this.cacheManager.del(key)));
+  //     this.logger.log(`🗑️ Cache invalidado: ${keys.length} chaves de produtos`);
+  //   }
+  // }
 
   async findOne(id: string): Promise<Produto> {
     const produto = await this.produtoRepository.findOne({
