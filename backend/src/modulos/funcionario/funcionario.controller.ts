@@ -158,33 +158,6 @@ export class FuncionarioController {
     return this.funcionarioService.uploadFoto(req.user.id, file);
   }
 
-  // --- UPLOAD DE FOTO POR ADMIN ---
-  @Patch(':id/upload-foto')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload de foto de um funcionário (Admin)' })
-  @ApiResponse({ status: 200, description: 'Foto enviada com sucesso.' })
-  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
-  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas administradores.' })
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadFoto(
-    @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
-  ) {
-    this.logger.log(`Admin enviando foto para funcionário ${id}. Fazendo upload...`);
-    return this.funcionarioService.uploadFoto(id, file);
-  }
-
   // --- BUSCAR UM FUNCIONÁRIO POR ID ---
   @Get(':id')
   @ApiBearerAuth()
@@ -243,5 +216,32 @@ export class FuncionarioController {
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.funcionarioService.remove(id);
+  }
+
+  // --- UPLOAD DE FOTO POR ADMIN ---
+  @Patch(':id/upload-foto')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload de foto de um funcionário (Admin)' })
+  @ApiResponse({ status: 200, description: 'Foto enviada com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas administradores.' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFotoAdmin(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    this.logger.log(`Admin enviando foto para funcionário ${id}. Fazendo upload...`);
+    return this.funcionarioService.uploadFoto(id, file);
   }
 }
