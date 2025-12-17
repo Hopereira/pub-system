@@ -14,6 +14,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +22,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiConsumes,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
@@ -33,6 +35,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 // A função generateUniqueFilename não é mais necessária aqui, pois o GCS cuida disso.
 
@@ -118,13 +121,17 @@ export class ProdutoController {
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Lista todos os produtos (rota pública)' })
+  @ApiOperation({ summary: 'Lista produtos com paginação (rota pública)' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número da página (padrão: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Itens por página (padrão: 20, máx: 100)' })
+  @ApiQuery({ name: 'sortBy', required: false, type: String, description: 'Campo para ordenação (padrão: nome)' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'], description: 'Direção da ordenação (padrão: ASC)' })
   @ApiResponse({
     status: 200,
-    description: 'Lista de produtos retornada com sucesso.',
+    description: 'Lista paginada de produtos retornada com sucesso.',
   })
-  findAll() {
-    return this.produtoService.findAll();
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.produtoService.findAll(paginationDto);
   }
 
   @Get(':id')

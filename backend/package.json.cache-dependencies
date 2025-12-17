@@ -1,0 +1,10 @@
+{
+  "dependencies_to_add": {
+    "@nestjs/cache-manager": "^2.1.1",
+    "cache-manager": "^5.2.4",
+    "cache-manager-redis-store": "^3.0.1",
+    "redis": "^4.6.10"
+  },
+  "installation_command": "npm install @nestjs/cache-manager cache-manager cache-manager-redis-store redis",
+  "note": "Execute o comando acima no diretório backend/ para instalar as dependências de cache Redis"
+}

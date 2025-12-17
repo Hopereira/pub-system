@@ -75,10 +75,16 @@ export class PedidoService {
       throw new BadRequestException('Um pedido não pode ser criado sem itens.');
     }
 
-    const itensPedidoPromise = itens.map(async (itemDto) => {
-      const produto = await this.produtoRepository.findOne({
-        where: { id: itemDto.produtoId },
-      });
+    // ✅ OTIMIZAÇÃO: Buscar todos os produtos de uma vez (resolve N+1 query)
+    const produtoIds = itens.map(item => item.produtoId);
+    const produtos = await this.produtoRepository.findByIds(produtoIds);
+    
+    // Criar mapa para lookup O(1)
+    const produtoMap = new Map(produtos.map(p => [p.id, p]));
+    
+    // Validar e criar itens
+    const itensPedido = itens.map(itemDto => {
+      const produto = produtoMap.get(itemDto.produtoId);
       if (!produto) {
         this.logger.warn(
           `⚠️ Tentativa de criar item de pedido para produto inexistente: ${itemDto.produtoId}`,
@@ -95,8 +101,6 @@ export class PedidoService {
         status: PedidoStatus.FEITO,
       });
     });
-
-    const itensPedido = await Promise.all(itensPedidoPromise);
 
     // Usar Decimal.js para cálculos monetários precisos
     const total = itensPedido.reduce((sum, item) => {
