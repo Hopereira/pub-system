@@ -112,6 +112,23 @@ export class FuncionarioController {
     return this.funcionarioService.findAll();
   }
 
+  // --- BUSCAR PRÓPRIO PERFIL ---
+  @Get('meu-perfil')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Busca os dados do próprio funcionário logado' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dados do perfil retornados com sucesso.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Não autenticado.',
+  })
+  async getMeuPerfil(@Request() req: any) {
+    return this.funcionarioService.findOne(req.user.id);
+  }
+
   // --- ALTERAR PRÓPRIA SENHA ---
   @Patch('alterar-senha')
   @ApiBearerAuth()

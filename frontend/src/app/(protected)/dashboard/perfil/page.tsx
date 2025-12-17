@@ -47,14 +47,34 @@ export default function PerfilPage() {
   const [endereco, setEndereco] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
   const [isUploadingFoto, setIsUploadingFoto] = useState(false);
+  const [isLoadingPerfil, setIsLoadingPerfil] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Carregar dados do usuário
+  // Carregar dados atualizados do perfil do backend
+  const carregarPerfil = async () => {
+    try {
+      setIsLoadingPerfil(true);
+      const response = await api.get('/funcionarios/meu-perfil');
+      const perfil = response.data;
+      setTelefone(perfil.telefone || '');
+      setEndereco(perfil.endereco || '');
+      setFotoUrl(perfil.fotoUrl || '');
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+      // Fallback para dados do JWT se falhar
+      if (user) {
+        setTelefone(user.telefone || '');
+        setEndereco(user.endereco || '');
+        setFotoUrl(user.fotoUrl || '');
+      }
+    } finally {
+      setIsLoadingPerfil(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
-      setTelefone(user.telefone || '');
-      setEndereco(user.endereco || '');
-      setFotoUrl(user.fotoUrl || '');
+      carregarPerfil();
     }
   }, [user]);
 
@@ -85,9 +105,7 @@ export default function PerfilPage() {
   };
 
   const handleCancelEdit = () => {
-    setTelefone(user?.telefone || '');
-    setEndereco(user?.endereco || '');
-    setFotoUrl(user?.fotoUrl || '');
+    carregarPerfil(); // Recarrega dados do backend
     setIsEditing(false);
   };
 
