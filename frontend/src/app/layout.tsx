@@ -7,6 +7,7 @@ import { TurnoProvider } from "@/context/TurnoContext";
 import { CaixaProvider } from "@/context/CaixaContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,16 +26,18 @@ export default function RootLayout({
     <html lang="pt-br">
       {/* ...e vem para a tag <body> */}
       <body className={inter.className} suppressHydrationWarning>
-        <AuthProvider>
-          <TurnoProvider>
-            <CaixaProvider>
-              <SocketProvider>
-                {children}
-              </SocketProvider>
-            </CaixaProvider>
-          </TurnoProvider>
-        </AuthProvider>
-        <Toaster richColors />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <AuthProvider>
+            <TurnoProvider>
+              <CaixaProvider>
+                <SocketProvider>
+                  {children}
+                </SocketProvider>
+              </CaixaProvider>
+            </TurnoProvider>
+          </AuthProvider>
+          <Toaster richColors />
+        </ThemeProvider>
       </body>
     </html>
   );
