@@ -19,6 +19,7 @@ import { UpdateFuncionarioDto } from './dto/update-funcionario.dto';
 import { AlterarSenhaDto } from './dto/alterar-senha.dto';
 import { Funcionario } from './entities/funcionario.entity';
 import { Cargo } from './enums/cargo.enum';
+import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
 
 @Injectable()
 export class FuncionarioService implements OnModuleInit {
@@ -28,6 +29,7 @@ export class FuncionarioService implements OnModuleInit {
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly configService: ConfigService,
+    private readonly storageService: GcsStorageService,
   ) {}
 
   async onModuleInit() {
@@ -207,5 +209,39 @@ export class FuncionarioService implements OnModuleInit {
 
     this.logger.log(`🔐 Funcionário ${funcionarioId} alterou sua senha`);
     return { message: 'Senha alterada com sucesso!' };
+  }
+
+  /**
+   * Upload de foto do funcionário para Google Cloud Storage
+   */
+  async uploadFoto(
+    funcionarioId: string,
+    file: Express.Multer.File,
+  ): Promise<Funcionario> {
+    const funcionario = await this.findOne(funcionarioId);
+    if (!funcionario) {
+      throw new NotFoundException('Funcionário não encontrado.');
+    }
+
+    // Se já existir uma foto antiga, apaga do GCS
+    if (funcionario.fotoUrl) {
+      try {
+        await this.storageService.deleteFile(funcionario.fotoUrl);
+        this.logger.log(`🗑️ Foto antiga do funcionário ${funcionarioId} apagada do GCS.`);
+      } catch (error) {
+        this.logger.error(
+          `Falha ao apagar foto antiga do GCS: ${funcionario.fotoUrl}`,
+          error,
+        );
+      }
+    }
+
+    // Faz upload do novo arquivo para a pasta 'funcionarios'
+    const novaUrl = await this.storageService.uploadFile(file, 'funcionarios');
+
+    // Atualiza a URL no registro do funcionário
+    funcionario.fotoUrl = novaUrl;
+    this.logger.log(`📸 Foto do funcionário ${funcionarioId} atualizada: ${novaUrl}`);
+    return this.funcionarioRepository.save(funcionario);
   }
 }

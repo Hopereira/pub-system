@@ -9,7 +9,14 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Request,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  Logger,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AlterarSenhaDto } from './dto/alterar-senha.dto';
 import { FuncionarioService } from './funcionario.service';
 import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
@@ -25,11 +32,14 @@ import {
   ApiOperation,
   ApiResponse,
   ApiTags,
+  ApiConsumes,
 } from '@nestjs/swagger';
 
 @ApiTags('Funcionários') // Agrupa todos os endpoints sob a tag "Funcionários"
 @Controller('funcionarios')
 export class FuncionarioController {
+  private readonly logger = new Logger(FuncionarioController.name);
+
   constructor(private readonly funcionarioService: FuncionarioService) {}
 
   // --- VERIFICAR SE É PRIMEIRO ACESSO ---
@@ -121,6 +131,58 @@ export class FuncionarioController {
   })
   alterarSenha(@Request() req: any, @Body() alterarSenhaDto: AlterarSenhaDto) {
     return this.funcionarioService.alterarSenha(req.user.id, alterarSenhaDto);
+  }
+
+  // --- UPLOAD DE FOTO DO PRÓPRIO FUNCIONÁRIO ---
+  @Patch('upload-foto')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload de foto do próprio funcionário logado' })
+  @ApiResponse({ status: 200, description: 'Foto enviada com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFotoPropria(
+    @Request() req: any,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    this.logger.log(`Recebida foto do funcionário ${req.user.id}. Fazendo upload...`);
+    return this.funcionarioService.uploadFoto(req.user.id, file);
+  }
+
+  // --- UPLOAD DE FOTO POR ADMIN ---
+  @Patch(':id/upload-foto')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN)
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload de foto de um funcionário (Admin)' })
+  @ApiResponse({ status: 200, description: 'Foto enviada com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Arquivo inválido ou muito grande.' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas administradores.' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadFoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp|gif)' }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    this.logger.log(`Admin enviando foto para funcionário ${id}. Fazendo upload...`);
+    return this.funcionarioService.uploadFoto(id, file);
   }
 
   // --- BUSCAR UM FUNCIONÁRIO POR ID ---

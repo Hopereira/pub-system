@@ -3,10 +3,11 @@ import { FuncionarioService } from './funcionario.service';
 import { FuncionarioController } from './funcionario.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Funcionario } from './entities/funcionario.entity';
-import { ConfigModule } from '@nestjs/config'; // Importar
+import { ConfigModule } from '@nestjs/config';
+import { StorageModule } from 'src/shared/storage/storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Funcionario]), ConfigModule],
+  imports: [TypeOrmModule.forFeature([Funcionario]), ConfigModule, StorageModule],
   controllers: [FuncionarioController],
   providers: [FuncionarioService],
   exports: [FuncionarioService],

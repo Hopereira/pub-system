@@ -48,3 +48,37 @@ export const deleteFuncionario = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+// Upload de foto do próprio funcionário logado
+export const uploadFotoPropria = async (file: File): Promise<Funcionario> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.patch<Funcionario>('/funcionarios/upload-foto', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao fazer upload da foto:', error);
+    throw error;
+  }
+};
+
+// Upload de foto de um funcionário específico (Admin)
+export const uploadFotoFuncionario = async (id: string, file: File): Promise<Funcionario> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.patch<Funcionario>(`/funcionarios/${id}/upload-foto`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Erro ao fazer upload da foto do funcionário ${id}:`, error);
+    throw error;
+  }
+};

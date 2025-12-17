@@ -2,10 +2,10 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Funcionario } from '@/types/funcionario';
 import { UpdateFuncionarioDto } from '@/types/funcionario.dto';
-import { updateFuncionario } from '@/services/funcionarioService';
+import { updateFuncionario, uploadFotoFuncionario } from '@/services/funcionarioService';
 import {
   Sheet,
   SheetContent,
@@ -91,6 +91,8 @@ export default function FuncionarioDetailsDrawer({
   const [formData, setFormData] = useState<UpdateFuncionarioDto>({});
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [isUploadingFoto, setIsUploadingFoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (funcionario && open) {
@@ -165,6 +167,41 @@ export default function FuncionarioDetailsDrawer({
     setIsEditing(false);
   };
 
+  const handleFotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !funcionario) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Tipo de arquivo não permitido. Use: JPG, PNG, WEBP ou GIF');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo: 5MB');
+      return;
+    }
+
+    setIsUploadingFoto(true);
+    try {
+      const funcionarioAtualizado = await uploadFotoFuncionario(funcionario.id, file);
+      setFormData(prev => ({ ...prev, fotoUrl: funcionarioAtualizado.fotoUrl || '' }));
+      onUpdate(funcionarioAtualizado);
+      toast.success('Foto atualizada com sucesso!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao fazer upload da foto');
+    } finally {
+      setIsUploadingFoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   if (!funcionario) return null;
 
   return (
@@ -206,11 +243,27 @@ export default function FuncionarioDetailsDrawer({
                   {getInitials(funcionario.nome)}
                 </AvatarFallback>
               </Avatar>
-              {isEditing && (
-                <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5 cursor-pointer hover:bg-primary/80">
+              {/* Botão de upload de foto */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFotoChange}
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={handleFotoClick}
+                disabled={isUploadingFoto}
+                className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5 cursor-pointer hover:bg-primary/80 transition-colors disabled:opacity-50"
+                title="Alterar foto"
+              >
+                {isUploadingFoto ? (
+                  <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
                   <Camera className="h-3 w-3 text-white" />
-                </div>
-              )}
+                )}
+              </button>
             </div>
             <div className="flex-1">
               {isEditing ? (
@@ -320,28 +373,16 @@ export default function FuncionarioDetailsDrawer({
             </div>
           </div>
 
-          {/* URL da Foto (apenas em modo edição) */}
-          {isEditing && (
-            <>
-              <Separator />
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                  Foto do Perfil
-                </h3>
-                <div className="flex items-center gap-3">
-                  <Camera className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <Input
-                    value={formData.fotoUrl}
-                    onChange={(e) => handleChange('fotoUrl', e.target.value)}
-                    placeholder="https://exemplo.com/foto.jpg"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Cole a URL de uma imagem para usar como foto de perfil
-                </p>
-              </div>
-            </>
-          )}
+          {/* Dica de upload de foto */}
+          <Separator />
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+              Foto do Perfil
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Clique no ícone da câmera na foto para fazer upload de uma nova imagem
+            </p>
+          </div>
 
           {/* Alterar Senha (apenas em modo edição) */}
           {isEditing && (

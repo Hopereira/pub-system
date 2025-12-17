@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTurno } from '@/context/TurnoContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/services/api';
+import { uploadFotoPropria } from '@/services/funcionarioService';
 
 export default function PerfilPage() {
   const { user, logout } = useAuth();
@@ -45,6 +46,8 @@ export default function PerfilPage() {
   const [telefone, setTelefone] = useState('');
   const [endereco, setEndereco] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
+  const [isUploadingFoto, setIsUploadingFoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Carregar dados do usuário
   useEffect(() => {
@@ -87,6 +90,43 @@ export default function PerfilPage() {
     setEndereco(user?.endereco || '');
     setFotoUrl(user?.fotoUrl || '');
     setIsEditing(false);
+  };
+
+  const handleFotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Tipo de arquivo não permitido. Use: JPG, PNG, WEBP ou GIF');
+      return;
+    }
+
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo: 5MB');
+      return;
+    }
+
+    setIsUploadingFoto(true);
+    try {
+      const funcionarioAtualizado = await uploadFotoPropria(file);
+      setFotoUrl(funcionarioAtualizado.fotoUrl || '');
+      toast.success('Foto atualizada com sucesso!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao fazer upload da foto');
+    } finally {
+      setIsUploadingFoto(false);
+      // Limpar input para permitir selecionar o mesmo arquivo novamente
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleAlterarSenha = async (e: React.FormEvent) => {
@@ -182,11 +222,27 @@ export default function PerfilPage() {
                   {user?.nome ? getInitials(user.nome) : <User className="h-8 w-8" />}
                 </AvatarFallback>
               </Avatar>
-              {isEditing && (
-                <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5">
+              {/* Botão de upload de foto - sempre visível */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFotoChange}
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={handleFotoClick}
+                disabled={isUploadingFoto}
+                className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5 cursor-pointer hover:bg-primary/80 transition-colors disabled:opacity-50"
+                title="Alterar foto"
+              >
+                {isUploadingFoto ? (
+                  <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
                   <Camera className="h-3 w-3 text-white" />
-                </div>
-              )}
+                )}
+              </button>
             </div>
             <div>
               <h2 className="text-xl font-semibold">{user?.nome}</h2>
@@ -242,19 +298,13 @@ export default function PerfilPage() {
               )}
             </div>
 
-            {/* URL da Foto (apenas em modo edição) */}
-            {isEditing && (
-              <div className="flex items-center gap-3 text-sm">
-                <Camera className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-muted-foreground min-w-[70px]">Foto URL:</span>
-                <Input
-                  value={fotoUrl}
-                  onChange={(e) => setFotoUrl(e.target.value)}
-                  placeholder="https://exemplo.com/foto.jpg"
-                  className="flex-1"
-                />
-              </div>
-            )}
+            {/* Dica de upload de foto */}
+            <div className="flex items-center gap-3 text-sm">
+              <Camera className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground">
+                Clique no ícone da câmera na foto para alterar sua imagem
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
