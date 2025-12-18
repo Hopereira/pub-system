@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { usePlanFeatures, Feature } from '@/hooks/usePlanFeatures';
 import api from '@/services/api';
+import paymentService, { PaymentGateway, PaymentConfig } from '@/services/paymentService';
 import {
   Crown,
   Check,
@@ -21,6 +22,8 @@ import {
   Loader2,
   AlertCircle,
   ChevronLeft,
+  CreditCard,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -88,6 +91,7 @@ const FEATURE_LABELS: Record<string, string> = {
 
 export default function PlanUpgradePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { currentPlan, planInfo, loading: planLoading } = usePlanFeatures();
   const [comparison, setComparison] = useState<PlanComparison | null>(null);
@@ -95,10 +99,20 @@ export default function PlanUpgradePage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [gateways, setGateways] = useState<PaymentConfig[]>([]);
+  const [showGatewayModal, setShowGatewayModal] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | null>(null);
 
   useEffect(() => {
     loadComparison();
-  }, []);
+    loadGateways();
+    
+    // Verificar status do pagamento na URL
+    const status = searchParams.get('status');
+    if (status === 'success' || status === 'failure') {
+      setPaymentStatus(status);
+    }
+  }, [searchParams]);
 
   const loadComparison = async () => {
     try {
@@ -112,17 +126,56 @@ export default function PlanUpgradePage() {
     }
   };
 
+  const loadGateways = async () => {
+    try {
+      const data = await paymentService.getAvailableGateways();
+      setGateways(data);
+    } catch (error) {
+      console.error('Erro ao carregar gateways:', error);
+    }
+  };
+
   const handleUpgrade = async (targetPlan: string) => {
     if (targetPlan === currentPlan) return;
     
     setSelectedPlan(targetPlan);
-    setUpgrading(true);
     
-    // Simular processo de upgrade (em produção, integraria com gateway de pagamento)
-    setTimeout(() => {
+    // Se há gateways disponíveis, mostrar modal de seleção
+    if (gateways.length > 0) {
+      setShowGatewayModal(true);
+    } else {
+      alert('Nenhum gateway de pagamento configurado. Entre em contato com o suporte.');
+    }
+  };
+
+  const handleSelectGateway = async (gateway: PaymentGateway) => {
+    if (!selectedPlan || !user) return;
+    
+    setUpgrading(true);
+    setShowGatewayModal(false);
+    
+    try {
+      const result = await paymentService.createCheckout({
+        targetPlan: selectedPlan,
+        billingCycle,
+        gateway,
+        customer: {
+          email: user.email,
+          name: user.nome,
+        },
+      });
+
+      if (result.success && result.checkoutUrl) {
+        // Redirecionar para o checkout do gateway
+        window.location.href = result.checkoutUrl;
+      } else {
+        alert(result.error || 'Erro ao criar checkout');
+        setUpgrading(false);
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao processar pagamento');
       setUpgrading(false);
-      alert(`Upgrade para ${targetPlan} solicitado! Em produção, você seria redirecionado para o gateway de pagamento.`);
-    }, 1500);
+    }
   };
 
   const getPlanOrder = (plan: string): number => {
@@ -166,6 +219,39 @@ export default function PlanUpgradePage() {
           Escolha o plano ideal para o seu negócio. Upgrade ou downgrade a qualquer momento.
         </p>
       </div>
+
+      {/* Payment Status Banner */}
+      {paymentStatus === 'success' && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <Check className="h-5 w-5 text-green-500" />
+          <div>
+            <p className="font-medium text-green-800">Pagamento aprovado!</p>
+            <p className="text-sm text-green-600">Seu plano será atualizado em instantes.</p>
+          </div>
+          <button 
+            onClick={() => setPaymentStatus(null)} 
+            className="ml-auto text-green-500 hover:text-green-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {paymentStatus === 'failure' && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-500" />
+          <div>
+            <p className="font-medium text-red-800">Pagamento não aprovado</p>
+            <p className="text-sm text-red-600">Tente novamente ou escolha outro método de pagamento.</p>
+          </div>
+          <button 
+            onClick={() => setPaymentStatus(null)} 
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Current Plan Banner */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl p-6 mb-8 text-white">
@@ -448,6 +534,81 @@ export default function PlanUpgradePage() {
           Falar com Vendas
         </button>
       </div>
+
+      {/* Gateway Selection Modal */}
+      {showGatewayModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Escolha o método de pagamento</h3>
+              <button
+                onClick={() => setShowGatewayModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              Upgrade para <strong>{selectedPlan}</strong> - R$ {
+                billingCycle === 'monthly' 
+                  ? PLAN_PRICES[selectedPlan || 'FREE']?.monthly 
+                  : Math.round(PLAN_PRICES[selectedPlan || 'FREE']?.yearly / 12)
+              }/mês
+            </p>
+
+            <div className="space-y-3">
+              {gateways.map((gateway) => (
+                <button
+                  key={gateway.gateway}
+                  onClick={() => handleSelectGateway(gateway.gateway)}
+                  disabled={upgrading}
+                  className="w-full flex items-center gap-4 p-4 border rounded-lg hover:border-purple-500 hover:bg-purple-50 transition disabled:opacity-50"
+                >
+                  {gateway.logoUrl ? (
+                    <img src={gateway.logoUrl} alt={gateway.displayName} className="h-8 w-auto" />
+                  ) : (
+                    <CreditCard className="h-8 w-8 text-gray-400" />
+                  )}
+                  <div className="text-left flex-1">
+                    <p className="font-medium text-gray-900">{gateway.displayName || gateway.gateway}</p>
+                    {gateway.sandbox && (
+                      <p className="text-xs text-yellow-600">Modo teste</p>
+                    )}
+                  </div>
+                  <ExternalLink className="h-4 w-4 text-gray-400" />
+                </button>
+              ))}
+            </div>
+
+            {gateways.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>Nenhum método de pagamento disponível</p>
+                <p className="text-sm">Entre em contato com o suporte</p>
+              </div>
+            )}
+
+            <div className="mt-6 pt-4 border-t">
+              <p className="text-xs text-gray-500 text-center">
+                <Shield className="h-3 w-3 inline mr-1" />
+                Pagamento seguro processado pelo gateway selecionado
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {upgrading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
+            <p className="text-lg font-medium text-gray-900">Processando...</p>
+            <p className="text-gray-500">Você será redirecionado para o checkout</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

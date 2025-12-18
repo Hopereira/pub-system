@@ -24,7 +24,10 @@ import {
   Eye,
   AlertTriangle,
   Loader2,
+  CreditCard,
+  Settings,
 } from 'lucide-react';
+import Link from 'next/link';
 
 /**
  * Super Admin Dashboard - Painel do Dono da Plataforma SaaS
@@ -196,6 +199,13 @@ export default function SuperAdminPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Atualizar
           </button>
+          <Link
+            href="/super-admin/pagamentos"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+          >
+            <CreditCard className="w-4 h-4" />
+            Pagamentos
+          </Link>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"

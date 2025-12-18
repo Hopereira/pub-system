@@ -32,6 +32,7 @@ import { AuditModule } from './modulos/audit/audit.module';
 import { TenantModule, TenantRateLimitGuard } from './common/tenant';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
+import { PaymentModule } from './modulos/payment/payment.module';
 
 @Module({
   imports: [
@@ -159,6 +160,7 @@ import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.
     LoggerModule,
     JobsModule,
     TenantModule, // 🏢 Multi-tenancy: Contexto, Interceptor, Guard, Resolver
+    PaymentModule, // 💳 Pagamentos: Mercado Pago, PagSeguro, PicPay
   ],
   controllers: [],
   providers: [
