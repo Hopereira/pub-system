@@ -29,7 +29,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AuditModule } from './modulos/audit/audit.module';
-import { TenantModule } from './common/tenant';
+import { TenantModule, TenantRateLimitGuard } from './common/tenant';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 
@@ -162,10 +162,16 @@ import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.
   ],
   controllers: [],
   providers: [
-    // ✅ SEGURANÇA: Ativa CustomThrottlerGuard globalmente
+    // ✅ SEGURANÇA: Ativa CustomThrottlerGuard globalmente (rate limit por IP/usuário)
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
+    },
+    // ✅ MULTI-TENANCY: Rate Limiting por Tenant/Plano
+    // FREE: 20 req/min | BASIC: 60 | PRO: 100 | ENTERPRISE: 500
+    {
+      provide: APP_GUARD,
+      useClass: TenantRateLimitGuard,
     },
     RateLimitMonitorService,
   ],
