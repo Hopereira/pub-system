@@ -8,6 +8,7 @@ import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { Express } from 'express';
 import { PaginationDto, PaginatedResponse, createPaginatedResponse } from 'src/common/dto/pagination.dto';
 
@@ -23,6 +24,7 @@ export class ProdutoService {
     private readonly storageService: GcsStorageService,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
+    private readonly cacheInvalidationService: CacheInvalidationService,
   ) {}
 
   // --- 3. MÉTODO 'CREATE' ATUALIZADO ---
@@ -52,7 +54,12 @@ export class ProdutoService {
       this.logger.log(`Upload para GCS concluído. URL: ${produto.urlImagem}`);
     }
 
-    return this.produtoRepository.save(produto);
+    const savedProduto = await this.produtoRepository.save(produto);
+    
+    // Invalidar cache após criar produto
+    await this.cacheInvalidationService.invalidateProdutos();
+    
+    return savedProduto;
   }
 
   // --- 4. MÉTODO 'UPDATE' ATUALIZADO ---
@@ -105,8 +112,8 @@ export class ProdutoService {
 
     const updatedProduto = await this.produtoRepository.save(produto);
     
-    // Invalidar cache ao atualizar produto
-    await this.invalidateProductCache();
+    // Invalidar cache após atualizar produto
+    await this.cacheInvalidationService.invalidateProdutos();
     
     return updatedProduto;
   }
@@ -135,8 +142,8 @@ export class ProdutoService {
 
     const removedProduto = await this.produtoRepository.save(produto);
     
-    // Invalidar cache ao remover produto
-    await this.invalidateProductCache();
+    // Invalidar cache após remover produto
+    await this.cacheInvalidationService.invalidateProdutos();
     
     return removedProduto;
   }

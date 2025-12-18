@@ -27,6 +27,7 @@ import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { PaginationDto, PaginatedResponse } from '../../common/dto/pagination.dto';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import Decimal from 'decimal.js';
 
 @Injectable()
@@ -54,6 +55,7 @@ export class PedidoService {
     private readonly pedidosGateway: PedidosGateway,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
+    private readonly cacheInvalidationService: CacheInvalidationService,
   ) {}
 
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
@@ -129,6 +131,9 @@ export class PedidoService {
     this.logger.log(
       `✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`,
     );
+
+    // Invalidar cache após criar pedido
+    await this.cacheInvalidationService.invalidatePedidos();
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
 
@@ -216,6 +221,9 @@ export class PedidoService {
     this.logger.log(
       `✅ Pedido pelo garçom criado | ID: ${pedidoCompleto.id} | Garçom: ${garcomId} | Total: R$ ${total.toFixed(2)}`,
     );
+
+    // Invalidar cache após criar pedido
+    await this.cacheInvalidationService.invalidatePedidos();
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
 
@@ -436,6 +444,9 @@ export class PedidoService {
     }
 
     const itemAtualizado = await this.itemPedidoRepository.save(itemPedido);
+
+    // Invalidar cache após atualizar status do item
+    await this.cacheInvalidationService.invalidatePedidos();
 
     const pedidoPaiCompleto = await this.findOne(itemAtualizado.pedido.id);
     this.pedidosGateway.emitStatusAtualizado(pedidoPaiCompleto);

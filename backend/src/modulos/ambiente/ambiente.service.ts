@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 import { Ambiente } from './entities/ambiente.entity';
@@ -24,11 +25,17 @@ export class AmbienteService {
     private readonly ambienteRepository: Repository<Ambiente>,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
+    private readonly cacheInvalidationService: CacheInvalidationService,
   ) {}
 
-  create(createAmbienteDto: CreateAmbienteDto): Promise<Ambiente> {
+  async create(createAmbienteDto: CreateAmbienteDto): Promise<Ambiente> {
     const ambiente = this.ambienteRepository.create(createAmbienteDto);
-    return this.ambienteRepository.save(ambiente);
+    const savedAmbiente = await this.ambienteRepository.save(ambiente);
+    
+    // Invalidar cache após criar ambiente (afeta ambientes e produtos)
+    await this.cacheInvalidationService.invalidateAmbientes();
+    
+    return savedAmbiente;
   }
 
   // --- MÉTODO 'findAll' CORRIGIDO ---
@@ -95,13 +102,21 @@ export class AmbienteService {
     if (!ambiente) {
       throw new NotFoundException(`Ambiente com ID "${id}" não encontrado.`);
     }
-    return this.ambienteRepository.save(ambiente);
+    const updatedAmbiente = await this.ambienteRepository.save(ambiente);
+    
+    // Invalidar cache após atualizar ambiente (afeta ambientes e produtos)
+    await this.cacheInvalidationService.invalidateAmbientes();
+    
+    return updatedAmbiente;
   }
 
   async remove(id: string): Promise<void> {
     const ambiente = await this.findOne(id);
     try {
       await this.ambienteRepository.remove(ambiente);
+      
+      // Invalidar cache após remover ambiente (afeta ambientes e produtos)
+      await this.cacheInvalidationService.invalidateAmbientes();
     } catch (error) {
       if (error.code === '23503') {
         throw new ConflictException(

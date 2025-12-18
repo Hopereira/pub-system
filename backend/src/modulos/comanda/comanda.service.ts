@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 
 // Entidades de Módulos Associados
 import { Cliente } from '../cliente/entities/cliente.entity';
@@ -64,6 +65,7 @@ export class ComandaService {
     private readonly caixaService: CaixaService,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
+    private readonly cacheInvalidationService: CacheInvalidationService,
   ) {}
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -243,6 +245,9 @@ export class ComandaService {
       .then(async (novaComanda) => {
         // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
         const comandaCompleta = await this.findOne(novaComanda.id);
+        
+        // Invalidar cache após criar comanda (afeta comandas e mesas)
+        await this.cacheInvalidationService.invalidateComandas();
         
         // Emite evento WebSocket para notificar nova comanda
         this.pedidosGateway.emitNovaComanda(comandaCompleta);
@@ -615,6 +620,10 @@ export class ComandaService {
     }
 
     const comandaFechada = await this.comandaRepository.save(comanda);
+    
+    // Invalidar cache após fechar comanda (afeta comandas e mesas)
+    await this.cacheInvalidationService.invalidateComandas();
+    
     this.pedidosGateway.emitComandaAtualizada(comandaFechada);
 
     this.logger.log(`✅ Comanda ${id} fechada com sucesso`);
@@ -631,6 +640,10 @@ export class ComandaService {
       throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
     }
     const comandaAtualizada = await this.comandaRepository.save(comanda);
+    
+    // Invalidar cache após atualizar comanda
+    await this.cacheInvalidationService.invalidateComandas();
+    
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
     return comandaAtualizada;
   }

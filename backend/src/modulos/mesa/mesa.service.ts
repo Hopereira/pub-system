@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
@@ -36,6 +37,7 @@ export class MesaService {
     private readonly ambienteRepository: Repository<Ambiente>,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
+    private readonly cacheInvalidationService: CacheInvalidationService,
   ) {}
 
   // --- MÉTODO ATUALIZADO: Aceita posição, tamanho e rotação opcionais ---
@@ -86,6 +88,9 @@ export class MesaService {
         `✅ Mesa ${mesa.numero} criada no ambiente "${ambiente.nome}" com posição (${mesa.posicao.x}, ${mesa.posicao.y})`,
         'MesaService',
       );
+
+      // Invalidar cache após criar mesa
+      await this.cacheInvalidationService.invalidateMesas();
 
       return mesaSalva;
     } catch (error) {
@@ -234,12 +239,20 @@ export class MesaService {
 
     // NOTA: O update também poderia ter o mesmo tratamento de erro de duplicidade.
     // Vamos focar no create primeiro, mas saiba que seria bom adicionar aqui também.
-    return this.mesaRepository.save(mesa);
+    const updatedMesa = await this.mesaRepository.save(mesa);
+    
+    // Invalidar cache após atualizar mesa
+    await this.cacheInvalidationService.invalidateMesas();
+    
+    return updatedMesa;
   }
 
   async remove(id: string): Promise<void> {
     const mesa = await this.findOne(id);
     await this.mesaRepository.remove(mesa);
+    
+    // Invalidar cache após remover mesa
+    await this.cacheInvalidationService.invalidateMesas();
   }
 
   // ===== MÉTODOS DE MAPA VISUAL =====
