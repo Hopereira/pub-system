@@ -88,9 +88,9 @@ export class CreateRefreshTokensTable1765461400000
     );
 
     await queryRunner.query(`
-      CREATE INDEX idx_refresh_tokens_funcionario ON refresh_tokens(funcionarioId);
+      CREATE INDEX idx_refresh_tokens_funcionario ON refresh_tokens("funcionarioId");
       CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
-      CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expiresAt);
+      CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens("expiresAt");
     `);
   }
 

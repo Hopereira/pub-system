@@ -105,10 +105,10 @@ export class CreateAuditLogsTable1765461500000 implements MigrationInterface {
     );
 
     await queryRunner.query(`
-      CREATE INDEX idx_audit_logs_funcionario_created ON audit_logs(funcionarioId, createdAt);
-      CREATE INDEX idx_audit_logs_entity ON audit_logs(entityName, entityId);
-      CREATE INDEX idx_audit_logs_action_created ON audit_logs(action, createdAt);
-      CREATE INDEX idx_audit_logs_created_at ON audit_logs(createdAt DESC);
+      CREATE INDEX idx_audit_logs_funcionario_created ON audit_logs("funcionarioId", "createdAt");
+      CREATE INDEX idx_audit_logs_entity ON audit_logs("entityName", "entityId");
+      CREATE INDEX idx_audit_logs_action_created ON audit_logs(action, "createdAt");
+      CREATE INDEX idx_audit_logs_created_at ON audit_logs("createdAt" DESC);
     `);
   }
 
