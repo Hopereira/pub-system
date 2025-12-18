@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
 import { EmpresaModule } from './modulos/empresa/empresa.module';
@@ -29,6 +29,8 @@ import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AuditModule } from './modulos/audit/audit.module';
+import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
+import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 
 @Module({
   imports: [
@@ -158,11 +160,12 @@ import { AuditModule } from './modulos/audit/audit.module';
   ],
   controllers: [],
   providers: [
-    // ✅ SEGURANÇA: Ativa ThrottlerGuard globalmente
+    // ✅ SEGURANÇA: Ativa CustomThrottlerGuard globalmente
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard,
     },
+    RateLimitMonitorService,
   ],
 })
 export class AppModule {}

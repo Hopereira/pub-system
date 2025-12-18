@@ -11,12 +11,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { ThrottleLogin, ThrottleStrict, ThrottleAPI } from '../common/decorators/throttle.decorator';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -26,8 +26,7 @@ export class AuthController {
     private refreshTokenService: RefreshTokenService,
   ) {}
 
-  // ✅ SEGURANÇA: Rate limit mais restritivo para login (5 tentativas por minuto)
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ThrottleLogin()
   @Post('login')
   @ApiOperation({ summary: 'Realiza login e retorna access token e refresh token' })
   @ApiResponse({
@@ -51,6 +50,7 @@ export class AuthController {
     return this.authService.login(user, ipAddress, userAgent);
   }
 
+  @ThrottleAPI()
   @Post('refresh')
   @ApiOperation({ summary: 'Renovar access token usando refresh token' })
   @ApiResponse({
@@ -65,6 +65,7 @@ export class AuthController {
     return this.refreshTokenService.refreshAccessToken(refreshToken, ipAddress);
   }
 
+  @ThrottleAPI()
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -79,6 +80,7 @@ export class AuthController {
     return { message: 'Logout realizado com sucesso' };
   }
 
+  @ThrottleStrict()
   @Post('logout-all')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -92,6 +94,7 @@ export class AuthController {
     return { message: 'Logout de todas as sessões realizado com sucesso' };
   }
 
+  @ThrottleAPI()
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -112,6 +115,7 @@ export class AuthController {
     }));
   }
 
+  @ThrottleAPI()
   @Delete('sessions/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
