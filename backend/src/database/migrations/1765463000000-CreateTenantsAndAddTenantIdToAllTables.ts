@@ -144,8 +144,8 @@ export class CreateTenantsAndAddTenantIdToAllTables1765463000000
           TRANSLATE("nomeFantasia", 'áàãâéèêíìîóòõôúùûçÁÀÃÂÉÈÊÍÌÎÓÒÕÔÚÙÛÇ', 'aaaaeeeiiioooouuucAAAAEEEIIIOOOOUUUC'),
           '[^a-zA-Z0-9]+', '-', 'g'), '^-|-$', '', 'g'))) as slug,
         cnpj,
-        CASE WHEN ativo = true THEN 'ATIVO' ELSE 'INATIVO' END as status,
-        'FREE' as plano
+        (CASE WHEN ativo = true THEN 'ATIVO' ELSE 'INATIVO' END)::tenants_status_enum as status,
+        'FREE'::tenants_plano_enum as plano
       FROM empresas
       ON CONFLICT (slug) DO NOTHING
     `);
@@ -227,7 +227,7 @@ export class CreateTenantsAndAddTenantIdToAllTables1765463000000
     // ============================================
     const compositeIndexes = [
       { table: 'pedidos', columns: ['tenant_id', 'status'] },
-      { table: 'pedidos', columns: ['tenant_id', 'created_at'] },
+      { table: 'pedidos', columns: ['tenant_id', 'data'] }, // pedidos usa 'data' não 'created_at'
       { table: 'comandas', columns: ['tenant_id', 'status'] },
       { table: 'produtos', columns: ['tenant_id', 'ativo'] },
       { table: 'mesas', columns: ['tenant_id', 'status'] },
@@ -284,7 +284,7 @@ export class CreateTenantsAndAddTenantIdToAllTables1765463000000
     // Remover índices compostos
     const compositeIndexes = [
       { table: 'pedidos', columns: ['tenant_id', 'status'] },
-      { table: 'pedidos', columns: ['tenant_id', 'created_at'] },
+      { table: 'pedidos', columns: ['tenant_id', 'data'] },
       { table: 'comandas', columns: ['tenant_id', 'status'] },
       { table: 'produtos', columns: ['tenant_id', 'ativo'] },
       { table: 'mesas', columns: ['tenant_id', 'status'] },
