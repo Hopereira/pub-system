@@ -6,11 +6,15 @@ import { TenantInterceptor } from './tenant.interceptor';
 import { TenantLoggingInterceptor } from './tenant-logging.interceptor';
 import { TenantGuard } from './guards/tenant.guard';
 import { TenantProvisioningService } from './services/tenant-provisioning.service';
+import { SuperAdminService } from './services/super-admin.service';
+import { SuperAdminController } from './controllers/super-admin.controller';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
 import { Tenant } from './entities/tenant.entity';
 import { Ambiente } from '../../modulos/ambiente/entities/ambiente.entity';
 import { Mesa } from '../../modulos/mesa/entities/mesa.entity';
 import { Funcionario } from '../../modulos/funcionario/entities/funcionario.entity';
+import { Pedido } from '../../modulos/pedido/entities/pedido.entity';
+import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
 
 /**
  * TenantModule - Módulo global para Multi-tenancy
@@ -28,8 +32,9 @@ import { Funcionario } from '../../modulos/funcionario/entities/funcionario.enti
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario]),
+    TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario, Pedido, Comanda]),
   ],
+  controllers: [SuperAdminController],
   providers: [
     TenantContextService,
     TenantResolverService,
@@ -37,6 +42,7 @@ import { Funcionario } from '../../modulos/funcionario/entities/funcionario.enti
     TenantLoggingInterceptor,
     TenantGuard,
     TenantProvisioningService,
+    SuperAdminService,
   ],
   exports: [
     TenantContextService,
@@ -45,6 +51,7 @@ import { Funcionario } from '../../modulos/funcionario/entities/funcionario.enti
     TenantLoggingInterceptor,
     TenantGuard,
     TenantProvisioningService,
+    SuperAdminService,
   ],
 })
 export class TenantModule {}
