@@ -5,6 +5,7 @@ import { TenantResolverService } from './tenant-resolver.service';
 import { TenantInterceptor } from './tenant.interceptor';
 import { TenantLoggingInterceptor } from './tenant-logging.interceptor';
 import { TenantGuard } from './guards/tenant.guard';
+import { TenantRateLimitGuard } from './guards/tenant-rate-limit.guard';
 import { TenantProvisioningService } from './services/tenant-provisioning.service';
 import { SuperAdminService } from './services/super-admin.service';
 import { SuperAdminController } from './controllers/super-admin.controller';
@@ -41,6 +42,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
     TenantInterceptor,
     TenantLoggingInterceptor,
     TenantGuard,
+    TenantRateLimitGuard,
     TenantProvisioningService,
     SuperAdminService,
   ],
@@ -50,6 +52,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
     TenantInterceptor,
     TenantLoggingInterceptor,
     TenantGuard,
+    TenantRateLimitGuard,
     TenantProvisioningService,
     SuperAdminService,
   ],

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   Logger,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
@@ -12,6 +13,12 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { Funcionario } from '../modulos/funcionario/entities/funcionario.entity';
 import * as crypto from 'crypto';
 
+/**
+ * RefreshTokenService - Gerenciamento de tokens de renovação
+ * 
+ * Multi-tenancy: Cada refresh token é vinculado a um tenant específico.
+ * Na renovação, o tenantId do token deve corresponder ao tenant da requisição.
+ */
 @Injectable()
 export class RefreshTokenService {
   private readonly logger = new Logger(RefreshTokenService.name);
@@ -25,11 +32,16 @@ export class RefreshTokenService {
 
   /**
    * Gera um novo refresh token
+   * @param funcionario - Funcionário autenticado
+   * @param ipAddress - IP da requisição
+   * @param userAgent - User agent do navegador
+   * @param tenantId - ID do tenant (bar) para isolamento
    */
   async generateRefreshToken(
     funcionario: Funcionario,
     ipAddress: string,
     userAgent?: string,
+    tenantId?: string,
   ): Promise<RefreshToken> {
     const token = crypto.randomBytes(64).toString('hex');
 
@@ -42,12 +54,13 @@ export class RefreshTokenService {
       ipAddress,
       userAgent,
       expiresAt,
+      tenantId,
     });
 
     await this.refreshTokenRepository.save(refreshToken);
 
     this.logger.log(
-      `🔑 Refresh token gerado para usuário ${funcionario.email}`,
+      `🔑 Refresh token gerado para usuário ${funcionario.email}${tenantId ? ` [tenant: ${tenantId}]` : ''}`,
     );
 
     return refreshToken;
@@ -55,8 +68,10 @@ export class RefreshTokenService {
 
   /**
    * Valida e retorna um refresh token
+   * @param token - Token string
+   * @param tenantId - ID do tenant para validação de isolamento (opcional)
    */
-  async validateRefreshToken(token: string): Promise<RefreshToken> {
+  async validateRefreshToken(token: string, tenantId?: string): Promise<RefreshToken> {
     const refreshToken = await this.refreshTokenRepository.findOne({
       where: { token },
       relations: ['funcionario'],
@@ -70,22 +85,39 @@ export class RefreshTokenService {
       throw new UnauthorizedException('Refresh token expirado ou revogado');
     }
 
+    // Validação de isolamento por tenant
+    if (tenantId && refreshToken.tenantId && refreshToken.tenantId !== tenantId) {
+      this.logger.warn(
+        `🚫 Tentativa de uso de refresh token cross-tenant! ` +
+        `Token tenant: ${refreshToken.tenantId}, Request tenant: ${tenantId}, ` +
+        `User: ${refreshToken.funcionario?.email}`,
+      );
+      throw new ForbiddenException(
+        'Refresh token não pertence a este estabelecimento',
+      );
+    }
+
     return refreshToken;
   }
 
   /**
    * Renova o access token usando refresh token
+   * @param token - Refresh token string
+   * @param ipAddress - IP da requisição
+   * @param tenantId - ID do tenant para validação de isolamento
    */
   async refreshAccessToken(
     token: string,
     ipAddress: string,
-  ): Promise<{ accessToken: string; refreshToken?: string }> {
-    const refreshToken = await this.validateRefreshToken(token);
+    tenantId?: string,
+  ): Promise<{ accessToken: string; refreshToken?: string; tenantId?: string }> {
+    const refreshToken = await this.validateRefreshToken(token, tenantId);
 
     const payload = {
       sub: refreshToken.funcionario.id,
       email: refreshToken.funcionario.email,
       cargo: refreshToken.funcionario.cargo,
+      tenantId: refreshToken.tenantId, // Incluir tenantId no JWT
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -104,26 +136,30 @@ export class RefreshTokenService {
         refreshToken.funcionario,
         ipAddress,
         refreshToken.userAgent,
+        refreshToken.tenantId, // Manter o mesmo tenantId
       );
 
       refreshToken.replacedByToken = newRefreshToken.id;
       await this.refreshTokenRepository.save(refreshToken);
 
       this.logger.log(
-        `🔄 Access token renovado e refresh token rotacionado para ${refreshToken.funcionario.email}`,
+        `🔄 Access token renovado e refresh token rotacionado para ${refreshToken.funcionario.email}` +
+        `${refreshToken.tenantId ? ` [tenant: ${refreshToken.tenantId}]` : ''}`,
       );
 
       return {
         accessToken,
         refreshToken: newRefreshToken.token,
+        tenantId: refreshToken.tenantId,
       };
     }
 
     this.logger.log(
-      `🔄 Access token renovado para ${refreshToken.funcionario.email}`,
+      `🔄 Access token renovado para ${refreshToken.funcionario.email}` +
+      `${refreshToken.tenantId ? ` [tenant: ${refreshToken.tenantId}]` : ''}`,
     );
 
-    return { accessToken };
+    return { accessToken, tenantId: refreshToken.tenantId };
   }
 
   /**

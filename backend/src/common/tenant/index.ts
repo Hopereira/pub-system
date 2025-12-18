@@ -21,6 +21,7 @@ export { BaseTenantRepository, TenantAwareEntity as ITenantAwareEntity } from '.
 
 // Guards
 export { TenantGuard, SkipTenantGuard, SKIP_TENANT_GUARD } from './guards/tenant.guard';
+export { TenantRateLimitGuard, SkipRateLimit, SKIP_RATE_LIMIT, RATE_LIMITS, RateLimitConfig } from './guards/tenant-rate-limit.guard';
 
 // Gateways
 export { BaseTenantGateway } from './gateways/base-tenant.gateway';
