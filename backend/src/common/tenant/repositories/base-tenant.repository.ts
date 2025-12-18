@@ -14,9 +14,10 @@ import { TenantId } from '../tenant.types';
 
 /**
  * Interface para entidades que possuem tenant_id
+ * O tenantId é opcional para compatibilidade com entidades em migração
  */
 export interface TenantAwareEntity extends ObjectLiteral {
-  tenantId: string;
+  tenantId?: string;
 }
 
 /**

@@ -21,3 +21,6 @@ export { BaseTenantRepository, TenantAwareEntity as ITenantAwareEntity } from '.
 
 // Guards
 export { TenantGuard, SkipTenantGuard, SKIP_TENANT_GUARD } from './guards/tenant.guard';
+
+// Gateways
+export { BaseTenantGateway } from './gateways/base-tenant.gateway';

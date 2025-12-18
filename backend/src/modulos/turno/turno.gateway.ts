@@ -7,6 +7,8 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { JwtService } from '@nestjs/jwt';
+import { BaseTenantGateway } from '../../common/tenant/gateways/base-tenant.gateway';
 
 @WebSocketGateway({
   cors: {
@@ -16,51 +18,83 @@ import { Server, Socket } from 'socket.io';
       'https://pub-system.vercel.app',
       'https://pubsystem.com.br',
       'https://www.pubsystem.com.br',
+      /\.pubsystem\.com\.br$/, // Subdomínios curinga
     ].filter(Boolean),
     credentials: true,
   },
 })
 export class TurnoGateway
+  extends BaseTenantGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
 
-  private readonly logger = new Logger(TurnoGateway.name);
+  protected readonly logger = new Logger(TurnoGateway.name);
+
+  constructor(jwtService: JwtService) {
+    super();
+    this.jwtService = jwtService;
+  }
 
   afterInit(server: Server) {
-    this.logger.log('🔌 Gateway de Turnos inicializado!');
+    this.logger.log('🔌 Gateway de Turnos inicializado com isolamento por tenant!');
   }
 
   handleConnection(client: Socket, ...args: any[]) {
-    this.logger.log(`✅ Cliente conectado ao TurnoGateway: ${client.id}`);
+    const tenantId = this.joinTenantRoom(client);
+    if (tenantId) {
+      this.logger.log(`✅ Cliente ${client.id} conectado ao TurnoGateway | Tenant: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Cliente ${client.id} conectado sem tenant (modo legado)`);
+    }
   }
 
   handleDisconnect(client: Socket) {
+    this.leaveTenantRoom(client);
     this.logger.log(`❌ Cliente desconectado do TurnoGateway: ${client.id}`);
   }
 
   /**
-   * Emite evento quando funcionário faz check-in
+   * Emite evento quando funcionário faz check-in (ISOLADO POR TENANT)
    */
-  emitCheckIn(turno: any) {
-    this.logger.log(`📥 Emitindo check-in para funcionário: ${turno.funcionarioId}`);
-    this.server.emit('funcionario_check_in', turno);
+  emitCheckIn(turno: any, tenantId?: string) {
+    const targetTenantId = tenantId || turno.tenantId;
+    
+    if (targetTenantId) {
+      this.emitToTenant(targetTenantId, 'funcionario_check_in', turno);
+      this.logger.log(`🔒 Check-in emitido para tenant ${targetTenantId} | Funcionário: ${turno.funcionarioId}`);
+    } else {
+      this.logger.warn(`⚠️ Turno sem tenant_id, usando broadcast`);
+      this.server.emit('funcionario_check_in', turno);
+    }
   }
 
   /**
-   * Emite evento quando funcionário faz check-out
+   * Emite evento quando funcionário faz check-out (ISOLADO POR TENANT)
    */
-  emitCheckOut(turno: any) {
-    this.logger.log(`📤 Emitindo check-out para funcionário: ${turno.funcionarioId}`);
-    this.server.emit('funcionario_check_out', turno);
+  emitCheckOut(turno: any, tenantId?: string) {
+    const targetTenantId = tenantId || turno.tenantId;
+    
+    if (targetTenantId) {
+      this.emitToTenant(targetTenantId, 'funcionario_check_out', turno);
+      this.logger.log(`🔒 Check-out emitido para tenant ${targetTenantId} | Funcionário: ${turno.funcionarioId}`);
+    } else {
+      this.logger.warn(`⚠️ Turno sem tenant_id, usando broadcast`);
+      this.server.emit('funcionario_check_out', turno);
+    }
   }
 
   /**
-   * Emite evento quando lista de funcionários ativos muda
+   * Emite evento quando lista de funcionários ativos muda (ISOLADO POR TENANT)
    */
-  emitFuncionariosAtualizados() {
-    this.logger.log(`🔄 Emitindo atualização de funcionários ativos`);
-    this.server.emit('funcionarios_ativos_atualizado');
+  emitFuncionariosAtualizados(tenantId?: string) {
+    if (tenantId) {
+      this.emitToTenant(tenantId, 'funcionarios_ativos_atualizado', {});
+      this.logger.log(`🔒 Funcionários atualizados emitido para tenant ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Sem tenant_id, usando broadcast`);
+      this.server.emit('funcionarios_ativos_atualizado');
+    }
   }
 }
