@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FuncionarioService } from 'src/modulos/funcionario/funcionario.service';
+import { RefreshTokenService } from './refresh-token.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private funcionarioService: FuncionarioService,
     private jwtService: JwtService,
+    private refreshTokenService: RefreshTokenService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -26,7 +28,7 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  async login(user: any, ipAddress: string, userAgent?: string) {
     const payload = {
       id: user.id,
       sub: user.id, // Mantém sub para compatibilidade
@@ -37,10 +39,45 @@ export class AuthService {
       empresaId: user.empresaId,
       ambienteId: user.ambienteId,
     };
-    const token = this.jwtService.sign(payload);
-    this.logger.log(` Token JWT gerado para: ${user.email} (ID: ${user.id})`);
+    
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '1h',
+    });
+
+    const refreshToken = await this.refreshTokenService.generateRefreshToken(
+      user,
+      ipAddress,
+      userAgent,
+    );
+
+    this.logger.log(
+      `🔑 Access token e refresh token gerados para: ${user.email} (ID: ${user.id})`,
+    );
+
     return {
-      access_token: token,
+      access_token: accessToken,
+      refresh_token: refreshToken.token,
+      expires_in: 3600,
+      user: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        cargo: user.cargo,
+      },
     };
+  }
+
+  async logout(refreshToken: string, ipAddress: string): Promise<void> {
+    await this.refreshTokenService.revokeTokenByString(
+      refreshToken,
+      ipAddress,
+      'Logout',
+    );
+    this.logger.log(`🚪 Logout realizado`);
+  }
+
+  async logoutAll(funcionarioId: string, ipAddress: string): Promise<void> {
+    await this.refreshTokenService.revokeAllUserTokens(funcionarioId, ipAddress);
+    this.logger.log(`🚪 Logout de todas as sessões realizado`);
   }
 }

@@ -2,26 +2,31 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { FuncionarioModule } from 'src/modulos/funcionario/funcionario.module';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller'; // CORRIGIDO
-import { JwtStrategy } from './strategies/jwt.strategy'; // CORRIGIDO
+import { AuthController } from './auth.controller';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { RefreshTokenService } from './refresh-token.service';
+import { RefreshTokenCleanupService } from './refresh-token-cleanup.service';
+import { RefreshToken } from './entities/refresh-token.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([RefreshToken]),
     FuncionarioModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
-        // ✅ CORREÇÃO: Usa getOrThrow para garantir que JWT_SECRET existe
         secret: configService.getOrThrow<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '4h' }, // Token expira em 4 horas
+        signOptions: { expiresIn: '1h' },
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, RefreshTokenService, RefreshTokenCleanupService, JwtStrategy],
   controllers: [AuthController],
+  exports: [AuthService, RefreshTokenService],
 })
 export class AuthModule {}
