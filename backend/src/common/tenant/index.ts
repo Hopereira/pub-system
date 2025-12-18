@@ -11,3 +11,7 @@ export {
   ITenantContext,
   TenantNotSetError,
 } from './tenant.types';
+
+// Entidades
+export { Tenant, TenantStatus, TenantPlano, TenantConfig } from './entities/tenant.entity';
+export { TenantAwareEntity } from './entities/tenant-aware.entity';

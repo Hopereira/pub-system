@@ -5,6 +5,7 @@ import { TenantResolverService } from './tenant-resolver.service';
 import { TenantInterceptor } from './tenant.interceptor';
 import { TenantLoggingInterceptor } from './tenant-logging.interceptor';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
+import { Tenant } from './entities/tenant.entity';
 
 /**
  * TenantModule - Módulo global para Multi-tenancy
@@ -20,7 +21,7 @@ import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
  */
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Empresa])],
+  imports: [TypeOrmModule.forFeature([Empresa, Tenant])],
   providers: [
     TenantContextService,
     TenantResolverService,
