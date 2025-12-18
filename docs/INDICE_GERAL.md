@@ -1,6 +1,6 @@
 # 📚 Índice Geral da Documentação - Pub System
 
-**Última atualização:** 10/12/2025  
+**Última atualização:** 18/12/2025  
 **Organizado por:** Technical Writer
 
 ---
@@ -60,6 +60,12 @@ pub-system/
 2. [tecnico/DOCUMENTACAO_TECNICA_COMPLETA.md](./tecnico/DOCUMENTACAO_TECNICA_COMPLETA.md)
 3. [08-ANALISE-GAPS-MELHORIAS-ATUALIZADA.md](./08-ANALISE-GAPS-MELHORIAS-ATUALIZADA.md) - O que falta
 
+### Se você quer ver a **Sprint 3-4 (Segurança)**:
+1. [2025-12-17-SPRINT-3-4-PARTE-1-REFRESH-TOKENS.md](./2025-12-17-SPRINT-3-4-PARTE-1-REFRESH-TOKENS.md) - Refresh Tokens
+2. [2025-12-17-SPRINT-3-4-PARTE-2-AUDITORIA.md](./2025-12-17-SPRINT-3-4-PARTE-2-AUDITORIA.md) - Auditoria
+3. [2025-12-17-SPRINT-3-4-PARTE-3-RATE-LIMITING.md](./2025-12-17-SPRINT-3-4-PARTE-3-RATE-LIMITING.md) - Rate Limiting
+4. [RELATORIO-VALIDACAO-SPRINT-3-4.md](./RELATORIO-VALIDACAO-SPRINT-3-4.md) - Relatório de Validação
+
 ### Se você está **debugando um erro**:
 1. Procure em [troubleshooting/](./troubleshooting/) por arquivos `FIX_` ou `CORRECAO_`
 2. Use `Ctrl+F` para buscar o erro específico
@@ -110,7 +116,17 @@ Documentação técnica, arquitetura e migrations.
 | `AUDITORIA_TIPOS_FRONTEND_BACKEND.md` | Comparação de tipos Frontend vs Backend |
 | `AUDITORIA_DEVOPS_PRODUCAO.md` | Segurança para produção - variáveis e CORS |
 | `AUDITORIA_BUILD_DEPLOY_DOCKER.md` | Otimização de Docker e Multi-Stage Build |
-| `AUDITORIA_APPSEC_MAIN_TS.md` | Segurança AppSec - Helmet, Rate Limit, Validation ✨ |
+| `AUDITORIA_APPSEC_MAIN_TS.md` | Segurança AppSec - Helmet, Rate Limit, Validation |
+
+### 🔐 Sprint 3-4: Segurança e Auditoria (18 Dez 2025) 🆕
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `2025-12-17-SPRINT-3-4-PLANEJAMENTO.md` | Planejamento completo da sprint |
+| `2025-12-17-SPRINT-3-4-PARTE-1-REFRESH-TOKENS.md` | Implementação de Refresh Tokens |
+| `2025-12-17-SPRINT-3-4-PARTE-2-AUDITORIA.md` | Sistema de Auditoria completo |
+| `2025-12-17-SPRINT-3-4-PARTE-3-RATE-LIMITING.md` | Rate Limiting com decorators |
+| `RELATORIO-VALIDACAO-SPRINT-3-4.md` | Relatório final de validação ✨ |
 
 ### `troubleshooting/` (18 arquivos)
 Soluções para problemas conhecidos. **Ouro puro!**
@@ -141,8 +157,11 @@ Logs de sessões antigas. Útil para contexto histórico.
 **Problema com Docker?** → `troubleshooting/SOLUCAO_COMPLETA_DOCKER_COMPOSE.md`  
 **Migrations não rodam?** → `tecnico/MIGRATIONS.md`  
 **Como configurar?** → `manuais/SETUP.md`  
-**Deploy Oracle Cloud?** → `DEPLOY_ORACLE_CLOUD.md` ✨  
+**Deploy Oracle Cloud?** → `DEPLOY_ORACLE_CLOUD.md`  
+**Refresh Tokens?** → `2025-12-17-SPRINT-3-4-PARTE-1-REFRESH-TOKENS.md` 🆕  
+**Auditoria?** → `2025-12-17-SPRINT-3-4-PARTE-2-AUDITORIA.md` 🆕  
+**Rate Limiting?** → `2025-12-17-SPRINT-3-4-PARTE-3-RATE-LIMITING.md` 🆕  
 
 ---
 
-*Documentação organizada em 10/12/2025*
+*Documentação organizada em 18/12/2025*

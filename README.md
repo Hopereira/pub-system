@@ -41,7 +41,7 @@
 ![Garçom](https://img.shields.io/badge/Sistema%20Garçom-100%25-success)
 ![Analytics](https://img.shields.io/badge/Analytics-100%25-success)
 
-**Última Atualização:** 17 de dezembro de 2025
+**Última Atualização:** 18 de dezembro de 2025
 
 ### 📊 Implementação Completa:
 - ✅ **Backend:** 17 módulos funcionais (100%)
@@ -51,6 +51,7 @@
 - ✅ **Analytics:** Relatórios e métricas (100%)
 - ✅ **WebSocket:** Notificações em tempo real (100%)
 - ✅ **Performance:** Paginação, N+1 Queries resolvido, Cache Redis (100%)
+- ✅ **Segurança:** Refresh Tokens, Auditoria, Rate Limiting (100%) 🆕
 - ⏳ **Ranking Visual:** Interface de gamificação (pendente)
 
 ### ✅ Correções Implementadas
@@ -102,6 +103,33 @@
   - Invalidação automática em update/delete
 
 **Commit:** `09ea1d6` | **Deploy:** Oracle E2.1.Micro ✅
+
+### 🆕 Sprint 3-4: Segurança e Auditoria (18 Dez 2025)
+
+**Refresh Tokens** ✅
+- ✅ Access Token (1h) + Refresh Token (7 dias)
+- ✅ Rotação automática de tokens (configurável)
+- ✅ Gerenciamento de sessões por dispositivo
+- ✅ Rastreamento de IP e User-Agent
+- ✅ Limpeza automática de tokens expirados
+- ✅ 6 endpoints: login, refresh, logout, logout-all, sessions, revoke-session
+
+**Auditoria Completa** ✅
+- ✅ Registro automático de ações (CREATE, UPDATE, DELETE, LOGIN)
+- ✅ Dados ANTES e DEPOIS em JSONB
+- ✅ Rastreamento completo (IP, User-Agent, endpoint)
+- ✅ 6 endpoints de consulta e relatórios
+- ✅ Compliance LGPD (retenção 365 dias)
+- ✅ Sanitização de dados sensíveis
+
+**Rate Limiting** ✅
+- ✅ Proteção contra força bruta (5 tentativas/15min no login)
+- ✅ Proteção contra DDoS
+- ✅ Admin sem limites
+- ✅ Usuários autenticados com limite 2x maior
+- ✅ 6 decorators customizados (@ThrottleLogin, @ThrottleAPI, etc)
+
+**Commits:** `ba6cd58` a `e55270d` | **Status:** Validado ✅
 
 ### 🆕 Correções Recentes (15 Dez 2025)
 
@@ -272,6 +300,7 @@ O **Pub System** é uma solução completa de gerenciamento para estabelecimento
 - **[Redis 7](https://redis.io/)** - Cache em memória para performance
 - **[cache-manager-redis-yet](https://www.npmjs.com/package/cache-manager-redis-yet)** - Integração Redis com NestJS
 - **[JWT](https://jwt.io/)** + **[Passport.js](http://www.passportjs.org/)** - Autenticação
+- **[@nestjs/throttler](https://docs.nestjs.com/security/rate-limiting)** - Rate Limiting
 - **[Socket.IO 4.7.4](https://socket.io/)** - WebSocket para tempo real
 - **[Google Cloud Storage 7.17.1](https://cloud.google.com/storage)** - Upload de arquivos
 - **[bcrypt](https://www.npmjs.com/package/bcrypt)** - Hash de senhas
@@ -482,8 +511,23 @@ pub-system/
 
 ### 🔐 Autenticação
 ```http
-POST /auth/login              # Login de funcionários
-GET  /auth/profile           # Perfil do usuário logado
+POST /auth/login              # Login (retorna access_token + refresh_token)
+POST /auth/refresh            # Renovar access_token com refresh_token
+POST /auth/logout             # Logout (revoga refresh token atual)
+POST /auth/logout-all         # Logout de todas as sessões
+GET  /auth/sessions           # Listar sessões ativas
+DELETE /auth/sessions/:id     # Revogar sessão específica
+GET  /auth/profile            # Perfil do usuário logado
+```
+
+### 📋 Auditoria
+```http
+GET  /audit                   # Listar logs com filtros
+GET  /audit/entity/:name/:id  # Histórico de uma entidade
+GET  /audit/user/:id          # Atividades de um usuário
+GET  /audit/report            # Gerar relatório
+GET  /audit/statistics        # Estatísticas gerais
+GET  /audit/failed-logins     # Tentativas de login falhadas
 ```
 
 ### 🏢 Gestão
@@ -590,7 +634,9 @@ ADMIN_SENHA=admin123
 - ⚠️ **Configure firewall** e restrinja acessos
 - ⚠️ **Proteja credenciais GCS** - nunca commite `gcs-credentials.json`
 - ⚠️ **Configure CORS** adequadamente para produção
-- ⚠️ **Use rate limiting** para prevenir ataques DDoS
+- ✅ **Rate limiting** já implementado (proteção contra DDoS e força bruta)
+- ✅ **Auditoria** já implementada (rastreamento de todas as ações)
+- ✅ **Refresh tokens** já implementados (sessões seguras de 7 dias)
 
 ---
 
