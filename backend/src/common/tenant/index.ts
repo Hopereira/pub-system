@@ -24,3 +24,6 @@ export { TenantGuard, SkipTenantGuard, SKIP_TENANT_GUARD } from './guards/tenant
 
 // Gateways
 export { BaseTenantGateway } from './gateways/base-tenant.gateway';
+
+// Services
+export { TenantProvisioningService, CreateTenantDto, ProvisioningResult } from './services/tenant-provisioning.service';
