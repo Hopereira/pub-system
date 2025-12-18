@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FuncionarioService } from 'src/modulos/funcionario/funcionario.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { AuditService } from '../modulos/audit/audit.service';
+import { AuditAction } from '../modulos/audit/entities/audit-log.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -12,9 +14,10 @@ export class AuthService {
     private funcionarioService: FuncionarioService,
     private jwtService: JwtService,
     private refreshTokenService: RefreshTokenService,
+    private auditService: AuditService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(email: string, pass: string, ipAddress?: string): Promise<any> {
     const user = await this.funcionarioService.findByEmail(email);
     if (user && (await bcrypt.compare(pass, user.senha))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -25,6 +28,18 @@ export class AuthService {
     this.logger.warn(
       ` Falha na autenticação: Email ${email} - Credenciais inválidas`,
     );
+    
+    // Registrar tentativa de login falhada
+    if (ipAddress) {
+      await this.auditService.log({
+        funcionarioEmail: email,
+        action: AuditAction.LOGIN_FAILED,
+        entityName: 'Auth',
+        ipAddress,
+        description: `Tentativa de login falhada para ${email}`,
+      });
+    }
+    
     return null;
   }
 
@@ -54,6 +69,17 @@ export class AuthService {
       `🔑 Access token e refresh token gerados para: ${user.email} (ID: ${user.id})`,
     );
 
+    // Registrar login bem-sucedido
+    await this.auditService.log({
+      funcionario: user,
+      funcionarioEmail: user.email,
+      action: AuditAction.LOGIN,
+      entityName: 'Auth',
+      ipAddress,
+      userAgent,
+      description: `Login bem-sucedido`,
+    });
+
     return {
       access_token: accessToken,
       refresh_token: refreshToken.token,
@@ -67,12 +93,25 @@ export class AuthService {
     };
   }
 
-  async logout(refreshToken: string, ipAddress: string): Promise<void> {
+  async logout(refreshToken: string, ipAddress: string, user?: any): Promise<void> {
     await this.refreshTokenService.revokeTokenByString(
       refreshToken,
       ipAddress,
       'Logout',
     );
+    
+    // Registrar logout
+    if (user) {
+      await this.auditService.log({
+        funcionario: user,
+        funcionarioEmail: user.email,
+        action: AuditAction.LOGOUT,
+        entityName: 'Auth',
+        ipAddress,
+        description: `Logout realizado`,
+      });
+    }
+    
     this.logger.log(`🚪 Logout realizado`);
   }
 

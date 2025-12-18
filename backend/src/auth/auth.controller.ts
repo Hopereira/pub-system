@@ -43,6 +43,7 @@ export class AuthController {
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.senha,
+      ipAddress,
     );
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
@@ -71,9 +72,10 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logout realizado com sucesso.' })
   async logout(
     @Body('refresh_token') refreshToken: string,
+    @CurrentUser() user: any,
     @Ip() ipAddress: string,
   ) {
-    await this.authService.logout(refreshToken, ipAddress);
+    await this.authService.logout(refreshToken, ipAddress, user);
     return { message: 'Logout realizado com sucesso' };
   }
 

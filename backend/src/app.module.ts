@@ -28,6 +28,7 @@ import { CaixaModule } from './modulos/caixa/caixa.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AppCacheModule } from './cache/cache.module';
+import { AuditModule } from './modulos/audit/audit.module';
 
 @Module({
   imports: [
@@ -151,6 +152,7 @@ import { AppCacheModule } from './cache/cache.module';
     AnalyticsModule,
     MedalhaModule,
     CaixaModule,
+    AuditModule,
     LoggerModule,
     JobsModule,
   ],
