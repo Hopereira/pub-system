@@ -4,6 +4,7 @@ import { TenantContextService } from './tenant-context.service';
 import { TenantResolverService } from './tenant-resolver.service';
 import { TenantInterceptor } from './tenant.interceptor';
 import { TenantLoggingInterceptor } from './tenant-logging.interceptor';
+import { TenantGuard } from './guards/tenant.guard';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
 import { Tenant } from './entities/tenant.entity';
 
@@ -27,12 +28,14 @@ import { Tenant } from './entities/tenant.entity';
     TenantResolverService,
     TenantInterceptor,
     TenantLoggingInterceptor,
+    TenantGuard,
   ],
   exports: [
     TenantContextService,
     TenantResolverService,
     TenantInterceptor,
     TenantLoggingInterceptor,
+    TenantGuard,
   ],
 })
 export class TenantModule {}

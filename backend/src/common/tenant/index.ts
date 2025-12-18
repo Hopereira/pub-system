@@ -15,3 +15,9 @@ export {
 // Entidades
 export { Tenant, TenantStatus, TenantPlano, TenantConfig } from './entities/tenant.entity';
 export { TenantAwareEntity } from './entities/tenant-aware.entity';
+
+// Repositório Base
+export { BaseTenantRepository, TenantAwareEntity as ITenantAwareEntity } from './repositories/base-tenant.repository';
+
+// Guards
+export { TenantGuard, SkipTenantGuard, SKIP_TENANT_GUARD } from './guards/tenant.guard';
