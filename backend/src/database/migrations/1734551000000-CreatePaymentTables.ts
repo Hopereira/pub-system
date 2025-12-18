@@ -4,6 +4,15 @@ export class CreatePaymentTables1734551000000 implements MigrationInterface {
   name = 'CreatePaymentTables1734551000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Criar enum para planos de tenant (se não existir)
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "tenant_plano_enum" AS ENUM ('FREE', 'BASIC', 'PRO', 'ENTERPRISE');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
     // Criar enum para gateways
     await queryRunner.query(`
       DO $$ BEGIN
