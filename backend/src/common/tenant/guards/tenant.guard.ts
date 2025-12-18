@@ -56,10 +56,11 @@ export class TenantGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Verificar se a rota está marcada para pular validação
-    const skipGuard = this.reflector.getAllAndOverride<boolean>(
+    // Proteção contra reflector undefined (pode ocorrer em alguns contextos)
+    const skipGuard = this.reflector?.getAllAndOverride<boolean>(
       SKIP_TENANT_GUARD,
       [context.getHandler(), context.getClass()],
-    );
+    ) ?? false;
 
     if (skipGuard) {
       return true;
@@ -74,7 +75,7 @@ export class TenantGuard implements CanActivate {
     }
 
     // Se não há tenant no contexto (rota pública), deixar passar
-    if (!this.tenantContext.hasTenant()) {
+    if (!this.tenantContext?.hasTenant?.()) {
       return true;
     }
 

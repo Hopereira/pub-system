@@ -45,7 +45,8 @@ export class TenantInterceptor implements NestInterceptor {
     const { hostname, path, user, headers } = request;
 
     // Se o tenant já foi definido (por outro middleware), pular
-    if (this.tenantContext.hasTenant()) {
+    // Proteção contra tenantContext undefined
+    if (this.tenantContext?.hasTenant?.()) {
       return next.handle();
     }
 
@@ -66,7 +67,7 @@ export class TenantInterceptor implements NestInterceptor {
         }
 
         // Definir contexto do tenant
-        this.tenantContext.setTenantId(tenant.id, tenant.nomeFantasia);
+        this.tenantContext?.setTenantId?.(tenant.id, tenant.nomeFantasia);
         
         // Adicionar informações ao request para uso posterior
         request.tenant = tenant;

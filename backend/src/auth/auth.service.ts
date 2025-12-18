@@ -53,7 +53,14 @@ export class AuthService {
 
   async login(user: any, ipAddress: string, userAgent?: string, tenantId?: string) {
     // Capturar tenantId do contexto ou do parâmetro
-    const effectiveTenantId = tenantId || this.tenantContext?.getTenantId() || user.tenantId;
+    // Usar try-catch porque getTenantId() lança erro se não houver tenant
+    let contextTenantId: string | null = null;
+    try {
+      contextTenantId = this.tenantContext?.getTenantId?.() ?? null;
+    } catch {
+      // Ignorar erro - tenant não definido é válido para login
+    }
+    const effectiveTenantId = tenantId || contextTenantId || user.empresaId || user.tenantId;
 
     const payload = {
       id: user.id,

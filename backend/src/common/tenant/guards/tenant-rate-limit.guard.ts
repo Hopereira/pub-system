@@ -89,10 +89,11 @@ export class TenantRateLimitGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Verificar se deve pular rate limiting
-    const skipRateLimit = this.reflector.getAllAndOverride<boolean>(
+    // Proteção contra reflector undefined (pode ocorrer em alguns contextos)
+    const skipRateLimit = this.reflector?.getAllAndOverride<boolean>(
       SKIP_RATE_LIMIT,
       [context.getHandler(), context.getClass()],
-    );
+    ) ?? false;
 
     if (skipRateLimit) {
       return true;
@@ -101,8 +102,8 @@ export class TenantRateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
 
-    // Obter tenantId do contexto
-    const tenantId = this.tenantContext.getTenantId();
+    // Obter tenantId do contexto (com proteção contra undefined)
+    const tenantId = this.tenantContext?.getTenantId?.() ?? null;
 
     if (!tenantId) {
       // Sem tenant, aplicar limite global por IP

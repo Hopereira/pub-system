@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PedidoService } from './pedido.service';
 import { PedidoController } from './pedido.controller';
 import { PedidoAnalyticsService } from './pedido-analytics.service';
@@ -27,6 +29,14 @@ import { QuaseProntoScheduler } from './quase-pronto.scheduler';
       Funcionario,
       TurnoFuncionario,
     ]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1d' },
+      }),
+      inject: [ConfigService],
+    }),
   ],
   controllers: [PedidoController, PedidoAnalyticsController],
   providers: [

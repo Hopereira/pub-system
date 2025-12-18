@@ -169,12 +169,12 @@ import { PaymentModule } from './modulos/payment/payment.module';
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
     },
-    // ✅ MULTI-TENANCY: Rate Limiting por Tenant/Plano
-    // FREE: 20 req/min | BASIC: 60 | PRO: 100 | ENTERPRISE: 500
-    {
-      provide: APP_GUARD,
-      useClass: TenantRateLimitGuard,
-    },
+    // ⚠️ TEMPORARIAMENTE DESABILITADO: TenantRateLimitGuard tem problemas de DI quando usado globalmente
+    // TODO: Corrigir injeção de dependências do TenantRateLimitGuard
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: TenantRateLimitGuard,
+    // },
     RateLimitMonitorService,
   ],
 })

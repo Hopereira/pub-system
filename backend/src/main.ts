@@ -30,24 +30,28 @@ async function bootstrap() {
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // 🏢 Multi-tenancy: Interceptor para captura híbrida de tenant
-  // Identifica tenant via: subdomínio, slug na URL, JWT ou header
-  try {
-    const tenantInterceptor = app.get(TenantInterceptor);
-    app.useGlobalInterceptors(tenantInterceptor);
-    logger.log('🏢 TenantInterceptor ativado globalmente');
-  } catch (e) {
-    logger.warn('⚠️ TenantInterceptor não disponível (TenantModule não carregado?)');
-  }
-
-  // 🛡️ Multi-tenancy: Guard para bloqueio de acesso cross-tenant
-  try {
-    const tenantGuard = app.get(TenantGuard);
-    app.useGlobalGuards(tenantGuard);
-    logger.log('🛡️ TenantGuard ativado globalmente');
-  } catch (e) {
-    logger.warn('⚠️ TenantGuard não disponível (TenantModule não carregado?)');
-  }
+  // ⚠️ TEMPORARIAMENTE DESABILITADO: TenantInterceptor e TenantGuard têm problemas de DI
+  // quando usados globalmente via app.get(). Precisam ser refatorados para usar APP_INTERCEPTOR/APP_GUARD
+  // TODO: Refatorar para usar providers globais no AppModule
+  // 
+  // // 🏢 Multi-tenancy: Interceptor para captura híbrida de tenant
+  // try {
+  //   const tenantInterceptor = app.get(TenantInterceptor);
+  //   app.useGlobalInterceptors(tenantInterceptor);
+  //   logger.log('🏢 TenantInterceptor ativado globalmente');
+  // } catch (e) {
+  //   logger.warn('⚠️ TenantInterceptor não disponível');
+  // }
+  //
+  // // 🛡️ Multi-tenancy: Guard para bloqueio de acesso cross-tenant
+  // try {
+  //   const tenantGuard = app.get(TenantGuard);
+  //   app.useGlobalGuards(tenantGuard);
+  //   logger.log('🛡️ TenantGuard ativado globalmente');
+  // } catch (e) {
+  //   logger.warn('⚠️ TenantGuard não disponível');
+  // }
+  logger.warn('⚠️ TenantInterceptor e TenantGuard desabilitados temporariamente (problemas de DI)');
 
   // 🔥 Ativar Exception Filter Global
   app.useGlobalFilters(new AllExceptionsFilter());

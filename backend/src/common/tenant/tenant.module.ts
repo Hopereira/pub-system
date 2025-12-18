@@ -52,6 +52,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
     PlanFeaturesService,
   ],
   exports: [
+    TypeOrmModule, // Exportar TypeOrmModule para que os repositories estejam disponíveis
     TenantContextService,
     TenantResolverService,
     TenantInterceptor,
