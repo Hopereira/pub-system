@@ -69,6 +69,9 @@ const baseNavLinks: NavLink[] = [
   // --- Features PRO+ (Analytics, Relatórios Avançados) ---
   { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'], feature: Feature.ANALYTICS, premium: true },
   
+  // --- Configurações ---
+  { href: '/dashboard/configuracoes/plano', label: 'Meu Plano', icon: Crown, roles: ['ADMIN'] },
+  
   // --- Perfil (todos os cargos) ---
   { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'] },
 ];
