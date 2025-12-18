@@ -29,6 +29,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AuditModule } from './modulos/audit/audit.module';
+import { TenantModule } from './common/tenant';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 
@@ -157,6 +158,7 @@ import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.
     AuditModule,
     LoggerModule,
     JobsModule,
+    TenantModule, // 🏢 Multi-tenancy: Contexto, Interceptor, Guard, Resolver
   ],
   controllers: [],
   providers: [

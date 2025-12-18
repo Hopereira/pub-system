@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { TenantInterceptor, TenantGuard } from './common/tenant';
 
 // Configura timezone para São Paulo (UTC-3)
 process.env.TZ = 'America/Sao_Paulo';
@@ -28,6 +29,25 @@ async function bootstrap() {
 
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());
+
+  // 🏢 Multi-tenancy: Interceptor para captura híbrida de tenant
+  // Identifica tenant via: subdomínio, slug na URL, JWT ou header
+  try {
+    const tenantInterceptor = app.get(TenantInterceptor);
+    app.useGlobalInterceptors(tenantInterceptor);
+    logger.log('🏢 TenantInterceptor ativado globalmente');
+  } catch (e) {
+    logger.warn('⚠️ TenantInterceptor não disponível (TenantModule não carregado?)');
+  }
+
+  // 🛡️ Multi-tenancy: Guard para bloqueio de acesso cross-tenant
+  try {
+    const tenantGuard = app.get(TenantGuard);
+    app.useGlobalGuards(tenantGuard);
+    logger.log('🛡️ TenantGuard ativado globalmente');
+  } catch (e) {
+    logger.warn('⚠️ TenantGuard não disponível (TenantModule não carregado?)');
+  }
 
   // 🔥 Ativar Exception Filter Global
   app.useGlobalFilters(new AllExceptionsFilter());
