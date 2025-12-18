@@ -26,9 +26,17 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * TurnoController - Gestão de turnos de funcionários
+ * 
+ * 🔒 Requer plano PRO ou superior (Feature.TURNOS)
+ */
 @ApiTags('Turnos')
 @Controller('turnos')
+@UseGuards(FeatureGuard)
+@RequireFeature(Feature.TURNOS)
 export class TurnoController {
   constructor(private readonly turnoService: TurnoService) {}
 

@@ -32,9 +32,17 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * EventoController - Gestão de eventos
+ * 
+ * 🔒 Requer plano BASIC ou superior (Feature.EVENTOS)
+ */
 @ApiTags('Eventos')
 @Controller('eventos')
+@UseGuards(FeatureGuard)
+@RequireFeature(Feature.EVENTOS)
 export class EventoController {
   private readonly logger = new Logger(EventoController.name);
 

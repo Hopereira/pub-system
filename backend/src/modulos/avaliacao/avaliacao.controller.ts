@@ -17,9 +17,18 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * AvaliacaoController - Sistema de avaliações de clientes
+ * 
+ * 🔒 Requer plano BASIC ou superior (Feature.AVALIACOES)
+ * Nota: Rota POST é pública para clientes avaliarem
+ */
 @ApiTags('Avaliações')
 @Controller('avaliacoes')
+@UseGuards(FeatureGuard)
+@RequireFeature(Feature.AVALIACOES)
 export class AvaliacaoController {
   constructor(private readonly avaliacaoService: AvaliacaoService) {}
 
