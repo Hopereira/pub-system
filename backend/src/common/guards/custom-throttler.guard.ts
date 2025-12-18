@@ -19,18 +19,4 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     // Não autenticados usam IP
     return req.ip;
   }
-
-  protected async getThrottlerLimit(context: ExecutionContext): Promise<number> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    
-    const limit = await super.getThrottlerLimit(context);
-    
-    // Usuários autenticados têm limite 2x maior
-    if (user && user.cargo !== 'ADMIN') {
-      return limit * 2;
-    }
-    
-    return limit;
-  }
 }
