@@ -47,7 +47,7 @@ export class AmbienteController {
   }
 
   @Get()
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHEIRO, Cargo.BARTENDER)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER)
   @ApiOperation({ summary: 'Lista todos os ambientes cadastrados' })
   @ApiResponse({
     status: 200,
@@ -59,7 +59,7 @@ export class AmbienteController {
   }
 
   @Get(':id')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER)
   @ApiOperation({ summary: 'Busca um ambiente específico por ID' })
   @ApiResponse({
     status: 200,

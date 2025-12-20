@@ -6,14 +6,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FuncionarioModule } from 'src/modulos/funcionario/funcionario.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { CreateSuperAdminController } from './create-super-admin.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenService } from './refresh-token.service';
 import { RefreshTokenCleanupService } from './refresh-token-cleanup.service';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { Funcionario } from '../modulos/funcionario/entities/funcionario.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RefreshToken]),
+    TypeOrmModule.forFeature([RefreshToken, Funcionario]),
     FuncionarioModule,
     PassportModule,
     JwtModule.registerAsync({
@@ -26,7 +28,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
     }),
   ],
   providers: [AuthService, RefreshTokenService, RefreshTokenCleanupService, JwtStrategy],
-  controllers: [AuthController],
+  controllers: [AuthController, CreateSuperAdminController],
   exports: [AuthService, RefreshTokenService],
 })
 export class AuthModule {}

@@ -22,6 +22,12 @@ import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
+// Repositórios tenant-aware
+import { ComandaRepository } from './comanda.repository';
+import { MesaRepository } from '../mesa/mesa.repository';
+import { ClienteRepository } from '../cliente/cliente.repository';
+import { PedidoRepository } from '../pedido/pedido.repository';
+
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
 import { UpdatePontoEntregaComandaDto } from './dto/update-ponto-entrega.dto';
@@ -43,18 +49,14 @@ export class ComandaService {
   private readonly logger = new Logger(ComandaService.name);
 
   constructor(
-    @InjectRepository(Comanda)
-    private readonly comandaRepository: Repository<Comanda>,
-    @InjectRepository(Mesa)
-    private readonly mesaRepository: Repository<Mesa>,
-    @InjectRepository(Cliente)
-    private readonly clienteRepository: Repository<Cliente>,
+    private readonly comandaRepository: ComandaRepository,
+    private readonly mesaRepository: MesaRepository,
+    private readonly clienteRepository: ClienteRepository,
     @InjectRepository(PaginaEvento)
     private readonly paginaEventoRepository: Repository<PaginaEvento>,
     @InjectRepository(Evento)
     private readonly eventoRepository: Repository<Evento>,
-    @InjectRepository(Pedido)
-    private readonly pedidoRepository: Repository<Pedido>,
+    private readonly pedidoRepository: PedidoRepository,
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
     @InjectRepository(PontoEntrega)

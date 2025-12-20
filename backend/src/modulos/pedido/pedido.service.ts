@@ -29,27 +29,27 @@ import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { PaginationDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import Decimal from 'decimal.js';
+import { PedidoRepository } from './pedido.repository';
+import { ComandaRepository } from '../comanda/comanda.repository';
+import { ProdutoRepository } from '../produto/produto.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
+import { FuncionarioRepository } from '../funcionario/funcionario.repository';
 
 @Injectable()
 export class PedidoService {
   private readonly logger = new Logger(PedidoService.name);
 
-  // ... (construtor e outros métodos permanecem os mesmos)
+  // Construtor refatorado para usar repositórios tenant-aware
   constructor(
-    @InjectRepository(Pedido)
-    private readonly pedidoRepository: Repository<Pedido>,
+    private readonly pedidoRepository: PedidoRepository,
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
     @InjectRepository(RetiradaItem)
     private readonly retiradaItemRepository: Repository<RetiradaItem>,
-    @InjectRepository(Comanda)
-    private readonly comandaRepository: Repository<Comanda>,
-    @InjectRepository(Produto)
-    private readonly produtoRepository: Repository<Produto>,
-    @InjectRepository(Ambiente)
-    private readonly ambienteRepository: Repository<Ambiente>,
-    @InjectRepository(Funcionario)
-    private readonly funcionarioRepository: Repository<Funcionario>,
+    private readonly comandaRepository: ComandaRepository,
+    private readonly produtoRepository: ProdutoRepository,
+    private readonly ambienteRepository: AmbienteRepository,
+    private readonly funcionarioRepository: FuncionarioRepository,
     @InjectRepository(TurnoFuncionario)
     private readonly turnoRepository: Repository<TurnoFuncionario>,
     private readonly pedidosGateway: PedidosGateway,

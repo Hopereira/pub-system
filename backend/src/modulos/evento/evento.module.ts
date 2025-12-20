@@ -5,6 +5,7 @@ import { EventoService } from './evento.service';
 import { EventoController } from './evento.controller';
 import { Evento } from './entities/evento.entity';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
+import { EventoRepository } from './evento.repository';
 // ✅ 1. Importar o seu módulo a partir do caminho correto
 import { StorageModule } from 'src/shared/storage/storage.module';
 
@@ -12,6 +13,7 @@ import { StorageModule } from 'src/shared/storage/storage.module';
   // ✅ 2. Adicionar o StorageModule às importações
   imports: [TypeOrmModule.forFeature([Evento, PaginaEvento]), StorageModule],
   controllers: [EventoController],
-  providers: [EventoService],
+  providers: [EventoService, EventoRepository],
+  exports: [EventoService, EventoRepository],
 })
 export class EventoModule {}

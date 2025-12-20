@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -16,6 +16,11 @@ import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { PedidosGateway } from './pedidos.gateway';
 import { QuaseProntoScheduler } from './quase-pronto.scheduler';
+import { PedidoRepository } from './pedido.repository';
+import { ProdutoModule } from '../produto/produto.module';
+import { AmbienteModule } from '../ambiente/ambiente.module';
+import { FuncionarioModule } from '../funcionario/funcionario.module';
+import { ComandaModule } from '../comanda/comanda.module';
 
 @Module({
   imports: [
@@ -37,6 +42,10 @@ import { QuaseProntoScheduler } from './quase-pronto.scheduler';
       }),
       inject: [ConfigService],
     }),
+    ProdutoModule,
+    AmbienteModule,
+    FuncionarioModule,
+    forwardRef(() => ComandaModule),
   ],
   controllers: [PedidoController, PedidoAnalyticsController],
   providers: [
@@ -44,10 +53,8 @@ import { QuaseProntoScheduler } from './quase-pronto.scheduler';
     PedidoAnalyticsService,
     PedidosGateway,
     QuaseProntoScheduler,
+    PedidoRepository,
   ],
-  // ==================================================================
-  // ## CORREÇÃO: Exportamos o Gateway para que outros módulos o possam usar ##
-  // ==================================================================
-  exports: [PedidoService, PedidoAnalyticsService, PedidosGateway],
+  exports: [PedidoService, PedidoAnalyticsService, PedidosGateway, PedidoRepository],
 })
 export class PedidoModule {}

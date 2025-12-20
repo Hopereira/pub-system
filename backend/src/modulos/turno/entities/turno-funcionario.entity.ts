@@ -49,4 +49,9 @@ export class TurnoFuncionario {
 
   @CreateDateColumn()
   criadoEm: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_turno_funcionario_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

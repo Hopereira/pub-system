@@ -17,6 +17,7 @@ export interface CreateAuditLogDto {
   endpoint?: string;
   method?: string;
   description?: string;
+  tenantId?: string; // Multi-tenancy: ID do tenant
 }
 
 export interface AuditLogFilters {
@@ -44,9 +45,13 @@ export class AuditService {
    */
   async log(dto: CreateAuditLogDto): Promise<AuditLog> {
     try {
+      // Obter tenantId do DTO, do funcionário ou usar um valor padrão
+      const tenantId = dto.tenantId || dto.funcionario?.tenantId || null;
+      
       const auditLog = this.auditLogRepository.create({
         ...dto,
         funcionarioEmail: dto.funcionario?.email || dto.funcionarioEmail,
+        tenantId,
       });
 
       const saved = await this.auditLogRepository.save(auditLog);

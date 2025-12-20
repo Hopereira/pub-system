@@ -1,18 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Optional, Scope } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { REQUEST } from '@nestjs/core';
 import { Repository } from 'typeorm';
 import { BaseTenantRepository } from '../../common/tenant/repositories/base-tenant.repository';
 import { TenantContextService } from '../../common/tenant';
 import { Comanda } from './entities/comanda.entity';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ComandaRepository extends BaseTenantRepository<Comanda> {
   constructor(
     @InjectRepository(Comanda)
     repository: Repository<Comanda>,
-    tenantContext: TenantContextService,
+    @Optional() tenantContext: TenantContextService,
+    @Optional() @Inject(REQUEST) request?: any,
   ) {
-    super(repository, tenantContext);
+    super(repository, tenantContext, request);
   }
 
   /**

@@ -1,26 +1,23 @@
 import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
-import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { Express } from 'express';
 import { PaginationDto, PaginatedResponse, createPaginatedResponse } from 'src/common/dto/pagination.dto';
+import { ProdutoRepository } from './produto.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
 
 @Injectable()
 export class ProdutoService {
   private readonly logger = new Logger(ProdutoService.name);
 
   constructor(
-    @InjectRepository(Produto)
-    private readonly produtoRepository: Repository<Produto>,
-    @InjectRepository(Ambiente)
-    private readonly ambienteRepository: Repository<Ambiente>,
+    private readonly produtoRepository: ProdutoRepository,
+    private readonly ambienteRepository: AmbienteRepository,
     private readonly storageService: GcsStorageService,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
@@ -148,7 +145,7 @@ export class ProdutoService {
     return removedProduto;
   }
 
-  // ✅ ATUALIZADO: findAll com paginação e cache
+  // ✅ ATUALIZADO: findAll com paginação e cache (rota pública - sem filtro de tenant)
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
@@ -164,7 +161,8 @@ export class ProdutoService {
     
     this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
-    const [data, total] = await this.produtoRepository.findAndCount({
+    // Usar findAndCountWithoutTenant para rotas públicas (não requer tenant)
+    const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
       where: { ativo: true },
       relations: ['ambiente'],
       order: { [sortBy]: sortOrder },
@@ -195,7 +193,8 @@ export class ProdutoService {
     
     this.logger.debug('❌ Cache MISS: produtos:all:ativos');
     
-    const produtos = await this.produtoRepository.find({
+    // Usar findWithoutTenant para rotas públicas (não requer tenant)
+    const produtos = await this.produtoRepository.findWithoutTenant({
       where: { ativo: true },
       relations: ['ambiente'],
       order: { nome: 'ASC' },

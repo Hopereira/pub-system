@@ -1,65 +1,50 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import superAdminService, {
-  PlatformMetrics,
-  TenantSummary,
-  CreateTenantDto,
-} from '@/services/superAdminService';
+import Link from 'next/link';
+import superAdminService, { PlatformMetrics, TenantSummary, CreateTenantDto } from '@/services/superAdminService';
 import {
   Building2,
   Users,
-  ShoppingCart,
-  DollarSign,
-  TrendingUp,
+  CreditCard,
+  BarChart2,
   Plus,
+  Crown,
+  TrendingUp,
+  DollarSign,
   RefreshCw,
+  Loader2,
   Search,
   MoreVertical,
   Ban,
   CheckCircle,
-  ArrowUpCircle,
   Eye,
+  Edit,
+  Clock,
   AlertTriangle,
-  Loader2,
-  CreditCard,
-  Settings,
+  ShoppingCart,
+  Zap,
+  X,
 } from 'lucide-react';
-import Link from 'next/link';
 
-/**
- * Super Admin Dashboard - Painel do Dono da Plataforma SaaS
- * 
- * Funcionalidades:
- * - Métricas globais da plataforma
- * - Lista de todos os tenants (bares)
- * - Criar novo tenant
- * - Suspender/Reativar tenants
- * - Alterar planos
- */
 export default function SuperAdminPage() {
   const { user } = useAuth();
   const router = useRouter();
-  
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<TenantSummary | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Verificar se é SUPER_ADMIN
   useEffect(() => {
     if (user && user.cargo !== 'SUPER_ADMIN') {
       router.push('/dashboard');
     }
   }, [user, router]);
 
-  // Carregar dados
   useEffect(() => {
     loadData();
   }, []);
@@ -67,359 +52,355 @@ export default function SuperAdminPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      setError(null);
       const [metricsData, tenantsData] = await Promise.all([
         superAdminService.getMetrics(),
         superAdminService.listTenants(),
       ]);
       setMetrics(metricsData);
       setTenants(tenantsData);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao carregar dados');
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filtrar tenants
+  const handleSuspend = async (tenant: TenantSummary) => {
+    const motivo = prompt('Motivo da suspensão:');
+    if (!motivo) return;
+    try {
+      setActionLoading(tenant.id);
+      await superAdminService.suspendTenant(tenant.id, motivo);
+      await loadData();
+    } catch (err) {
+      alert('Erro ao suspender tenant');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReactivate = async (tenant: TenantSummary) => {
+    if (!confirm(`Reativar ${tenant.nome}?`)) return;
+    try {
+      setActionLoading(tenant.id);
+      await superAdminService.reactivateTenant(tenant.id);
+      await loadData();
+    } catch (err) {
+      alert('Erro ao reativar tenant');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleChangePlan = async (tenant: TenantSummary) => {
+    const planos = ['FREE', 'BASIC', 'PRO', 'ENTERPRISE'];
+    const novoPlano = prompt(`Novo plano para ${tenant.nome}:\n\nOpções: ${planos.join(', ')}\n\nAtual: ${tenant.plano}`);
+    if (!novoPlano || !planos.includes(novoPlano.toUpperCase())) return;
+    try {
+      setActionLoading(tenant.id);
+      await superAdminService.changePlan(tenant.id, novoPlano.toUpperCase());
+      await loadData();
+    } catch (err) {
+      alert('Erro ao alterar plano');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const filteredTenants = tenants.filter(
     (t) =>
       t.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.slug.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Suspender tenant
-  const handleSuspend = async (tenant: TenantSummary) => {
-    const motivo = prompt('Motivo da suspensão:');
-    if (!motivo) return;
-
-    try {
-      setActionLoading(true);
-      await superAdminService.suspendTenant(tenant.id, motivo);
-      await loadData();
-      alert(`Tenant ${tenant.nome} suspenso com sucesso!`);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao suspender tenant');
-    } finally {
-      setActionLoading(false);
-    }
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      ATIVO: 'bg-green-100 text-green-800',
+      TRIAL: 'bg-blue-100 text-blue-800',
+      SUSPENSO: 'bg-red-100 text-red-800',
+      INATIVO: 'bg-gray-100 text-gray-800',
+    };
+    return styles[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Reativar tenant
-  const handleReactivate = async (tenant: TenantSummary) => {
-    if (!confirm(`Reativar o tenant ${tenant.nome}?`)) return;
-
-    try {
-      setActionLoading(true);
-      await superAdminService.reactivateTenant(tenant.id);
-      await loadData();
-      alert(`Tenant ${tenant.nome} reativado com sucesso!`);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao reativar tenant');
-    } finally {
-      setActionLoading(false);
-    }
+  const getPlanoBadge = (plano: string) => {
+    const styles: Record<string, string> = {
+      FREE: 'bg-gray-100 text-gray-600',
+      BASIC: 'bg-blue-100 text-blue-600',
+      PRO: 'bg-purple-100 text-purple-600',
+      ENTERPRISE: 'bg-amber-100 text-amber-600',
+    };
+    return styles[plano] || 'bg-gray-100 text-gray-600';
   };
 
-  // Alterar plano
-  const handleChangePlan = async (tenant: TenantSummary) => {
-    const planos = ['FREE', 'BASIC', 'PRO', 'ENTERPRISE'];
-    const novoPlano = prompt(
-      `Novo plano para ${tenant.nome}:\n\nOpções: ${planos.join(', ')}\n\nAtual: ${tenant.plano}`
-    );
-    if (!novoPlano || !planos.includes(novoPlano.toUpperCase())) return;
+  const statsCards = [
+    {
+      title: 'Total de Empresas',
+      value: loading ? '...' : String(metrics?.totalTenants || 0),
+      subtitle: 'Bares cadastrados',
+      icon: Building2,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-50',
+    },
+    {
+      title: 'MRR (Faturamento)',
+      value: loading ? '...' : `R$ ${(metrics?.mrr || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      subtitle: 'Receita mensal recorrente',
+      icon: DollarSign,
+      color: 'text-green-500',
+      bgColor: 'bg-green-50',
+    },
+    {
+      title: 'Pedidos (24h)',
+      value: loading ? '...' : String(metrics?.pedidos24h || 0),
+      subtitle: 'Volume em toda a rede',
+      icon: ShoppingCart,
+      color: 'text-purple-500',
+      bgColor: 'bg-purple-50',
+    },
+    {
+      title: 'Novos Trials',
+      value: loading ? '...' : String(metrics?.novosTrials7dias || 0),
+      subtitle: 'Últimos 7 dias',
+      icon: Zap,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-50',
+    },
+  ];
 
-    try {
-      setActionLoading(true);
-      await superAdminService.changePlan(tenant.id, novoPlano.toUpperCase());
-      await loadData();
-      alert(`Plano alterado para ${novoPlano.toUpperCase()}!`);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao alterar plano');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  if (user?.cargo !== 'SUPER_ADMIN') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-800">Acesso Negado</h1>
-          <p className="text-gray-600 mt-2">
-            Apenas SUPER_ADMIN pode acessar esta página.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Carregando dados...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-800">Erro</h1>
-          <p className="text-gray-600 mt-2">{error}</p>
-          <button
-            onClick={loadData}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Tentar novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const quickActions = [
+    {
+      title: 'Novo Estabelecimento',
+      description: 'Provisionar novo bar na plataforma',
+      icon: Plus,
+      onClick: () => setShowCreateModal(true),
+      color: 'bg-green-500 hover:bg-green-600',
+    },
+    {
+      title: 'Configurar Pagamentos',
+      description: 'Gerenciar gateways por tenant',
+      icon: CreditCard,
+      href: '/super-admin/pagamentos',
+      color: 'bg-purple-500 hover:bg-purple-600',
+    },
+    {
+      title: 'Planos e Billing',
+      description: 'Controle de assinaturas',
+      icon: DollarSign,
+      href: '/super-admin/planos',
+      color: 'bg-amber-500 hover:bg-amber-600',
+    },
+  ];
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Super Admin</h1>
-          <p className="text-gray-600">Gestão da Plataforma SaaS</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={loadData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </button>
-          <Link
-            href="/super-admin/pagamentos"
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-          >
-            <CreditCard className="w-4 h-4" />
-            Pagamentos
-          </Link>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Tenant
-          </button>
-        </div>
-      </div>
-
-      {/* Métricas */}
-      {metrics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Total de Bares"
-            value={metrics.totalTenants}
-            icon={<Building2 className="w-6 h-6" />}
-            color="blue"
-          />
-          <MetricCard
-            title="Pedidos Hoje"
-            value={metrics.pedidosHoje}
-            icon={<ShoppingCart className="w-6 h-6" />}
-            color="green"
-          />
-          <MetricCard
-            title="Faturamento Hoje"
-            value={`R$ ${metrics.faturamentoHoje.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={<DollarSign className="w-6 h-6" />}
-            color="yellow"
-          />
-          <MetricCard
-            title="MRR"
-            value={`R$ ${metrics.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={<TrendingUp className="w-6 h-6" />}
-            color="purple"
-            subtitle="Receita Mensal Recorrente"
-          />
-        </div>
-      )}
-
-      {/* Status dos Tenants */}
-      {metrics && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatusBadge
-            label="Ativos"
-            count={metrics.tenantsByStatus['ATIVO'] || 0}
-            color="green"
-          />
-          <StatusBadge
-            label="Trial"
-            count={metrics.tenantsByStatus['TRIAL'] || 0}
-            color="blue"
-          />
-          <StatusBadge
-            label="Suspensos"
-            count={metrics.tenantsByStatus['SUSPENSO'] || 0}
-            color="red"
-          />
-          <StatusBadge
-            label="Inativos"
-            count={metrics.tenantsByStatus['INATIVO'] || 0}
-            color="gray"
-          />
-        </div>
-      )}
-
-      {/* Distribuição por Plano */}
-      {metrics && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Distribuição por Plano
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {['FREE', 'BASIC', 'PRO', 'ENTERPRISE'].map((plano) => (
-              <div
-                key={plano}
-                className="text-center p-4 bg-gray-50 rounded-lg"
-              >
-                <div className="text-2xl font-bold text-gray-900">
-                  {metrics.tenantsByPlano[plano] || 0}
-                </div>
-                <div className="text-sm text-gray-600">{plano}</div>
-              </div>
-            ))}
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+            <Crown className="h-8 w-8 text-amber-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard SaaS</h1>
+            <p className="text-muted-foreground">
+              Bem-vindo, {user?.nome || 'Super Admin'}!
+            </p>
           </div>
         </div>
-      )}
+        <button
+          onClick={loadData}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Atualizar
+        </button>
+      </div>
 
-      {/* Lista de Tenants */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Tenants ({filteredTenants.length})
-            </h2>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statsCards.map((stat) => {
+          const IconComponent = stat.icon;
+          return (
+            <div key={stat.title} className="bg-white dark:bg-gray-800 rounded-xl border p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <IconComponent className={`h-5 w-5 ${stat.color}`} />
+                </div>
+              </div>
+              <p className="text-2xl font-bold">{stat.value}</p>
+              <p className="text-sm text-gray-500">{stat.title}</p>
+              <p className="text-xs text-gray-400 mt-1">{stat.subtitle}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {quickActions.map((action) => {
+          const IconComponent = action.icon;
+          const content = (
+            <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border hover:shadow-md transition-all cursor-pointer">
+              <div className={`p-3 rounded-lg ${action.color} text-white`}>
+                <IconComponent className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold">{action.title}</h3>
+                <p className="text-sm text-gray-500">{action.description}</p>
+              </div>
+            </div>
+          );
+          if (action.href) {
+            return <Link key={action.title} href={action.href}>{content}</Link>;
+          }
+          return <div key={action.title} onClick={action.onClick}>{content}</div>;
+        })}
+      </div>
+
+      {/* Tenants Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Gestão de Empresas
+          </h2>
+          <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar por nome ou slug..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10 pr-4 py-2 border rounded-lg w-64 text-sm"
               />
             </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Bar
+            </button>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Tenant
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Plano
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Pedidos Hoje
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Comandas
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Funcionários
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Ações
-                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estabelecimento</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gateways</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Pedidos 24h</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Comandas</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredTenants.map((tenant) => (
-                <tr key={tenant.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-4">
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {tenant.nome}
-                      </div>
-                      <div className="text-sm text-gray-500">{tenant.slug}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <StatusPill status={tenant.status} />
-                  </td>
-                  <td className="px-4 py-4">
-                    <PlanBadge plano={tenant.plano} />
-                  </td>
-                  <td className="px-4 py-4 text-center text-gray-900">
-                    {tenant.pedidosHoje}
-                  </td>
-                  <td className="px-4 py-4 text-center text-gray-900">
-                    {tenant.comandasAbertas}
-                  </td>
-                  <td className="px-4 py-4 text-center text-gray-900">
-                    {tenant.funcionariosAtivos}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => router.push(`/super-admin/tenants/${tenant.id}`)}
-                        className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                        title="Ver detalhes"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleChangePlan(tenant)}
-                        className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg"
-                        title="Alterar plano"
-                        disabled={actionLoading}
-                      >
-                        <ArrowUpCircle className="w-4 h-4" />
-                      </button>
-                      {tenant.status === 'SUSPENSO' ? (
-                        <button
-                          onClick={() => handleReactivate(tenant)}
-                          className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg"
-                          title="Reativar"
-                          disabled={actionLoading}
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleSuspend(tenant)}
-                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                          title="Suspender"
-                          disabled={actionLoading}
-                        >
-                          <Ban className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+            <tbody className="divide-y">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
                   </td>
                 </tr>
-              ))}
+              ) : filteredTenants.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                    Nenhum estabelecimento encontrado
+                  </td>
+                </tr>
+              ) : (
+                filteredTenants.map((tenant) => (
+                  <tr key={tenant.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-medium">{tenant.nome}</p>
+                        <p className="text-xs text-gray-500">{tenant.slug}.pubsystem.com.br</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPlanoBadge(tenant.plano)}`}>
+                        {tenant.plano}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(tenant.status)}`}>
+                          {tenant.status}
+                        </span>
+                        {tenant.status === 'TRIAL' && tenant.trialExpiresAt && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {Math.ceil((new Date(tenant.trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}d
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {tenant.gatewaysAtivos.length > 0 ? (
+                        <div className="flex gap-1">
+                          {tenant.gatewaysAtivos.map((gw) => (
+                            <span key={gw} className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                              {gw}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Nenhum</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center font-medium">{tenant.pedidos24h}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={tenant.comandasAbertas > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {tenant.comandasAbertas}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {actionLoading === tenant.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleChangePlan(tenant)}
+                              className="p-1.5 hover:bg-gray-100 rounded"
+                              title="Alterar Plano"
+                            >
+                              <Edit className="h-4 w-4 text-gray-500" />
+                            </button>
+                            {tenant.status === 'SUSPENSO' ? (
+                              <button
+                                onClick={() => handleReactivate(tenant)}
+                                className="p-1.5 hover:bg-green-100 rounded"
+                                title="Reativar"
+                              >
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSuspend(tenant)}
+                                className="p-1.5 hover:bg-red-100 rounded"
+                                title="Suspender"
+                              >
+                                <Ban className="h-4 w-4 text-red-500" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-
-          {filteredTenants.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              Nenhum tenant encontrado
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Modal de Criar Tenant */}
+      {/* Create Modal */}
       {showCreateModal && (
         <CreateTenantModal
           onClose={() => setShowCreateModal(false)}
@@ -433,418 +414,139 @@ export default function SuperAdminPage() {
   );
 }
 
-// Componentes auxiliares
-function MetricCard({
-  title,
-  value,
-  icon,
-  color,
-  subtitle,
-}: {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  color: 'blue' | 'green' | 'yellow' | 'purple';
-  subtitle?: string;
-}) {
-  const colors = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    purple: 'bg-purple-50 text-purple-600',
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          {subtitle && (
-            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
-          )}
-        </div>
-        <div className={`p-3 rounded-lg ${colors[color]}`}>{icon}</div>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({
-  label,
-  count,
-  color,
-}: {
-  label: string;
-  count: number;
-  color: 'green' | 'blue' | 'red' | 'gray';
-}) {
-  const colors = {
-    green: 'bg-green-100 text-green-800 border-green-200',
-    blue: 'bg-blue-100 text-blue-800 border-blue-200',
-    red: 'bg-red-100 text-red-800 border-red-200',
-    gray: 'bg-gray-100 text-gray-800 border-gray-200',
-  };
-
-  return (
-    <div className={`p-4 rounded-lg border ${colors[color]}`}>
-      <div className="text-2xl font-bold">{count}</div>
-      <div className="text-sm">{label}</div>
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    ATIVO: 'bg-green-100 text-green-800',
-    TRIAL: 'bg-blue-100 text-blue-800',
-    SUSPENSO: 'bg-red-100 text-red-800',
-    INATIVO: 'bg-gray-100 text-gray-800',
-  };
-
-  return (
-    <span
-      className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || styles.INATIVO}`}
-    >
-      {status}
-    </span>
-  );
-}
-
-function PlanBadge({ plano }: { plano: string }) {
-  const styles: Record<string, string> = {
-    FREE: 'bg-gray-100 text-gray-800',
-    BASIC: 'bg-blue-100 text-blue-800',
-    PRO: 'bg-purple-100 text-purple-800',
-    ENTERPRISE: 'bg-yellow-100 text-yellow-800',
-  };
-
-  return (
-    <span
-      className={`px-2 py-1 rounded-full text-xs font-medium ${styles[plano] || styles.FREE}`}
-    >
-      {plano}
-    </span>
-  );
-}
-
-// Modal de Criar Tenant
-function CreateTenantModal({
-  onClose,
-  onSuccess,
-}: {
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
+function CreateTenantModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
-  const [slugSuggestions, setSlugSuggestions] = useState<string[]>([]);
-  const [formData, setFormData] = useState<CreateTenantDto>({
+  const [form, setForm] = useState<CreateTenantDto>({
     nome: '',
     slug: '',
-    plano: 'FREE',
     nomeFantasia: '',
+    plano: 'FREE',
     adminNome: '',
     adminEmail: '',
     adminSenha: '',
   });
 
-  // Gerar slug automaticamente
-  useEffect(() => {
-    if (formData.nome && !formData.slug) {
-      const slug = formData.nome
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .substring(0, 50);
-      setFormData((prev) => ({ ...prev, slug }));
-    }
-  }, [formData.nome]);
-
-  // Verificar disponibilidade do slug
-  useEffect(() => {
-    const checkSlug = async () => {
-      if (formData.slug.length >= 3) {
-        try {
-          const result = await superAdminService.checkSlugAvailability(formData.slug);
-          setSlugAvailable(result.available);
-          setSlugSuggestions(result.suggestions);
-        } catch {
-          setSlugAvailable(null);
-        }
-      } else {
-        setSlugAvailable(null);
-      }
-    };
-
-    const timeout = setTimeout(checkSlug, 500);
-    return () => clearTimeout(timeout);
-  }, [formData.slug]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!slugAvailable) {
-      setError('Slug não disponível');
-      return;
-    }
-
     try {
       setLoading(true);
-      const result = await superAdminService.createTenant({
-        ...formData,
-        nomeFantasia: formData.nomeFantasia || formData.nome,
-      });
-      
-      alert(
-        `✅ Tenant criado com sucesso!\n\n` +
-        `Nome: ${result.tenant.nome}\n` +
-        `Slug: ${result.tenant.slug}\n` +
-        `Admin: ${result.credenciais.email}\n` +
-        `Senha: ${result.credenciais.senhaTemporaria}\n\n` +
-        `${result.ambientes.length} ambientes e ${result.mesas.length} mesas criados.`
-      );
-      
+      await superAdminService.createTenant(form);
+      alert('Estabelecimento criado com sucesso!');
       onSuccess();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao criar tenant');
+      alert(err.response?.data?.message || 'Erro ao criar estabelecimento');
     } finally {
       setLoading(false);
     }
   };
 
+  const generateSlug = (nome: string) => {
+    return nome
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Criar Novo Tenant</h2>
-          <p className="text-sm text-gray-600">
-            Preencha os dados para criar um novo bar na plataforma
-          </p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Novo Estabelecimento</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="p-4 bg-red-50 text-red-700 rounded-lg">{error}</div>
-          )}
-
-          {/* Dados do Tenant */}
-          <div className="space-y-4">
-            <h3 className="font-medium text-gray-900">Dados do Estabelecimento</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome do Bar *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nome}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nome: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Bar do Zé"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Slug (URL) *
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={formData.slug}
-                    onChange={(e) =>
-                      setFormData({ ...formData, slug: e.target.value.toLowerCase() })
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      slugAvailable === true
-                        ? 'border-green-500'
-                        : slugAvailable === false
-                        ? 'border-red-500'
-                        : 'border-gray-300'
-                    }`}
-                    placeholder="bar-do-ze"
-                  />
-                  {slugAvailable !== null && (
-                    <span
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm ${
-                        slugAvailable ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {slugAvailable ? '✓ Disponível' : '✗ Indisponível'}
-                    </span>
-                  )}
-                </div>
-                {slugSuggestions.length > 0 && !slugAvailable && (
-                  <div className="mt-1 text-sm text-gray-500">
-                    Sugestões:{' '}
-                    {slugSuggestions.map((s, i) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, slug: s })}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {s}
-                        {i < slugSuggestions.length - 1 ? ', ' : ''}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome Fantasia
-                </label>
-                <input
-                  type="text"
-                  value={formData.nomeFantasia}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nomeFantasia: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Bar do Zé"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Plano
-                </label>
-                <select
-                  value={formData.plano}
-                  onChange={(e) =>
-                    setFormData({ ...formData, plano: e.target.value as any })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="FREE">FREE - Gratuito</option>
-                  <option value="BASIC">BASIC - R$ 99/mês</option>
-                  <option value="PRO">PRO - R$ 199/mês</option>
-                  <option value="ENTERPRISE">ENTERPRISE - R$ 499/mês</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  CNPJ
-                </label>
-                <input
-                  type="text"
-                  value={formData.cnpj || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cnpj: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="00.000.000/0001-00"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Telefone
-                </label>
-                <input
-                  type="text"
-                  value={formData.telefone || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telefone: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Nome do Bar *</label>
+            <input
+              type="text"
+              value={form.nome}
+              onChange={(e) => {
+                setForm({ ...form, nome: e.target.value, slug: generateSlug(e.target.value), nomeFantasia: e.target.value });
+              }}
+              className="w-full px-3 py-2 border rounded-lg"
+              required
+            />
           </div>
-
-          {/* Dados do Admin */}
-          <div className="space-y-4">
-            <h3 className="font-medium text-gray-900">Administrador Inicial</h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nome do Admin *
-              </label>
+          <div>
+            <label className="block text-sm font-medium mb-1">Slug (Subdomínio) *</label>
+            <div className="flex items-center">
               <input
                 type="text"
+                value={form.slug}
+                onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                className="flex-1 px-3 py-2 border rounded-l-lg"
                 required
-                value={formData.adminNome}
-                onChange={(e) =>
-                  setFormData({ ...formData, adminNome: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="José Silva"
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email do Admin *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.adminEmail}
-                  onChange={(e) =>
-                    setFormData({ ...formData, adminEmail: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="admin@bar.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Senha Inicial *
-                </label>
-                <input
-                  type="text"
-                  required
-                  minLength={8}
-                  value={formData.adminSenha}
-                  onChange={(e) =>
-                    setFormData({ ...formData, adminSenha: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Mínimo 8 caracteres"
-                />
-              </div>
+              <span className="px-3 py-2 bg-gray-100 border border-l-0 rounded-r-lg text-sm text-gray-500">
+                .pubsystem.com.br
+              </span>
             </div>
           </div>
-
-          {/* Botões */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div>
+            <label className="block text-sm font-medium mb-1">Plano Inicial</label>
+            <select
+              value={form.plano}
+              onChange={(e) => setForm({ ...form, plano: e.target.value as any })}
+              className="w-full px-3 py-2 border rounded-lg"
+            >
+              <option value="FREE">FREE - Gratuito</option>
+              <option value="BASIC">BASIC - R$ 99/mês</option>
+              <option value="PRO">PRO - R$ 199/mês</option>
+              <option value="ENTERPRISE">ENTERPRISE - R$ 499/mês</option>
+            </select>
+          </div>
+          <hr />
+          <p className="text-sm font-medium text-gray-600">Administrador do Bar</p>
+          <div>
+            <label className="block text-sm font-medium mb-1">Nome do Admin *</label>
+            <input
+              type="text"
+              value={form.adminNome}
+              onChange={(e) => setForm({ ...form, adminNome: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">E-mail do Admin *</label>
+            <input
+              type="email"
+              value={form.adminEmail}
+              onChange={(e) => setForm({ ...form, adminEmail: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Senha Inicial *</label>
+            <input
+              type="password"
+              value={form.adminSenha}
+              onChange={(e) => setForm({ ...form, adminSenha: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg"
+              required
+              minLength={6}
+            />
+          </div>
+          <div className="flex gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              disabled={loading || !slugAvailable}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Criar Tenant
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Criar Infraestrutura
             </button>
           </div>
         </form>

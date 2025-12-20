@@ -6,6 +6,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 
@@ -38,4 +39,9 @@ export class LayoutEstabelecimento {
 
   @UpdateDateColumn()
   atualizadoEm: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_layout_estabelecimento_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

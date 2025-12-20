@@ -44,6 +44,13 @@ export class FeatureGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Verificar se é SUPER_ADMIN - tem acesso total
+    const request = context.switchToHttp().getRequest();
+    const user = request.user;
+    if (user?.cargo === 'SUPER_ADMIN') {
+      return true;
+    }
+
     // Obter features requeridas do decorator
     const requiredFeatures = this.reflector.getAllAndOverride<Feature[]>(
       REQUIRE_FEATURE_KEY,
@@ -55,12 +62,28 @@ export class FeatureGuard implements CanActivate {
       return true;
     }
 
-    // Obter tenantId do contexto
-    const tenantId = this.tenantContext.getTenantId();
+    // Obter tenantId do contexto ou do JWT do usuário
+    let tenantId = this.tenantContext.getTenantIdOrNull();
+
+    // Se não há tenant no contexto, tentar obter do JWT (tenantId ou empresaId)
+    if (!tenantId && user?.tenantId) {
+      tenantId = user.tenantId;
+      this.logger.debug(`FeatureGuard: Usando tenantId do JWT: ${tenantId}`);
+    }
+    if (!tenantId && user?.empresaId) {
+      tenantId = user.empresaId;
+      this.logger.debug(`FeatureGuard: Usando empresaId do JWT: ${tenantId}`);
+    }
 
     if (!tenantId) {
-      this.logger.warn('🚫 FeatureGuard: Sem tenantId no contexto');
-      throw new ForbiddenException('Tenant não identificado');
+      // Se não há tenant e não há usuário, bloquear
+      if (!user) {
+        this.logger.warn('🚫 FeatureGuard: Sem tenantId no contexto e sem usuário');
+        throw new ForbiddenException('Tenant não identificado');
+      }
+      // Usuário autenticado sem tenant (pode ser SUPER_ADMIN que já foi verificado acima)
+      this.logger.debug('FeatureGuard: Usuário autenticado sem tenant, permitindo acesso');
+      return true;
     }
 
     // Buscar plano do tenant

@@ -4,12 +4,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PontoEntregaService } from './ponto-entrega.service';
 import { PontoEntregaController } from './ponto-entrega.controller';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
-import { Empresa } from '../empresa/entities/empresa.entity';
+import { PontoEntregaRepository } from './ponto-entrega.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PontoEntrega, Empresa])],
+  imports: [TypeOrmModule.forFeature([PontoEntrega])],
   controllers: [PontoEntregaController],
-  providers: [PontoEntregaService],
-  exports: [PontoEntregaService],
+  providers: [PontoEntregaService, PontoEntregaRepository],
+  exports: [PontoEntregaService, PontoEntregaRepository],
 })
 export class PontoEntregaModule {}

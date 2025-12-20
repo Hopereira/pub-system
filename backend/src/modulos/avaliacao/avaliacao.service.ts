@@ -13,6 +13,7 @@ import {
   EstatisticasSatisfacaoDto,
 } from './dto/avaliacao-response.dto';
 import { Comanda } from '../comanda/entities/comanda.entity';
+import { ComandaRepository } from '../comanda/comanda.repository';
 
 @Injectable()
 export class AvaliacaoService {
@@ -21,8 +22,7 @@ export class AvaliacaoService {
   constructor(
     @InjectRepository(Avaliacao)
     private avaliacaoRepository: Repository<Avaliacao>,
-    @InjectRepository(Comanda)
-    private comandaRepository: Repository<Comanda>,
+    private comandaRepository: ComandaRepository,
   ) {}
 
   async create(createAvaliacaoDto: CreateAvaliacaoDto): Promise<Avaliacao> {

@@ -109,16 +109,45 @@ export class TenantResolverService {
       return cached;
     }
 
-    this.logger.debug(`🔍 Buscando tenant por ID: ${id}`);
+    this.logger.debug(`🔍 Buscando empresa por tenant_id: ${id}`);
 
+    // Buscar empresa pelo tenant_id (não pelo id da empresa)
+    // O JWT contém o tenantId da tabela tenants, não o id da empresa
     const empresa = await this.empresaRepository.findOne({
-      where: { id },
-      select: ['id', 'slug', 'nomeFantasia', 'ativo'],
+      where: { tenantId: id },
+      select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
     });
 
     if (!empresa) {
-      this.logger.warn(`❌ Tenant não encontrado: ${id}`);
-      throw new NotFoundException(`Estabelecimento não encontrado`);
+      // Fallback: tentar buscar pelo id da empresa (compatibilidade)
+      const empresaById = await this.empresaRepository.findOne({
+        where: { id },
+        select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
+      });
+      
+      if (!empresaById) {
+        this.logger.warn(`❌ Tenant não encontrado: ${id}`);
+        throw new NotFoundException(`Estabelecimento não encontrado`);
+      }
+      
+      if (!empresaById.ativo) {
+        this.logger.warn(`🚫 Tenant inativo: ${id}`);
+        throw new NotFoundException(`Estabelecimento não disponível`);
+      }
+
+      const resolved: ResolvedTenant = {
+        id: createTenantId(empresaById.tenantId || empresaById.id),
+        slug: empresaById.slug,
+        nomeFantasia: empresaById.nomeFantasia,
+        ativo: empresaById.ativo,
+      };
+
+      this.setCache(`id:${id}`, resolved);
+      if (empresaById.slug) {
+        this.setCache(`slug:${empresaById.slug}`, resolved);
+      }
+
+      return resolved;
     }
 
     if (!empresa.ativo) {
@@ -127,7 +156,7 @@ export class TenantResolverService {
     }
 
     const resolved: ResolvedTenant = {
-      id: createTenantId(empresa.id),
+      id: createTenantId(empresa.tenantId || id),
       slug: empresa.slug,
       nomeFantasia: empresa.nomeFantasia,
       ativo: empresa.ativo,

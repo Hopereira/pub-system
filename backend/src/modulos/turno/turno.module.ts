@@ -7,10 +7,13 @@ import { TurnoService } from './turno.service';
 import { TurnoGateway } from './turno.gateway';
 import { TurnoFuncionario } from './entities/turno-funcionario.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
+import { TurnoRepository } from './turno.repository';
+import { FuncionarioModule } from '../funcionario/funcionario.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TurnoFuncionario, Funcionario]),
+    FuncionarioModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -21,7 +24,7 @@ import { Funcionario } from '../funcionario/entities/funcionario.entity';
     }),
   ],
   controllers: [TurnoController],
-  providers: [TurnoService, TurnoGateway],
-  exports: [TurnoService],
+  providers: [TurnoService, TurnoGateway, TurnoRepository],
+  exports: [TurnoService, TurnoRepository],
 })
 export class TurnoModule {}

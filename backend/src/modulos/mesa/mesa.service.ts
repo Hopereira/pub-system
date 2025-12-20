@@ -7,15 +7,14 @@ import {
   Logger,
   Inject,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
-import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import { MesaRepository } from './mesa.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
 import {
   AtualizarPosicaoMesaDto,
   AtualizarPosicoesBatchDto,
@@ -31,10 +30,8 @@ export class MesaService {
   private readonly logger = new Logger(MesaService.name);
 
   constructor(
-    @InjectRepository(Mesa)
-    private readonly mesaRepository: Repository<Mesa>,
-    @InjectRepository(Ambiente)
-    private readonly ambienteRepository: Repository<Ambiente>,
+    private readonly mesaRepository: MesaRepository,
+    private readonly ambienteRepository: AmbienteRepository,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,

@@ -80,7 +80,7 @@ export class TenantGuard implements CanActivate {
     }
 
     const contextTenantId = this.tenantContext.getTenantId();
-    const userTenantId = user.empresaId || user.tenantId;
+    const userTenantId = user.tenantId || user.empresaId;
 
     // Se usuário não tem tenant associado (admin global?), deixar passar
     if (!userTenantId) {

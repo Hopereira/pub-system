@@ -21,7 +21,9 @@ interface ProdutosTableProps {
   onDelete: (produto: Produto) => void;
 }
 
-export default function ProdutosTable({ produtos, onEdit, onDelete }: ProdutosTableProps) {
+export default function ProdutosTable({ produtos = [], onEdit, onDelete }: ProdutosTableProps) {
+  const produtosArray = Array.isArray(produtos) ? produtos : [];
+
   return (
     <div className="rounded-lg border">
       <Table>
@@ -36,14 +38,14 @@ export default function ProdutosTable({ produtos, onEdit, onDelete }: ProdutosTa
           </TableRow>
         </TableHeader>
         <TableBody>
-          {produtos.length === 0 ? (
+          {produtosArray.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground">
                 Nenhum produto encontrado.
               </TableCell>
             </TableRow>
           ) : (
-            produtos.map((produto) => (
+            produtosArray.map((produto) => (
               <TableRow key={produto.id}>
                 <TableCell>
                   {produto.urlImagem ? (

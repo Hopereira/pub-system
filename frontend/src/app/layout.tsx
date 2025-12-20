@@ -22,11 +22,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // A propriedade sai daqui...
-    <html lang="pt-br">
-      {/* ...e vem para a tag <body> */}
+    <html lang="pt-br" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
             <TurnoProvider>
               <CaixaProvider>

@@ -17,6 +17,8 @@ import {
   EstatisticasTurnoDto,
 } from './dto/turno-response.dto';
 import { TurnoGateway } from './turno.gateway';
+import { FuncionarioRepository } from '../funcionario/funcionario.repository';
+// TODO: Criar TurnoRepository quando necessário para multi-tenancy completo
 
 @Injectable()
 export class TurnoService {
@@ -25,8 +27,7 @@ export class TurnoService {
   constructor(
     @InjectRepository(TurnoFuncionario)
     private turnoRepository: Repository<TurnoFuncionario>,
-    @InjectRepository(Funcionario)
-    private funcionarioRepository: Repository<Funcionario>,
+    private funcionarioRepository: FuncionarioRepository,
     private readonly turnoGateway: TurnoGateway,
   ) {}
 
@@ -57,12 +58,13 @@ export class TurnoService {
       );
     }
 
-    // Cria novo turno
+    // Cria novo turno com tenant_id do funcionário
     const turno = this.turnoRepository.create({
       funcionarioId,
       eventoId,
       checkIn: new Date(),
       ativo: true,
+      tenantId: funcionario.tenantId, // Multi-tenancy: herda tenant do funcionário
     });
 
     const turnoSalvo = await this.turnoRepository.save(turno);

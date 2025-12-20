@@ -104,6 +104,7 @@ export class CaixaController {
    * Busca caixa aberto do funcionário específico ou por turno
    */
   @Get('aberto')
+  @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER)
   @ApiOperation({ summary: 'Buscar caixa aberto', description: 'Busca caixa aberto por turno ou funcionário' })
   @ApiQuery({ name: 'turnoId', required: false, description: 'ID do turno' })
   @ApiQuery({ name: 'funcionarioId', required: false, description: 'ID do funcionário' })

@@ -100,21 +100,22 @@ import { PaymentModule } from './modulos/payment/payment.module';
     }),
     ScheduleModule.forRoot(), // Habilita jobs agendados
     // ✅ SEGURANÇA: Rate Limiting Global para prevenir brute force e DDoS
+    // Limites aumentados para desenvolvimento
     ThrottlerModule.forRoot([
       {
         name: 'short',
         ttl: 1000, // 1 segundo
-        limit: 3, // 3 requisições por segundo
+        limit: 30, // 30 requisições por segundo (dev)
       },
       {
         name: 'medium',
         ttl: 10000, // 10 segundos
-        limit: 20, // 20 requisições por 10 segundos
+        limit: 200, // 200 requisições por 10 segundos (dev)
       },
       {
         name: 'long',
         ttl: 60000, // 1 minuto
-        limit: 100, // 100 requisições por minuto
+        limit: 1000, // 1000 requisições por minuto (dev)
       },
     ]),
     TypeOrmModule.forRootAsync({
