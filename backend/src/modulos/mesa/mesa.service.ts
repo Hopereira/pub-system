@@ -6,10 +6,14 @@ import {
   ConflictException,
   Logger,
   Inject,
+  Optional,
+  Scope,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
@@ -25,7 +29,7 @@ import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class MesaService {
   private readonly logger = new Logger(MesaService.name);
 
@@ -35,7 +39,33 @@ export class MesaService {
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,
+    @Optional() private readonly tenantContext?: TenantContextService,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
   ) {}
+
+  /**
+   * Obtém o tenantId do contexto atual para namespace de cache
+   */
+  private getTenantId(): string | null {
+    try {
+      if (this.tenantContext?.hasTenant?.()) {
+        return this.tenantContext.getTenantId();
+      }
+    } catch {
+      // Ignorar
+    }
+    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    if (userTenantId) return userTenantId;
+    return this.request?.headers?.['x-tenant-id'] || null;
+  }
+
+  /**
+   * Gera chave de cache com namespace do tenant
+   */
+  private getCacheKey(params: string): string {
+    const tenantId = this.getTenantId();
+    return tenantId ? `mesas:${tenantId}:${params}` : `mesas:global:${params}`;
+  }
 
   // --- MÉTODO ATUALIZADO: Aceita posição, tamanho e rotação opcionais ---
   async create(createMesaDto: CreateMesaDto): Promise<Mesa> {
@@ -101,7 +131,7 @@ export class MesaService {
   }
 
   async findAll(): Promise<Mesa[]> {
-    const cacheKey = 'mesas:all';
+    const cacheKey = this.getCacheKey('all');
 
     // Tentar buscar do cache
     const cached = await this.cacheManager.get<Mesa[]>(cacheKey);

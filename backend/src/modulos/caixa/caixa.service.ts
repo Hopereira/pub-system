@@ -3,9 +3,8 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  Scope,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
 import { AberturaCaixa, StatusCaixa } from './entities/abertura-caixa.entity';
 import { FechamentoCaixa } from './entities/fechamento-caixa.entity';
 import { Sangria } from './entities/sangria.entity';
@@ -14,28 +13,27 @@ import {
   TipoMovimentacao,
   FormaPagamento,
 } from './entities/movimentacao-caixa.entity';
-import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { CreateAberturaCaixaDto } from './dto/create-abertura-caixa.dto';
 import { CreateFechamentoCaixaDto } from './dto/create-fechamento-caixa.dto';
 import { CreateSangriaDto } from './dto/create-sangria.dto';
 import { CreateVendaDto } from './dto/create-venda.dto';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
+import { AberturaCaixaRepository } from './repositories/abertura-caixa.repository';
+import { FechamentoCaixaRepository } from './repositories/fechamento-caixa.repository';
+import { SangriaRepository } from './repositories/sangria.repository';
+import { MovimentacaoCaixaRepository } from './repositories/movimentacao-caixa.repository';
+import { TurnoRepository } from '../turno/turno.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class CaixaService {
   private readonly logger = new Logger(CaixaService.name);
 
   constructor(
-    @InjectRepository(AberturaCaixa)
-    private aberturaRepository: Repository<AberturaCaixa>,
-    @InjectRepository(FechamentoCaixa)
-    private fechamentoRepository: Repository<FechamentoCaixa>,
-    @InjectRepository(Sangria)
-    private sangriaRepository: Repository<Sangria>,
-    @InjectRepository(MovimentacaoCaixa)
-    private movimentacaoRepository: Repository<MovimentacaoCaixa>,
-    @InjectRepository(TurnoFuncionario)
-    private turnoRepository: Repository<TurnoFuncionario>,
+    private aberturaRepository: AberturaCaixaRepository,
+    private fechamentoRepository: FechamentoCaixaRepository,
+    private sangriaRepository: SangriaRepository,
+    private movimentacaoRepository: MovimentacaoCaixaRepository,
+    private turnoRepository: TurnoRepository,
     private pedidosGateway: PedidosGateway,
   ) {}
 

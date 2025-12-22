@@ -17,10 +17,13 @@ import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { PedidosGateway } from './pedidos.gateway';
 import { QuaseProntoScheduler } from './quase-pronto.scheduler';
 import { PedidoRepository } from './pedido.repository';
+import { ItemPedidoRepository } from './item-pedido.repository';
+import { RetiradaItemRepository } from './retirada-item.repository';
 import { ProdutoModule } from '../produto/produto.module';
 import { AmbienteModule } from '../ambiente/ambiente.module';
 import { FuncionarioModule } from '../funcionario/funcionario.module';
 import { ComandaModule } from '../comanda/comanda.module';
+import { TurnoModule } from '../turno/turno.module';
 
 @Module({
   imports: [
@@ -46,6 +49,7 @@ import { ComandaModule } from '../comanda/comanda.module';
     AmbienteModule,
     FuncionarioModule,
     forwardRef(() => ComandaModule),
+    TurnoModule,
   ],
   controllers: [PedidoController, PedidoAnalyticsController],
   providers: [
@@ -54,7 +58,9 @@ import { ComandaModule } from '../comanda/comanda.module';
     PedidosGateway,
     QuaseProntoScheduler,
     PedidoRepository,
+    ItemPedidoRepository,
+    RetiradaItemRepository,
   ],
-  exports: [PedidoService, PedidoAnalyticsService, PedidosGateway, PedidoRepository],
+  exports: [PedidoService, PedidoAnalyticsService, PedidosGateway, PedidoRepository, ItemPedidoRepository, RetiradaItemRepository],
 })
 export class PedidoModule {}
