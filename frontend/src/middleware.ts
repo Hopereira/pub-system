@@ -3,7 +3,12 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  const hostname = request.headers.get('host') || '';
+  
+  // Tentar pegar o host original do header X-Original-Host (enviado pelo Cloudflare Worker)
+  // ou usar o host padrão
+  const originalHost = request.headers.get('x-original-host') || 
+                       request.headers.get('x-forwarded-host') || 
+                       request.headers.get('host') || '';
   
   // Domínios que devem ser ignorados (não são subdomínios de tenant)
   const excludedHosts = [
@@ -16,7 +21,7 @@ export function middleware(request: NextRequest) {
 
   // Verificar se é um host excluído
   const isExcluded = excludedHosts.some(h => 
-    hostname === h || hostname.startsWith(`${h}:`)
+    originalHost === h || originalHost.startsWith(`${h}:`)
   );
 
   if (isExcluded) {
@@ -24,7 +29,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Extrair subdomínio (ex: casarao-pub-423.pubsystem.com.br -> casarao-pub-423)
-  const subdomain = hostname
+  const subdomain = originalHost
     .replace('.pubsystem.com.br', '')
     .replace('.pub-system.vercel.app', '');
 
@@ -33,7 +38,7 @@ export function middleware(request: NextRequest) {
     // Reescrever internamente para a rota /t/[slug]
     const newPath = `/t/${subdomain}${url.pathname === '/' ? '' : url.pathname}`;
     
-    console.log(`[Middleware] Rewriting ${hostname}${url.pathname} -> ${newPath}`);
+    console.log(`[Middleware] Rewriting ${originalHost}${url.pathname} -> ${newPath}`);
     
     return NextResponse.rewrite(new URL(newPath, request.url));
   }
