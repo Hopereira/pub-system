@@ -102,10 +102,10 @@ export default function TenantLoginPage() {
         <div className="space-y-4">
           <button
             onClick={() => {
-              // Salvar contexto e ir para login
+              // Salvar contexto e ir para login do tenant
               localStorage.setItem('tenant_slug', slug);
               localStorage.setItem('tenant_id', tenant.id);
-              router.push('/login');
+              router.push(`/t/${slug}/login`);
             }}
             className="w-full py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition font-medium"
           >
