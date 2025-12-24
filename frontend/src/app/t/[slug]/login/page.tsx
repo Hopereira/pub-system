@@ -13,8 +13,6 @@ interface TenantInfo {
   id: string;
   nome: string;
   slug: string;
-  status: string;
-  plano: string;
 }
 
 export default function TenantLoginPage() {
@@ -33,11 +31,9 @@ export default function TenantLoginPage() {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         const response = await fetch(`${API_URL}/registro/tenant/${slug}`);
-        
         if (response.ok) {
           const data = await response.json();
           setTenant(data);
-          // Salvar contexto do tenant
           localStorage.setItem('tenant_slug', slug);
           localStorage.setItem('tenant_id', data.id);
         }
@@ -47,10 +43,7 @@ export default function TenantLoginPage() {
         setLoadingTenant(false);
       }
     }
-    
-    if (slug) {
-      loadTenant();
-    }
+    if (slug) loadTenant();
   }, [slug]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,7 +52,6 @@ export default function TenantLoginPage() {
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,21 +64,14 @@ export default function TenantLoginPage() {
       }
 
       const data = await response.json();
-      
-      // Salvar token e dados do usuário
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('tenant_slug', slug);
-      if (tenant) {
-        localStorage.setItem('tenant_id', tenant.id);
-      }
+      if (tenant) localStorage.setItem('tenant_id', tenant.id);
 
       toast.success('Login realizado com sucesso!');
-      
-      // Redirecionar para o dashboard do tenant (com sidebar)
       router.push(`/t/${slug}/dashboard`);
     } catch (error: any) {
-      console.error('Erro no login:', error);
       toast.error(error.message || 'Erro ao fazer login');
     } finally {
       setLoading(false);
@@ -103,24 +88,23 @@ export default function TenantLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 p-4">
-      <Card className="max-w-md w-full shadow-xl">
-        <CardHeader className="text-center">
-          <button
-            onClick={() => router.push(`/t/${slug}`)}
-            className="absolute top-4 left-4 text-gray-500 hover:text-gray-700"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          
+      <Card className="max-w-md w-full shadow-xl relative">
+        <button
+          onClick={() => router.push(`/t/${slug}`)}
+          className="absolute top-4 left-4 text-gray-500 hover:text-gray-700"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        
+        <CardHeader className="text-center pt-8">
           <div className="flex justify-center mb-4">
             <Beer className="h-12 w-12 text-amber-500" />
           </div>
-          
           <CardTitle className="text-2xl font-bold text-gray-800">
             {tenant?.nome || 'Login'}
           </CardTitle>
           <CardDescription>
-            Digite suas credenciais para acessar o sistema
+            Digite suas credenciais para acessar
           </CardDescription>
         </CardHeader>
 

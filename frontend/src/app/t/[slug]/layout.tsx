@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
   Settings, Building2, DoorOpen, ChefHat, Landmark,
-  Calendar, MapPin, Package, Map, Search, Receipt, Calculator, User,
+  Calendar, MapPin, Package, Search, Receipt, Calculator, User,
   Crown, Menu, X, LogOut, Beer
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -18,7 +18,7 @@ interface NavLink {
   roles: string[];
 }
 
-export default function TenantProtectedLayout({
+export default function TenantLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -32,9 +32,19 @@ export default function TenantProtectedLayout({
   const [tenantNome, setTenantNome] = useState('');
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAuthPage, setIsAuthPage] = useState(false);
 
   useEffect(() => {
-    // Verificar autenticação
+    // Verificar se é página de login ou página inicial
+    const isLoginOrHome = pathname === `/t/${slug}` || pathname === `/t/${slug}/login`;
+    setIsAuthPage(isLoginOrHome);
+    
+    if (isLoginOrHome) {
+      setLoading(false);
+      return;
+    }
+
+    // Verificar autenticação para páginas protegidas
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
@@ -67,7 +77,7 @@ export default function TenantProtectedLayout({
     }
 
     loadTenant();
-  }, [slug, router]);
+  }, [slug, router, pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -77,23 +87,22 @@ export default function TenantProtectedLayout({
     router.push(`/t/${slug}`);
   };
 
-  // Links de navegação baseados no cargo
+  // Se for página de login/home, renderiza sem sidebar
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
+  // Links de navegação
   const getNavLinks = (): NavLink[] => {
     const baseUrl = `/t/${slug}`;
-    
     return [
-      // Área do Caixa
+      { href: `${baseUrl}/dashboard`, label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
       { href: `${baseUrl}/caixa`, label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
       { href: `${baseUrl}/caixa/terminal`, label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
       { href: `${baseUrl}/caixa/comandas`, label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
       { href: `${baseUrl}/caixa/gestao`, label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
-      
-      // Dashboard Administrativo
-      { href: `${baseUrl}/dashboard`, label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
       { href: `${baseUrl}/pedidos`, label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
       { href: `${baseUrl}/mesas`, label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
-      
-      // Links de Administração
       { href: `${baseUrl}/admin/mesas`, label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
       { href: `${baseUrl}/admin/cardapio`, label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
       { href: `${baseUrl}/admin/funcionarios`, label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
@@ -101,22 +110,14 @@ export default function TenantProtectedLayout({
       { href: `${baseUrl}/admin/pontos-entrega`, label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'] },
       { href: `${baseUrl}/admin/eventos`, label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'] },
       { href: `${baseUrl}/admin/empresa`, label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
-      
-      // Relatórios
       { href: `${baseUrl}/relatorios`, label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
-      
-      // Plano
       { href: `${baseUrl}/plano`, label: 'Meu Plano', icon: Crown, roles: ['ADMIN'] },
-      
-      // Perfil
       { href: `${baseUrl}/perfil`, label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO'] },
     ];
   };
 
   const navLinks = getNavLinks();
-  const accessibleLinks = navLinks.filter(link => 
-    user?.cargo && link.roles.includes(user.cargo)
-  );
+  const accessibleLinks = navLinks.filter(link => user?.cargo && link.roles.includes(user.cargo));
 
   if (loading) {
     return (
@@ -130,7 +131,6 @@ export default function TenantProtectedLayout({
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r">
-        {/* Header */}
         <div className="p-4 border-b">
           <div className="flex items-center gap-3">
             <Beer className="h-8 w-8 text-amber-500" />
@@ -141,7 +141,6 @@ export default function TenantProtectedLayout({
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="flex flex-col gap-1">
             {accessibleLinks.map(link => (
@@ -150,9 +149,7 @@ export default function TenantProtectedLayout({
                 href={link.href}
                 className={clsx(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900',
-                  {
-                    'bg-amber-50 text-amber-700 font-medium': pathname === link.href,
-                  }
+                  { 'bg-amber-50 text-amber-700 font-medium': pathname === link.href }
                 )}
               >
                 <link.icon className="h-5 w-5" />
@@ -162,7 +159,6 @@ export default function TenantProtectedLayout({
           </div>
         </nav>
 
-        {/* Footer */}
         <div className="p-4 border-t">
           <button
             onClick={handleLogout}
@@ -181,16 +177,13 @@ export default function TenantProtectedLayout({
             <Beer className="h-6 w-6 text-amber-500" />
             <span className="font-bold text-gray-800">{tenantNome || 'Pub System'}</span>
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100"
-          >
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100">
             {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
@@ -213,9 +206,7 @@ export default function TenantProtectedLayout({
                     onClick={() => setSidebarOpen(false)}
                     className={clsx(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100',
-                      {
-                        'bg-amber-50 text-amber-700 font-medium': pathname === link.href,
-                      }
+                      { 'bg-amber-50 text-amber-700 font-medium': pathname === link.href }
                     )}
                   >
                     <link.icon className="h-5 w-5" />

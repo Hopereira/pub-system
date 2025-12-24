@@ -12,7 +12,7 @@ interface TenantInfo {
   plano: string;
 }
 
-export default function TenantLoginPage() {
+export default function TenantPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
@@ -38,11 +38,8 @@ export default function TenantLoginPage() {
         
         const data = await response.json();
         setTenant(data);
-        
-        // Salvar slug no localStorage para usar nas requisições
         localStorage.setItem('tenant_slug', slug);
         localStorage.setItem('tenant_id', data.id);
-        
       } catch (err) {
         console.error('Erro ao carregar tenant:', err);
         setError('Erro de conexão');
@@ -59,10 +56,7 @@ export default function TenantLoginPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-amber-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
+        <Loader2 className="h-12 w-12 animate-spin text-amber-600" />
       </div>
     );
   }
@@ -85,11 +79,8 @@ export default function TenantLoginPage() {
     );
   }
 
-  if (!tenant) {
-    return null;
-  }
+  if (!tenant) return null;
 
-  // Redirecionar para o login do tenant
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100">
       <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-xl">
@@ -101,12 +92,7 @@ export default function TenantLoginPage() {
         
         <div className="space-y-4">
           <button
-            onClick={() => {
-              // Salvar contexto e ir para login do tenant
-              localStorage.setItem('tenant_slug', slug);
-              localStorage.setItem('tenant_id', tenant.id);
-              router.push(`/t/${slug}/login`);
-            }}
+            onClick={() => router.push(`/t/${slug}/login`)}
             className="w-full py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition font-medium"
           >
             Entrar no Sistema

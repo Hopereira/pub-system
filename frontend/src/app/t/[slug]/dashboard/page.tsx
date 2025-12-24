@@ -1,163 +1,141 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Beer, Users, ShoppingBag, CreditCard, Settings, LogOut, Loader2 } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { 
+  ShoppingBag, Users, CreditCard, TrendingUp, 
+  Clock, CheckCircle, AlertCircle, DollarSign 
+} from 'lucide-react';
 
-interface User {
-  id: string;
-  nome: string;
-  email: string;
-  cargo: string;
+interface DashboardStats {
+  pedidosHoje: number;
+  mesasOcupadas: number;
+  totalMesas: number;
+  comandasAbertas: number;
+  faturamentoHoje: number;
+  pedidosPendentes: number;
+  pedidosProntos: number;
+  ticketMedio: number;
 }
 
 export default function TenantDashboardPage() {
   const params = useParams();
-  const router = useRouter();
   const slug = params.slug as string;
   
-  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<DashboardStats>({
+    pedidosHoje: 0,
+    mesasOcupadas: 0,
+    totalMesas: 10,
+    comandasAbertas: 0,
+    faturamentoHoje: 0,
+    pedidosPendentes: 0,
+    pedidosProntos: 0,
+    ticketMedio: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [tenantNome, setTenantNome] = useState('');
 
   useEffect(() => {
-    // Verificar autenticação
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    const savedSlug = localStorage.getItem('tenant_slug');
-    
-    if (!token || !userData) {
-      router.push(`/t/${slug}/login`);
-      return;
-    }
+    // TODO: Carregar estatísticas reais da API
+    setLoading(false);
+  }, [slug]);
 
-    // Verificar se o slug corresponde
-    if (savedSlug && savedSlug !== slug) {
-      router.push(`/t/${savedSlug}/dashboard`);
-      return;
-    }
+  const statCards = [
+    { title: 'Pedidos Hoje', value: stats.pedidosHoje, icon: ShoppingBag, color: 'bg-blue-500', bgColor: 'bg-blue-50' },
+    { title: 'Mesas Ocupadas', value: `${stats.mesasOcupadas}/${stats.totalMesas}`, icon: Users, color: 'bg-green-500', bgColor: 'bg-green-50' },
+    { title: 'Comandas Abertas', value: stats.comandasAbertas, icon: CreditCard, color: 'bg-purple-500', bgColor: 'bg-purple-50' },
+    { title: 'Faturamento', value: `R$ ${stats.faturamentoHoje.toFixed(2)}`, icon: DollarSign, color: 'bg-emerald-500', bgColor: 'bg-emerald-50', highlight: true },
+  ];
 
-    try {
-      setUser(JSON.parse(userData));
-    } catch {
-      router.push(`/t/${slug}/login`);
-      return;
-    }
-
-    // Carregar nome do tenant
-    async function loadTenant() {
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-        const response = await fetch(`${API_URL}/registro/tenant/${slug}`);
-        if (response.ok) {
-          const data = await response.json();
-          setTenantNome(data.nome);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar tenant:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadTenant();
-  }, [slug, router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('tenant_slug');
-    localStorage.removeItem('tenant_id');
-    router.push(`/t/${slug}`);
-  };
+  const statusCards = [
+    { title: 'Pedidos Pendentes', value: stats.pedidosPendentes, icon: Clock, color: 'text-orange-500', bgColor: 'bg-orange-50' },
+    { title: 'Pedidos Prontos', value: stats.pedidosProntos, icon: CheckCircle, color: 'text-green-500', bgColor: 'bg-green-50' },
+    { title: 'Ticket Médio', value: `R$ ${stats.ticketMedio.toFixed(2)}`, icon: TrendingUp, color: 'text-blue-500', bgColor: 'bg-blue-50' },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
       </div>
     );
   }
 
-  const menuItems = [
-    { icon: ShoppingBag, label: 'Pedidos', href: `/t/${slug}/pedidos`, color: 'bg-blue-500' },
-    { icon: Users, label: 'Mesas', href: `/t/${slug}/mesas`, color: 'bg-green-500' },
-    { icon: CreditCard, label: 'Comandas', href: `/t/${slug}/comandas`, color: 'bg-purple-500' },
-    { icon: Settings, label: 'Configurações', href: `/t/${slug}/config`, color: 'bg-gray-500' },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Beer className="h-8 w-8 text-amber-500" />
-            <div>
-              <h1 className="font-bold text-gray-800">{tenantNome}</h1>
-              <p className="text-xs text-gray-500">Olá, {user?.nome}</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p className="text-gray-500">Visão geral do seu estabelecimento</p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat) => (
+          <div key={stat.title} className={`${stat.bgColor} rounded-xl p-4 border ${stat.highlight ? 'border-emerald-200' : 'border-transparent'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">{stat.title}</p>
+                <p className={`text-2xl font-bold ${stat.highlight ? 'text-emerald-600' : 'text-gray-800'}`}>{stat.value}</p>
+              </div>
+              <div className={`${stat.color} p-3 rounded-full`}>
+                <stat.icon className="h-6 w-6 text-white" />
+              </div>
             </div>
           </div>
-          
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-gray-600 hover:text-red-600 transition"
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="hidden sm:inline">Sair</span>
-          </button>
-        </div>
-      </header>
+        ))}
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
-        
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-xl shadow-sm border">
-            <p className="text-sm text-gray-500">Pedidos Hoje</p>
-            <p className="text-2xl font-bold text-gray-800">0</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border">
-            <p className="text-sm text-gray-500">Mesas Ocupadas</p>
-            <p className="text-2xl font-bold text-gray-800">0/10</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border">
-            <p className="text-sm text-gray-500">Comandas Abertas</p>
-            <p className="text-2xl font-bold text-gray-800">0</p>
-          </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border">
-            <p className="text-sm text-gray-500">Faturamento</p>
-            <p className="text-2xl font-bold text-green-600">R$ 0,00</p>
-          </div>
-        </div>
-
-        {/* Menu Grid */}
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">Acesso Rápido</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {menuItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => router.push(item.href)}
-              className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition flex flex-col items-center gap-3"
-            >
-              <div className={`${item.color} p-3 rounded-full`}>
-                <item.icon className="h-6 w-6 text-white" />
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {statusCards.map((stat) => (
+          <div key={stat.title} className="bg-white rounded-xl p-4 border shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className={`${stat.bgColor} p-2 rounded-lg`}>
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
-              <span className="font-medium text-gray-700">{item.label}</span>
-            </button>
-          ))}
-        </div>
+              <div>
+                <p className="text-sm text-gray-500">{stat.title}</p>
+                <p className="text-xl font-bold text-gray-800">{stat.value}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        {/* Info */}
-        <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <p className="text-sm text-amber-800">
-            <strong>Dica:</strong> Este é o dashboard do seu estabelecimento. 
-            Use o menu acima para gerenciar pedidos, mesas e comandas.
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl p-6 border shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Ações Rápidas</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Link href={`/t/${slug}/pedidos`} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-blue-50 hover:bg-blue-100 transition">
+            <ShoppingBag className="h-8 w-8 text-blue-500" />
+            <span className="text-sm font-medium text-gray-700">Ver Pedidos</span>
+          </Link>
+          <Link href={`/t/${slug}/mesas`} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-green-50 hover:bg-green-100 transition">
+            <Users className="h-8 w-8 text-green-500" />
+            <span className="text-sm font-medium text-gray-700">Ver Mesas</span>
+          </Link>
+          <Link href={`/t/${slug}/caixa/comandas`} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-purple-50 hover:bg-purple-100 transition">
+            <CreditCard className="h-8 w-8 text-purple-500" />
+            <span className="text-sm font-medium text-gray-700">Comandas</span>
+          </Link>
+          <Link href={`/t/${slug}/relatorios`} className="flex flex-col items-center gap-2 p-4 rounded-lg bg-amber-50 hover:bg-amber-100 transition">
+            <TrendingUp className="h-8 w-8 text-amber-500" />
+            <span className="text-sm font-medium text-gray-700">Relatórios</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Info Alert */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+        <div>
+          <p className="font-medium text-amber-800">Bem-vindo ao Pub System!</p>
+          <p className="text-sm text-amber-700">
+            Use o menu lateral para navegar entre as funcionalidades.
+            Configure seus ambientes, mesas e cardápio para começar.
           </p>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
