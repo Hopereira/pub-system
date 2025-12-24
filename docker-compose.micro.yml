@@ -30,8 +30,13 @@ services:
       # Google Cloud Storage (opcional)
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs-credentials.json
+      # Cloudflare DNS (criação automática de subdomínios)
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
+      - CLOUDFLARE_BASE_DOMAIN=${CLOUDFLARE_BASE_DOMAIN:-pubsystem.com.br}
+      - CLOUDFLARE_TARGET_IP=${CLOUDFLARE_TARGET_IP:-134.65.248.235}
     env_file:
-      - ./.env.micro
+      - ./.env
     volumes:
       - ./gcs-credentials.json:/app/gcs-credentials.json:ro
     restart: unless-stopped
