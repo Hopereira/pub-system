@@ -6,6 +6,7 @@ import { Empresa } from '../../../modulos/empresa/entities/empresa.entity';
 import { Ambiente } from '../../../modulos/ambiente/entities/ambiente.entity';
 import { Mesa, MesaStatus } from '../../../modulos/mesa/entities/mesa.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
+import { CloudflareDnsService } from './cloudflare-dns.service';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -43,6 +44,12 @@ export interface ProvisioningResult {
     email: string;
     senhaTemporaria: string;
   };
+  dns?: {
+    success: boolean;
+    subdomain: string;
+    fullDomain: string;
+    error?: string;
+  };
 }
 
 /**
@@ -74,6 +81,7 @@ export class TenantProvisioningService {
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly dataSource: DataSource,
+    private readonly cloudflareDnsService: CloudflareDnsService,
   ) {}
 
   /**
@@ -191,6 +199,14 @@ export class TenantProvisioningService {
       await queryRunner.commitTransaction();
       this.logger.log(`🎉 Provisionamento concluído com sucesso para: ${dto.slug}`);
 
+      // 6. Criar registro DNS no Cloudflare (após commit para não bloquear)
+      const dnsResult = await this.cloudflareDnsService.createSubdomain(dto.slug);
+      if (dnsResult.success) {
+        this.logger.log(`🌐 DNS criado: ${dnsResult.fullDomain}`);
+      } else {
+        this.logger.warn(`⚠️ DNS não criado: ${dnsResult.error}`);
+      }
+
       return {
         tenant,
         empresa,
@@ -201,6 +217,7 @@ export class TenantProvisioningService {
           email: dto.adminEmail,
           senhaTemporaria: dto.adminSenha,
         },
+        dns: dnsResult,
       };
     } catch (error) {
       // Rollback em caso de erro

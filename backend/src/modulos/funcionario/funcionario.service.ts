@@ -36,6 +36,17 @@ export class FuncionarioService implements OnModuleInit {
       this.logger.log(
         'Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...',
       );
+      
+      // Buscar o primeiro tenant disponível para associar o admin
+      const tenantResult = await this.funcionarioRepository.manager.query(
+        'SELECT id FROM tenants LIMIT 1'
+      );
+      const tenantId = tenantResult[0]?.id;
+      
+      if (!tenantId) {
+        this.logger.warn('⚠️ Nenhum tenant encontrado. Admin será criado sem tenant.');
+      }
+      
       const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
       const senhaHash = await bcrypt.hash(senhaPlana, 10);
       const admin = this.funcionarioRepository.create({
@@ -43,9 +54,10 @@ export class FuncionarioService implements OnModuleInit {
         email: this.configService.get<string>('ADMIN_EMAIL'),
         senha: senhaHash,
         cargo: Cargo.ADMIN,
+        tenantId: tenantId || null,
       });
       await this.funcionarioRepository.save(admin);
-      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
+      this.logger.log(`✅ Usuário ADMIN padrão criado com sucesso! (tenant: ${tenantId || 'nenhum'})`);
     }
   }
 

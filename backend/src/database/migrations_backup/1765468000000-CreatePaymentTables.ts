@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePaymentTables1734551000000 implements MigrationInterface {
-  name = 'CreatePaymentTables1734551000000';
+export class CreatePaymentTables1765468000000 implements MigrationInterface {
+  name = 'CreatePaymentTables1765468000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar enum para planos de tenant (se não existir)

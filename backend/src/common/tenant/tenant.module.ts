@@ -13,6 +13,7 @@ import { FeatureGuard } from './guards/feature.guard';
 import { TenantProvisioningService } from './services/tenant-provisioning.service';
 import { SuperAdminService } from './services/super-admin.service';
 import { PlanFeaturesService } from './services/plan-features.service';
+import { CloudflareDnsService } from './services/cloudflare-dns.service';
 import { SuperAdminController } from './controllers/super-admin.controller';
 import { PlanFeaturesController } from './controllers/plan-features.controller';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
@@ -61,6 +62,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
     TenantProvisioningService,
     SuperAdminService,
     PlanFeaturesService,
+    CloudflareDnsService,
     // 🏢 Interceptor Global: Captura tenant de subdomínio/URL/JWT
     {
       provide: APP_INTERCEPTOR,
@@ -94,6 +96,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
     TenantProvisioningService,
     SuperAdminService,
     PlanFeaturesService,
+    CloudflareDnsService,
   ],
 })
 export class TenantModule {}

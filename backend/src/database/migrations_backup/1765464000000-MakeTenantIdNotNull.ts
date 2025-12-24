@@ -37,7 +37,26 @@ export class MakeTenantIdNotNull1765464000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🔒 Tornando tenant_id NOT NULL em todas as tabelas...');
 
-    // Primeiro, verificar se há registros sem tenant_id
+    // Obter o primeiro tenant disponível para preencher registros órfãos
+    const tenants = await queryRunner.query(`SELECT id FROM tenants LIMIT 1`);
+    const defaultTenantId = tenants[0]?.id;
+
+    if (!defaultTenantId) {
+      console.log('⚠️ Nenhum tenant encontrado. Criando tenant padrão...');
+      await queryRunner.query(`
+        INSERT INTO tenants (nome, slug, status, plano)
+        VALUES ('Tenant Padrão', 'tenant-padrao', 'ATIVO', 'FREE')
+        ON CONFLICT (slug) DO NOTHING
+      `);
+      const newTenant = await queryRunner.query(`SELECT id FROM tenants WHERE slug = 'tenant-padrao'`);
+      if (!newTenant[0]?.id) {
+        throw new Error('❌ Não foi possível criar tenant padrão');
+      }
+    }
+
+    const finalTenantId = defaultTenantId || (await queryRunner.query(`SELECT id FROM tenants LIMIT 1`))[0]?.id;
+
+    // Preencher registros sem tenant_id automaticamente
     for (const tableName of this.tables) {
       const tableExists = await queryRunner.hasTable(tableName);
       if (!tableExists) continue;
@@ -48,10 +67,10 @@ export class MakeTenantIdNotNull1765464000000 implements MigrationInterface {
       
       const nullCount = parseInt(result[0]?.count || '0');
       if (nullCount > 0) {
-        throw new Error(
-          `❌ Tabela ${tableName} possui ${nullCount} registros sem tenant_id. ` +
-          `Corrija os dados antes de executar esta migration.`
-        );
+        console.log(`📝 Preenchendo ${nullCount} registros em ${tableName} com tenant padrão...`);
+        await queryRunner.query(`
+          UPDATE ${tableName} SET tenant_id = '${finalTenantId}' WHERE tenant_id IS NULL
+        `);
       }
     }
 
