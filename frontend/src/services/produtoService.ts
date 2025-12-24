@@ -2,12 +2,20 @@
 import { Produto } from '@/types/produto';
 import api from './api';
 
+interface ProdutosPaginados {
+  data: Produto[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export const getProdutos = async (): Promise<Produto[]> => {
   try {
-    const response = await api.get<Produto[]>('/produtos', {
+    const response = await api.get<ProdutosPaginados>('/produtos', {
       headers: { 'Cache-Control': 'no-cache' },
     });
-    return response.data;
+    // A API retorna { data: [...], total, page, limit }
+    return response.data.data;
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
     throw error;
