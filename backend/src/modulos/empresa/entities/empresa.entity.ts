@@ -1,15 +1,11 @@
-// importamos as ferramentas do TypeORM
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-// @Entity diz que esta classe é uma tabela no banco de dados chamada 'empresas'
 @Entity('empresas')
 export class Empresa {
-  // @PrimaryGeneratedColumn diz que 'id' é a chave primária, única para cada registro
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // @Column diz que 'cnpj' é uma coluna normal, do tipo texto
-  @Column({ unique: true }) // unique: true garante que não haja dois CNPJs iguais
+  @Column({ unique: true, nullable: true })
   cnpj: string;
 
   @Column()
@@ -18,9 +14,29 @@ export class Empresa {
   @Column()
   razaoSocial: string;
 
-  @Column({ nullable: true }) // nullable: true significa que este campo é opcional
+  @Column({ nullable: true })
   telefone: string;
 
   @Column({ nullable: true })
   endereco: string;
+
+  /**
+   * Slug único para identificação via URL/subdomínio
+   * Exemplo: "bar-do-ze" para acessar bar-do-ze.pubsystem.com.br
+   */
+  @Index('idx_empresas_slug', { unique: true })
+  @Column({ unique: true, nullable: true, length: 100 })
+  slug: string;
+
+  /**
+   * Status do estabelecimento
+   * Se false, retorna "Estabelecimento não encontrado"
+   */
+  @Column({ default: true })
+  ativo: boolean;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_empresa_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

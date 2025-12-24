@@ -17,9 +17,19 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * AvaliacaoController - Sistema de avaliações de clientes
+ * 
+ * 🔒 Requer plano BASIC ou superior (Feature.AVALIACOES)
+ * Nota: Rota POST é pública para clientes avaliarem
+ */
 @ApiTags('Avaliações')
 @Controller('avaliacoes')
+@UseGuards(JwtAuthGuard, FeatureGuard)
+@ApiBearerAuth()
+@RequireFeature(Feature.AVALIACOES)
 export class AvaliacaoController {
   constructor(private readonly avaliacaoService: AvaliacaoService) {}
 
@@ -37,9 +47,8 @@ export class AvaliacaoController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar todas as avaliações' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })
   @ApiQuery({ name: 'dataFim', required: false, type: Date })
@@ -58,9 +67,8 @@ export class AvaliacaoController {
   }
 
   @Get('estatisticas')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Obter estatísticas de satisfação' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })
   @ApiQuery({ name: 'dataFim', required: false, type: Date })
@@ -79,9 +87,8 @@ export class AvaliacaoController {
   }
 
   @Get('estatisticas/hoje')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
-  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM, Cargo.COZINHA, Cargo.COZINHEIRO, Cargo.BARTENDER)
   @ApiOperation({ summary: 'Obter estatísticas de satisfação do dia' })
   @ApiResponse({
     status: 200,

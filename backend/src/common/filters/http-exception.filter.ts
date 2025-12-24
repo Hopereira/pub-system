@@ -46,10 +46,19 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     } else {
       // Exceções não tratadas
+      const errorMessage = exception instanceof Error ? exception.message : String(exception);
+      const errorStack = exception instanceof Error ? exception.stack : undefined;
+      const errorName = exception instanceof Error ? exception.name : 'Unknown';
+      
       this.logger.error(
-        `💥 EXCEÇÃO NÃO CAPTURADA: ${request.method} ${request.url}`,
-        exception instanceof Error ? exception.stack : String(exception),
+        `💥 EXCEÇÃO NÃO CAPTURADA: ${request.method} ${request.url} | ${errorName}: ${errorMessage}`,
+        errorStack,
       );
+      
+      // Se for um erro conhecido, usar a mensagem
+      if (exception instanceof Error) {
+        message = exception.message;
+      }
     }
 
     // Log de validação de DTOs

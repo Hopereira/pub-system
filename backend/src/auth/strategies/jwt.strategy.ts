@@ -14,6 +14,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    return { id: payload.sub, email: payload.email, cargo: payload.cargo };
+    // Retornar todos os campos necessários para multi-tenancy
+    return {
+      id: payload.sub,
+      email: payload.email,
+      cargo: payload.cargo,
+      nome: payload.nome,
+      empresaId: payload.empresaId,
+      tenantId: payload.tenantId,
+      ambienteId: payload.ambienteId,
+    };
   }
 }

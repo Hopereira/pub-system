@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Comanda } from '../../comanda/entities/comanda.entity';
 import { Cliente } from '../../cliente/entities/cliente.entity';
@@ -46,4 +47,9 @@ export class Avaliacao {
 
   @CreateDateColumn()
   criadoEm: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_avaliacao_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

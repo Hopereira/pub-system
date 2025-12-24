@@ -1,7 +1,21 @@
 import dataSource from './database/data-source';
+import * as fs from 'fs';
+import * as path from 'path';
 
 async function runMigrations() {
   try {
+    // Verificar se há migrations para executar
+    const migrationsDir = path.join(__dirname, 'database', 'migrations');
+    const files = fs.existsSync(migrationsDir) 
+      ? fs.readdirSync(migrationsDir).filter(f => f.endsWith('.ts') || f.endsWith('.js'))
+      : [];
+    
+    if (files.length === 0) {
+      console.log('ℹ️  Nenhum arquivo de migration encontrado. Pulando migrations...');
+      console.log('💡 O TypeORM synchronize criará as tabelas automaticamente se DB_SYNC=true');
+      process.exit(0);
+    }
+
     console.log('🔄 Inicializando conexão com banco de dados...');
     await dataSource.initialize();
     

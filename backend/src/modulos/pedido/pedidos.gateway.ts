@@ -8,8 +8,10 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { JwtService } from '@nestjs/jwt';
 import { Pedido } from './entities/pedido.entity';
-import { Comanda } from '../comanda/entities/comanda.entity'; // Importamos a Comanda
+import { Comanda } from '../comanda/entities/comanda.entity';
+import { BaseTenantGateway } from '../../common/tenant/gateways/base-tenant.gateway';
 
 @WebSocketGateway({
   cors: {
@@ -19,28 +21,41 @@ import { Comanda } from '../comanda/entities/comanda.entity'; // Importamos a Co
       'https://pub-system.vercel.app',
       'https://pubsystem.com.br',
       'https://www.pubsystem.com.br',
+      /\.pubsystem\.com\.br$/, // Subdomínios curinga
     ].filter(Boolean),
     credentials: true,
   },
 })
 export class PedidosGateway
+  extends BaseTenantGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
 
-  private readonly logger = new Logger(PedidosGateway.name);
+  protected readonly logger = new Logger(PedidosGateway.name);
+
+  constructor(jwtService: JwtService) {
+    super();
+    this.jwtService = jwtService;
+  }
 
   afterInit(server: Server) {
-    this.logger.log('Gateway de Pedidos inicializado!');
+    this.logger.log('🔌 Gateway de Pedidos inicializado com isolamento por tenant!');
   }
 
   handleConnection(client: Socket, ...args: any[]) {
-    this.logger.log(`Cliente conectado: ${client.id}`);
+    const tenantId = this.joinTenantRoom(client);
+    if (tenantId) {
+      this.logger.log(`✅ Cliente ${client.id} conectado ao tenant: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Cliente ${client.id} conectado sem tenant (modo legado)`);
+    }
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Cliente desconectado: ${client.id}`);
+    this.leaveTenantRoom(client);
+    this.logger.log(`❌ Cliente desconectado: ${client.id}`);
   }
 
   /**
@@ -66,86 +81,117 @@ export class PedidosGateway
     return { success: true, room: roomName };
   }
 
-  emitNovoPedido(pedido: Pedido) {
-    this.logger.log(
-      `Emitindo evento 'novo_pedido' para o pedido ID: ${pedido.id}`,
-    );
-    this.server.emit('novo_pedido', pedido);
+  emitNovoPedido(pedido: Pedido, tenantId?: string) {
+    const targetTenantId = tenantId || (pedido as any).tenantId;
+    
+    if (targetTenantId) {
+      // ✅ ISOLADO: Emite apenas para o tenant do pedido
+      this.emitToTenant(targetTenantId, 'novo_pedido', pedido);
+      this.logger.log(
+        `🔒 Evento 'novo_pedido' emitido para tenant ${targetTenantId} | Pedido: ${pedido.id}`,
+      );
 
-    // Emite eventos específicos por ambiente de preparo
-    if (pedido.itens && pedido.itens.length > 0) {
-      const ambientesNotificados = new Set<string>();
+      // Emite eventos específicos por ambiente de preparo (também isolados)
+      if (pedido.itens && pedido.itens.length > 0) {
+        const ambientesNotificados = new Set<string>();
 
-      pedido.itens.forEach((item) => {
-        if (
-          item.produto?.ambiente?.id &&
-          !ambientesNotificados.has(item.produto.ambiente.id)
-        ) {
-          const ambienteId = item.produto.ambiente.id;
-          this.logger.log(
-            `Emitindo 'novo_pedido_ambiente:${ambienteId}' para o pedido ID: ${pedido.id}`,
-          );
-          this.server.emit(`novo_pedido_ambiente:${ambienteId}`, pedido);
-          ambientesNotificados.add(ambienteId);
-        }
-      });
+        pedido.itens.forEach((item) => {
+          if (
+            item.produto?.ambiente?.id &&
+            !ambientesNotificados.has(item.produto.ambiente.id)
+          ) {
+            const ambienteId = item.produto.ambiente.id;
+            this.emitToTenant(targetTenantId, `novo_pedido_ambiente:${ambienteId}`, pedido);
+            ambientesNotificados.add(ambienteId);
+          }
+        });
+      }
+    } else {
+      // ⚠️ LEGADO: Fallback para broadcast (compatibilidade)
+      this.logger.warn(`⚠️ Pedido ${pedido.id} sem tenant_id, usando broadcast`);
+      this.server.emit('novo_pedido', pedido);
     }
   }
 
-  emitStatusAtualizado(pedido: Pedido) {
-    this.logger.log(
-      `Emitindo evento 'status_atualizado' para o pedido ID: ${pedido.id}`,
-    );
-    this.server.emit('status_atualizado', pedido);
+  emitStatusAtualizado(pedido: Pedido, tenantId?: string) {
+    const targetTenantId = tenantId || (pedido as any).tenantId;
+    
+    if (targetTenantId) {
+      // ✅ ISOLADO: Emite apenas para o tenant do pedido
+      this.emitToTenant(targetTenantId, 'status_atualizado', pedido);
+      this.logger.log(
+        `🔒 Evento 'status_atualizado' emitido para tenant ${targetTenantId} | Pedido: ${pedido.id}`,
+      );
 
-    // Emite eventos específicos por ambiente quando status muda
-    if (pedido.itens && pedido.itens.length > 0) {
-      const ambientesNotificados = new Set<string>();
+      // Emite eventos específicos por ambiente quando status muda
+      if (pedido.itens && pedido.itens.length > 0) {
+        const ambientesNotificados = new Set<string>();
 
-      pedido.itens.forEach((item) => {
-        if (
-          item.produto?.ambiente?.id &&
-          !ambientesNotificados.has(item.produto.ambiente.id)
-        ) {
-          const ambienteId = item.produto.ambiente.id;
-          this.logger.log(
-            `Emitindo 'status_atualizado_ambiente:${ambienteId}' para o pedido ID: ${pedido.id}`,
-          );
-          this.server.emit(`status_atualizado_ambiente:${ambienteId}`, pedido);
-          ambientesNotificados.add(ambienteId);
-        }
-      });
+        pedido.itens.forEach((item) => {
+          if (
+            item.produto?.ambiente?.id &&
+            !ambientesNotificados.has(item.produto.ambiente.id)
+          ) {
+            const ambienteId = item.produto.ambiente.id;
+            this.emitToTenant(targetTenantId, `status_atualizado_ambiente:${ambienteId}`, pedido);
+            ambientesNotificados.add(ambienteId);
+          }
+        });
+      }
+    } else {
+      // ⚠️ LEGADO: Fallback para broadcast
+      this.logger.warn(`⚠️ Pedido ${pedido.id} sem tenant_id, usando broadcast`);
+      this.server.emit('status_atualizado', pedido);
     }
   }
 
   // ==================================================================
-  // ## CORREÇÃO: Adicionamos um novo método para notificar sobre a comanda ##
+  // ## Notificação de comanda atualizada (ISOLADO POR TENANT) ##
   // ==================================================================
-  emitComandaAtualizada(comanda: Comanda) {
-    this.logger.log(
-      `Emitindo evento 'comanda_atualizada' para a comanda ID: ${comanda.id}`,
-    );
-    this.server.emit('comanda_atualizada', comanda);
+  emitComandaAtualizada(comanda: Comanda, tenantId?: string) {
+    const targetTenantId = tenantId || (comanda as any).tenantId;
+    
+    if (targetTenantId) {
+      this.emitToTenant(targetTenantId, 'comanda_atualizada', comanda);
+      this.logger.log(
+        `🔒 Evento 'comanda_atualizada' emitido para tenant ${targetTenantId} | Comanda: ${comanda.id}`,
+      );
+    } else {
+      this.logger.warn(`⚠️ Comanda ${comanda.id} sem tenant_id, usando broadcast`);
+      this.server.emit('comanda_atualizada', comanda);
+    }
   }
 
   // ==================================================================
-  // ## Evento para nova comanda criada ##
+  // ## Nova comanda criada (ISOLADO POR TENANT) ##
   // ==================================================================
-  emitNovaComanda(comanda: Comanda) {
-    this.logger.log(
-      `Emitindo evento 'nova_comanda' para a comanda ID: ${comanda.id}`,
-    );
-    this.server.emit('nova_comanda', comanda);
+  emitNovaComanda(comanda: Comanda, tenantId?: string) {
+    const targetTenantId = tenantId || (comanda as any).tenantId;
+    
+    if (targetTenantId) {
+      this.emitToTenant(targetTenantId, 'nova_comanda', comanda);
+      this.logger.log(
+        `🔒 Evento 'nova_comanda' emitido para tenant ${targetTenantId} | Comanda: ${comanda.id}`,
+      );
+    } else {
+      this.logger.warn(`⚠️ Comanda ${comanda.id} sem tenant_id, usando broadcast`);
+      this.server.emit('nova_comanda', comanda);
+    }
   }
 
   /**
    * Emite evento quando uma nova movimentação é registrada no caixa
-   * Atualiza em tempo real o resumo do caixa
+   * Atualiza em tempo real o resumo do caixa (ISOLADO POR TENANT)
    */
-  emitCaixaAtualizado(aberturaCaixaId: string) {
-    this.logger.log(
-      `Emitindo evento 'caixa_atualizado' para o caixa ID: ${aberturaCaixaId}`,
-    );
-    this.server.emit('caixa_atualizado', { aberturaCaixaId });
+  emitCaixaAtualizado(aberturaCaixaId: string, tenantId?: string) {
+    if (tenantId) {
+      this.emitToTenant(tenantId, 'caixa_atualizado', { aberturaCaixaId });
+      this.logger.log(
+        `🔒 Evento 'caixa_atualizado' emitido para tenant ${tenantId} | Caixa: ${aberturaCaixaId}`,
+      );
+    } else {
+      this.logger.warn(`⚠️ Caixa ${aberturaCaixaId} sem tenant_id, usando broadcast`);
+      this.server.emit('caixa_atualizado', { aberturaCaixaId });
+    }
   }
 }

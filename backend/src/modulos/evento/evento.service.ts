@@ -8,6 +8,7 @@ import { Evento } from './entities/evento.entity';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
 import { Express } from 'express';
+// TODO: Criar EventoRepository quando necessário para multi-tenancy completo
 
 @Injectable()
 export class EventoService {

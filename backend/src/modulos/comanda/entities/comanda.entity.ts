@@ -88,4 +88,9 @@ export class Comanda {
   @ManyToOne(() => Funcionario, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'criado_por_id' })
   criadoPor: Funcionario;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_comanda_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

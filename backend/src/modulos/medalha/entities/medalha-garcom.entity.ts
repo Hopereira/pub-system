@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { Medalha } from './medalha.entity';
@@ -39,4 +40,9 @@ export class MedalhaGarcom {
     posicao?: number; // Ex: 1º lugar
     observacao?: string;
   };
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_medalha_garcom_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

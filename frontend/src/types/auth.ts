@@ -1,5 +1,5 @@
 // Roles disponíveis no sistema
-export type UserRole = 'ADMIN' | 'GERENTE' | 'CAIXA' | 'GARCOM' | 'COZINHEIRO' | 'BARTENDER';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'GERENTE' | 'CAIXA' | 'GARCOM' | 'COZINHEIRO' | 'BARTENDER';
 
 // Usuário decodificado do JWT
 export interface User {
@@ -33,6 +33,8 @@ export const hasRole = (user: User | null, roles: UserRole[]): boolean => {
   if (!user) return false;
   // Verifica tanto 'cargo' (backend) quanto 'role' (compatibilidade)
   const userRole = user.cargo || user.role;
+  // SUPER_ADMIN tem acesso a TUDO
+  if (userRole === 'SUPER_ADMIN') return true;
   return roles.includes(userRole);
 };
 

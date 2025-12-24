@@ -5,12 +5,16 @@ import {
   NotFoundException,
   Logger,
   Inject,
+  Optional,
+  Scope,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 
 // Entidades de Módulos Associados
 import { Cliente } from '../cliente/entities/cliente.entity';
@@ -21,6 +25,12 @@ import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './entities/comanda-agregado.entity';
+
+// Repositórios tenant-aware
+import { ComandaRepository } from './comanda.repository';
+import { MesaRepository } from '../mesa/mesa.repository';
+import { ClienteRepository } from '../cliente/cliente.repository';
+import { PedidoRepository } from '../pedido/pedido.repository';
 
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
@@ -38,23 +48,19 @@ import { CaixaService } from '../caixa/caixa.service';
 
 import Decimal from 'decimal.js';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ComandaService {
   private readonly logger = new Logger(ComandaService.name);
 
   constructor(
-    @InjectRepository(Comanda)
-    private readonly comandaRepository: Repository<Comanda>,
-    @InjectRepository(Mesa)
-    private readonly mesaRepository: Repository<Mesa>,
-    @InjectRepository(Cliente)
-    private readonly clienteRepository: Repository<Cliente>,
+    private readonly comandaRepository: ComandaRepository,
+    private readonly mesaRepository: MesaRepository,
+    private readonly clienteRepository: ClienteRepository,
     @InjectRepository(PaginaEvento)
     private readonly paginaEventoRepository: Repository<PaginaEvento>,
     @InjectRepository(Evento)
     private readonly eventoRepository: Repository<Evento>,
-    @InjectRepository(Pedido)
-    private readonly pedidoRepository: Repository<Pedido>,
+    private readonly pedidoRepository: PedidoRepository,
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
     @InjectRepository(PontoEntrega)
@@ -66,7 +72,33 @@ export class ComandaService {
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,
+    @Optional() private readonly tenantContext?: TenantContextService,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
   ) {}
+
+  /**
+   * Obtém o tenantId do contexto atual para namespace de cache
+   */
+  private getTenantId(): string | null {
+    try {
+      if (this.tenantContext?.hasTenant?.()) {
+        return this.tenantContext.getTenantId();
+      }
+    } catch {
+      // Ignorar
+    }
+    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    if (userTenantId) return userTenantId;
+    return this.request?.headers?.['x-tenant-id'] || null;
+  }
+
+  /**
+   * Gera chave de cache com namespace do tenant
+   */
+  private getCacheKey(params: string): string {
+    const tenantId = this.getTenantId();
+    return tenantId ? `comandas:${tenantId}:${params}` : `comandas:global:${params}`;
+  }
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
     const {
@@ -258,7 +290,7 @@ export class ComandaService {
 
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Comanda>> {
     const { page = 1, limit = 20, sortBy = 'criadoEm', sortOrder = 'DESC' } = paginationDto || {};
-    const cacheKey = `comandas:page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`;
+    const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
 
     // Tentar buscar do cache
     const cached = await this.cacheManager.get<PaginatedResponse<Comanda>>(cacheKey);

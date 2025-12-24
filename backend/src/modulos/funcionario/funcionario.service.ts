@@ -10,8 +10,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 import { CreateFuncionarioDto } from './dto/create-funcionario.dto';
@@ -20,14 +18,14 @@ import { AlterarSenhaDto } from './dto/alterar-senha.dto';
 import { Funcionario } from './entities/funcionario.entity';
 import { Cargo } from './enums/cargo.enum';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
+import { FuncionarioRepository } from './funcionario.repository';
 
 @Injectable()
 export class FuncionarioService implements OnModuleInit {
   private readonly logger = new Logger(FuncionarioService.name);
 
   constructor(
-    @InjectRepository(Funcionario)
-    private readonly funcionarioRepository: Repository<Funcionario>,
+    private readonly funcionarioRepository: FuncionarioRepository,
     private readonly configService: ConfigService,
     private readonly storageService: GcsStorageService,
   ) {}
@@ -38,6 +36,17 @@ export class FuncionarioService implements OnModuleInit {
       this.logger.log(
         'Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...',
       );
+      
+      // Buscar o primeiro tenant disponível para associar o admin
+      const tenantResult = await this.funcionarioRepository.manager.query(
+        'SELECT id FROM tenants LIMIT 1'
+      );
+      const tenantId = tenantResult[0]?.id;
+      
+      if (!tenantId) {
+        this.logger.warn('⚠️ Nenhum tenant encontrado. Admin será criado sem tenant.');
+      }
+      
       const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
       const senhaHash = await bcrypt.hash(senhaPlana, 10);
       const admin = this.funcionarioRepository.create({
@@ -45,9 +54,10 @@ export class FuncionarioService implements OnModuleInit {
         email: this.configService.get<string>('ADMIN_EMAIL'),
         senha: senhaHash,
         cargo: Cargo.ADMIN,
+        tenantId: tenantId || null,
       });
       await this.funcionarioRepository.save(admin);
-      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
+      this.logger.log(`✅ Usuário ADMIN padrão criado com sucesso! (tenant: ${tenantId || 'nenhum'})`);
     }
   }
 
@@ -120,20 +130,27 @@ export class FuncionarioService implements OnModuleInit {
     }
   }
 
-  findAll(): Promise<Funcionario[]> {
-    return this.funcionarioRepository.find();
+  /**
+   * Lista funcionários do tenant, excluindo SUPER_ADMIN
+   * SUPER_ADMIN são usuários do sistema SaaS, não funcionários da empresa
+   */
+  async findAll(): Promise<Funcionario[]> {
+    const funcionarios = await this.funcionarioRepository.find();
+    // Filtra SUPER_ADMIN da listagem - eles não são funcionários do tenant
+    return funcionarios.filter(f => f.cargo !== Cargo.SUPER_ADMIN);
   }
 
   findOne(id: string): Promise<Funcionario> {
     return this.funcionarioRepository.findOne({ where: { id } });
   }
 
+  /**
+   * Busca funcionário por email para autenticação
+   * ⚠️ Este método NÃO usa filtro de tenant porque o login
+   * acontece ANTES do tenant ser identificado.
+   */
   findByEmail(email: string): Promise<Funcionario> {
-    return this.funcionarioRepository
-      .createQueryBuilder('funcionario')
-      .where('funcionario.email = :email', { email })
-      .addSelect('funcionario.senha')
-      .getOne();
+    return this.funcionarioRepository.findByEmailForAuth(email);
   }
 
   async update(

@@ -9,21 +9,31 @@ import { usePathname } from 'next/navigation';
 import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
-    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator, User // Ícones importados
+    Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator, User,
+    Crown, Shield // Ícones para Super Admin e features premium
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
+import { usePlanFeatures, Feature } from '@/hooks/usePlanFeatures';
 
 interface NavLink {
     href: string;
     label: string;
     icon: React.ElementType;
     roles: string[];
+    feature?: Feature | string; // Feature requerida para mostrar o link
+    premium?: boolean; // Indica se é feature premium (mostra badge)
 }
 
 const baseNavLinks: NavLink[] = [
+  // --- Super Admin (apenas SUPER_ADMIN) ---
+  { href: '/super-admin', label: 'Dashboard SaaS', icon: Crown, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/tenants', label: 'Gestão de Empresas', icon: Building2, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/pagamentos', label: 'Config. Pagamentos', icon: Settings, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/planos', label: 'Planos e Faturamento', icon: BarChart2, roles: ['SUPER_ADMIN'] },
+  
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
   { href: '/garcom/mapa-visual', label: 'Mapa Visual', icon: Map, roles: ['GARCOM'] },
@@ -37,39 +47,43 @@ const baseNavLinks: NavLink[] = [
   { href: '/caixa/gestao', label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
   
   // --- Área de Preparo (Cozinha/Bar) ---
-  { href: '/cozinha', label: 'Área de Preparo', icon: ChefHat, roles: ['COZINHEIRO', 'BARTENDER'] },
+  { href: '/cozinha', label: 'Área de Preparo', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO', 'BARTENDER'] },
+  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['COZINHA', 'COZINHEIRO', 'BARTENDER'] },
   
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
-  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE'] },
+  
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
-  { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] }, // Rota corrigida
+  { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
   { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
   { href: '/dashboard/admin/pontos-entrega', label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'] },
-  { 
-    href: '/dashboard/admin/agenda-eventos', 
-    label: 'Agenda de Eventos', 
-    icon: Calendar, 
-    roles: ['ADMIN'] 
-  },
+  
+  // --- Features BASIC+ (Eventos) ---
+  { href: '/dashboard/admin/agenda-eventos', label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'], feature: Feature.EVENTOS, premium: true },
   
   { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'] },
-  { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] }, // Rota corrigida
-  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
+  { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
+  
+  // --- Features PRO+ (Analytics, Relatórios Avançados) ---
+  { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'], feature: Feature.ANALYTICS, premium: true },
+  
+  // --- Configurações ---
+  { href: '/dashboard/configuracoes/plano', label: 'Meu Plano', icon: Crown, roles: ['ADMIN'] },
   
   // --- Perfil (todos os cargos) ---
-  { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'] },
+  { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO', 'BARTENDER'] },
 ];
 
 export function Sidebar() {
   const { user } = useAuth();
-  const { temCheckIn } = useTurno(); // Adicionar para atualização dinâmica
+  const { temCheckIn } = useTurno();
   const pathname = usePathname();
   const [operationalLinks, setOperationalLinks] = useState<NavLink[]>([]);
+  const { hasFeature, loading: planLoading } = usePlanFeatures();
 
   useEffect(() => {
     const fetchOperationalLinks = async () => {
@@ -80,7 +94,7 @@ export function Sidebar() {
           .filter(ambiente => ambiente.tipo === 'PREPARO'); // Filtra apenas ambientes de preparo
         
         // Se for COZINHA/COZINHEIRO, mostra apenas o ambiente onde trabalha
-        if (['COZINHEIRO', 'BARTENDER'].includes(user?.cargo || '')) {
+        if (['COZINHA', 'COZINHEIRO', 'BARTENDER'].includes(user?.cargo || '')) {
           if (user?.ambienteId) {
             dynamicLinks = dynamicLinks.filter(ambiente => ambiente.id === user.ambienteId);
           } else {
@@ -94,7 +108,7 @@ export function Sidebar() {
           href: `/dashboard/operacional/${ambiente.id}`,
           label: `Painel ${ambiente.nome}`,
           icon: ChefHat,
-          roles: ['ADMIN', 'COZINHEIRO', 'BARTENDER'],
+          roles: ['ADMIN', 'COZINHA', 'COZINHEIRO', 'BARTENDER'],
         }));
         
         setOperationalLinks(links);
@@ -103,7 +117,7 @@ export function Sidebar() {
       }
     };
 
-    if (user?.cargo && ['ADMIN', 'COZINHEIRO', 'BARTENDER'].includes(user.cargo)) {
+    if (user?.cargo && ['ADMIN', 'COZINHA', 'COZINHEIRO', 'BARTENDER'].includes(user.cargo)) {
         fetchOperationalLinks();
     } else {
         setOperationalLinks([]);
@@ -122,9 +136,18 @@ export function Sidebar() {
     return combinedLinks;
   }, [operationalLinks]);
 
-  const accessibleLinks = allLinks.filter(link =>
-    user?.cargo && link.roles.includes(user.cargo)
-  );
+  // Filtrar por cargo E por feature do plano
+  const accessibleLinks = allLinks.filter(link => {
+    // Verificar cargo
+    if (!user?.cargo || !link.roles.includes(user.cargo)) {
+      return false;
+    }
+    // Verificar feature do plano (se especificada)
+    if (link.feature && !hasFeature(link.feature)) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <aside className="hidden w-64 flex-shrink-0 border-r bg-white p-4 dark:bg-gray-800 md:block">
@@ -141,7 +164,10 @@ export function Sidebar() {
             )}
           >
             <link.icon className="h-5 w-5" />
-            {link.label}
+            <span className="flex-1">{link.label}</span>
+            {link.premium && (
+              <Crown className="h-3 w-3 text-yellow-500" title="Feature Premium" />
+            )}
           </Link>
         ))}
       </nav>

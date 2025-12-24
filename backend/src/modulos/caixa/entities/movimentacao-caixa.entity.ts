@@ -85,4 +85,9 @@ export class MovimentacaoCaixa {
 
   @CreateDateColumn()
   criadoEm: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_movimentacao_caixa_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

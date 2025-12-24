@@ -1,11 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FuncionarioService } from 'src/modulos/funcionario/funcionario.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { AuditService } from '../modulos/audit/audit.service';
 import { AuditAction } from '../modulos/audit/entities/audit-log.entity';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import * as bcrypt from 'bcrypt';
 
+/**
+ * AuthService - Serviço de autenticação
+ * 
+ * Multi-tenancy: O refresh token é vinculado ao tenant da sessão,
+ * impedindo uso cross-tenant de tokens.
+ */
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -15,6 +22,7 @@ export class AuthService {
     private jwtService: JwtService,
     private refreshTokenService: RefreshTokenService,
     private auditService: AuditService,
+    @Optional() private tenantContext?: TenantContextService,
   ) {}
 
   async validateUser(email: string, pass: string, ipAddress?: string): Promise<any> {
@@ -43,7 +51,17 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any, ipAddress: string, userAgent?: string) {
+  async login(user: any, ipAddress: string, userAgent?: string, tenantId?: string) {
+    // Capturar tenantId do contexto ou do parâmetro
+    // Usar try-catch porque getTenantId() lança erro se não houver tenant
+    let contextTenantId: string | null = null;
+    try {
+      contextTenantId = this.tenantContext?.getTenantId?.() ?? null;
+    } catch {
+      // Ignorar erro - tenant não definido é válido para login
+    }
+    const effectiveTenantId = tenantId || contextTenantId || user.tenantId || user.empresaId;
+
     const payload = {
       id: user.id,
       sub: user.id, // Mantém sub para compatibilidade
@@ -53,6 +71,7 @@ export class AuthService {
       role: user.cargo, // Alias para compatibilidade
       empresaId: user.empresaId,
       ambienteId: user.ambienteId,
+      tenantId: effectiveTenantId, // Incluir tenantId no JWT
     };
     
     const accessToken = this.jwtService.sign(payload, {
@@ -63,10 +82,12 @@ export class AuthService {
       user,
       ipAddress,
       userAgent,
+      effectiveTenantId, // Vincular refresh token ao tenant
     );
 
     this.logger.log(
-      `🔑 Access token e refresh token gerados para: ${user.email} (ID: ${user.id})`,
+      `🔑 Access token e refresh token gerados para: ${user.email} (ID: ${user.id})` +
+      `${effectiveTenantId ? ` [tenant: ${effectiveTenantId}]` : ''}`,
     );
 
     // Registrar login bem-sucedido
@@ -77,13 +98,14 @@ export class AuthService {
       entityName: 'Auth',
       ipAddress,
       userAgent,
-      description: `Login bem-sucedido`,
+      description: `Login bem-sucedido${effectiveTenantId ? ` [tenant: ${effectiveTenantId}]` : ''}`,
     });
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken.token,
       expires_in: 3600,
+      tenant_id: effectiveTenantId,
       user: {
         id: user.id,
         nome: user.nome,

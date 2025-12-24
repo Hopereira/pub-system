@@ -11,10 +11,17 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { AnalyticsService } from './analytics.service';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * AnalyticsController - Relatórios e métricas avançadas
+ * 
+ * 🔒 Requer plano PRO ou superior (Feature.ANALYTICS)
+ */
 @ApiTags('Analytics')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature(Feature.ANALYTICS)
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}

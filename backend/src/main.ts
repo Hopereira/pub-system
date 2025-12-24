@@ -9,6 +9,7 @@ import helmet from 'helmet';
 import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+// TenantInterceptor e TenantGuard são registrados via APP_INTERCEPTOR/APP_GUARD no TenantModule
 
 // Configura timezone para São Paulo (UTC-3)
 process.env.TZ = 'America/Sao_Paulo';
@@ -28,6 +29,10 @@ async function bootstrap() {
 
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());
+
+  // 🏢 Multi-tenancy: TenantInterceptor e TenantGuard agora são registrados
+  // via APP_INTERCEPTOR e APP_GUARD no TenantModule (solução correta para DI)
+  logger.log('🏢 TenantInterceptor e TenantGuard ativados via TenantModule');
 
   // 🔥 Ativar Exception Filter Global
   app.useGlobalFilters(new AllExceptionsFilter());
@@ -51,8 +56,14 @@ async function bootstrap() {
       // Permitir requisições sem origin (ex: mobile apps, Postman)
       if (!origin) return callback(null, true);
       
-      // Verificar se a origem está na lista ou é um subdomínio do Vercel/pubsystem
-      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.pubsystem.com.br')) {
+      // Verificar se a origem está na lista ou é um subdomínio permitido
+      if (
+        allowedOrigins.includes(origin) || 
+        origin.endsWith('.vercel.app') || 
+        origin.endsWith('.pubsystem.com.br') ||
+        origin.endsWith('.pubsystem.test') ||  // Multi-tenancy local
+        origin.includes('pubsystem.test')      // pubsystem.test:3001
+      ) {
         return callback(null, true);
       }
       

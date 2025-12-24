@@ -63,6 +63,8 @@ export const RoleGuard = ({
     // Determina página de retorno baseada no cargo do usuário
     const getHomePage = () => {
       switch (user.cargo) {
+        case 'SUPER_ADMIN':
+          return '/super-admin';
         case 'GARCOM':
           return '/garcom';
         case 'ADMIN':

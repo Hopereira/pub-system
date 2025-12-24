@@ -4,19 +4,19 @@ import {
   Logger,
   NotFoundException,
   Inject,
+  Optional,
+  Scope,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { REQUEST } from '@nestjs/core';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { Pedido } from './entities/pedido.entity';
-import { Comanda, ComandaStatus } from '../comanda/entities/comanda.entity';
-import { Produto } from '../produto/entities/produto.entity';
+import { ComandaStatus } from '../comanda/entities/comanda.entity';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { CreatePedidoGarcomDto } from './dto/create-pedido-garcom.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { ItemPedido } from './entities/item-pedido.entity';
-import { RetiradaItem } from './entities/retirada-item.entity';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
@@ -24,39 +24,63 @@ import { RetirarItemDto } from './dto/retirar-item.dto';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { PedidosGateway } from './pedidos.gateway';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
-import { Funcionario } from '../funcionario/entities/funcionario.entity';
-import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { PaginationDto, PaginatedResponse } from '../../common/dto/pagination.dto';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import Decimal from 'decimal.js';
+import { PedidoRepository } from './pedido.repository';
+import { ItemPedidoRepository } from './item-pedido.repository';
+import { RetiradaItemRepository } from './retirada-item.repository';
+import { ComandaRepository } from '../comanda/comanda.repository';
+import { ProdutoRepository } from '../produto/produto.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
+import { FuncionarioRepository } from '../funcionario/funcionario.repository';
+import { TurnoRepository } from '../turno/turno.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class PedidoService {
   private readonly logger = new Logger(PedidoService.name);
 
-  // ... (construtor e outros métodos permanecem os mesmos)
+  // Construtor refatorado para usar repositórios tenant-aware
   constructor(
-    @InjectRepository(Pedido)
-    private readonly pedidoRepository: Repository<Pedido>,
-    @InjectRepository(ItemPedido)
-    private readonly itemPedidoRepository: Repository<ItemPedido>,
-    @InjectRepository(RetiradaItem)
-    private readonly retiradaItemRepository: Repository<RetiradaItem>,
-    @InjectRepository(Comanda)
-    private readonly comandaRepository: Repository<Comanda>,
-    @InjectRepository(Produto)
-    private readonly produtoRepository: Repository<Produto>,
-    @InjectRepository(Ambiente)
-    private readonly ambienteRepository: Repository<Ambiente>,
-    @InjectRepository(Funcionario)
-    private readonly funcionarioRepository: Repository<Funcionario>,
-    @InjectRepository(TurnoFuncionario)
-    private readonly turnoRepository: Repository<TurnoFuncionario>,
+    private readonly pedidoRepository: PedidoRepository,
+    private readonly itemPedidoRepository: ItemPedidoRepository,
+    private readonly retiradaItemRepository: RetiradaItemRepository,
+    private readonly comandaRepository: ComandaRepository,
+    private readonly produtoRepository: ProdutoRepository,
+    private readonly ambienteRepository: AmbienteRepository,
+    private readonly funcionarioRepository: FuncionarioRepository,
+    private readonly turnoRepository: TurnoRepository,
     private readonly pedidosGateway: PedidosGateway,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,
+    @Optional() private readonly tenantContext?: TenantContextService,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
   ) {}
+
+  /**
+   * Obtém o tenantId do contexto atual para namespace de cache
+   */
+  private getTenantId(): string | null {
+    try {
+      if (this.tenantContext?.hasTenant?.()) {
+        return this.tenantContext.getTenantId();
+      }
+    } catch {
+      // Ignorar
+    }
+    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    if (userTenantId) return userTenantId;
+    return this.request?.headers?.['x-tenant-id'] || null;
+  }
+
+  /**
+   * Gera chave de cache com namespace do tenant
+   */
+  private getCacheKey(params: string): string {
+    const tenantId = this.getTenantId();
+    return tenantId ? `pedidos:${tenantId}:${params}` : `pedidos:global:${params}`;
+  }
 
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
     const { comandaId, itens } = createPedidoDto;
@@ -237,8 +261,8 @@ export class PedidoService {
   }): Promise<Pedido[]> {
     const { ambienteId, status, comandaId } = filters || {};
     
-    // Cache key baseado nos filtros
-    const cacheKey = `pedidos:amb:${ambienteId || 'all'}:st:${status || 'all'}:cmd:${comandaId || 'all'}`;
+    // Cache key baseado nos filtros com namespace do tenant
+    const cacheKey = this.getCacheKey(`amb:${ambienteId || 'all'}:st:${status || 'all'}:cmd:${comandaId || 'all'}`);
     
     // Tentar buscar do cache
     const cached = await this.cacheManager.get<Pedido[]>(cacheKey);

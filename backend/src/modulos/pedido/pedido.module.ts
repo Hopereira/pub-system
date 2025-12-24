@@ -1,5 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PedidoService } from './pedido.service';
 import { PedidoController } from './pedido.controller';
 import { PedidoAnalyticsService } from './pedido-analytics.service';
@@ -14,6 +16,14 @@ import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
 import { PedidosGateway } from './pedidos.gateway';
 import { QuaseProntoScheduler } from './quase-pronto.scheduler';
+import { PedidoRepository } from './pedido.repository';
+import { ItemPedidoRepository } from './item-pedido.repository';
+import { RetiradaItemRepository } from './retirada-item.repository';
+import { ProdutoModule } from '../produto/produto.module';
+import { AmbienteModule } from '../ambiente/ambiente.module';
+import { FuncionarioModule } from '../funcionario/funcionario.module';
+import { ComandaModule } from '../comanda/comanda.module';
+import { TurnoModule } from '../turno/turno.module';
 
 @Module({
   imports: [
@@ -27,6 +37,19 @@ import { QuaseProntoScheduler } from './quase-pronto.scheduler';
       Funcionario,
       TurnoFuncionario,
     ]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1d' },
+      }),
+      inject: [ConfigService],
+    }),
+    ProdutoModule,
+    AmbienteModule,
+    FuncionarioModule,
+    forwardRef(() => ComandaModule),
+    TurnoModule,
   ],
   controllers: [PedidoController, PedidoAnalyticsController],
   providers: [
@@ -34,10 +57,10 @@ import { QuaseProntoScheduler } from './quase-pronto.scheduler';
     PedidoAnalyticsService,
     PedidosGateway,
     QuaseProntoScheduler,
+    PedidoRepository,
+    ItemPedidoRepository,
+    RetiradaItemRepository,
   ],
-  // ==================================================================
-  // ## CORREÇÃO: Exportamos o Gateway para que outros módulos o possam usar ##
-  // ==================================================================
-  exports: [PedidoService, PedidoAnalyticsService, PedidosGateway],
+  exports: [PedidoService, PedidoAnalyticsService, PedidosGateway, PedidoRepository, ItemPedidoRepository, RetiradaItemRepository],
 })
 export class PedidoModule {}

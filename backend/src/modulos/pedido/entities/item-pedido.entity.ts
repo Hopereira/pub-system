@@ -112,4 +112,9 @@ export class ItemPedido {
     nullable: true,
   })
   tempoEntregaFinalMinutos: number;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_item_pedido_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

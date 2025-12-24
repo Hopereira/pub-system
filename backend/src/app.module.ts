@@ -29,8 +29,10 @@ import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AuditModule } from './modulos/audit/audit.module';
+import { TenantModule, TenantRateLimitGuard } from './common/tenant';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
+import { PaymentModule } from './modulos/payment/payment.module';
 
 @Module({
   imports: [
@@ -98,21 +100,22 @@ import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.
     }),
     ScheduleModule.forRoot(), // Habilita jobs agendados
     // ✅ SEGURANÇA: Rate Limiting Global para prevenir brute force e DDoS
+    // Limites aumentados para desenvolvimento
     ThrottlerModule.forRoot([
       {
         name: 'short',
         ttl: 1000, // 1 segundo
-        limit: 3, // 3 requisições por segundo
+        limit: 30, // 30 requisições por segundo (dev)
       },
       {
         name: 'medium',
         ttl: 10000, // 10 segundos
-        limit: 20, // 20 requisições por 10 segundos
+        limit: 200, // 200 requisições por 10 segundos (dev)
       },
       {
         name: 'long',
         ttl: 60000, // 1 minuto
-        limit: 100, // 100 requisições por minuto
+        limit: 1000, // 1000 requisições por minuto (dev)
       },
     ]),
     TypeOrmModule.forRootAsync({
@@ -157,14 +160,22 @@ import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.
     AuditModule,
     LoggerModule,
     JobsModule,
+    TenantModule, // 🏢 Multi-tenancy: Contexto, Interceptor, Guard, Resolver
+    PaymentModule, // 💳 Pagamentos: Mercado Pago, PagSeguro, PicPay
   ],
   controllers: [],
   providers: [
-    // ✅ SEGURANÇA: Ativa CustomThrottlerGuard globalmente
+    // ✅ SEGURANÇA: Ativa CustomThrottlerGuard globalmente (rate limit por IP/usuário)
     {
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
     },
+    // ⚠️ TEMPORARIAMENTE DESABILITADO: TenantRateLimitGuard tem problemas de DI quando usado globalmente
+    // TODO: Corrigir injeção de dependências do TenantRateLimitGuard
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: TenantRateLimitGuard,
+    // },
     RateLimitMonitorService,
   ],
 })

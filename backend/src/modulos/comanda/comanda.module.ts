@@ -1,5 +1,5 @@
 // Caminho: backend/src/modulos/comanda/comanda.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ComandaService } from './comanda.service';
 import { ComandaController } from './comanda.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -19,6 +19,11 @@ import { ComandaAgregado } from './entities/comanda-agregado.entity';
 // ✅ 2. Importar CaixaModule para integração com sistema de pagamentos
 import { CaixaModule } from '../caixa/caixa.module';
 
+// ✅ 3. Importar repositórios tenant-aware
+import { ComandaRepository } from './comanda.repository';
+import { MesaRepository } from '../mesa/mesa.repository';
+import { ClienteRepository } from '../cliente/cliente.repository';
+
 @Module({
   imports: [
     // ✅ 3. Adicionar TODAS as entidades que o ComandaService agora utiliza
@@ -33,10 +38,11 @@ import { CaixaModule } from '../caixa/caixa.module';
       PontoEntrega,
       ComandaAgregado,
     ]),
-    PedidoModule, // Mantemos a importação do PedidoModule para acesso ao Gateway
+    forwardRef(() => PedidoModule), // forwardRef para resolver dependência circular
     CaixaModule, // ✅ Módulo de caixa para registrar vendas
   ],
   controllers: [ComandaController],
-  providers: [ComandaService],
+  providers: [ComandaService, ComandaRepository, MesaRepository, ClienteRepository],
+  exports: [ComandaService, ComandaRepository],
 })
 export class ComandaModule {}

@@ -6,6 +6,7 @@ import {
   CreateDateColumn,
   JoinColumn,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { AberturaCaixa, StatusCaixa } from './abertura-caixa.entity';
 import { TurnoFuncionario } from '../../turno/entities/turno-funcionario.entity';
@@ -137,4 +138,9 @@ export class FechamentoCaixa {
 
   @CreateDateColumn()
   criadoEm: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_fechamento_caixa_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

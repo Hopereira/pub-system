@@ -25,9 +25,18 @@ import { Public } from 'src/auth/decorators/public.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * ClienteController - Gestão de clientes
+ * 
+ * 🔒 Requer plano BASIC ou superior (Feature.CLIENTES)
+ * Nota: Rotas públicas (@Public) não são bloqueadas pelo FeatureGuard
+ */
 @ApiTags('Clientes')
 @Controller('clientes')
+@UseGuards(FeatureGuard)
+@RequireFeature(Feature.CLIENTES)
 export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 

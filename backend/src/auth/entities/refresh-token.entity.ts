@@ -5,16 +5,32 @@ import {
   ManyToOne,
   CreateDateColumn,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Funcionario } from '../../modulos/funcionario/entities/funcionario.entity';
 
+/**
+ * RefreshToken - Entidade para tokens de renovação de sessão
+ * 
+ * Multi-tenancy: Cada refresh token é vinculado a um tenant específico.
+ * Isso impede que um token de um bar seja usado para gerar acesso em outro.
+ */
 @Entity('refresh_tokens')
+@Index(['tenantId', 'funcionario']) // Índice composto para queries por tenant
 export class RefreshToken {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'text' })
   token: string;
+
+  /**
+   * Tenant ID - Isolamento por bar
+   * O refresh token só pode ser usado para renovar sessão no mesmo tenant
+   */
+  @Column({ type: 'uuid', nullable: true })
+  @Index('idx_refresh_token_tenant')
+  tenantId: string;
 
   @ManyToOne(() => Funcionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionarioId' })

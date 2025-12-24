@@ -5,9 +5,15 @@ import { AnalyticsService } from './analytics.service';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
+import { PedidoModule } from '../pedido/pedido.module';
+import { ComandaModule } from '../comanda/comanda.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda])],
+  imports: [
+    TypeOrmModule.forFeature([Pedido, ItemPedido, Comanda]),
+    PedidoModule,
+    ComandaModule,
+  ],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
   exports: [AnalyticsService],

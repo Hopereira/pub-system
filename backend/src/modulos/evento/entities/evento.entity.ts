@@ -6,6 +6,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -42,4 +43,9 @@ export class Evento {
 
   @ManyToOne(() => PaginaEvento, { eager: true, nullable: true })
   paginaEvento: PaginaEvento;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_evento_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }
