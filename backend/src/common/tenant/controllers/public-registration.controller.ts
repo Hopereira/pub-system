@@ -4,12 +4,17 @@ import {
   Body,
   Get,
   Query,
+  Param,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { IsString, IsEmail, MinLength, IsOptional, Matches } from 'class-validator';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { TenantProvisioningService } from '../services/tenant-provisioning.service';
 import { SkipTenantGuard } from '../guards/tenant.guard';
+import { Tenant } from '../entities/tenant.entity';
 
 /**
  * DTO para registro público de novo pub
@@ -60,6 +65,8 @@ export class PublicRegistrationController {
 
   constructor(
     private readonly provisioningService: TenantProvisioningService,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
   ) {}
 
   /**
@@ -136,13 +143,40 @@ export class PublicRegistrationController {
       message: 'Pub registrado com sucesso! Você já pode fazer login.',
       dados: {
         slug: result.tenant.slug,
-        urlAcesso: `https://${result.tenant.slug}.pubsystem.com.br`,
-        urlLogin: `https://www.pubsystem.com.br/login`,
+        urlAcesso: `https://www.pubsystem.com.br/t/${result.tenant.slug}`,
+        urlLogin: `https://www.pubsystem.com.br/t/${result.tenant.slug}`,
         email: result.credenciais.email,
         plano: result.tenant.plano,
         ambientesCriados: result.ambientes.map(a => a.nome),
         mesasCriadas: result.mesas.length,
       },
+    };
+  }
+
+  /**
+   * Busca informações públicas de um tenant pelo slug
+   */
+  @Get('tenant/:slug')
+  @ApiOperation({ summary: 'Busca informações públicas de um tenant pelo slug' })
+  @ApiParam({ name: 'slug', description: 'Slug do estabelecimento' })
+  @ApiResponse({ status: 200, description: 'Tenant encontrado' })
+  @ApiResponse({ status: 404, description: 'Tenant não encontrado' })
+  async getTenantBySlug(@Param('slug') slug: string) {
+    const tenant = await this.tenantRepository.findOne({
+      where: { slug },
+      select: ['id', 'nome', 'slug', 'status', 'plano'],
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Estabelecimento "${slug}" não encontrado`);
+    }
+
+    return {
+      id: tenant.id,
+      nome: tenant.nome,
+      slug: tenant.slug,
+      status: tenant.status,
+      plano: tenant.plano,
     };
   }
 }
