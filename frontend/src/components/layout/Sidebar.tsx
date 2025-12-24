@@ -33,6 +33,7 @@ const baseNavLinks: NavLink[] = [
   { href: '/super-admin/tenants', label: 'Gestão de Empresas', icon: Building2, roles: ['SUPER_ADMIN'] },
   { href: '/super-admin/pagamentos', label: 'Config. Pagamentos', icon: Settings, roles: ['SUPER_ADMIN'] },
   { href: '/super-admin/planos', label: 'Planos e Faturamento', icon: BarChart2, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/configuracoes', label: 'Configurações', icon: User, roles: ['SUPER_ADMIN'] },
   
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
@@ -166,7 +167,9 @@ export function Sidebar() {
             <link.icon className="h-5 w-5" />
             <span className="flex-1">{link.label}</span>
             {link.premium && (
-              <Crown className="h-3 w-3 text-yellow-500" title="Feature Premium" />
+              <span title="Feature Premium">
+                <Crown className="h-3 w-3 text-yellow-500" />
+              </span>
             )}
           </Link>
         ))}
