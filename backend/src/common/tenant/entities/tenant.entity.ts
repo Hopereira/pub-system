@@ -37,6 +37,11 @@ export interface TenantConfig {
   modulosAtivos?: string[];
   corPrimaria?: string;
   logoUrl?: string;
+  paymentGateways?: {
+    picpay?: { enabled: boolean; apiKey?: string };
+    mercadopago?: { enabled: boolean; accessToken?: string };
+    stripe?: { enabled: boolean; secretKey?: string };
+  };
 }
 
 /**

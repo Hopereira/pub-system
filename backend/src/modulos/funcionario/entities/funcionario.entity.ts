@@ -14,6 +14,7 @@ import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import * as bcrypt from 'bcrypt';
 
 @Entity('funcionarios')
+@Index('idx_funcionario_email_tenant', ['email', 'tenantId'], { unique: true })
 export class Funcionario {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -21,9 +22,9 @@ export class Funcionario {
   @Column()
   nome: string;
 
-  // ✅ CORREÇÃO DBA: Índice para busca por email
+  // ✅ CORREÇÃO: Email único por tenant (não global)
   @Index('idx_funcionario_email')
-  @Column({ unique: true })
+  @Column()
   email: string;
 
   @Column()
@@ -67,6 +68,11 @@ export class Funcionario {
   @ManyToOne(() => Ambiente, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_funcionario_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 
   //@BeforeInsert()
   //async hashPassword() {

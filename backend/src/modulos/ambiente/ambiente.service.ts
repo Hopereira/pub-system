@@ -6,41 +6,84 @@ import {
   ConflictException,
   Inject,
   Logger,
+  Scope,
+  Optional,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 import { Ambiente } from './entities/ambiente.entity';
+import { AmbienteRepository } from './ambiente.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class AmbienteService {
   private readonly logger = new Logger(AmbienteService.name);
 
   constructor(
-    @InjectRepository(Ambiente)
-    private readonly ambienteRepository: Repository<Ambiente>,
+    private readonly ambienteRepository: AmbienteRepository,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,
+    @Optional() private readonly tenantContext?: TenantContextService,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
   ) {}
 
+  /**
+   * Obtém o tenantId do contexto atual para namespace de cache
+   */
+  private getTenantId(): string | null {
+    try {
+      if (this.tenantContext?.hasTenant?.()) {
+        return this.tenantContext.getTenantId();
+      }
+    } catch {
+      // Ignorar
+    }
+    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    if (userTenantId) return userTenantId;
+    return this.request?.headers?.['x-tenant-id'] || null;
+  }
+
+  /**
+   * Gera chave de cache com namespace do tenant
+   */
+  private getCacheKey(params: string): string {
+    const tenantId = this.getTenantId();
+    return tenantId ? `ambientes:${tenantId}:${params}` : `ambientes:global:${params}`;
+  }
+
   async create(createAmbienteDto: CreateAmbienteDto): Promise<Ambiente> {
-    const ambiente = this.ambienteRepository.create(createAmbienteDto);
-    const savedAmbiente = await this.ambienteRepository.save(ambiente);
+    this.logger.log(`📝 Criando ambiente: ${createAmbienteDto.nome}`);
     
-    // Invalidar cache após criar ambiente (afeta ambientes e produtos)
-    await this.cacheInvalidationService.invalidateAmbientes();
-    
-    return savedAmbiente;
+    try {
+      // Criar entidade com tenant_id automático
+      const ambiente = this.ambienteRepository.create(createAmbienteDto);
+      this.logger.log(`📝 Ambiente criado em memória com tenantId: ${ambiente.tenantId}`);
+      
+      const savedAmbiente = await this.ambienteRepository.save(ambiente);
+      this.logger.log(`✅ Ambiente salvo: ${savedAmbiente.id} | tenantId: ${savedAmbiente.tenantId}`);
+      
+      // Invalidar cache após criar ambiente (afeta ambientes e produtos)
+      try {
+        await this.cacheInvalidationService.invalidateAmbientes();
+      } catch (cacheError) {
+        this.logger.warn(`⚠️ Erro ao invalidar cache: ${cacheError.message}`);
+      }
+      
+      return savedAmbiente;
+    } catch (error) {
+      this.logger.error(`❌ Erro ao criar ambiente: ${error.name}: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   // --- MÉTODO 'findAll' CORRIGIDO ---
   async findAll(): Promise<any[]> {
-    const cacheKey = 'ambientes:all';
+    const cacheKey = this.getCacheKey('all');
 
     // Tentar buscar do cache
     const cached = await this.cacheManager.get<any[]>(cacheKey);

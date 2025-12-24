@@ -3,6 +3,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany, // NOVO: Importamos o OneToMany
@@ -54,6 +55,15 @@ export class Mesa {
   @ManyToOne(() => Ambiente, (ambiente) => ambiente.mesas)
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_mesa_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
+
+  // Coluna auxiliar para ambiente
+  @Column({ type: 'uuid', nullable: true, name: 'ambiente_id' })
+  ambienteId: string;
 
   // --- NOVO: Definindo o lado inverso da relação com Comanda ---
   @OneToMany(() => Comanda, (comanda) => comanda.mesa)

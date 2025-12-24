@@ -1,31 +1,57 @@
-import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, Logger, NotFoundException, Inject, Optional, Scope } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { REQUEST } from '@nestjs/core';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
-import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { Express } from 'express';
 import { PaginationDto, PaginatedResponse, createPaginatedResponse } from 'src/common/dto/pagination.dto';
+import { ProdutoRepository } from './produto.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class ProdutoService {
   private readonly logger = new Logger(ProdutoService.name);
 
   constructor(
-    @InjectRepository(Produto)
-    private readonly produtoRepository: Repository<Produto>,
-    @InjectRepository(Ambiente)
-    private readonly ambienteRepository: Repository<Ambiente>,
+    private readonly produtoRepository: ProdutoRepository,
+    private readonly ambienteRepository: AmbienteRepository,
     private readonly storageService: GcsStorageService,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,
+    @Optional() private readonly tenantContext?: TenantContextService,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
   ) {}
+
+  /**
+   * Obtém o tenantId do contexto atual para namespace de cache
+   */
+  private getTenantId(): string | null {
+    try {
+      if (this.tenantContext?.hasTenant?.()) {
+        return this.tenantContext.getTenantId();
+      }
+    } catch {
+      // Ignorar
+    }
+    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    if (userTenantId) return userTenantId;
+    return this.request?.headers?.['x-tenant-id'] || null;
+  }
+
+  /**
+   * Gera chave de cache com namespace do tenant
+   * Para produtos, usa 'global' quando não há tenant (rotas públicas de cardápio)
+   */
+  private getCacheKey(params: string): string {
+    const tenantId = this.getTenantId();
+    return tenantId ? `produtos:${tenantId}:${params}` : `produtos:global:${params}`;
+  }
 
   // --- 3. MÉTODO 'CREATE' ATUALIZADO ---
   async create(
@@ -148,12 +174,12 @@ export class ProdutoService {
     return removedProduto;
   }
 
-  // ✅ ATUALIZADO: findAll com paginação e cache
+  // ✅ ATUALIZADO: findAll com paginação e cache (rota pública - sem filtro de tenant)
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
-    // Criar chave de cache única baseada nos parâmetros
-    const cacheKey = `produtos:page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`;
+    // Criar chave de cache única baseada nos parâmetros com namespace do tenant
+    const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
     
     // Tentar buscar do cache
     const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
@@ -164,7 +190,8 @@ export class ProdutoService {
     
     this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
-    const [data, total] = await this.produtoRepository.findAndCount({
+    // Usar findAndCountWithoutTenant para rotas públicas (não requer tenant)
+    const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
       where: { ativo: true },
       relations: ['ambiente'],
       order: { [sortBy]: sortOrder },
@@ -184,7 +211,7 @@ export class ProdutoService {
 
   // Método para buscar todos sem paginação (uso interno) com cache
   async findAllNoPagination(): Promise<Produto[]> {
-    const cacheKey = 'produtos:all:ativos';
+    const cacheKey = this.getCacheKey('all:ativos');
     
     // Tentar buscar do cache
     const cached = await this.cacheManager.get<Produto[]>(cacheKey);
@@ -195,7 +222,8 @@ export class ProdutoService {
     
     this.logger.debug('❌ Cache MISS: produtos:all:ativos');
     
-    const produtos = await this.produtoRepository.find({
+    // Usar findWithoutTenant para rotas públicas (não requer tenant)
+    const produtos = await this.produtoRepository.findWithoutTenant({
       where: { ativo: true },
       relations: ['ambiente'],
       order: { nome: 'ASC' },

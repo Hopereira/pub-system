@@ -79,4 +79,13 @@ export class Pedido {
   // Tempo total em minutos (calculado automaticamente)
   @Column({ name: 'tempo_total_minutos', type: 'integer', nullable: true })
   tempoTotalMinutos: number;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_pedido_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
+
+  // Coluna auxiliar para comanda
+  @Column({ type: 'uuid', nullable: true, name: 'comandaId' })
+  comandaId: string;
 }

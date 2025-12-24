@@ -5,6 +5,7 @@ import {
   ManyToOne,
   CreateDateColumn,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { AberturaCaixa } from './abertura-caixa.entity';
 import { TurnoFuncionario } from '../../turno/entities/turno-funcionario.entity';
@@ -61,4 +62,9 @@ export class Sangria {
 
   @CreateDateColumn()
   criadoEm: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_sangria_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

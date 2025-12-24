@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -61,4 +62,9 @@ export class RetiradaItem {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_retirada_item_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

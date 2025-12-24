@@ -1,15 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { PontoEntregaService } from './ponto-entrega.service';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
-import { Empresa } from '../empresa/entities/empresa.entity';
+import { PontoEntregaRepository } from './ponto-entrega.repository';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('PontoEntregaService', () => {
   let service: PontoEntregaService;
-  let pontoEntregaRepository: jest.Mocked<Repository<PontoEntrega>>;
-  let empresaRepository: jest.Mocked<Repository<Empresa>>;
 
   const mockPontoEntregaRepository = {
     create: jest.fn(),
@@ -18,24 +14,19 @@ describe('PontoEntregaService', () => {
     findOne: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),
-  };
-
-  const mockEmpresaRepository = {
-    findOne: jest.fn(),
+    findComRelacoes: jest.fn(),
+    findAtivos: jest.fn(),
+    findByAmbiente: jest.fn(),
+    findByIdComRelacoes: jest.fn(),
   };
 
   // Mock data
-  const mockEmpresa = {
-    id: 'empresa-uuid-1',
-    nomeFantasia: 'Pub Test',
-  };
-
   const mockPontoEntrega: Partial<PontoEntrega> = {
     id: 'ponto-uuid-1',
     nome: 'Balcão Principal',
     descricao: 'Balcão de atendimento',
     ativo: true,
-    empresaId: mockEmpresa.id,
+    tenantId: 'tenant-uuid-1',
     posicao: { x: 100, y: 100 },
     tamanho: { width: 100, height: 60 },
   };
@@ -45,7 +36,7 @@ describe('PontoEntregaService', () => {
     nome: 'Varanda',
     descricao: 'Área externa',
     ativo: true,
-    empresaId: mockEmpresa.id,
+    tenantId: 'tenant-uuid-1',
     posicao: { x: 200, y: 200 },
   };
 
@@ -54,19 +45,13 @@ describe('PontoEntregaService', () => {
       providers: [
         PontoEntregaService,
         {
-          provide: getRepositoryToken(PontoEntrega),
+          provide: PontoEntregaRepository,
           useValue: mockPontoEntregaRepository,
-        },
-        {
-          provide: getRepositoryToken(Empresa),
-          useValue: mockEmpresaRepository,
         },
       ],
     }).compile();
 
     service = module.get<PontoEntregaService>(PontoEntregaService);
-    pontoEntregaRepository = module.get(getRepositoryToken(PontoEntrega));
-    empresaRepository = module.get(getRepositoryToken(Empresa));
   });
 
   afterEach(() => {
@@ -87,57 +72,22 @@ describe('PontoEntregaService', () => {
       ambientePreparoId: 'ambiente-preparo-uuid',
     };
 
-    it('deve criar ponto de entrega com empresaId fornecido', async () => {
-      mockPontoEntregaRepository.create.mockReturnValue({
-        ...createDto,
-        empresaId: mockEmpresa.id,
-      });
-      mockPontoEntregaRepository.save.mockResolvedValue({
+    it('deve criar ponto de entrega com tenant automático', async () => {
+      const novoPonto = {
         id: 'new-ponto-uuid',
         ...createDto,
-        empresaId: mockEmpresa.id,
-      });
-      mockPontoEntregaRepository.findOne.mockResolvedValue({
-        id: 'new-ponto-uuid',
-        ...createDto,
-        empresaId: mockEmpresa.id,
-      });
-
-      const result = await service.create(createDto, mockEmpresa.id);
-
-      expect(result).toBeDefined();
-      expect(result.nome).toBe(createDto.nome);
-    });
-
-    it('deve criar ponto de entrega usando empresa padrão', async () => {
-      mockEmpresaRepository.findOne.mockResolvedValue(mockEmpresa);
-      mockPontoEntregaRepository.create.mockReturnValue({
-        ...createDto,
-        empresaId: mockEmpresa.id,
-      });
-      mockPontoEntregaRepository.save.mockResolvedValue({
-        id: 'new-ponto-uuid',
-        ...createDto,
-        empresaId: mockEmpresa.id,
-      });
-      mockPontoEntregaRepository.findOne.mockResolvedValue({
-        id: 'new-ponto-uuid',
-        ...createDto,
-        empresaId: mockEmpresa.id,
-      });
+        tenantId: 'tenant-uuid-1',
+      };
+      
+      mockPontoEntregaRepository.create.mockReturnValue(novoPonto);
+      mockPontoEntregaRepository.save.mockResolvedValue(novoPonto);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(novoPonto);
 
       const result = await service.create(createDto);
 
       expect(result).toBeDefined();
-      expect(mockEmpresaRepository.findOne).toHaveBeenCalled();
-    });
-
-    it('deve lançar BadRequestException se não houver empresa', async () => {
-      mockEmpresaRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.create(createDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      expect(result.nome).toBe(createDto.nome);
+      expect(mockPontoEntregaRepository.create).toHaveBeenCalledWith(createDto);
     });
   });
 
@@ -146,8 +96,7 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('findAll', () => {
     it('deve retornar lista de pontos de entrega', async () => {
-      mockEmpresaRepository.findOne.mockResolvedValue(mockEmpresa);
-      mockPontoEntregaRepository.find.mockResolvedValue([
+      mockPontoEntregaRepository.findComRelacoes.mockResolvedValue([
         mockPontoEntrega,
         mockPontoEntrega2,
       ]);
@@ -155,19 +104,7 @@ describe('PontoEntregaService', () => {
       const result = await service.findAll();
 
       expect(result).toHaveLength(2);
-    });
-
-    it('deve filtrar por empresaId', async () => {
-      mockPontoEntregaRepository.find.mockResolvedValue([mockPontoEntrega]);
-
-      const result = await service.findAll(mockEmpresa.id);
-
-      expect(result).toHaveLength(1);
-      expect(mockPontoEntregaRepository.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { empresaId: mockEmpresa.id },
-        }),
-      );
+      expect(mockPontoEntregaRepository.findComRelacoes).toHaveBeenCalled();
     });
   });
 
@@ -176,17 +113,12 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('findAllAtivos', () => {
     it('deve retornar apenas pontos ativos', async () => {
-      mockEmpresaRepository.findOne.mockResolvedValue(mockEmpresa);
-      mockPontoEntregaRepository.find.mockResolvedValue([mockPontoEntrega]);
+      mockPontoEntregaRepository.findAtivos.mockResolvedValue([mockPontoEntrega]);
 
       const result = await service.findAllAtivos();
 
       expect(result).toHaveLength(1);
-      expect(mockPontoEntregaRepository.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ ativo: true }),
-        }),
-      );
+      expect(mockPontoEntregaRepository.findAtivos).toHaveBeenCalled();
     });
   });
 
@@ -195,11 +127,12 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('findByAmbiente', () => {
     it('deve retornar pontos do ambiente', async () => {
-      mockPontoEntregaRepository.find.mockResolvedValue([mockPontoEntrega]);
+      mockPontoEntregaRepository.findByAmbiente.mockResolvedValue([mockPontoEntrega]);
 
       const result = await service.findByAmbiente('ambiente-uuid-1');
 
       expect(result).toHaveLength(1);
+      expect(mockPontoEntregaRepository.findByAmbiente).toHaveBeenCalledWith('ambiente-uuid-1');
     });
   });
 
@@ -208,7 +141,7 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('findOne', () => {
     it('deve retornar ponto por ID', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue(mockPontoEntrega);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(mockPontoEntrega);
 
       const result = await service.findOne(mockPontoEntrega.id);
 
@@ -217,7 +150,7 @@ describe('PontoEntregaService', () => {
     });
 
     it('deve lançar NotFoundException se ponto não existir', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue(null);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(null);
 
       await expect(service.findOne('id-invalido')).rejects.toThrow(
         NotFoundException,
@@ -232,7 +165,7 @@ describe('PontoEntregaService', () => {
     const updateDto = { nome: 'Balcão Atualizado' };
 
     it('deve atualizar ponto de entrega', async () => {
-      mockPontoEntregaRepository.findOne
+      mockPontoEntregaRepository.findByIdComRelacoes
         .mockResolvedValueOnce(mockPontoEntrega)
         .mockResolvedValueOnce({ ...mockPontoEntrega, ...updateDto });
       mockPontoEntregaRepository.save.mockResolvedValue({
@@ -246,7 +179,7 @@ describe('PontoEntregaService', () => {
     });
 
     it('deve lançar NotFoundException se ponto não existir', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue(null);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(null);
 
       await expect(service.update('id-invalido', updateDto)).rejects.toThrow(
         NotFoundException,
@@ -259,7 +192,7 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('remove', () => {
     it('deve remover ponto de entrega', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue(mockPontoEntrega);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(mockPontoEntrega);
       const mockQueryBuilder = {
         leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -279,7 +212,7 @@ describe('PontoEntregaService', () => {
     });
 
     it('deve lançar BadRequestException se houver comandas ativas', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue(mockPontoEntrega);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(mockPontoEntrega);
       const mockQueryBuilder = {
         leftJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -296,7 +229,7 @@ describe('PontoEntregaService', () => {
     });
 
     it('deve lançar NotFoundException se ponto não existir', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue(null);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(null);
 
       await expect(service.remove('id-invalido')).rejects.toThrow(
         NotFoundException,
@@ -309,7 +242,7 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('toggleAtivo', () => {
     it('deve alternar status ativo', async () => {
-      mockPontoEntregaRepository.findOne.mockResolvedValue({
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue({
         ...mockPontoEntrega,
         ativo: true,
       });
@@ -330,7 +263,7 @@ describe('PontoEntregaService', () => {
   describe('atualizarPosicao', () => {
     it('deve atualizar posição do ponto', async () => {
       const novaPosicao = { x: 500, y: 600 };
-      mockPontoEntregaRepository.findOne.mockResolvedValue(mockPontoEntrega);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(mockPontoEntrega);
       mockPontoEntregaRepository.save.mockResolvedValue({
         ...mockPontoEntrega,
         posicao: novaPosicao,
@@ -348,7 +281,7 @@ describe('PontoEntregaService', () => {
         posicao: { x: 500, y: 600 },
         tamanho: { width: 150, height: 80 },
       };
-      mockPontoEntregaRepository.findOne.mockResolvedValue(mockPontoEntrega);
+      mockPontoEntregaRepository.findByIdComRelacoes.mockResolvedValue(mockPontoEntrega);
       mockPontoEntregaRepository.save.mockResolvedValue({
         ...mockPontoEntrega,
         ...dto,

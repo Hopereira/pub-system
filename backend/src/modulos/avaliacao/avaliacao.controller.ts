@@ -27,7 +27,8 @@ import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
  */
 @ApiTags('Avaliações')
 @Controller('avaliacoes')
-@UseGuards(FeatureGuard)
+@UseGuards(JwtAuthGuard, FeatureGuard)
+@ApiBearerAuth()
 @RequireFeature(Feature.AVALIACOES)
 export class AvaliacaoController {
   constructor(private readonly avaliacaoService: AvaliacaoService) {}
@@ -46,9 +47,8 @@ export class AvaliacaoController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar todas as avaliações' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })
   @ApiQuery({ name: 'dataFim', required: false, type: Date })
@@ -67,9 +67,8 @@ export class AvaliacaoController {
   }
 
   @Get('estatisticas')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN, Cargo.CAIXA)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Obter estatísticas de satisfação' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })
   @ApiQuery({ name: 'dataFim', required: false, type: Date })
@@ -88,9 +87,8 @@ export class AvaliacaoController {
   }
 
   @Get('estatisticas/hoje')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
-  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.CAIXA, Cargo.GARCOM, Cargo.COZINHA, Cargo.COZINHEIRO, Cargo.BARTENDER)
   @ApiOperation({ summary: 'Obter estatísticas de satisfação do dia' })
   @ApiResponse({
     status: 200,

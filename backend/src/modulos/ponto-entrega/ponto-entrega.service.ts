@@ -4,50 +4,27 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Scope,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
-import { Empresa } from '../empresa/entities/empresa.entity';
+import { PontoEntregaRepository } from './ponto-entrega.repository';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
 import { UpdatePontoEntregaDto } from './dto/update-ponto-entrega.dto';
 import { AtualizarPosicaoMesaDto } from '../mesa/dto/mapa.dto';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class PontoEntregaService {
   private readonly logger = new Logger(PontoEntregaService.name);
 
   constructor(
-    @InjectRepository(PontoEntrega)
-    private readonly pontoEntregaRepository: Repository<PontoEntrega>,
-    @InjectRepository(Empresa)
-    private readonly empresaRepository: Repository<Empresa>,
+    private readonly pontoEntregaRepository: PontoEntregaRepository,
   ) {}
 
-  async create(
-    createDto: CreatePontoEntregaDto,
-    empresaId?: string,
-  ): Promise<PontoEntrega> {
+  async create(createDto: CreatePontoEntregaDto): Promise<PontoEntrega> {
     this.logger.log(`📍 Criando ponto de entrega: ${createDto.nome}`);
 
-    // Se empresaId não foi fornecido, buscar a primeira empresa
-    let finalEmpresaId = empresaId;
-    if (!finalEmpresaId) {
-      const empresa = await this.empresaRepository.findOne({ where: {} });
-      if (!empresa) {
-        throw new BadRequestException('Nenhuma empresa cadastrada no sistema');
-      }
-      finalEmpresaId = empresa.id;
-      this.logger.log(
-        `🏢 Usando empresa padrão: ${empresa.nomeFantasia} (${finalEmpresaId})`,
-      );
-    }
-
-    const ponto = this.pontoEntregaRepository.create({
-      ...createDto,
-      empresaId: finalEmpresaId,
-    });
-
+    // O tenant_id é injetado automaticamente pelo BaseTenantRepository
+    const ponto = this.pontoEntregaRepository.create(createDto);
     const novoPonto = await this.pontoEntregaRepository.save(ponto);
 
     this.logger.log(
@@ -57,77 +34,27 @@ export class PontoEntregaService {
     return this.findOne(novoPonto.id);
   }
 
-  async findAll(empresaId?: string): Promise<PontoEntrega[]> {
-    // Se empresaId não foi fornecido, buscar a primeira empresa
-    let finalEmpresaId = empresaId;
-    if (!finalEmpresaId) {
-      const empresa = await this.empresaRepository.findOne({ where: {} });
-      if (empresa) {
-        finalEmpresaId = empresa.id;
-      }
-    }
-
-    const pontos = await this.pontoEntregaRepository.find({
-      where: finalEmpresaId ? { empresaId: finalEmpresaId } : {},
-      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
-      order: { nome: 'ASC' },
-    });
-
+  async findAll(): Promise<PontoEntrega[]> {
+    // O filtro de tenant é aplicado automaticamente pelo BaseTenantRepository
+    const pontos = await this.pontoEntregaRepository.findComRelacoes();
     this.logger.log(`📋 Listando ${pontos.length} pontos de entrega`);
-
     return pontos;
   }
 
-  async findAllAtivos(empresaId?: string): Promise<PontoEntrega[]> {
-    // Se empresaId não foi fornecido, buscar a primeira empresa
-    let finalEmpresaId = empresaId;
-    if (!finalEmpresaId) {
-      const empresa = await this.empresaRepository.findOne({ where: {} });
-      if (empresa) {
-        finalEmpresaId = empresa.id;
-      }
-    }
-
-    const pontos = await this.pontoEntregaRepository.find({
-      where: finalEmpresaId
-        ? { empresaId: finalEmpresaId, ativo: true }
-        : { ativo: true },
-      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
-      order: { nome: 'ASC' },
-    });
-
-    return pontos;
+  async findAllAtivos(): Promise<PontoEntrega[]> {
+    // O filtro de tenant é aplicado automaticamente pelo BaseTenantRepository
+    return this.pontoEntregaRepository.findAtivos();
   }
 
   async findByAmbiente(ambienteId: string): Promise<PontoEntrega[]> {
     this.logger.log(`🔍 Buscando pontos de entrega do ambiente: ${ambienteId}`);
-
-    // Buscar pontos que estão fisicamente neste ambiente (atendimento)
-    // OU que têm este ambiente como preparo (para compatibilidade)
-    const pontos = await this.pontoEntregaRepository.find({
-      where: [
-        { ambienteAtendimentoId: ambienteId },
-        { ambientePreparoId: ambienteId },
-      ],
-      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
-      order: { nome: 'ASC' },
-    });
-
+    const pontos = await this.pontoEntregaRepository.findByAmbiente(ambienteId);
     this.logger.log(`📋 Encontrados ${pontos.length} pontos no ambiente`);
-
     return pontos;
   }
 
   async findOne(id: string): Promise<PontoEntrega> {
-    const ponto = await this.pontoEntregaRepository.findOne({
-      where: { id },
-      relations: [
-        'mesaProxima',
-        'ambienteAtendimento',
-        'ambientePreparo',
-        'empresa',
-      ],
-    });
+    const ponto = await this.pontoEntregaRepository.findByIdComRelacoes(id);
 
     if (!ponto) {
       this.logger.warn(`⚠️ Ponto de entrega não encontrado: ${id}`);

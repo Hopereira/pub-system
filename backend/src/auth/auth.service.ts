@@ -60,7 +60,7 @@ export class AuthService {
     } catch {
       // Ignorar erro - tenant não definido é válido para login
     }
-    const effectiveTenantId = tenantId || contextTenantId || user.empresaId || user.tenantId;
+    const effectiveTenantId = tenantId || contextTenantId || user.tenantId || user.empresaId;
 
     const payload = {
       id: user.id,

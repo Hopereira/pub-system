@@ -49,6 +49,11 @@ export class Cliente {
   @JoinColumn({ name: 'ponto_entrega_id' })
   pontoEntrega?: PontoEntrega;
 
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_cliente_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
+
   @OneToMany(() => Comanda, (comanda) => comanda.cliente)
   comandas: Comanda[];
 }

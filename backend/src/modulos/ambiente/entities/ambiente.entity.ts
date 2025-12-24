@@ -1,6 +1,6 @@
 // Caminho: backend/src/modulos/ambiente/entities/ambiente.entity.ts
 
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Mesa } from '../../mesa/entities/mesa.entity';
 import { Produto } from '../../produto/entities/produto.entity';
 
@@ -13,11 +13,12 @@ export enum TipoAmbiente {
 // --- FIM DA DEFINIÇÃO ---
 
 @Entity('ambientes')
+@Index('idx_ambiente_nome_tenant', ['nome', 'tenantId'], { unique: true })
 export class Ambiente {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, length: 100 })
+  @Column({ length: 100 })
   nome: string;
 
   @Column({ type: 'text', nullable: true })
@@ -39,6 +40,11 @@ export class Ambiente {
   isPontoDeRetirada: boolean;
 
   // --- FIM DA ADIÇÃO ---
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_ambiente_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 
   @OneToMany(() => Mesa, (mesa) => mesa.ambiente)
   mesas: Mesa[];

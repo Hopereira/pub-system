@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BentoGrid, BentoGridItem } from "@/components/dashboard/BentoGrid";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ChartCard, MiniBarChart } from "@/components/dashboard/ChartCard";
 import { RoleGuard } from "@/components/guards/RoleGuard";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Users, 
   UtensilsCrossed, 
@@ -27,6 +29,16 @@ import { socket } from "@/lib/socket";
 import { toast } from "sonner";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  // Redirecionar SUPER_ADMIN para /super-admin
+  useEffect(() => {
+    if (user?.cargo === 'SUPER_ADMIN') {
+      router.replace('/super-admin');
+    }
+  }, [user, router]);
+
   const [metricas, setMetricas] = useState({
     vendasDia: 0,
     vendasTrend: 0,

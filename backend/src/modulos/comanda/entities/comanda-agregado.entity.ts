@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { Comanda } from './comanda.entity';
 
@@ -34,4 +35,9 @@ export class ComandaAgregado {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_comanda_agregado_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

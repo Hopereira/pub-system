@@ -28,6 +28,13 @@ export function TurnoProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // SUPER_ADMIN não tem turno - ignorar verificação
+    if (user.cargo === 'SUPER_ADMIN') {
+      setVerificando(false);
+      setTurnoAtivo(null);
+      return;
+    }
+
     try {
       setVerificando(true);
       const turnos = await turnoService.getTurnosFuncionario(user.id);

@@ -213,6 +213,10 @@ export class TenantRateLimitGuard implements CanActivate {
    * Incrementa contador no cache
    */
   private async incrementCounter(key: string, ttlSeconds: number): Promise<number> {
+    // Proteção contra cacheManager undefined
+    if (!this.cacheManager) {
+      return 1; // Retorna 1 para não bloquear se cache não estiver disponível
+    }
     const current = await this.cacheManager.get<number>(key);
     const newValue = (current || 0) + 1;
     await this.cacheManager.set(key, newValue, ttlSeconds * 1000);
@@ -224,10 +228,16 @@ export class TenantRateLimitGuard implements CanActivate {
    */
   private async getTenantWithCache(tenantId: string): Promise<Tenant | null> {
     const cacheKey = `tenant:${tenantId}`;
+    
+    // Proteção contra cacheManager undefined
+    if (!this.cacheManager) {
+      return this.tenantRepository?.findOne?.({ where: { id: tenantId } }) ?? null;
+    }
+    
     let tenant = await this.cacheManager.get<Tenant>(cacheKey);
 
     if (!tenant) {
-      tenant = await this.tenantRepository.findOne({
+      tenant = await this.tenantRepository?.findOne?.({
         where: { id: tenantId },
       });
       if (tenant) {
@@ -235,7 +245,7 @@ export class TenantRateLimitGuard implements CanActivate {
       }
     }
 
-    return tenant;
+    return tenant ?? null;
   }
 
   /**

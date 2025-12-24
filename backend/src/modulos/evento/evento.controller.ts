@@ -41,7 +41,8 @@ import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
  */
 @ApiTags('Eventos')
 @Controller('eventos')
-@UseGuards(FeatureGuard)
+@UseGuards(JwtAuthGuard, FeatureGuard)
+@ApiBearerAuth()
 @RequireFeature(Feature.EVENTOS)
 export class EventoController {
   private readonly logger = new Logger(EventoController.name);
@@ -49,9 +50,8 @@ export class EventoController {
   constructor(private readonly eventoService: EventoService) {}
 
   @Patch(':id/upload')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload de imagem para um evento' })
   @ApiResponse({ status: 200, description: 'Imagem enviada com sucesso.' })
@@ -79,9 +79,8 @@ export class EventoController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria um novo evento' })
   @ApiResponse({ status: 201, description: 'Evento criado com sucesso.' })
   @ApiResponse({
@@ -96,9 +95,8 @@ export class EventoController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista todos os eventos (Admin)' })
   @ApiResponse({
     status: 200,
@@ -134,9 +132,8 @@ export class EventoController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza um evento' })
   @ApiResponse({ status: 200, description: 'Evento atualizado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })
@@ -148,9 +145,8 @@ export class EventoController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Remove um evento' })
   @ApiResponse({ status: 200, description: 'Evento removido com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })
@@ -159,9 +155,8 @@ export class EventoController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(RolesGuard)
   @Roles(Cargo.ADMIN)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Busca um evento por ID (Admin)' })
   @ApiResponse({ status: 200, description: 'Evento retornado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })

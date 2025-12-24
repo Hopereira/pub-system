@@ -25,10 +25,17 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * PontoEntregaController - Gestão de pontos de entrega (balcão, delivery)
+ * 
+ * 🔒 Requer plano BASIC ou superior (Feature.PONTOS_ENTREGA)
+ */
 @ApiTags('Pontos de Entrega')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature(Feature.PONTOS_ENTREGA)
 @Controller('pontos-entrega')
 export class PontoEntregaController {
   constructor(private readonly pontoEntregaService: PontoEntregaService) {}

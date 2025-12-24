@@ -5,9 +5,16 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { PedidoAnalyticsService } from './pedido-analytics.service';
 import { FiltroRelatorioDto } from './dto/analytics.dto';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
+/**
+ * PedidoAnalyticsController - Relatórios e métricas de pedidos
+ * 
+ * 🔒 Requer plano PRO ou superior (Feature.ANALYTICS)
+ */
 @Controller('analytics/pedidos')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureGuard)
+@RequireFeature(Feature.ANALYTICS)
 export class PedidoAnalyticsController {
   constructor(private readonly analyticsService: PedidoAnalyticsService) {}
 

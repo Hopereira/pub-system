@@ -29,7 +29,10 @@ interface NavLink {
 
 const baseNavLinks: NavLink[] = [
   // --- Super Admin (apenas SUPER_ADMIN) ---
-  { href: '/super-admin', label: 'Super Admin', icon: Crown, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin', label: 'Dashboard SaaS', icon: Crown, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/tenants', label: 'Gestão de Empresas', icon: Building2, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/pagamentos', label: 'Config. Pagamentos', icon: Settings, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/planos', label: 'Planos e Faturamento', icon: BarChart2, roles: ['SUPER_ADMIN'] },
   
   // --- Área do Garçom ---
   { href: '/garcom', label: 'Área do Garçom', icon: Home, roles: ['GARCOM'] },
@@ -44,13 +47,13 @@ const baseNavLinks: NavLink[] = [
   { href: '/caixa/gestao', label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
   
   // --- Área de Preparo (Cozinha/Bar) ---
-  { href: '/cozinha', label: 'Área de Preparo', icon: ChefHat, roles: ['COZINHEIRO', 'BARTENDER'] },
+  { href: '/cozinha', label: 'Área de Preparo', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO', 'BARTENDER'] },
+  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['COZINHA', 'COZINHEIRO', 'BARTENDER'] },
   
   // --- Dashboard Administrativo ---
   { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/gestaopedidos', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
   { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
-  { href: '/dashboard/operacional/pedidos-prontos', label: 'Pedidos Prontos', icon: ClipboardList, roles: ['ADMIN', 'GERENTE'] },
   
   // --- Links de Administração ---
   { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
@@ -59,9 +62,8 @@ const baseNavLinks: NavLink[] = [
   { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
   { href: '/dashboard/admin/pontos-entrega', label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'] },
   
-  // --- Features BASIC+ (Eventos, Clientes) ---
+  // --- Features BASIC+ (Eventos) ---
   { href: '/dashboard/admin/agenda-eventos', label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'], feature: Feature.EVENTOS, premium: true },
-  { href: '/dashboard/admin/clientes', label: 'Clientes', icon: Users, roles: ['ADMIN'], feature: Feature.CLIENTES, premium: true },
   
   { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'] },
   { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
@@ -73,7 +75,7 @@ const baseNavLinks: NavLink[] = [
   { href: '/dashboard/configuracoes/plano', label: 'Meu Plano', icon: Crown, roles: ['ADMIN'] },
   
   // --- Perfil (todos os cargos) ---
-  { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'] },
+  { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO', 'BARTENDER'] },
 ];
 
 export function Sidebar() {
@@ -92,7 +94,7 @@ export function Sidebar() {
           .filter(ambiente => ambiente.tipo === 'PREPARO'); // Filtra apenas ambientes de preparo
         
         // Se for COZINHA/COZINHEIRO, mostra apenas o ambiente onde trabalha
-        if (['COZINHEIRO', 'BARTENDER'].includes(user?.cargo || '')) {
+        if (['COZINHA', 'COZINHEIRO', 'BARTENDER'].includes(user?.cargo || '')) {
           if (user?.ambienteId) {
             dynamicLinks = dynamicLinks.filter(ambiente => ambiente.id === user.ambienteId);
           } else {
@@ -106,7 +108,7 @@ export function Sidebar() {
           href: `/dashboard/operacional/${ambiente.id}`,
           label: `Painel ${ambiente.nome}`,
           icon: ChefHat,
-          roles: ['ADMIN', 'COZINHEIRO', 'BARTENDER'],
+          roles: ['ADMIN', 'COZINHA', 'COZINHEIRO', 'BARTENDER'],
         }));
         
         setOperationalLinks(links);
@@ -115,7 +117,7 @@ export function Sidebar() {
       }
     };
 
-    if (user?.cargo && ['ADMIN', 'COZINHEIRO', 'BARTENDER'].includes(user.cargo)) {
+    if (user?.cargo && ['ADMIN', 'COZINHA', 'COZINHEIRO', 'BARTENDER'].includes(user.cargo)) {
         fetchOperationalLinks();
     } else {
         setOperationalLinks([]);

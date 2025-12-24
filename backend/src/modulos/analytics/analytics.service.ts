@@ -4,6 +4,8 @@ import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
+import { PedidoRepository } from '../pedido/pedido.repository';
+import { ComandaRepository } from '../comanda/comanda.repository';
 
 interface FiltroRelatorio {
   dataInicio?: Date;
@@ -18,12 +20,10 @@ export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
   constructor(
-    @InjectRepository(Pedido)
-    private pedidoRepository: Repository<Pedido>,
+    private pedidoRepository: PedidoRepository,
     @InjectRepository(ItemPedido)
     private itemPedidoRepository: Repository<ItemPedido>,
-    @InjectRepository(Comanda)
-    private comandaRepository: Repository<Comanda>,
+    private comandaRepository: ComandaRepository,
   ) {}
 
   async getRelatorioGeral(filtro: FiltroRelatorio) {

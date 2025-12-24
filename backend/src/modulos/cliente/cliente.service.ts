@@ -5,18 +5,16 @@ import {
   // ✅ Importar BadRequestException para o erro de validação (futuro)
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { CreateClienteRapidoDto } from './dto/create-cliente-rapido.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { Cliente } from './entities/cliente.entity';
+import { ClienteRepository } from './cliente.repository';
 
 @Injectable()
 export class ClienteService {
   constructor(
-    @InjectRepository(Cliente)
-    private readonly clienteRepository: Repository<Cliente>,
+    private readonly clienteRepository: ClienteRepository,
   ) {}
 
   async create(createClienteDto: CreateClienteDto): Promise<Cliente> {

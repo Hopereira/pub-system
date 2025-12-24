@@ -35,7 +35,8 @@ import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
  */
 @ApiTags('Turnos')
 @Controller('turnos')
-@UseGuards(FeatureGuard)
+@UseGuards(JwtAuthGuard, FeatureGuard)
+@ApiBearerAuth()
 @RequireFeature(Feature.TURNOS)
 export class TurnoController {
   constructor(private readonly turnoService: TurnoService) {}
@@ -43,7 +44,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-in')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-in (iniciar turno)' })
   @ApiResponse({
@@ -61,7 +62,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-out')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-out (finalizar turno)' })
   @ApiResponse({
@@ -90,7 +91,8 @@ export class TurnoController {
   }
 
   @Get('funcionario/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar turnos de um funcionário' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })

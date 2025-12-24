@@ -34,4 +34,9 @@ export class Empresa {
    */
   @Column({ default: true })
   ativo: boolean;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_empresa_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

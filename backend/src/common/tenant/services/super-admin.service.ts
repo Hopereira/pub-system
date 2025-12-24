@@ -14,9 +14,12 @@ export interface PlatformMetrics {
   tenantsByStatus: Record<TenantStatus, number>;
   tenantsByPlano: Record<string, number>;
   pedidosHoje: number;
+  pedidos24h: number;
   comandasAbertas: number;
   faturamentoHoje: number;
   mrr: number; // Monthly Recurring Revenue
+  novosTrials7dias: number;
+  tenantsAtrasados: number;
 }
 
 /**
@@ -29,9 +32,13 @@ export interface TenantSummary {
   status: TenantStatus;
   plano: string;
   createdAt: Date;
+  trialExpiresAt?: Date;
   pedidosHoje: number;
+  pedidos24h: number;
   comandasAbertas: number;
   funcionariosAtivos: number;
+  pagamentoEmDia: boolean;
+  gatewaysAtivos: string[];
 }
 
 /**
@@ -94,20 +101,23 @@ export class SuperAdminService {
       .where('pedido.data >= :hoje', { hoje })
       .getCount();
 
+    // Pedidos últimas 24h
+    const ontem = new Date();
+    ontem.setHours(ontem.getHours() - 24);
+    
+    const pedidos24h = await this.pedidoRepository
+      .createQueryBuilder('pedido')
+      .where('pedido.data >= :ontem', { ontem })
+      .getCount();
+
     // Comandas abertas (todos os tenants)
     const comandasAbertas = await this.comandaRepository.count({
       where: { status: 'ABERTA' as any },
     });
 
-    // Faturamento de hoje (soma dos totais das comandas fechadas hoje)
-    const faturamentoResult = await this.comandaRepository
-      .createQueryBuilder('comanda')
-      .select('SUM(comanda.total)', 'total')
-      .where('comanda.status = :status', { status: 'FECHADA' })
-      .andWhere('comanda.fechadoEm >= :hoje', { hoje })
-      .getRawOne();
-    
-    const faturamentoHoje = parseFloat(faturamentoResult?.total || '0');
+    // Faturamento de hoje - por enquanto retorna 0 (precisa calcular via pedidos)
+    // TODO: Implementar cálculo real via soma dos pedidos das comandas fechadas
+    const faturamentoHoje = 0;
 
     // MRR estimado (tenants ativos * valor médio do plano)
     const planoValues: Record<string, number> = {
@@ -122,14 +132,30 @@ export class SuperAdminService {
       mrr += (planoValues[plano] || 0) * count;
     }
 
+    // Novos trials nos últimos 7 dias
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+    
+    const novosTrials7dias = await this.tenantRepository
+      .createQueryBuilder('tenant')
+      .where('tenant.status = :status', { status: TenantStatus.TRIAL })
+      .andWhere('tenant.createdAt >= :seteDiasAtras', { seteDiasAtras })
+      .getCount();
+
+    // Tenants com pagamento atrasado (simulado - verificar config)
+    const tenantsAtrasados = 0; // TODO: Implementar verificação real de pagamento
+
     return {
       totalTenants,
       tenantsByStatus,
       tenantsByPlano,
       pedidosHoje,
+      pedidos24h,
       comandasAbertas,
       faturamentoHoje,
       mrr,
+      novosTrials7dias,
+      tenantsAtrasados,
     };
   }
 
@@ -148,27 +174,54 @@ export class SuperAdminService {
 
     const summaries: TenantSummary[] = [];
 
+    // Pedidos últimas 24h
+    const ontem = new Date();
+    ontem.setHours(ontem.getHours() - 24);
+
     for (const tenant of tenants) {
       // Pedidos de hoje deste tenant
       const pedidosHoje = await this.pedidoRepository
         .createQueryBuilder('pedido')
-        .where('pedido.tenantId = :tenantId', { tenantId: tenant.id })
+        .where('pedido.tenant_id = :tenantId', { tenantId: tenant.id })
         .andWhere('pedido.data >= :hoje', { hoje })
+        .getCount();
+
+      // Pedidos últimas 24h deste tenant
+      const pedidos24h = await this.pedidoRepository
+        .createQueryBuilder('pedido')
+        .where('pedido.tenant_id = :tenantId', { tenantId: tenant.id })
+        .andWhere('pedido.data >= :ontem', { ontem })
         .getCount();
 
       // Comandas abertas deste tenant
       const comandasAbertas = await this.comandaRepository
         .createQueryBuilder('comanda')
-        .where('comanda.tenantId = :tenantId', { tenantId: tenant.id })
+        .where('comanda.tenant_id = :tenantId', { tenantId: tenant.id })
         .andWhere('comanda.status = :status', { status: 'ABERTA' })
         .getCount();
 
-      // Funcionários ativos deste tenant
+      // Funcionários ativos deste tenant - usar empresaId
       const funcionariosAtivos = await this.funcionarioRepository
         .createQueryBuilder('funcionario')
-        .where('funcionario.tenantId = :tenantId', { tenantId: tenant.id })
+        .where('funcionario.empresaId = :tenantId', { tenantId: tenant.id })
         .andWhere('funcionario.status = :status', { status: 'ATIVO' })
         .getCount();
+
+      // Verificar gateways ativos (do config do tenant)
+      const gatewaysAtivos: string[] = [];
+      if (tenant.config?.paymentGateways) {
+        const gateways = tenant.config.paymentGateways as any;
+        if (gateways.picpay?.enabled) gatewaysAtivos.push('PicPay');
+        if (gateways.mercadopago?.enabled) gatewaysAtivos.push('MercadoPago');
+        if (gateways.stripe?.enabled) gatewaysAtivos.push('Stripe');
+      }
+
+      // Trial expira em 14 dias após criação (se status TRIAL)
+      let trialExpiresAt: Date | undefined;
+      if (tenant.status === TenantStatus.TRIAL) {
+        trialExpiresAt = new Date(tenant.createdAt);
+        trialExpiresAt.setDate(trialExpiresAt.getDate() + 14);
+      }
 
       summaries.push({
         id: tenant.id,
@@ -177,9 +230,13 @@ export class SuperAdminService {
         status: tenant.status,
         plano: tenant.plano,
         createdAt: tenant.createdAt,
+        trialExpiresAt,
         pedidosHoje,
+        pedidos24h,
         comandasAbertas,
         funcionariosAtivos,
+        pagamentoEmDia: true, // TODO: Verificar status real de pagamento
+        gatewaysAtivos,
       });
     }
 
@@ -210,15 +267,15 @@ export class SuperAdminService {
       totalFuncionarios,
       funcionariosAtivos,
     ] = await Promise.all([
-      this.pedidoRepository.createQueryBuilder('p').where('p.tenantId = :tenantId', { tenantId }).getCount(),
+      this.pedidoRepository.createQueryBuilder('p').where('p.tenant_id = :tenantId', { tenantId }).getCount(),
       this.pedidoRepository.createQueryBuilder('p')
-        .where('p.tenantId = :tenantId', { tenantId })
+        .where('p.tenant_id = :tenantId', { tenantId })
         .andWhere('p.data >= :hoje', { hoje })
         .getCount(),
-      this.comandaRepository.createQueryBuilder('c').where('c.tenantId = :tenantId', { tenantId }).getCount(),
-      this.comandaRepository.createQueryBuilder('c').where('c.tenantId = :tenantId', { tenantId }).andWhere('c.status = :status', { status: 'ABERTA' }).getCount(),
-      this.funcionarioRepository.createQueryBuilder('f').where('f.tenantId = :tenantId', { tenantId }).getCount(),
-      this.funcionarioRepository.createQueryBuilder('f').where('f.tenantId = :tenantId', { tenantId }).andWhere('f.status = :status', { status: 'ATIVO' }).getCount(),
+      this.comandaRepository.createQueryBuilder('c').where('c.tenant_id = :tenantId', { tenantId }).getCount(),
+      this.comandaRepository.createQueryBuilder('c').where('c.tenant_id = :tenantId', { tenantId }).andWhere('c.status = :status', { status: 'ABERTA' }).getCount(),
+      this.funcionarioRepository.createQueryBuilder('f').where('f.empresaId = :tenantId', { tenantId }).getCount(),
+      this.funcionarioRepository.createQueryBuilder('f').where('f.empresaId = :tenantId', { tenantId }).andWhere('f.status = :status', { status: 'ATIVO' }).getCount(),
     ]);
 
     return {

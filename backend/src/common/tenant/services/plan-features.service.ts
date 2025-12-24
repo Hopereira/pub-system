@@ -55,6 +55,8 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
     Feature.MESAS,
     Feature.PRODUTOS,
     Feature.FUNCIONARIOS,
+    Feature.TURNOS, // Turnos é essencial para check-in/check-out de funcionários
+    Feature.AVALIACOES, // Avaliações básicas para feedback de clientes
   ],
   [TenantPlano.BASIC]: [
     Feature.PEDIDOS,
@@ -66,6 +68,7 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
     Feature.AVALIACOES,
     Feature.EVENTOS,
     Feature.PONTOS_ENTREGA,
+    Feature.TURNOS, // Turnos é essencial para check-in/check-out de funcionários
   ],
   [TenantPlano.PRO]: [
     Feature.PEDIDOS,

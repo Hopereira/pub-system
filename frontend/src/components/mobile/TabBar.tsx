@@ -49,9 +49,9 @@ const caixaTabs: TabItem[] = [
   { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
 ];
 
-// Tabs para PREPARO (Cozinheiro, Bartender, etc.)
+// Tabs para PREPARO (Cozinha, Cozinheiro, Bartender)
 const preparoTabs: TabItem[] = [
-  { label: 'Início', icon: Home, href: '/cozinha' },
+  { label: 'Preparo', icon: Home, href: '/cozinha' },
   { label: 'Prontos', icon: Bell, href: '/dashboard/operacional/pedidos-prontos' },
   { label: 'Perfil', icon: User, href: '/dashboard/perfil' },
 ];
@@ -77,6 +77,7 @@ export function TabBar() {
         return garcomTabs;
       case 'CAIXA':
         return caixaTabs;
+      case 'COZINHA':
       case 'COZINHEIRO':
       case 'BARTENDER':
         return preparoTabs;

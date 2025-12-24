@@ -8,6 +8,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Empresa } from '../../empresa/entities/empresa.entity';
 import { Mesa } from '../../mesa/entities/mesa.entity';
@@ -82,4 +83,9 @@ export class PontoEntrega {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // ✅ Multi-tenancy: tenant_id para isolamento de dados
+  @Index('idx_ponto_entrega_tenant_id')
+  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
+  tenantId: string;
 }

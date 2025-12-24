@@ -8,9 +8,12 @@ export interface PlatformMetrics {
   tenantsByStatus: Record<string, number>;
   tenantsByPlano: Record<string, number>;
   pedidosHoje: number;
+  pedidos24h: number;
   comandasAbertas: number;
   faturamentoHoje: number;
   mrr: number;
+  novosTrials7dias: number;
+  tenantsAtrasados: number;
 }
 
 export interface TenantSummary {
@@ -20,9 +23,13 @@ export interface TenantSummary {
   status: 'ATIVO' | 'TRIAL' | 'SUSPENSO' | 'INATIVO';
   plano: 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
   createdAt: string;
+  trialExpiresAt?: string;
   pedidosHoje: number;
+  pedidos24h: number;
   comandasAbertas: number;
   funcionariosAtivos: number;
+  pagamentoEmDia: boolean;
+  gatewaysAtivos: string[];
 }
 
 export interface CreateTenantDto {

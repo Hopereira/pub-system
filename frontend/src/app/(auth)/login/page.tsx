@@ -62,8 +62,14 @@ export default function LoginPage() {
           const decodedUser = JSON.parse(decodedPayload);
           const cargo = decodedUser.cargo || decodedUser.role;
           
+          console.log('[Login] Cargo detectado:', cargo);
+          console.log('[Login] Payload decodificado:', decodedUser);
+          
           // Redireciona baseado no cargo
           switch (cargo) {
+            case 'SUPER_ADMIN':
+              router.push('/super-admin');
+              break;
             case 'GARCOM':
               router.push('/garcom');
               break;

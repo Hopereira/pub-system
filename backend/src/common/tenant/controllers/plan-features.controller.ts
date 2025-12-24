@@ -34,11 +34,17 @@ export class PlanFeaturesController {
   @ApiOperation({ summary: 'Obtém features disponíveis no plano atual' })
   @ApiResponse({ status: 200, description: 'Features retornadas com sucesso' })
   async getFeatures() {
-    const tenantId = this.tenantContext.getTenantId();
+    const tenantId = this.tenantContext.getTenantIdOrNull();
     
     if (!tenantId) {
-      // Retornar plano FREE como fallback
-      return this.planFeaturesService.getPlanInfo('FREE');
+      // SUPER_ADMIN ou sem tenant - retornar plano ENTERPRISE como fallback
+      return {
+        ...this.planFeaturesService.getPlanInfo('ENTERPRISE'),
+        tenantId: null,
+        tenantNome: 'Super Admin',
+        customLimits: {},
+        isSuperAdmin: true,
+      };
     }
 
     const tenant = await this.tenantRepository.findOne({
@@ -68,7 +74,7 @@ export class PlanFeaturesController {
   @ApiOperation({ summary: 'Compara planos para upgrade' })
   @ApiResponse({ status: 200, description: 'Comparação retornada com sucesso' })
   async comparePlans() {
-    const tenantId = this.tenantContext.getTenantId();
+    const tenantId = this.tenantContext.getTenantIdOrNull();
     let currentPlano = 'FREE';
 
     if (tenantId) {

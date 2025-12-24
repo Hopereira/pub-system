@@ -1,5 +1,8 @@
 import { Module, Global } from '@nestjs/common';
+import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TenantContextService } from './tenant-context.service';
 import { TenantResolverService } from './tenant-resolver.service';
 import { TenantInterceptor } from './tenant.interceptor';
@@ -37,6 +40,14 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario, Pedido, Comanda]),
+    // JwtModule para decodificar tokens no TenantInterceptor
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
   ],
   controllers: [SuperAdminController, PlanFeaturesController],
   providers: [
@@ -50,6 +61,26 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
     TenantProvisioningService,
     SuperAdminService,
     PlanFeaturesService,
+    // 🏢 Interceptor Global: Captura tenant de subdomínio/URL/JWT
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
+    // 📊 Logging Interceptor: Adiciona tenant_id em todos os logs HTTP
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantLoggingInterceptor,
+    },
+    // 🛡️ Guard Global: Bloqueia acesso cross-tenant
+    {
+      provide: APP_GUARD,
+      useClass: TenantGuard,
+    },
+    // ⚡ Rate Limiting por Tenant: Limites baseados no plano
+    {
+      provide: APP_GUARD,
+      useClass: TenantRateLimitGuard,
+    },
   ],
   exports: [
     TypeOrmModule, // Exportar TypeOrmModule para que os repositories estejam disponíveis

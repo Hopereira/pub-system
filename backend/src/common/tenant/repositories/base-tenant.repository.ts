@@ -8,9 +8,10 @@ import {
   SaveOptions,
   ObjectLiteral,
 } from 'typeorm';
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable, Scope, Inject, Optional, ForbiddenException } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
 import { TenantContextService } from '../tenant-context.service';
-import { TenantId } from '../tenant.types';
+import { TenantId, createTenantId, TenantNotSetError } from '../tenant.types';
 
 /**
  * Interface para entidades que possuem tenant_id
@@ -48,15 +49,65 @@ export interface TenantAwareEntity extends ObjectLiteral {
 export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
   constructor(
     protected readonly repository: Repository<T>,
-    protected readonly tenantContext: TenantContextService,
+    @Optional() protected readonly tenantContext: TenantContextService,
+    @Optional() @Inject(REQUEST) protected readonly request?: any,
   ) {}
 
   /**
    * Obtém o tenant_id do contexto atual
-   * @throws TenantNotSetError se o tenant não estiver definido
+   * Tenta múltiplas fontes: TenantContextService, request.tenant, request.user
+   * @throws ForbiddenException se o tenant não estiver definido
    */
   protected getTenantId(): TenantId {
-    return this.tenantContext.getTenantId();
+    // 1. Tentar do TenantContextService
+    try {
+      if (this.tenantContext?.hasTenant?.()) {
+        const tenantId = this.tenantContext.getTenantId();
+        return tenantId;
+      }
+    } catch {
+      // Ignorar e tentar próxima fonte
+    }
+
+    // 2. Tentar do request.tenant (definido pelo TenantInterceptor)
+    if (this.request?.tenant?.id) {
+      return createTenantId(this.request.tenant.id);
+    }
+
+    // 3. Tentar do request.user (do JWT)
+    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    if (userTenantId) {
+      return createTenantId(userTenantId);
+    }
+
+    // 4. Tentar do request.headers (x-tenant-id)
+    const headerTenantId = this.request?.headers?.['x-tenant-id'];
+    if (headerTenantId) {
+      return createTenantId(headerTenantId);
+    }
+
+    // 5. Se nenhuma fonte encontrada, verificar se request existe
+    if (!this.request) {
+      throw new ForbiddenException(
+        'Request não disponível. Verifique se o repositório está com scope REQUEST.'
+      );
+    }
+
+    throw new ForbiddenException(
+      'Tenant não identificado. Verifique se você está autenticado corretamente.'
+    );
+  }
+
+  /**
+   * Obtém o tenant_id do contexto atual ou null se não disponível
+   * Útil para rotas públicas onde o tenant é opcional
+   */
+  protected getTenantIdOrNull(): TenantId | null {
+    try {
+      return this.getTenantId();
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -148,6 +199,39 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
    */
   async findAndCount(options?: FindManyOptions<T>): Promise<[T[], number]> {
     return this.repository.findAndCount(this.addTenantFilter(options));
+  }
+
+  // ============================================
+  // MÉTODOS SEM FILTRO DE TENANT (rotas públicas)
+  // ============================================
+
+  /**
+   * Busca múltiplos registros SEM filtro de tenant
+   * ⚠️ Use apenas em rotas públicas onde o tenant não é obrigatório
+   */
+  async findWithoutTenant(options?: FindManyOptions<T>): Promise<T[]> {
+    return this.repository.find(options);
+  }
+
+  /**
+   * Busca com paginação SEM filtro de tenant
+   * ⚠️ Use apenas em rotas públicas onde o tenant não é obrigatório
+   */
+  async findAndCountWithoutTenant(options?: FindManyOptions<T>): Promise<[T[], number]> {
+    return this.repository.findAndCount(options);
+  }
+
+  /**
+   * Busca múltiplos registros por IDs com filtro automático de tenant
+   */
+  async findByIds(ids: string[]): Promise<T[]> {
+    if (ids.length === 0) return [];
+    const tenantId = this.getTenantId();
+    return this.repository
+      .createQueryBuilder('entity')
+      .where('entity.id IN (:...ids)', { ids })
+      .andWhere('entity.tenantId = :tenantId', { tenantId })
+      .getMany();
   }
 
   // ============================================
@@ -282,5 +366,52 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
    */
   get metadata() {
     return this.repository.metadata;
+  }
+
+  /**
+   * Acesso ao EntityManager do repositório
+   * ⚠️ CUIDADO: Queries sem filtro de tenant!
+   */
+  get manager() {
+    return this.repository.manager;
+  }
+
+  /**
+   * Preload - Cria uma entidade parcial a partir do banco
+   * com filtro automático de tenant
+   */
+  async preload(entityLike: DeepPartial<T>): Promise<T | undefined> {
+    const tenantId = this.getTenantId();
+    const entityWithTenant = {
+      ...entityLike,
+      tenantId,
+    } as DeepPartial<T>;
+    return this.repository.preload(entityWithTenant);
+  }
+
+  /**
+   * Remove uma entidade com verificação de tenant
+   */
+  async remove(entity: T): Promise<T> {
+    const tenantId = this.getTenantId();
+    // Verifica se a entidade pertence ao tenant atual
+    if (entity.tenantId && entity.tenantId !== tenantId) {
+      throw new Error('Cannot remove entity from different tenant');
+    }
+    return this.repository.remove(entity);
+  }
+
+  /**
+   * Remove múltiplas entidades com verificação de tenant
+   */
+  async removeMany(entities: T[]): Promise<T[]> {
+    const tenantId = this.getTenantId();
+    // Verifica se todas as entidades pertencem ao tenant atual
+    for (const entity of entities) {
+      if (entity.tenantId && entity.tenantId !== tenantId) {
+        throw new Error('Cannot remove entity from different tenant');
+      }
+    }
+    return this.repository.remove(entities);
   }
 }
