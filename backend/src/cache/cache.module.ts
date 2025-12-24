@@ -1,6 +1,7 @@
 import { Module, Global, Logger } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { redisStore } from 'cache-manager-redis-yet';
 import { CacheInvalidationService } from './cache-invalidation.service';
 
 @Global()
@@ -17,7 +18,6 @@ import { CacheInvalidationService } from './cache-invalidation.service';
 
         if (redisEnabled) {
           try {
-            const { redisStore } = await import('cache-manager-redis-yet');
             const store = await redisStore({
               socket: {
                 host: redisHost,
@@ -26,7 +26,7 @@ import { CacheInvalidationService } from './cache-invalidation.service';
               ttl: 3600,
             });
             logger.log(`✅ Redis cache habilitado (${redisHost}:${redisPort})`);
-            return { store, max: 100 };
+            return { store, max: 100, ttl: 3600 };
           } catch (error) {
             logger.warn(`⚠️ Falha ao conectar Redis, usando cache em memória: ${error.message}`);
           }
