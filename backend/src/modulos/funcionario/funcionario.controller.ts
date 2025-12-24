@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from './enums/cargo.enum';
+import { SkipTenantGuard } from '../../common/tenant';
 
 // --- DECORADORES DO SWAGGER ---
 import {
@@ -44,6 +45,7 @@ export class FuncionarioController {
 
   // --- VERIFICAR SE É PRIMEIRO ACESSO ---
   @Get('check-first-access')
+  @SkipTenantGuard()
   @ApiOperation({
     summary: 'Verifica se é o primeiro acesso ao sistema',
     description:
@@ -57,6 +59,7 @@ export class FuncionarioController {
 
   // --- REGISTRO PÚBLICO (Primeiro usuário vira ADMIN) ---
   @Post('registro')
+  @SkipTenantGuard()
   @ApiOperation({
     summary: 'Registro público de primeiro acesso',
     description:

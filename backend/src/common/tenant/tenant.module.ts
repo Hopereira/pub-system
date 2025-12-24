@@ -16,6 +16,7 @@ import { PlanFeaturesService } from './services/plan-features.service';
 import { CloudflareDnsService } from './services/cloudflare-dns.service';
 import { SuperAdminController } from './controllers/super-admin.controller';
 import { PlanFeaturesController } from './controllers/plan-features.controller';
+import { PublicRegistrationController } from './controllers/public-registration.controller';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
 import { Tenant } from './entities/tenant.entity';
 import { Ambiente } from '../../modulos/ambiente/entities/ambiente.entity';
@@ -50,7 +51,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
       inject: [ConfigService],
     }),
   ],
-  controllers: [SuperAdminController, PlanFeaturesController],
+  controllers: [SuperAdminController, PlanFeaturesController, PublicRegistrationController],
   providers: [
     TenantContextService,
     TenantResolverService,
