@@ -83,8 +83,8 @@ export default function TenantLoginPage() {
 
       toast.success('Login realizado com sucesso!');
       
-      // Redirecionar para o dashboard completo (com sidebar)
-      router.push('/dashboard');
+      // Redirecionar para o dashboard do tenant (com sidebar)
+      router.push(`/t/${slug}/dashboard`);
     } catch (error: any) {
       console.error('Erro no login:', error);
       toast.error(error.message || 'Erro ao fazer login');
