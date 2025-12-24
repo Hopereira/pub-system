@@ -33,6 +33,7 @@ const baseNavLinks: NavLink[] = [
   { href: '/super-admin/tenants', label: 'Gestão de Empresas', icon: Building2, roles: ['SUPER_ADMIN'] },
   { href: '/super-admin/pagamentos', label: 'Config. Pagamentos', icon: Settings, roles: ['SUPER_ADMIN'] },
   { href: '/super-admin/planos', label: 'Planos e Faturamento', icon: BarChart2, roles: ['SUPER_ADMIN'] },
+  { href: '/super-admin/planos/gestao', label: 'Gestão de Planos', icon: Settings, roles: ['SUPER_ADMIN'] },
   { href: '/super-admin/configuracoes', label: 'Configurações', icon: User, roles: ['SUPER_ADMIN'] },
   
   // --- Área do Garçom ---

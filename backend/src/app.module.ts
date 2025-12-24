@@ -33,6 +33,7 @@ import { TenantModule, TenantRateLimitGuard } from './common/tenant';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 import { PaymentModule } from './modulos/payment/payment.module';
+import { PlanModule } from './modulos/plan/plan.module';
 
 @Module({
   imports: [
@@ -162,6 +163,7 @@ import { PaymentModule } from './modulos/payment/payment.module';
     JobsModule,
     TenantModule, // 🏢 Multi-tenancy: Contexto, Interceptor, Guard, Resolver
     PaymentModule, // 💳 Pagamentos: Mercado Pago, PagSeguro, PicPay
+    PlanModule, // 📋 Gestão de Planos dinâmicos
   ],
   controllers: [],
   providers: [
