@@ -112,7 +112,7 @@ export default function TenantLayout({
       { href: `${baseUrl}/admin/empresa`, label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
       { href: `${baseUrl}/relatorios`, label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
       { href: `${baseUrl}/plano`, label: 'Meu Plano', icon: Crown, roles: ['ADMIN'] },
-      { href: `${baseUrl}/perfil`, label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO'] },
+      { href: `${baseUrl}/dashboard/perfil`, label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO'] },
     ];
   };
 
