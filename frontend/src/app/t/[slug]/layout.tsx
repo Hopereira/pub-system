@@ -92,21 +92,22 @@ export default function TenantLayout({
     return <>{children}</>;
   }
 
-  // Links de navegação - usando /dashboard/... que já funciona
+  // Links de navegação - usando apenas rotas que existem em /dashboard/...
   const getNavLinks = (): NavLink[] => {
     return [
       { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
-      { href: '/dashboard/operacional/caixa', label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
-      { href: '/dashboard/operacional/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
-      { href: '/dashboard/comandas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
-      { href: '/dashboard/operacional/gestao', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/caixa', label: 'Terminal de Caixa', icon: Landmark, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/todos-pedidos', label: 'Todos os Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/pedidos-pendentes', label: 'Pedidos Pendentes', icon: Receipt, roles: ['ADMIN', 'GERENTE', 'COZINHA', 'COZINHEIRO'] },
       { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
+      { href: '/dashboard/cozinha', label: 'Cozinha', icon: ChefHat, roles: ['COZINHA', 'COZINHEIRO', 'ADMIN'] },
       { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
-      { href: '/dashboard/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
+      { href: '/dashboard/cardapio', label: 'Cardápio', icon: BookOpen, roles: ['ADMIN'] },
       { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
       { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
       { href: '/dashboard/admin/agenda-eventos', label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'] },
       { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
+      { href: '/dashboard/relatorios', label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
       { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO'] },
     ];
   };
