@@ -64,7 +64,8 @@ export default function TenantLoginPage() {
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.access_token);
+      // Usar 'authToken' para compatibilidade com AuthContext
+      localStorage.setItem('authToken', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('tenant_slug', slug);
       if (tenant) localStorage.setItem('tenant_id', tenant.id);
