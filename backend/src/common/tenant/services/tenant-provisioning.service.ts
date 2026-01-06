@@ -133,7 +133,7 @@ export class TenantProvisioningService {
       await queryRunner.manager.save(tenant);
       this.logger.log(`✅ Tenant criado: ${tenant.id}`);
 
-      // 2. Criar Empresa
+      // 2. Criar Empresa (vinculada ao tenant)
       const empresa = queryRunner.manager.create(Empresa, {
         nomeFantasia: dto.nomeFantasia,
         razaoSocial: dto.razaoSocial || dto.nomeFantasia,
@@ -143,6 +143,7 @@ export class TenantProvisioningService {
         endereco: dto.endereco,
         slug: dto.slug,
         ativo: true,
+        tenantId: tenant.id, // Vincular empresa ao tenant
       });
       await queryRunner.manager.save(empresa);
       this.logger.log(`✅ Empresa criada: ${empresa.id}`);
