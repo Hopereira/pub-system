@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
+import { Tenant } from './entities/tenant.entity';
 import { TenantId, createTenantId } from './tenant.types';
 
 /**
@@ -39,6 +40,8 @@ export class TenantResolverService {
   constructor(
     @InjectRepository(Empresa)
     private readonly empresaRepository: Repository<Empresa>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
   ) {}
 
   /**
@@ -99,7 +102,7 @@ export class TenantResolverService {
    * 
    * @param id - UUID do tenant
    * @returns Informações do tenant
-   * @throws NotFoundException se tenant não encontrado ou inativo
+   * @throws ForbiddenException se tenant não encontrado ou inativo
    */
   async resolveById(id: string): Promise<ResolvedTenant> {
     // Verificar cache
@@ -109,32 +112,62 @@ export class TenantResolverService {
       return cached;
     }
 
-    this.logger.debug(`🔍 Buscando empresa por tenant_id: ${id}`);
+    this.logger.debug(`🔍 Buscando tenant por id: ${id}`);
 
-    // Buscar empresa pelo tenant_id (não pelo id da empresa)
-    // O JWT contém o tenantId da tabela tenants, não o id da empresa
+    // 1. Primeiro tentar buscar na tabela tenants (fonte primária)
+    const tenant = await this.tenantRepository.findOne({
+      where: { id },
+      select: ['id', 'slug', 'nome', 'status'],
+    });
+
+    if (tenant) {
+      this.logger.log(`✅ Tenant encontrado na tabela tenants: ${tenant.nome}`);
+      
+      const resolved: ResolvedTenant = {
+        id: createTenantId(tenant.id),
+        slug: tenant.slug,
+        nomeFantasia: tenant.nome,
+        ativo: tenant.status === 'ATIVO' || tenant.status === 'TRIAL',
+      };
+
+      this.setCache(`id:${id}`, resolved);
+      if (tenant.slug) {
+        this.setCache(`slug:${tenant.slug}`, resolved);
+      }
+
+      return resolved;
+    }
+
+    // 2. Fallback: buscar empresa pelo tenant_id
+    this.logger.debug(`🔍 Buscando empresa por tenant_id: ${id}`);
     const empresa = await this.empresaRepository.findOne({
       where: { tenantId: id },
       select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
     });
 
-    if (!empresa) {
-      // Fallback: tentar buscar pelo id da empresa (compatibilidade)
-      const empresaById = await this.empresaRepository.findOne({
-        where: { id },
-        select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
-      });
-      
-      if (!empresaById) {
-        this.logger.warn(`❌ Tenant não encontrado: ${id}`);
-        throw new NotFoundException(`Estabelecimento não encontrado`);
-      }
-      
-      if (!empresaById.ativo) {
-        this.logger.warn(`🚫 Tenant inativo: ${id}`);
-        throw new NotFoundException(`Estabelecimento não disponível`);
+    if (empresa) {
+      const resolved: ResolvedTenant = {
+        id: createTenantId(empresa.tenantId || id),
+        slug: empresa.slug,
+        nomeFantasia: empresa.nomeFantasia,
+        ativo: empresa.ativo,
+      };
+
+      this.setCache(`id:${id}`, resolved);
+      if (empresa.slug) {
+        this.setCache(`slug:${empresa.slug}`, resolved);
       }
 
+      return resolved;
+    }
+
+    // 3. Fallback: tentar buscar pelo id da empresa (compatibilidade legada)
+    const empresaById = await this.empresaRepository.findOne({
+      where: { id },
+      select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
+    });
+    
+    if (empresaById) {
       const resolved: ResolvedTenant = {
         id: createTenantId(empresaById.tenantId || empresaById.id),
         slug: empresaById.slug,
@@ -150,25 +183,9 @@ export class TenantResolverService {
       return resolved;
     }
 
-    if (!empresa.ativo) {
-      this.logger.warn(`🚫 Tenant inativo: ${id}`);
-      throw new NotFoundException(`Estabelecimento não disponível`);
-    }
-
-    const resolved: ResolvedTenant = {
-      id: createTenantId(empresa.tenantId || id),
-      slug: empresa.slug,
-      nomeFantasia: empresa.nomeFantasia,
-      ativo: empresa.ativo,
-    };
-
-    // Salvar no cache
-    this.setCache(`id:${id}`, resolved);
-    if (empresa.slug) {
-      this.setCache(`slug:${empresa.slug}`, resolved);
-    }
-
-    return resolved;
+    // Nenhum tenant encontrado
+    this.logger.warn(`❌ Tenant não encontrado: ${id}`);
+    throw new ForbiddenException(`Tenant não encontrado`);
   }
 
   /**
