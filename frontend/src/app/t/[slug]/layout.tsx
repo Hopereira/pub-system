@@ -92,27 +92,22 @@ export default function TenantLayout({
     return <>{children}</>;
   }
 
-  // Links de navegação
+  // Links de navegação - usando /dashboard/... que já funciona
   const getNavLinks = (): NavLink[] => {
-    const baseUrl = `/t/${slug}`;
     return [
-      { href: `${baseUrl}/dashboard`, label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/caixa`, label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/caixa/terminal`, label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/caixa/comandas`, label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/caixa/gestao`, label: 'Gestão de Caixas', icon: Calculator, roles: ['ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/pedidos`, label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/mesas`, label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
-      { href: `${baseUrl}/admin/mesas`, label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
-      { href: `${baseUrl}/admin/cardapio`, label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
-      { href: `${baseUrl}/admin/funcionarios`, label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
-      { href: `${baseUrl}/admin/ambientes`, label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
-      { href: `${baseUrl}/admin/pontos-entrega`, label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'] },
-      { href: `${baseUrl}/admin/eventos`, label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'] },
-      { href: `${baseUrl}/admin/empresa`, label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
-      { href: `${baseUrl}/relatorios`, label: 'Relatórios', icon: BarChart2, roles: ['ADMIN'] },
-      { href: `${baseUrl}/plano`, label: 'Meu Plano', icon: Crown, roles: ['ADMIN'] },
-      { href: `${baseUrl}/dashboard/perfil`, label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO'] },
+      { href: '/dashboard', label: 'Dashboard', icon: Home, roles: ['ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/caixa', label: 'Área do Caixa', icon: Landmark, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/caixa/terminal', label: 'Terminal de Caixa', icon: Search, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+      { href: '/dashboard/comandas', label: 'Comandas Abertas', icon: Receipt, roles: ['CAIXA', 'ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/gestao', label: 'Gestão de Pedidos', icon: Package, roles: ['ADMIN', 'GERENTE'] },
+      { href: '/dashboard/operacional/mesas', label: 'Mapa de Mesas', icon: UtensilsCrossed, roles: ['ADMIN', 'GERENTE'] },
+      { href: '/dashboard/admin/mesas', label: 'Gerir Mesas', icon: Settings, roles: ['ADMIN'] },
+      { href: '/dashboard/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
+      { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
+      { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
+      { href: '/dashboard/admin/agenda-eventos', label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'] },
+      { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
+      { href: '/dashboard/perfil', label: 'Meu Perfil', icon: User, roles: ['ADMIN', 'GERENTE', 'GARCOM', 'CAIXA', 'COZINHA', 'COZINHEIRO'] },
     ];
   };
 
