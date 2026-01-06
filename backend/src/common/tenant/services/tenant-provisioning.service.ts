@@ -191,9 +191,11 @@ export class TenantProvisioningService {
         cargo: 'ADMIN',
         status: 'ATIVO',
         empresa: empresa,
+        empresaId: empresa.id,
+        tenantId: tenant.id,
       } as any);
       await queryRunner.manager.save(admin);
-      this.logger.log(`✅ Admin criado: ${admin.email}`);
+      this.logger.log(`✅ Admin criado: ${admin.email} (tenant: ${tenant.id})`);
 
       // Commit da transação
       await queryRunner.commitTransaction();

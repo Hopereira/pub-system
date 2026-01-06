@@ -257,15 +257,29 @@ export class SuperAdminService {
     }
 
     // Buscar admin do tenant
+    // Tenta por tenantId primeiro
     let admin = await this.funcionarioRepository.findOne({
       where: { tenantId: tenantId, cargo: 'ADMIN' as any },
       select: ['id', 'nome', 'email', 'telefone'],
     });
+    
+    // Fallback: buscar por empresaId = tenantId
     if (!admin) {
       admin = await this.funcionarioRepository.findOne({
         where: { empresaId: tenantId, cargo: 'ADMIN' as any },
         select: ['id', 'nome', 'email', 'telefone'],
       });
+    }
+    
+    // Fallback 2: buscar funcionário ADMIN que pertence a uma empresa com mesmo slug do tenant
+    if (!admin) {
+      admin = await this.funcionarioRepository
+        .createQueryBuilder('f')
+        .innerJoin('f.empresa', 'e')
+        .where('e.slug = :slug', { slug: tenant.slug })
+        .andWhere('f.cargo = :cargo', { cargo: 'ADMIN' })
+        .select(['f.id', 'f.nome', 'f.email', 'f.telefone'])
+        .getOne();
     }
 
     // Estatísticas detalhadas
@@ -426,7 +440,7 @@ export class SuperAdminService {
     }
 
     // Buscar o admin do tenant (funcionário com cargo ADMIN)
-    // Tenta primeiro por tenantId, depois por empresaId
+    // Tenta primeiro por tenantId
     let admin = await this.funcionarioRepository.findOne({
       where: { 
         tenantId: tenantId,
@@ -434,14 +448,24 @@ export class SuperAdminService {
       },
     });
 
+    // Fallback: buscar por empresaId
     if (!admin) {
-      // Fallback: buscar por empresaId
       admin = await this.funcionarioRepository.findOne({
         where: { 
           empresaId: tenantId,
           cargo: 'ADMIN' as any,
         },
       });
+    }
+
+    // Fallback 2: buscar via slug da empresa
+    if (!admin) {
+      admin = await this.funcionarioRepository
+        .createQueryBuilder('f')
+        .innerJoin('f.empresa', 'e')
+        .where('e.slug = :slug', { slug: tenant.slug })
+        .andWhere('f.cargo = :cargo', { cargo: 'ADMIN' })
+        .getOne();
     }
 
     if (!admin) {
@@ -464,6 +488,10 @@ export class SuperAdminService {
   async listTenantFuncionarios(tenantId: string) {
     this.logger.log(`👥 Listando funcionários do tenant ${tenantId}`);
 
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
     // Busca por tenantId primeiro
     let funcionarios = await this.funcionarioRepository.find({
       where: { tenantId: tenantId },
@@ -478,6 +506,18 @@ export class SuperAdminService {
         select: ['id', 'nome', 'email', 'cargo', 'status'],
         order: { cargo: 'ASC', nome: 'ASC' },
       });
+    }
+
+    // Fallback 2: buscar via slug da empresa
+    if (funcionarios.length === 0 && tenant) {
+      funcionarios = await this.funcionarioRepository
+        .createQueryBuilder('f')
+        .innerJoin('f.empresa', 'e')
+        .where('e.slug = :slug', { slug: tenant.slug })
+        .select(['f.id', 'f.nome', 'f.email', 'f.cargo', 'f.status'])
+        .orderBy('f.cargo', 'ASC')
+        .addOrderBy('f.nome', 'ASC')
+        .getMany();
     }
 
     return funcionarios;
