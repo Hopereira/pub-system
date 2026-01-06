@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Loader2, Beer, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface TenantInfo {
   id: string;
@@ -18,6 +19,7 @@ interface TenantInfo {
 export default function TenantLoginPage() {
   const params = useParams();
   const router = useRouter();
+  const { login: authLogin } = useAuth();
   const slug = params.slug as string;
   
   const [loading, setLoading] = useState(false);
@@ -51,24 +53,12 @@ export default function TenantLoginPage() {
     setLoading(true);
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Credenciais inválidas');
-      }
-
-      const data = await response.json();
-      // Usar 'authToken' para compatibilidade com AuthContext
-      localStorage.setItem('authToken', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // Salvar dados do tenant antes do login
       localStorage.setItem('tenant_slug', slug);
       if (tenant) localStorage.setItem('tenant_id', tenant.id);
+      
+      // Usar o authLogin do contexto para atualizar o estado corretamente
+      await authLogin({ email, senha });
 
       toast.success('Login realizado com sucesso!');
       // Redireciona para /dashboard que já tem todas as páginas funcionando
