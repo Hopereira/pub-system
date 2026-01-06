@@ -1,7 +1,7 @@
 import { Injectable, Logger, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Tenant, TenantStatus } from '../entities/tenant.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
 import { Pedido } from '../../../modulos/pedido/entities/pedido.entity';
@@ -61,6 +61,7 @@ export class SuperAdminService {
     private readonly pedidoRepository: Repository<Pedido>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
