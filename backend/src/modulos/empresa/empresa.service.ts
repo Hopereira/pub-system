@@ -42,8 +42,9 @@ export class EmpresaService {
 
   async findOne(): Promise<Empresa> {
     // Filtrar por tenant_id para garantir isolamento multi-tenant
-    // Prioridade: 1. TenantContext, 2. request.user.tenantId, 3. request.tenant.id
+    // Prioridade: 1. TenantContext, 2. request.user.tenantId, 3. request.tenant.id, 4. empresaId
     let tenantId: string | null = null;
+    let empresaId: string | null = null;
     
     // Tentar obter do TenantContextService
     try {
@@ -62,10 +63,29 @@ export class EmpresaService {
       tenantId = this.request.tenant.id;
     }
 
-    this.logger.log(`🏢 EmpresaService.findOne() - tenantId: ${tenantId}`);
+    // Fallback: obter empresaId do usuário logado
+    if (this.request?.user?.empresaId) {
+      empresaId = this.request.user.empresaId;
+    }
 
-    const whereClause = tenantId ? { tenantId } : {};
-    const empresa = await this.empresaRepository.findOneBy(whereClause);
+    this.logger.log(`🏢 EmpresaService.findOne() - tenantId: ${tenantId}, empresaId: ${empresaId}`);
+
+    let empresa: Empresa | null = null;
+
+    // Tentar buscar por tenantId primeiro
+    if (tenantId) {
+      empresa = await this.empresaRepository.findOneBy({ tenantId });
+    }
+
+    // Fallback: buscar por empresaId do usuário
+    if (!empresa && empresaId) {
+      empresa = await this.empresaRepository.findOneBy({ id: empresaId });
+    }
+
+    // Fallback final: buscar a primeira empresa (para casos legados)
+    if (!empresa && !tenantId && !empresaId) {
+      empresa = await this.empresaRepository.findOne({ where: {} });
+    }
     
     if (!empresa) {
       throw new NotFoundException('Nenhuma empresa encontrada para este tenant.');
