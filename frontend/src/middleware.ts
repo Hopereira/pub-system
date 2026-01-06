@@ -35,12 +35,24 @@ export function middleware(request: NextRequest) {
 
   // Se tiver subdomínio válido, reescrever para /t/[slug]
   if (subdomain && subdomain !== 'www' && subdomain !== 'api') {
+    // Rotas que NÃO devem ser reescritas (já funcionam diretamente)
+    const directRoutes = ['/dashboard', '/api', '/_next', '/favicon.ico'];
+    const shouldNotRewrite = directRoutes.some(route => url.pathname.startsWith(route));
+    
+    if (shouldNotRewrite) {
+      // Apenas salvar o slug no header para o contexto saber qual tenant é
+      const response = NextResponse.next();
+      response.headers.set('x-tenant-slug', subdomain);
+      return response;
+    }
+    
     // Se o path já começa com /t/, não reescrever novamente (evita duplicação)
     if (url.pathname.startsWith('/t/')) {
       return NextResponse.next();
     }
     
-    // Reescrever internamente para a rota /t/[slug]
+    // Reescrever internamente para a rota /t/[slug] apenas para rotas públicas do tenant
+    // (login, página inicial, etc)
     const newPath = `/t/${subdomain}${url.pathname === '/' ? '' : url.pathname}`;
     
     console.log(`[Middleware] Rewriting ${originalHost}${url.pathname} -> ${newPath}`);
