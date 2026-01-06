@@ -70,7 +70,8 @@ export default function TenantLoginPage() {
       if (tenant) localStorage.setItem('tenant_id', tenant.id);
 
       toast.success('Login realizado com sucesso!');
-      router.push(`/t/${slug}/dashboard`);
+      // Redireciona para /dashboard que já tem todas as páginas funcionando
+      router.push('/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Erro ao fazer login');
     } finally {
