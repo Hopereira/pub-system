@@ -321,6 +321,41 @@ export default function TenantDetailsModal({ tenantId, onClose, onUpdate }: Tena
                 </div>
               </div>
 
+              {/* Admin Info */}
+              {tenant.admin && (
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <h4 className="font-medium text-purple-800 dark:text-purple-200 flex items-center gap-2 mb-3">
+                    <Shield className="h-4 w-4" />
+                    Administrador do Tenant
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Nome:</span>
+                      <span className="ml-2 font-medium">{tenant.admin.nome}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Email:</span>
+                      <span className="ml-2 font-medium">{tenant.admin.email}</span>
+                    </div>
+                    {tenant.admin.telefone && (
+                      <div>
+                        <span className="text-gray-500">Telefone:</span>
+                        <span className="ml-2 font-medium">{tenant.admin.telefone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {!tenant.admin && (
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-medium">Nenhum administrador encontrado para este tenant</span>
+                  </div>
+                </div>
+              )}
+
               {/* Form */}
               <div className="space-y-4">
                 <div>

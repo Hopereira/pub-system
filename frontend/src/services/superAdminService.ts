@@ -96,6 +96,12 @@ export interface TenantDetails {
   config?: any;
   createdAt: string;
   updatedAt: string;
+  admin?: {
+    id: string;
+    nome: string;
+    email: string;
+    telefone?: string;
+  } | null;
   stats: {
     totalPedidos: number;
     pedidosHoje: number;

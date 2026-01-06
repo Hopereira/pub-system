@@ -256,6 +256,18 @@ export class SuperAdminService {
       throw new ForbiddenException('Tenant não encontrado');
     }
 
+    // Buscar admin do tenant
+    let admin = await this.funcionarioRepository.findOne({
+      where: { tenantId: tenantId, cargo: 'ADMIN' as any },
+      select: ['id', 'nome', 'email', 'telefone'],
+    });
+    if (!admin) {
+      admin = await this.funcionarioRepository.findOne({
+        where: { empresaId: tenantId, cargo: 'ADMIN' as any },
+        select: ['id', 'nome', 'email', 'telefone'],
+      });
+    }
+
     // Estatísticas detalhadas
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -275,12 +287,18 @@ export class SuperAdminService {
         .getCount(),
       this.comandaRepository.createQueryBuilder('c').where('c.tenant_id = :tenantId', { tenantId }).getCount(),
       this.comandaRepository.createQueryBuilder('c').where('c.tenant_id = :tenantId', { tenantId }).andWhere('c.status = :status', { status: 'ABERTA' }).getCount(),
-      this.funcionarioRepository.createQueryBuilder('f').where('f.empresaId = :tenantId', { tenantId }).getCount(),
-      this.funcionarioRepository.createQueryBuilder('f').where('f.empresaId = :tenantId', { tenantId }).andWhere('f.status = :status', { status: 'ATIVO' }).getCount(),
+      this.funcionarioRepository.createQueryBuilder('f').where('f.tenantId = :tenantId OR f.empresaId = :tenantId', { tenantId }).getCount(),
+      this.funcionarioRepository.createQueryBuilder('f').where('(f.tenantId = :tenantId OR f.empresaId = :tenantId)', { tenantId }).andWhere('f.status = :status', { status: 'ATIVO' }).getCount(),
     ]);
 
     return {
       ...tenant,
+      admin: admin ? {
+        id: admin.id,
+        nome: admin.nome,
+        email: admin.email,
+        telefone: admin.telefone,
+      } : null,
       stats: {
         totalPedidos,
         pedidosHoje,
