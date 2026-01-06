@@ -122,7 +122,7 @@ export default function TenantDetailsModal({ tenantId, onClose, onUpdate }: Tena
   const handleDelete = async () => {
     if (!tenant) return;
     
-    const confirmText = prompt(`Digite "${tenant.slug}" para confirmar a exclusão:`);
+    const confirmText = prompt(`Digite "${tenant.slug}" para confirmar a DESATIVAÇÃO:`);
     if (confirmText !== tenant.slug) {
       alert('Texto de confirmação incorreto');
       return;
@@ -135,6 +135,27 @@ export default function TenantDetailsModal({ tenantId, onClose, onUpdate }: Tena
       onClose();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao deletar');
+      setSaving(false);
+    }
+  };
+
+  const handleHardDelete = async () => {
+    if (!tenant) return;
+    
+    const confirmText = prompt(`⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTodos os dados serão PERMANENTEMENTE removidos:\n- Funcionários\n- Comandas\n- Pedidos\n- Mesas\n- Produtos\n- Ambientes\n- Empresa\n\nDigite "DELETAR ${tenant.slug}" para confirmar:`);
+    if (confirmText !== `DELETAR ${tenant.slug}`) {
+      alert('Texto de confirmação incorreto');
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      const result = await superAdminService.hardDeleteTenant(tenantId);
+      alert(`✅ ${result.message}\n\nDados removidos:\n${JSON.stringify(result.deletedData, null, 2)}`);
+      onUpdate();
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao deletar permanentemente');
       setSaving(false);
     }
   };
@@ -399,14 +420,26 @@ export default function TenantDetailsModal({ tenantId, onClose, onUpdate }: Tena
 
               {/* Save Button */}
               <div className="flex justify-between pt-4 border-t dark:border-gray-700">
-                <button
-                  onClick={handleDelete}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Deletar Tenant
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDelete}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg"
+                    title="Desativa o tenant (pode ser reativado)"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Desativar
+                  </button>
+                  <button
+                    onClick={handleHardDelete}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                    title="Remove permanentemente todos os dados (IRREVERSÍVEL)"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Deletar Permanente
+                  </button>
+                </div>
                 <button
                   onClick={handleSave}
                   disabled={saving}

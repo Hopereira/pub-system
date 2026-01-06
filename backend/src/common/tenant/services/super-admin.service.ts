@@ -548,4 +548,91 @@ export class SuperAdminService {
 
     return { success: true, message: `Tenant ${tenant.nome} deletado com sucesso` };
   }
+
+  /**
+   * Hard delete - Remove completamente um tenant e todos os dados relacionados
+   * CUIDADO: Esta ação é irreversível!
+   */
+  async hardDeleteTenant(tenantId: string): Promise<{ success: boolean; message: string; deletedData: any }> {
+    this.logger.warn(`🔴 HARD DELETE do tenant ${tenantId} - IRREVERSÍVEL!`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    const deletedData = {
+      tenant: tenant.slug,
+      funcionarios: 0,
+      comandas: 0,
+      pedidos: 0,
+      mesas: 0,
+      ambientes: 0,
+      produtos: 0,
+      empresa: false,
+    };
+
+    // Deletar em ordem para respeitar foreign keys
+    // 1. Itens de pedido
+    await this.dataSource.query(`
+      DELETE FROM item_pedido 
+      WHERE pedido_id IN (SELECT id FROM pedidos WHERE tenant_id = $1)
+    `, [tenantId]);
+
+    // 2. Pedidos
+    const pedidosResult = await this.pedidoRepository.delete({ tenantId });
+    deletedData.pedidos = pedidosResult.affected || 0;
+
+    // 3. Comandas
+    const comandasResult = await this.comandaRepository.delete({ tenantId });
+    deletedData.comandas = comandasResult.affected || 0;
+
+    // 4. Mesas (via ambiente)
+    await this.dataSource.query(`
+      DELETE FROM mesas 
+      WHERE ambiente_id IN (SELECT id FROM ambientes WHERE tenant_id = $1)
+    `, [tenantId]);
+
+    // 5. Produtos (via ambiente)
+    await this.dataSource.query(`
+      DELETE FROM produtos 
+      WHERE ambiente_id IN (SELECT id FROM ambientes WHERE tenant_id = $1)
+    `, [tenantId]);
+
+    // 6. Ambientes
+    const ambientesResult = await this.dataSource.query(`
+      DELETE FROM ambientes WHERE tenant_id = $1
+    `, [tenantId]);
+    deletedData.ambientes = ambientesResult[1] || 0;
+
+    // 7. Funcionários (por tenantId ou empresaId ou via empresa.slug)
+    const funcionariosResult = await this.dataSource.query(`
+      DELETE FROM funcionarios 
+      WHERE tenant_id = $1 
+         OR empresa_id = $1 
+         OR empresa_id IN (SELECT id FROM empresas WHERE slug = $2)
+    `, [tenantId, tenant.slug]);
+    deletedData.funcionarios = funcionariosResult[1] || 0;
+
+    // 8. Empresa
+    const empresaResult = await this.dataSource.query(`
+      DELETE FROM empresas WHERE slug = $1
+    `, [tenant.slug]);
+    deletedData.empresa = (empresaResult[1] || 0) > 0;
+
+    // 9. Tenant
+    await this.tenantRepository.delete({ id: tenantId });
+
+    this.logger.log(`🗑️ HARD DELETE concluído para ${tenant.slug}`);
+    this.logger.log(`   Dados removidos: ${JSON.stringify(deletedData)}`);
+
+    return { 
+      success: true, 
+      message: `Tenant ${tenant.nome} (${tenant.slug}) removido permanentemente`,
+      deletedData,
+    };
+  }
 }

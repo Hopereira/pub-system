@@ -206,11 +206,24 @@ export class SuperAdminController {
    * Deleta um tenant (soft delete - muda status para INATIVO)
    */
   @Delete('tenants/:id')
-  @ApiOperation({ summary: 'Deleta um tenant' })
+  @ApiOperation({ summary: 'Deleta um tenant (soft delete)' })
   @ApiResponse({ status: 200, description: 'Tenant deletado' })
   @ApiResponse({ status: 403, description: 'Acesso negado' })
   async deleteTenant(@CurrentUser() user: any, @Param('id') id: string) {
     this.checkSuperAdmin(user);
     return this.superAdminService.deleteTenant(id);
+  }
+
+  /**
+   * Hard delete - Remove completamente um tenant e todos os dados
+   * CUIDADO: Esta ação é irreversível!
+   */
+  @Delete('tenants/:id/hard')
+  @ApiOperation({ summary: 'Remove permanentemente um tenant e todos os dados (IRREVERSÍVEL)' })
+  @ApiResponse({ status: 200, description: 'Tenant removido permanentemente' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  async hardDeleteTenant(@CurrentUser() user: any, @Param('id') id: string) {
+    this.checkSuperAdmin(user);
+    return this.superAdminService.hardDeleteTenant(id);
   }
 }

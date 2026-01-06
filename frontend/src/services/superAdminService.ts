@@ -207,8 +207,13 @@ const superAdminService = {
   /**
    * Deleta um tenant
    */
-  async deleteTenant(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await api.delete(`/super-admin/tenants/${id}`);
+  async deleteTenant(tenantId: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete(`/super-admin/tenants/${tenantId}`);
+    return response.data;
+  },
+
+  async hardDeleteTenant(tenantId: string): Promise<{ success: boolean; message: string; deletedData: any }> {
+    const response = await api.delete(`/super-admin/tenants/${tenantId}/hard`);
     return response.data;
   },
 };
