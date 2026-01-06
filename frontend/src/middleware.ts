@@ -35,6 +35,11 @@ export function middleware(request: NextRequest) {
 
   // Se tiver subdomínio válido, reescrever para /t/[slug]
   if (subdomain && subdomain !== 'www' && subdomain !== 'api') {
+    // Se o path já começa com /t/, não reescrever novamente (evita duplicação)
+    if (url.pathname.startsWith('/t/')) {
+      return NextResponse.next();
+    }
+    
     // Reescrever internamente para a rota /t/[slug]
     const newPath = `/t/${subdomain}${url.pathname === '/' ? '' : url.pathname}`;
     
