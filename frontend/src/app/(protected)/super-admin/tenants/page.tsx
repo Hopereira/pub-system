@@ -8,7 +8,6 @@ import {
   Building2,
   Search,
   Plus,
-  MoreVertical,
   Ban,
   CheckCircle,
   ArrowUpCircle,
@@ -17,6 +16,7 @@ import {
   Loader2,
   Filter,
 } from 'lucide-react';
+import TenantDetailsModal from '@/components/super-admin/TenantDetailsModal';
 
 export default function TenantsPage() {
   const { user } = useAuth();
@@ -29,6 +29,7 @@ export default function TenantsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPlano, setFilterPlano] = useState<string>('all');
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
 
   // Verificar se é SUPER_ADMIN
   useEffect(() => {
@@ -278,10 +279,10 @@ export default function TenantsPage() {
                       {tenant.plano}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm">{tenant.funcionarios}</td>
-                  <td className="px-4 py-3 text-sm">{tenant.mesas}</td>
+                  <td className="px-4 py-3 text-sm">{tenant.funcionariosAtivos}</td>
+                  <td className="px-4 py-3 text-sm">-</td>
                   <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                    {new Date(tenant.criadoEm).toLocaleDateString('pt-BR')}
+                    {new Date(tenant.createdAt).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -293,6 +294,14 @@ export default function TenantsPage() {
                       >
                         <ArrowUpCircle className="h-4 w-4 text-purple-600" />
                       </button>
+                      <button
+                          onClick={() => setSelectedTenantId(tenant.id)}
+                          disabled={actionLoading}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg"
+                          title="Ver Detalhes"
+                        >
+                          <Eye className="h-4 w-4 text-blue-600" />
+                        </button>
                       {tenant.status === 'ATIVO' ? (
                         <button
                           onClick={() => handleSuspend(tenant)}
@@ -325,6 +334,15 @@ export default function TenantsPage() {
       <div className="text-sm text-gray-500 dark:text-gray-400">
         Mostrando {filteredTenants.length} de {tenants.length} tenants
       </div>
+
+      {/* Modal de Detalhes */}
+      {selectedTenantId && (
+        <TenantDetailsModal
+          tenantId={selectedTenantId}
+          onClose={() => setSelectedTenantId(null)}
+          onUpdate={loadTenants}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant, TenantStatus } from '../entities/tenant.entity';
@@ -364,5 +365,108 @@ export class SuperAdminService {
     await this.tenantRepository.save(tenant);
 
     return tenant;
+  }
+
+  /**
+   * Atualiza dados de um tenant
+   */
+  async updateTenant(tenantId: string, data: { nome?: string; cnpj?: string; config?: any }): Promise<Tenant> {
+    this.logger.log(`✏️ Atualizando tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    if (data.nome) tenant.nome = data.nome;
+    if (data.cnpj) tenant.cnpj = data.cnpj;
+    if (data.config) {
+      tenant.config = { ...tenant.config, ...data.config };
+    }
+
+    await this.tenantRepository.save(tenant);
+    this.logger.log(`✅ Tenant ${tenant.slug} atualizado`);
+
+    return tenant;
+  }
+
+  /**
+   * Reseta a senha do admin de um tenant
+   */
+  async resetAdminPassword(tenantId: string, novaSenha: string): Promise<{ success: boolean; email: string }> {
+    this.logger.log(`🔑 Resetando senha do admin do tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    // Buscar o admin do tenant (funcionário com cargo ADMIN)
+    const admin = await this.funcionarioRepository.findOne({
+      where: { 
+        empresaId: tenantId,
+        cargo: 'ADMIN' as any,
+      },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('Admin do tenant não encontrado');
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(novaSenha, 10);
+    admin.senha = hashedPassword;
+
+    await this.funcionarioRepository.save(admin);
+    this.logger.log(`✅ Senha do admin ${admin.email} resetada`);
+
+    return { success: true, email: admin.email };
+  }
+
+  /**
+   * Lista funcionários de um tenant
+   */
+  async listTenantFuncionarios(tenantId: string) {
+    this.logger.log(`👥 Listando funcionários do tenant ${tenantId}`);
+
+    const funcionarios = await this.funcionarioRepository.find({
+      where: { empresaId: tenantId },
+      select: ['id', 'nome', 'email', 'cargo', 'status', 'createdAt'],
+      order: { cargo: 'ASC', nome: 'ASC' },
+    });
+
+    return funcionarios;
+  }
+
+  /**
+   * Deleta um tenant (soft delete - muda status para INATIVO)
+   */
+  async deleteTenant(tenantId: string): Promise<{ success: boolean; message: string }> {
+    this.logger.warn(`⚠️ Deletando tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    tenant.status = TenantStatus.INATIVO;
+    (tenant.config as any) = {
+      ...tenant.config,
+      deletedAt: new Date().toISOString(),
+    };
+
+    await this.tenantRepository.save(tenant);
+    this.logger.log(`🗑️ Tenant ${tenant.slug} marcado como INATIVO`);
+
+    return { success: true, message: `Tenant ${tenant.nome} deletado com sucesso` };
   }
 }
