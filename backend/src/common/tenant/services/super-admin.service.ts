@@ -408,15 +408,26 @@ export class SuperAdminService {
     }
 
     // Buscar o admin do tenant (funcionário com cargo ADMIN)
-    const admin = await this.funcionarioRepository.findOne({
+    // Tenta primeiro por tenantId, depois por empresaId
+    let admin = await this.funcionarioRepository.findOne({
       where: { 
-        empresaId: tenantId,
+        tenantId: tenantId,
         cargo: 'ADMIN' as any,
       },
     });
 
     if (!admin) {
-      throw new NotFoundException('Admin do tenant não encontrado');
+      // Fallback: buscar por empresaId
+      admin = await this.funcionarioRepository.findOne({
+        where: { 
+          empresaId: tenantId,
+          cargo: 'ADMIN' as any,
+        },
+      });
+    }
+
+    if (!admin) {
+      throw new NotFoundException('Admin do tenant não encontrado. Verifique se existe um funcionário com cargo ADMIN vinculado a este tenant.');
     }
 
     // Hash da nova senha
@@ -435,11 +446,21 @@ export class SuperAdminService {
   async listTenantFuncionarios(tenantId: string) {
     this.logger.log(`👥 Listando funcionários do tenant ${tenantId}`);
 
-    const funcionarios = await this.funcionarioRepository.find({
-      where: { empresaId: tenantId },
+    // Busca por tenantId primeiro
+    let funcionarios = await this.funcionarioRepository.find({
+      where: { tenantId: tenantId },
       select: ['id', 'nome', 'email', 'cargo', 'status'],
       order: { cargo: 'ASC', nome: 'ASC' },
     });
+
+    // Fallback: buscar por empresaId se não encontrou por tenantId
+    if (funcionarios.length === 0) {
+      funcionarios = await this.funcionarioRepository.find({
+        where: { empresaId: tenantId },
+        select: ['id', 'nome', 'email', 'cargo', 'status'],
+        order: { cargo: 'ASC', nome: 'ASC' },
+      });
+    }
 
     return funcionarios;
   }
