@@ -12,6 +12,7 @@ import { PlanFeaturesService, Feature } from '../services/plan-features.service'
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
+import { Empresa } from '../../../modulos/empresa/entities/empresa.entity';
 
 /**
  * Decorator para marcar rotas que requerem uma feature específica
@@ -41,6 +42,8 @@ export class FeatureGuard implements CanActivate {
     private readonly planFeaturesService: PlanFeaturesService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(Empresa)
+    private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -87,12 +90,43 @@ export class FeatureGuard implements CanActivate {
     }
 
     // Buscar plano do tenant
-    const tenant = await this.tenantRepository.findOne({
+    let tenant = await this.tenantRepository.findOne({
       where: { id: tenantId },
       select: ['id', 'plano', 'nome'],
     });
 
+    // Fallback: se não encontrou na tabela tenants, buscar empresa pelo tenantId
     if (!tenant) {
+      const empresa = await this.empresaRepository.findOne({
+        where: { tenantId },
+        select: ['tenantId'],
+      });
+      
+      if (empresa?.tenantId) {
+        tenant = await this.tenantRepository.findOne({
+          where: { id: empresa.tenantId },
+          select: ['id', 'plano', 'nome'],
+        });
+      }
+    }
+
+    // Fallback: buscar empresa pelo id (caso tenantId seja empresaId)
+    if (!tenant) {
+      const empresa = await this.empresaRepository.findOne({
+        where: { id: tenantId },
+        select: ['tenantId'],
+      });
+      
+      if (empresa?.tenantId) {
+        tenant = await this.tenantRepository.findOne({
+          where: { id: empresa.tenantId },
+          select: ['id', 'plano', 'nome'],
+        });
+      }
+    }
+
+    if (!tenant) {
+      this.logger.warn(`🚫 FeatureGuard: Tenant não encontrado para id: ${tenantId}`);
       throw new ForbiddenException('Tenant não encontrado');
     }
 
