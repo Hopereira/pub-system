@@ -437,7 +437,7 @@ export class SuperAdminService {
 
     const funcionarios = await this.funcionarioRepository.find({
       where: { empresaId: tenantId },
-      select: ['id', 'nome', 'email', 'cargo', 'status', 'createdAt'],
+      select: ['id', 'nome', 'email', 'cargo', 'status'],
       order: { cargo: 'ASC', nome: 'ASC' },
     });
 

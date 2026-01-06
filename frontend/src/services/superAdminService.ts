@@ -84,7 +84,6 @@ export interface TenantFuncionario {
   email: string;
   cargo: string;
   status: string;
-  createdAt: string;
 }
 
 export interface TenantDetails {
