@@ -80,6 +80,7 @@ export class ComandaService {
    * Obtém o tenantId do contexto atual para namespace de cache
    */
   private getTenantId(): string | null {
+    // 1. Tentar do TenantContextService
     try {
       if (this.tenantContext?.hasTenant?.()) {
         return this.tenantContext.getTenantId();
@@ -87,8 +88,17 @@ export class ComandaService {
     } catch {
       // Ignorar
     }
+    
+    // 2. Tentar do request.tenant (definido pelo TenantInterceptor)
+    if (this.request?.tenant?.id) {
+      return this.request.tenant.id;
+    }
+    
+    // 3. Tentar do user (JWT)
     const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
     if (userTenantId) return userTenantId;
+    
+    // 4. Tentar do header X-Tenant-ID
     return this.request?.headers?.['x-tenant-id'] || null;
   }
 
@@ -330,6 +340,9 @@ export class ComandaService {
   }
 
   async search(term: string): Promise<Comanda[]> {
+    const tenantId = this.getTenantId();
+    this.logger.log(`🔍 search - tenantId: ${tenantId || 'NENHUM'}`);
+    
     const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
     queryBuilder
       .leftJoinAndSelect('comanda.mesa', 'mesa')
@@ -340,6 +353,14 @@ export class ComandaService {
       .leftJoinAndSelect('pedidos.itens', 'itens')
       .leftJoinAndSelect('itens.produto', 'produto')
       .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
+    
+    // Filtrar por tenant quando disponível
+    if (tenantId) {
+      queryBuilder.andWhere('comanda.tenant_id = :tenantId', { tenantId });
+      this.logger.log(`🔒 Filtrando comandas por tenantId: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Sem tenantId - retornando TODAS as comandas!`);
+    }
 
     if (term) {
       const searchTerm = term.trim();
