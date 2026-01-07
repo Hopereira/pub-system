@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
+import { IS_PUBLIC_KEY } from '../../../auth/decorators/public.decorator';
 import { TenantContextService } from '../tenant-context.service';
 import { PlanFeaturesService, Feature } from '../services/plan-features.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -47,6 +48,16 @@ export class FeatureGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Verificar se a rota é pública - rotas públicas não precisam de verificação de feature
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      this.logger.debug('FeatureGuard: Rota pública, permitindo acesso');
+      return true;
+    }
+
     // Verificar se é SUPER_ADMIN - tem acesso total
     const request = context.switchToHttp().getRequest();
     const user = request.user;

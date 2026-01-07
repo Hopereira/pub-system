@@ -18,11 +18,21 @@ export class ClienteRepository extends BaseTenantRepository<Cliente> {
   }
 
   /**
-   * Busca cliente por CPF
+   * Busca cliente por CPF (com filtro de tenant)
    */
   async findByCpf(cpf: string) {
     return this.findOne({
       where: { cpf } as any,
+    });
+  }
+
+  /**
+   * Busca cliente por CPF SEM filtro de tenant (para rotas públicas)
+   * CPF é único globalmente, então não há risco de conflito
+   */
+  async findByCpfPublic(cpf: string) {
+    return this.rawRepository.findOne({
+      where: { cpf },
     });
   }
 

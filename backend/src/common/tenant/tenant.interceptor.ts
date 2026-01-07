@@ -153,13 +153,16 @@ export class TenantInterceptor implements NestInterceptor {
 
     // 4. Tentar header X-Tenant-ID (API externa ou rotas públicas)
     const headerTenantId = headers?.['x-tenant-id'];
+    this.logger?.log?.(`🔍 Header X-Tenant-ID: ${headerTenantId || 'NÃO ENVIADO'}`);
     if (headerTenantId) {
-      this.logger?.debug?.(`📍 Tenant detectado no header: ${headerTenantId}`);
+      this.logger?.log?.(`📍 Tenant detectado no header: ${headerTenantId}`);
       // Verificar se é UUID ou slug
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerTenantId);
+      this.logger?.log?.(`📍 É UUID? ${isUuid}`);
       const tenant = isUuid 
         ? await this.tenantResolver.resolveById(headerTenantId)
         : await this.tenantResolver.resolveBySlug(headerTenantId);
+      this.logger?.log?.(`✅ Tenant resolvido via header: ${tenant?.nomeFantasia} (${tenant?.id})`);
       return { tenant, source: 'header' };
     }
 

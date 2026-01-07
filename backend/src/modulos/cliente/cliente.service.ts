@@ -86,10 +86,9 @@ export class ClienteService {
   }
 
   // Função para buscar o cliente pelo CPF (essencial para o fluxo de entrada pública)
+  // Usa busca SEM filtro de tenant pois CPF é único globalmente
   async findByCpf(cpf: string): Promise<Cliente> {
-    const cliente = await this.clienteRepository.findOne({
-      where: { cpf },
-    });
+    const cliente = await this.clienteRepository.findByCpfPublic(cpf);
 
     if (!cliente) {
       // ESSENCIAL: Lança 404 para que o frontend saiba que deve CRIAR o cliente.
