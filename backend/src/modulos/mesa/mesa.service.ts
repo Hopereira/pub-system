@@ -175,10 +175,25 @@ export class MesaService {
     return result;
   }
 
-  // Endpoint público para clientes - retorna apenas mesas livres
+  // Endpoint público para clientes - retorna apenas mesas livres (filtra por tenant do header)
   async findMesasLivres(): Promise<Mesa[]> {
-    // Usar método público sem filtro de tenant
-    const mesas = await this.mesaRepository.findPublic();
+    // Obter tenantId do header X-Tenant-ID ou do request.tenant
+    const tenantId = this.request?.tenant?.id || this.request?.headers?.['x-tenant-id'];
+    
+    // Buscar mesas usando rawRepository com filtro de tenant
+    const whereClause: any = {};
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+      this.logger.log(`🔒 Mesas públicas filtrando por tenantId: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Mesas públicas SEM tenantId - retornando TODAS!`);
+    }
+    
+    const mesas = await this.mesaRepository.rawRepository.find({
+      where: whereClause,
+      relations: ['ambiente', 'comandas'],
+      order: { numero: 'ASC' },
+    });
     
     // Filtra apenas mesas sem comanda aberta (livres)
     return mesas

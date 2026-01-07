@@ -265,20 +265,31 @@ export class ProdutoService {
     return produtos;
   }
 
-  // ===== MÉTODO PÚBLICO PARA CARDÁPIO (sem filtro de tenant) =====
+  // ===== MÉTODO PÚBLICO PARA CARDÁPIO (filtra por tenant do header X-Tenant-ID) =====
   async findCardapioPublic(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 100, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
-    // Buscar todos os produtos ativos sem filtro de tenant
+    // Obter tenantId do header X-Tenant-ID ou do request.tenant
+    const tenantId = this.request?.tenant?.id || this.request?.headers?.['x-tenant-id'];
+    
+    // Construir where clause com filtro de tenant
+    const whereClause: any = { ativo: true };
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+      this.logger.log(`🔒 Cardápio público filtrando por tenantId: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Cardápio público SEM tenantId - retornando TODOS os produtos!`);
+    }
+
     const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
-      where: { ativo: true },
+      where: whereClause,
       relations: ['ambiente'],
       order: { [sortBy]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
     });
 
-    this.logger.log(`📋 Cardápio público | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
+    this.logger.log(`📋 Cardápio público | Tenant: ${tenantId || 'NENHUM'} | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
 
     return createPaginatedResponse(data, total, page, limit);
   }

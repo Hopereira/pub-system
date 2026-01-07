@@ -57,8 +57,23 @@ export class PontoEntregaService {
   }
 
   async findAllAtivos(): Promise<PontoEntrega[]> {
-    // Usar método público sem filtro de tenant para rotas públicas
-    return this.pontoEntregaRepository.findAtivosPublic();
+    // Obter tenantId do header X-Tenant-ID ou do request.tenant
+    const tenantId = this.request?.tenant?.id || this.request?.headers?.['x-tenant-id'];
+    
+    // Construir where clause com filtro de tenant
+    const whereClause: any = { ativo: true };
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+      this.logger.log(`🔒 Pontos de entrega públicos filtrando por tenantId: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Pontos de entrega públicos SEM tenantId - retornando TODOS!`);
+    }
+    
+    return this.pontoEntregaRepository.rawRepository.find({
+      where: whereClause,
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
+      order: { nome: 'ASC' },
+    });
   }
 
   async findByAmbiente(ambienteId: string): Promise<PontoEntrega[]> {
