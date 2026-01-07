@@ -287,7 +287,8 @@ export class ComandaService {
       })
       .then(async (novaComanda) => {
         // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
-        const comandaCompleta = await this.findOne(novaComanda.id);
+        // Usar rawRepository para evitar erro de tenant em rotas públicas
+        const comandaCompleta = await this.findOnePublic(novaComanda.id);
         
         // Invalidar cache após criar comanda (afeta comandas e mesas)
         await this.cacheInvalidationService.invalidateComandas();
@@ -428,6 +429,63 @@ export class ComandaService {
       comanda.pedidos.forEach((pedido) => {
         const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
           // Itens de entrada (sem produto) também devem ser somados
+          if (item.status !== PedidoStatus.CANCELADO) {
+            const itemTotal = new Decimal(item.precoUnitario).times(
+              new Decimal(item.quantidade),
+            );
+            return sum.plus(itemTotal);
+          }
+          return sum;
+        }, new Decimal(0));
+
+        pedido.total = totalPedidoCalculado.toNumber();
+        totalComandaCalculado =
+          totalComandaCalculado.plus(totalPedidoCalculado);
+      });
+    }
+    (comanda as any).total = totalComandaCalculado.toNumber();
+
+    return comanda;
+  }
+
+  /**
+   * Busca comanda por ID SEM filtro de tenant (para rotas públicas)
+   * Usado após criar comanda em rotas públicas para recarregar com relações
+   */
+  async findOnePublic(id: string): Promise<Comanda> {
+    const comanda = await this.comandaRepository.rawRepository.findOne({
+      where: { id },
+      relations: [
+        'mesa',
+        'cliente',
+        'paginaEvento',
+        'pontoEntrega',
+        'pontoEntrega.mesaProxima',
+        'pontoEntrega.ambientePreparo',
+        'agregados',
+        'pedidos',
+        'pedidos.itens',
+        'pedidos.itens.produto',
+        'pedidos.itens.ambienteRetirada',
+      ],
+      order: {
+        agregados: {
+          ordem: 'ASC',
+        },
+        pedidos: {
+          data: 'ASC',
+        },
+      },
+    });
+
+    if (!comanda) {
+      throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
+    }
+
+    let totalComandaCalculado = new Decimal(0);
+    if (comanda.pedidos) {
+      comanda.pedidos.forEach((pedido) => {
+        const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
           if (item.status !== PedidoStatus.CANCELADO) {
             const itemTotal = new Decimal(item.precoUnitario).times(
               new Decimal(item.quantidade),
