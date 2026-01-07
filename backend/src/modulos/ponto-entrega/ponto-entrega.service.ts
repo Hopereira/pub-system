@@ -57,8 +57,8 @@ export class PontoEntregaService {
   }
 
   async findAllAtivos(): Promise<PontoEntrega[]> {
-    // O filtro de tenant é aplicado automaticamente pelo BaseTenantRepository
-    return this.pontoEntregaRepository.findAtivos();
+    // Usar método público sem filtro de tenant para rotas públicas
+    return this.pontoEntregaRepository.findAtivosPublic();
   }
 
   async findByAmbiente(ambienteId: string): Promise<PontoEntrega[]> {

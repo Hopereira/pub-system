@@ -47,4 +47,15 @@ export class MesaRepository extends BaseTenantRepository<Mesa> {
       relations: ['ambiente'],
     });
   }
+
+  /**
+   * Busca mesas públicas (sem filtro de tenant)
+   * Para uso em rotas públicas
+   */
+  async findPublic() {
+    return this.rawRepository.find({
+      relations: ['ambiente', 'comandas'],
+      order: { numero: 'ASC' },
+    });
+  }
 }

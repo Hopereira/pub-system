@@ -24,6 +24,8 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 
 // --- DECORADORES DO SWAGGER ---
 import {
@@ -42,6 +44,8 @@ export class MesaController {
 
   // ===== ENDPOINT PÚBLICO PARA CLIENTES =====
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get('publicas/livres')
   @ApiOperation({ summary: 'Lista mesas livres (Rota Pública para clientes)' })
   @ApiResponse({ status: 200, description: 'Lista de mesas livres retornada.' })

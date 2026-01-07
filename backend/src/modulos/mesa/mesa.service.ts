@@ -177,10 +177,8 @@ export class MesaService {
 
   // Endpoint público para clientes - retorna apenas mesas livres
   async findMesasLivres(): Promise<Mesa[]> {
-    const mesas = await this.mesaRepository.find({
-      relations: ['ambiente', 'comandas'],
-      order: { numero: 'ASC' },
-    });
+    // Usar método público sem filtro de tenant
+    const mesas = await this.mesaRepository.findPublic();
     
     // Filtra apenas mesas sem comanda aberta (livres)
     return mesas
