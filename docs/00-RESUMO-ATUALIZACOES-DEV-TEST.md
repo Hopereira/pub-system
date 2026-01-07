@@ -8,7 +8,22 @@
 
 ---
 
-## 🎯 PRINCIPAIS MUDANÇAS IDENTIFICADAS
+## � Correções Críticas (06/01/2026)
+
+### 🔐 Isolamento Multi-Tenant Refinado
+- `FeatureGuard` agora faz fallback para a tabela `empresas` quando o JWT traz `empresaId`, evitando falsos 403 de “Tenant não encontrado”.
+- `ProdutoService` passou a usar `request.tenant` e requer autenticação no `GET /produtos`, garantindo cardápios segregados.
+- `ComandaService.search` adicionou filtro explícito por `tenant_id`, impedindo que comandas de tenants seed apareçam em novos clientes.
+
+### 🔄 Rotina de Deploy/GCS
+- O contêiner do backend perde o `gcs-credentials.json` a cada rebuild; documentado o passo obrigatório de `docker cp` após cada deploy.
+- Logs do `GcsStorageService` foram usados para validar que o arquivo é copiado como **arquivo** (não diretório), prevenindo erros `EISDIR`.
+
+> **Impacto:** Todos os módulos que dependem de tenantId (eventos, cardápio, comandas) estão novamente respeitando o isolamento lógico, e o upload de mídia permanece estável após reinicializações.
+
+---
+
+## �🎯 PRINCIPAIS MUDANÇAS IDENTIFICADAS
 
 ### ✅ **1. ÁREA DO CAIXA COMPLETA - IMPLEMENTADA!**
 

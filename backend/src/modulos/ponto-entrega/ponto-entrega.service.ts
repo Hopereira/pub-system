@@ -5,7 +5,10 @@ import {
   BadRequestException,
   Logger,
   Scope,
+  Inject,
+  Optional,
 } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
 import { PontoEntregaRepository } from './ponto-entrega.repository';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
@@ -18,17 +21,29 @@ export class PontoEntregaService {
 
   constructor(
     private readonly pontoEntregaRepository: PontoEntregaRepository,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
   ) {}
 
   async create(createDto: CreatePontoEntregaDto): Promise<PontoEntrega> {
     this.logger.log(`📍 Criando ponto de entrega: ${createDto.nome}`);
 
+    // Obter empresaId do usuário autenticado
+    const empresaId = this.request?.user?.empresaId;
+    if (!empresaId) {
+      this.logger.error('❌ empresaId não encontrado no usuário autenticado');
+      throw new BadRequestException('Empresa não identificada. Faça login novamente.');
+    }
+
     // O tenant_id é injetado automaticamente pelo BaseTenantRepository
-    const ponto = this.pontoEntregaRepository.create(createDto);
+    // Mas precisamos adicionar o empresaId manualmente
+    const ponto = this.pontoEntregaRepository.create({
+      ...createDto,
+      empresaId,
+    });
     const novoPonto = await this.pontoEntregaRepository.save(ponto);
 
     this.logger.log(
-      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id})`,
+      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id}) | empresaId: ${empresaId}`,
     );
 
     return this.findOne(novoPonto.id);
