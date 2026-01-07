@@ -22,6 +22,8 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -41,6 +43,8 @@ export class ComandaController {
   // ✅ ROTA CORRIGIDA PARA SER PÚBLICA
   // =======================================================
   @Public() // Permite que qualquer pessoa (incluindo novos clientes) acesse esta rota.
+  @SkipTenantGuard() // Pular validação de tenant para rotas públicas
+  @SkipRateLimit() // Pular rate limit para criação de comanda pública
   @Post()
   @ApiOperation({
     summary:
