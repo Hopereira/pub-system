@@ -135,7 +135,8 @@ export class ComandaService {
     }
 
     // ✅ USAR TRANSAÇÃO COM LOCK PESSIMISTA PARA EVITAR RACE CONDITION
-    return await this.comandaRepository.manager
+    // Usar publicManager para permitir criação de comanda em rotas públicas (sem tenant)
+    return await this.comandaRepository.publicManager
       .transaction(async (transactionalEntityManager) => {
         let mesa: Mesa | null = null;
         if (mesaId) {

@@ -37,4 +37,12 @@ export class ComandaRepository extends BaseTenantRepository<Comanda> {
       relations: ['mesa', 'cliente', 'pedidos', 'pedidos.itens'],
     });
   }
+
+  /**
+   * Retorna o EntityManager do rawRepository (sem exigir tenant)
+   * Para uso em transações de rotas públicas
+   */
+  get publicManager() {
+    return this.rawRepository.manager;
+  }
 }
