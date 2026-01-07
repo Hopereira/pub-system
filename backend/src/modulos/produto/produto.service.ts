@@ -269,8 +269,13 @@ export class ProdutoService {
   async findCardapioPublic(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 100, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
-    // Obter tenantId do header X-Tenant-ID ou do request.tenant
-    const tenantId = this.request?.tenant?.id || this.request?.headers?.['x-tenant-id'];
+    // Obter tenantId do request.tenant (já resolvido pelo TenantInterceptor)
+    // O TenantInterceptor resolve o slug para UUID e define em request.tenant
+    let tenantId = this.request?.tenant?.id;
+    
+    // Log para debug
+    this.logger.log(`🔍 findCardapioPublic - request.tenant: ${JSON.stringify(this.request?.tenant)}`);
+    this.logger.log(`🔍 findCardapioPublic - X-Tenant-ID header: ${this.request?.headers?.['x-tenant-id']}`);
     
     // Construir where clause com filtro de tenant
     const whereClause: any = { ativo: true };

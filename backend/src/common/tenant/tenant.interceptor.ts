@@ -93,15 +93,10 @@ export class TenantInterceptor implements NestInterceptor {
         );
       }
     } catch (error) {
-      // Se for erro de tenant não encontrado, deixar propagar
-      if (error?.status === 404 || error?.status === 401) {
-        throw error;
-      }
-      // Outros erros, logar e continuar (pode ser rota pública sem tenant)
-      // Usar console.log como fallback se logger não estiver disponível
-      if (this.logger) {
-        this.logger.debug(`Tenant não identificado: ${error?.message}`);
-      }
+      // Para rotas públicas, não propagar erro de tenant não encontrado
+      // Apenas logar e continuar - o service decidirá o que fazer
+      this.logger?.debug?.(`Tenant não identificado: ${error?.message}`);
+      // NÃO propagar erro 404 - deixar a rota decidir se precisa de tenant
     }
 
     return next.handle();
