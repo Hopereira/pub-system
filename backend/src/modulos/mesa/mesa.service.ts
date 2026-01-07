@@ -14,6 +14,7 @@ import { Cache } from 'cache-manager';
 import { REQUEST } from '@nestjs/core';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { TenantResolverService } from '../../common/tenant/tenant-resolver.service';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
@@ -41,6 +42,7 @@ export class MesaService {
     private readonly cacheInvalidationService: CacheInvalidationService,
     @Optional() private readonly tenantContext?: TenantContextService,
     @Optional() @Inject(REQUEST) private readonly request?: any,
+    @Optional() private readonly tenantResolver?: TenantResolverService,
   ) {}
 
   /**
@@ -177,8 +179,29 @@ export class MesaService {
 
   // Endpoint público para clientes - retorna apenas mesas livres (filtra por tenant do header)
   async findMesasLivres(): Promise<Mesa[]> {
-    // Obter tenantId do header X-Tenant-ID ou do request.tenant
-    const tenantId = this.request?.tenant?.id || this.request?.headers?.['x-tenant-id'];
+    // Obter tenantId do request.tenant (já resolvido pelo TenantInterceptor)
+    let tenantId = this.request?.tenant?.id;
+    
+    // Se não tiver tenant resolvido, tentar resolver do header X-Tenant-ID
+    if (!tenantId) {
+      const headerValue = this.request?.headers?.['x-tenant-id'];
+      if (headerValue) {
+        // Verificar se é UUID ou slug
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerValue);
+        if (isUuid) {
+          tenantId = headerValue;
+        } else {
+          // É um slug, resolver para UUID
+          try {
+            const resolved = await this.tenantResolver?.resolveBySlug(headerValue);
+            tenantId = resolved?.id;
+            this.logger.log(`🔄 Slug "${headerValue}" resolvido para UUID: ${tenantId}`);
+          } catch (error) {
+            this.logger.warn(`⚠️ Não foi possível resolver slug "${headerValue}": ${error.message}`);
+          }
+        }
+      }
+    }
     
     // Buscar mesas usando rawRepository com filtro de tenant
     const whereClause: any = {};

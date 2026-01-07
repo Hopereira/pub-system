@@ -9,6 +9,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
+import { TenantResolverService } from '../../common/tenant/tenant-resolver.service';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
 import { PontoEntregaRepository } from './ponto-entrega.repository';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
@@ -22,6 +23,7 @@ export class PontoEntregaService {
   constructor(
     private readonly pontoEntregaRepository: PontoEntregaRepository,
     @Optional() @Inject(REQUEST) private readonly request?: any,
+    @Optional() private readonly tenantResolver?: TenantResolverService,
   ) {}
 
   async create(createDto: CreatePontoEntregaDto): Promise<PontoEntrega> {
@@ -57,8 +59,29 @@ export class PontoEntregaService {
   }
 
   async findAllAtivos(): Promise<PontoEntrega[]> {
-    // Obter tenantId do header X-Tenant-ID ou do request.tenant
-    const tenantId = this.request?.tenant?.id || this.request?.headers?.['x-tenant-id'];
+    // Obter tenantId do request.tenant (já resolvido pelo TenantInterceptor)
+    let tenantId = this.request?.tenant?.id;
+    
+    // Se não tiver tenant resolvido, tentar resolver do header X-Tenant-ID
+    if (!tenantId) {
+      const headerValue = this.request?.headers?.['x-tenant-id'];
+      if (headerValue) {
+        // Verificar se é UUID ou slug
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerValue);
+        if (isUuid) {
+          tenantId = headerValue;
+        } else {
+          // É um slug, resolver para UUID
+          try {
+            const resolved = await this.tenantResolver?.resolveBySlug(headerValue);
+            tenantId = resolved?.id;
+            this.logger.log(`🔄 Slug "${headerValue}" resolvido para UUID: ${tenantId}`);
+          } catch (error) {
+            this.logger.warn(`⚠️ Não foi possível resolver slug "${headerValue}": ${error.message}`);
+          }
+        }
+      }
+    }
     
     // Construir where clause com filtro de tenant
     const whereClause: any = { ativo: true };
