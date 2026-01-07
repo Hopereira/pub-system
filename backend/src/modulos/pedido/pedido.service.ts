@@ -89,9 +89,15 @@ export class PedidoService {
       `📝 Criando novo pedido | Comanda: ${comandaId} | ${itens.length} itens`,
     );
 
-    const comanda = await this.comandaRepository.findOne({
-      where: { id: comandaId },
-    });
+    // Usar rawRepository para rotas públicas (sem tenant)
+    const tenantId = this.getTenantId();
+    const comanda = tenantId 
+      ? await this.comandaRepository.findOne({ where: { id: comandaId } })
+      : await this.comandaRepository.rawRepository.findOne({ 
+          where: { id: comandaId },
+          relations: ['mesa', 'cliente', 'paginaEvento']
+        });
+    
     if (!comanda) {
       this.logger.warn(
         `⚠️ Tentativa de criar pedido para comanda inexistente: ${comandaId}`,
@@ -109,7 +115,9 @@ export class PedidoService {
 
     // ✅ OTIMIZAÇÃO: Buscar todos os produtos de uma vez (resolve N+1 query)
     const produtoIds = itens.map(item => item.produtoId);
-    const produtos = await this.produtoRepository.findByIds(produtoIds);
+    const produtos = tenantId
+      ? await this.produtoRepository.findByIds(produtoIds)
+      : await this.produtoRepository.rawRepository.findByIds(produtoIds);
     
     // Criar mapa para lookup O(1)
     const produtoMap = new Map(produtos.map(p => [p.id, p]));

@@ -26,6 +26,8 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 import { UpdateItemPedidoStatusDto } from './dto/update-item-pedido-status.dto';
 import { DeixarNoAmbienteDto } from './dto/deixar-no-ambiente.dto';
 import { MarcarEntregueDto } from './dto/marcar-entregue.dto';
@@ -62,6 +64,8 @@ export class PedidoController {
   }
 
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Post('cliente')
   @ApiOperation({ summary: 'Cria um novo pedido (Fluxo do cliente público)' })
   @ApiResponse({ status: 201, description: 'Pedido criado com sucesso.' })
