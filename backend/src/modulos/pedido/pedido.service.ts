@@ -158,7 +158,11 @@ export class PedidoService {
     });
 
     const novoPedido = await this.pedidoRepository.save(pedido);
-    const pedidoCompleto = await this.findOne(novoPedido.id);
+    
+    // Usar método público ou privado dependendo se há tenant
+    const pedidoCompleto = tenantId 
+      ? await this.findOne(novoPedido.id)
+      : await this.findOnePublic(novoPedido.id);
 
     this.logger.log(
       `✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`,
@@ -170,6 +174,28 @@ export class PedidoService {
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
 
     return pedidoCompleto;
+  }
+
+  /**
+   * Busca um pedido por ID usando rawRepository (para rotas públicas)
+   */
+  private async findOnePublic(id: string): Promise<Pedido> {
+    const pedido = await this.pedidoRepository.rawRepository.findOne({
+      where: { id },
+      relations: [
+        'comanda',
+        'comanda.mesa',
+        'comanda.cliente',
+        'comanda.pontoEntrega',
+        'itens',
+        'itens.produto',
+        'itens.produto.ambiente',
+      ],
+    });
+    if (!pedido) {
+      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
+    }
+    return pedido;
   }
 
   // ✅ NOVO: Criar pedido pelo garçom (com criação automática de comanda)
