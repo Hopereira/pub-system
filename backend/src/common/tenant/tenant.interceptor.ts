@@ -151,11 +151,15 @@ export class TenantInterceptor implements NestInterceptor {
       return { tenant, source: 'jwt' };
     }
 
-    // 4. Tentar header X-Tenant-ID (API externa)
+    // 4. Tentar header X-Tenant-ID (API externa ou rotas públicas)
     const headerTenantId = headers?.['x-tenant-id'];
     if (headerTenantId) {
       this.logger?.debug?.(`📍 Tenant detectado no header: ${headerTenantId}`);
-      const tenant = await this.tenantResolver.resolveById(headerTenantId);
+      // Verificar se é UUID ou slug
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerTenantId);
+      const tenant = isUuid 
+        ? await this.tenantResolver.resolveById(headerTenantId)
+        : await this.tenantResolver.resolveBySlug(headerTenantId);
       return { tenant, source: 'header' };
     }
 

@@ -139,10 +139,37 @@ export const publicApi = axios.create({
   timeout: 30000, // 30 segundos
 });
 
+/**
+ * Extrai o slug do tenant do subdomínio atual
+ * Ex: casarao-pub-423.pubsystem.com.br → casarao-pub-423
+ */
+const getTenantSlugFromHostname = (): string | null => {
+  if (isServer) return null;
+  
+  const hostname = window.location.hostname;
+  // Ignora localhost e domínios sem subdomínio
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return null;
+  
+  // Extrai subdomínio: casarao-pub-423.pubsystem.com.br → casarao-pub-423
+  const parts = hostname.split('.');
+  if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'api') {
+    return parts[0];
+  }
+  
+  return null;
+};
+
 // Adiciona os mesmos interceptors de logging na API pública
 publicApi.interceptors.request.use(
   (config) => {
     (config as any).metadata = { startTime: Date.now() };
+    
+    // Adiciona X-Tenant-ID baseado no subdomínio atual
+    const tenantSlug = getTenantSlugFromHostname();
+    if (tenantSlug) {
+      config.headers['X-Tenant-ID'] = tenantSlug;
+    }
+    
     logger.api('request', {
       method: config.method?.toUpperCase(),
       url: config.url,
