@@ -82,6 +82,8 @@ export class ComandaController {
   }
 
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get(':id/public')
   @ApiOperation({
     summary: 'Busca dados públicos de uma comanda (para cliente via QR Code)',

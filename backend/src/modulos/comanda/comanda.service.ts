@@ -583,7 +583,8 @@ export class ComandaService {
   }
 
   async findPublicOne(id: string) {
-    const comanda = await this.findOne(id);
+    // Usar findOnePublic para evitar erro de tenant em rotas públicas
+    const comanda = await this.findOnePublic(id);
 
     // Simplificamos o retorno dos itens para o frontend não se confundir
     const pedidosSimplificados = comanda.pedidos.map((p) => ({
