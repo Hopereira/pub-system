@@ -39,6 +39,34 @@ export const getProdutos = async (): Promise<Produto[]> => {
   }
 };
 
+// Versão pública para cardápio (sem autenticação)
+export const getProdutosPublic = async (): Promise<Produto[]> => {
+  try {
+    // Importar publicApi dinamicamente para evitar dependência circular
+    const { publicApi } = await import('./api');
+    
+    const response = await publicApi.get('/produtos/publicos/cardapio', {
+      params: { limit: 100 },
+    });
+    
+    const responseData = response.data;
+    
+    if (Array.isArray(responseData)) {
+      return responseData;
+    }
+    
+    if (responseData && Array.isArray(responseData.data)) {
+      return responseData.data;
+    }
+    
+    console.warn('Resposta inesperada de /produtos/publicos/cardapio:', responseData);
+    return [];
+  } catch (error) {
+    console.error('Erro ao buscar produtos públicos:', error);
+    throw error;
+  }
+};
+
 export const createProduto = async (data: FormData): Promise<Produto> => {
   try {
     const response = await api.post('/produtos', data, {

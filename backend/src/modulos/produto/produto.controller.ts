@@ -36,6 +36,8 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 
 // A função generateUniqueFilename não é mais necessária aqui, pois o GCS cuida disso.
 
@@ -117,6 +119,19 @@ export class ProdutoController {
   @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.produtoService.remove(id);
+  }
+
+  // ===== ENDPOINT PÚBLICO PARA CARDÁPIO =====
+  @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
+  @Get('publicos/cardapio')
+  @ApiOperation({ summary: 'Lista produtos ativos para o cardápio (Rota Pública)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Lista de produtos para cardápio retornada.' })
+  findCardapioPublic(@Query() paginationDto: PaginationDto) {
+    return this.produtoService.findCardapioPublic(paginationDto);
   }
 
   @Get()

@@ -265,6 +265,24 @@ export class ProdutoService {
     return produtos;
   }
 
+  // ===== MÉTODO PÚBLICO PARA CARDÁPIO (sem filtro de tenant) =====
+  async findCardapioPublic(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
+    const { page = 1, limit = 100, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
+
+    // Buscar todos os produtos ativos sem filtro de tenant
+    const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
+      where: { ativo: true },
+      relations: ['ambiente'],
+      order: { [sortBy]: sortOrder },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    this.logger.log(`📋 Cardápio público | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
+
+    return createPaginatedResponse(data, total, page, limit);
+  }
+
   // Método privado para invalidar cache de produtos
   private async invalidateProductCache(): Promise<void> {
     try {

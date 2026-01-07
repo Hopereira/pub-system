@@ -2,7 +2,7 @@
 
 import { notFound } from 'next/navigation';
 import { getPublicComandaById } from '@/services/comandaService';
-import { getProdutos } from '@/services/produtoService';
+import { getProdutosPublic } from '@/services/produtoService';
 import { ComandaGuard } from '@/components/guards/ComandaGuard';
 import { ComandaStatus } from '@/types/comanda';
 import CardapioClientPage from './CardapioClientPage';
@@ -20,7 +20,7 @@ export default async function CardapioPage({ params }: CardapioPageProps) {
     // Usamos Promise.all para buscar os dados em paralelo, otimizando o carregamento
     const [comanda, produtos] = await Promise.all([
       getPublicComandaById(comandaId),
-      getProdutos()
+      getProdutosPublic()
     ]);
 
     // Se a comanda não for encontrada, o Next.js exibirá a página 404 padrão
