@@ -37,6 +37,21 @@ export class ClienteRepository extends BaseTenantRepository<Cliente> {
   }
 
   /**
+   * Cria cliente SEM exigir tenant (para rotas públicas)
+   * O tenantId será definido depois quando o cliente for associado a uma comanda
+   */
+  createPublic(data: Partial<Cliente>): Cliente {
+    return this.rawRepository.create(data);
+  }
+
+  /**
+   * Salva cliente SEM exigir tenant (para rotas públicas)
+   */
+  async savePublic(cliente: Cliente): Promise<Cliente> {
+    return this.rawRepository.save(cliente);
+  }
+
+  /**
    * Busca cliente por telefone
    */
   async findByTelefone(telefone: string) {

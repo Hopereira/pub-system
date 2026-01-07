@@ -28,9 +28,8 @@ export class ClienteService {
     */
     // ==========================================================
 
-    const clienteExistente = await this.clienteRepository.findOne({
-      where: { cpf: createClienteDto.cpf },
-    });
+    // Usar método público para verificar existência (sem exigir tenant)
+    const clienteExistente = await this.clienteRepository.findByCpfPublic(createClienteDto.cpf);
 
     if (clienteExistente) {
       // Lança 409 Conflict se o cliente tentar se recadastrar
@@ -39,17 +38,17 @@ export class ClienteService {
       );
     }
 
-    const cliente = this.clienteRepository.create(createClienteDto);
-    return this.clienteRepository.save(cliente);
+    // Usar métodos públicos para criar cliente (sem exigir tenant)
+    // O tenantId será definido quando o cliente for associado a uma comanda
+    const cliente = this.clienteRepository.createPublic(createClienteDto);
+    return this.clienteRepository.savePublic(cliente);
   }
 
-  // ✅ NOVO: Criar cliente rápido (campos mínimos)
+  // ✅ NOVO: Criar cliente rápido (campos mínimos) - Rota Pública
   async createRapido(dto: CreateClienteRapidoDto): Promise<Cliente> {
-    // Se CPF foi fornecido, verifica se já existe
+    // Se CPF foi fornecido, verifica se já existe (usando método público)
     if (dto.cpf) {
-      const clienteExistente = await this.clienteRepository.findOne({
-        where: { cpf: dto.cpf },
-      });
+      const clienteExistente = await this.clienteRepository.findByCpfPublic(dto.cpf);
 
       if (clienteExistente) {
         // Retorna o cliente existente ao invés de erro
@@ -60,7 +59,8 @@ export class ClienteService {
     // Gera CPF temporário se não fornecido (para permitir criação rápida)
     const cpfFinal = dto.cpf || this.gerarCpfTemporario();
 
-    const cliente = this.clienteRepository.create({
+    // Usar métodos públicos para criar cliente (sem exigir tenant)
+    const cliente = this.clienteRepository.createPublic({
       nome: dto.nome,
       cpf: cpfFinal,
       celular: dto.telefone || null,
@@ -69,7 +69,7 @@ export class ClienteService {
       pontoEntregaId: dto.pontoEntregaId || null,
     });
 
-    return this.clienteRepository.save(cliente);
+    return this.clienteRepository.savePublic(cliente);
   }
 
   // Gera CPF temporário único

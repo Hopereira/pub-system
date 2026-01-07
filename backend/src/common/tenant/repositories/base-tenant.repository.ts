@@ -80,10 +80,16 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
       return createTenantId(userTenantId);
     }
 
-    // 4. Tentar do request.headers (x-tenant-id)
+    // 4. Tentar do request.headers (x-tenant-id) - APENAS se for UUID válido
+    // O header pode conter slug que deve ser resolvido pelo TenantInterceptor primeiro
     const headerTenantId = this.request?.headers?.['x-tenant-id'];
     if (headerTenantId) {
-      return createTenantId(headerTenantId);
+      // Verificar se é UUID válido antes de usar
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(headerTenantId)) {
+        return createTenantId(headerTenantId);
+      }
+      // Se for slug, ignorar - o TenantInterceptor deveria ter resolvido
     }
 
     // 5. Se nenhuma fonte encontrada, verificar se request existe
