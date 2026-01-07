@@ -192,11 +192,15 @@ export class ProdutoService {
 
     // Obter tenantId do contexto
     const tenantId = this.getTenantId();
+    this.logger.log(`🔍 findAll - tenantId obtido: ${tenantId || 'NENHUM'}`);
     
     // Construir where clause com filtro de tenant quando disponível
     const whereClause: any = { ativo: true };
     if (tenantId) {
       whereClause.tenantId = tenantId;
+      this.logger.log(`🔒 Filtrando produtos por tenantId: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Sem tenantId - retornando TODOS os produtos!`);
     }
 
     const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
