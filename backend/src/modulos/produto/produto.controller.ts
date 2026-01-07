@@ -119,9 +119,10 @@ export class ProdutoController {
     return this.produtoService.remove(id);
   }
 
-  @Public()
   @Get()
-  @ApiOperation({ summary: 'Lista produtos com paginação (rota pública)' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lista produtos com paginação (requer autenticação)' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Número da página (padrão: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Itens por página (padrão: 20, máx: 100)' })
   @ApiQuery({ name: 'sortBy', required: false, type: String, description: 'Campo para ordenação (padrão: nome)' })
