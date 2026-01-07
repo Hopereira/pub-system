@@ -32,6 +32,7 @@ export class ProdutoService {
    * Obtém o tenantId do contexto atual para namespace de cache
    */
   private getTenantId(): string | null {
+    // 1. Tentar do TenantContextService
     try {
       if (this.tenantContext?.hasTenant?.()) {
         return this.tenantContext.getTenantId();
@@ -39,8 +40,17 @@ export class ProdutoService {
     } catch {
       // Ignorar
     }
+    
+    // 2. Tentar do request.tenant (definido pelo TenantInterceptor)
+    if (this.request?.tenant?.id) {
+      return this.request.tenant.id;
+    }
+    
+    // 3. Tentar do user (JWT)
     const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
     if (userTenantId) return userTenantId;
+    
+    // 4. Tentar do header X-Tenant-ID
     return this.request?.headers?.['x-tenant-id'] || null;
   }
 
