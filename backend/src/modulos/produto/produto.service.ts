@@ -174,7 +174,7 @@ export class ProdutoService {
     return removedProduto;
   }
 
-  // ✅ ATUALIZADO: findAll com paginação e cache (rota pública - sem filtro de tenant)
+  // ✅ ATUALIZADO: findAll com paginação e cache (filtra por tenant quando disponível)
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
@@ -190,16 +190,24 @@ export class ProdutoService {
     
     this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
-    // Usar findAndCountWithoutTenant para rotas públicas (não requer tenant)
+    // Obter tenantId do contexto
+    const tenantId = this.getTenantId();
+    
+    // Construir where clause com filtro de tenant quando disponível
+    const whereClause: any = { ativo: true };
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+    }
+
     const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
-      where: { ativo: true },
+      where: whereClause,
       relations: ['ambiente'],
       order: { [sortBy]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
     });
 
-    this.logger.log(`📋 Listando produtos | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
+    this.logger.log(`📋 Listando produtos | Tenant: ${tenantId || 'global'} | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
 
     const response = createPaginatedResponse(data, total, page, limit);
     
@@ -222,9 +230,17 @@ export class ProdutoService {
     
     this.logger.debug('❌ Cache MISS: produtos:all:ativos');
     
-    // Usar findWithoutTenant para rotas públicas (não requer tenant)
+    // Obter tenantId do contexto
+    const tenantId = this.getTenantId();
+    
+    // Construir where clause com filtro de tenant quando disponível
+    const whereClause: any = { ativo: true };
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+    }
+    
     const produtos = await this.produtoRepository.findWithoutTenant({
-      where: { ativo: true },
+      where: whereClause,
       relations: ['ambiente'],
       order: { nome: 'ASC' },
     });
