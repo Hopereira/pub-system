@@ -770,7 +770,8 @@ export class ComandaService {
     comandaId: string,
     dto: { mesaId?: string | null; pontoEntregaId?: string | null },
   ): Promise<Comanda> {
-    const comanda = await this.findOne(comandaId);
+    // Usar findOnePublic para rotas públicas (sem filtro de tenant)
+    const comanda = await this.findOnePublic(comandaId);
 
     if (comanda.status !== ComandaStatus.ABERTA) {
       throw new BadRequestException(
@@ -778,9 +779,9 @@ export class ComandaService {
       );
     }
 
-    // Se for mesa
+    // Se for mesa - usar rawRepository para evitar filtro de tenant
     if (dto.mesaId) {
-      const mesa = await this.mesaRepository.findOne({
+      const mesa = await this.mesaRepository.rawRepository.findOne({
         where: { id: dto.mesaId },
       });
       if (!mesa) {
@@ -795,7 +796,7 @@ export class ComandaService {
         `🔄 Comanda ${comandaId} vinculada à Mesa ${mesa.numero}`,
       );
     }
-    // Se for ponto de entrega
+    // Se for ponto de entrega - Repository direto já não tem filtro de tenant
     else if (dto.pontoEntregaId) {
       const ponto = await this.pontoEntregaRepository.findOne({
         where: { id: dto.pontoEntregaId },
@@ -825,7 +826,8 @@ export class ComandaService {
       this.logger.log(`🔄 Comanda ${comandaId} sem local definido`);
     }
 
-    const comandaAtualizada = await this.comandaRepository.save(comanda);
+    // Usar rawRepository para salvar sem filtro de tenant
+    const comandaAtualizada = await this.comandaRepository.rawRepository.save(comanda);
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
 
     return comandaAtualizada;

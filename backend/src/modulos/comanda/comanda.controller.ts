@@ -171,6 +171,8 @@ export class ComandaController {
   }
 
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Patch(':id/local')
   @ApiOperation({
     summary:
