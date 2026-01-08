@@ -105,6 +105,14 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
   }
 
   /**
+   * Obtém o tenant_id do contexto atual (método público)
+   * Útil para serviços que precisam saber o tenant atual para correções de dados
+   */
+  getCurrentTenantId(): string {
+    return this.getTenantId();
+  }
+
+  /**
    * Obtém o tenant_id do contexto atual ou null se não disponível
    * Útil para rotas públicas onde o tenant é opcional
    */
