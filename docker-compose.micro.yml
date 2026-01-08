@@ -19,6 +19,11 @@ services:
     container_name: pub-backend
     ports:
       - "3000:3000"
+    # ✅ DNS confiáveis para resolver Neon Cloud (evita EAI_AGAIN)
+    dns:
+      - 8.8.8.8        # Google DNS primário
+      - 8.8.4.4        # Google DNS secundário
+      - 1.1.1.1        # Cloudflare DNS
     environment:
       - NODE_ENV=production
       - NODE_OPTIONS=--max-old-space-size=384
