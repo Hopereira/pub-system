@@ -43,7 +43,7 @@ export class TurnoService {
     this.logger.log(`🔍 Funcionário (rawRepository): ${funcionarioRaw ? `${funcionarioRaw.nome} (tenantId: ${funcionarioRaw.tenantId})` : 'NÃO EXISTE NO BANCO'}`);
 
     // Verifica se funcionário existe com filtro de tenant
-    const funcionario = await this.funcionarioRepository.findOne({
+    let funcionario = await this.funcionarioRepository.findOne({
       where: { id: funcionarioId },
     });
 
@@ -52,34 +52,54 @@ export class TurnoService {
     if (!funcionario) {
       // Se existe no raw mas não com filtro, problema é de tenant
       if (funcionarioRaw) {
-        // Se tenantId é null, corrige automaticamente para o tenant atual
+        // Se tenantId é null, pode ser um funcionário órfão duplicado
         if (funcionarioRaw.tenantId === null) {
           const currentTenantId = this.funcionarioRepository.getCurrentTenantId();
-          this.logger.warn(`⚠️ Funcionário ${funcionarioRaw.nome} tem tenantId nulo. Corrigindo para: ${currentTenantId}`);
+          this.logger.warn(`⚠️ Funcionário ${funcionarioRaw.nome} tem tenantId nulo.`);
           
-          // Atualiza o tenantId diretamente via rawRepository
-          await this.funcionarioRepository.rawRepository.update(
-            { id: funcionarioId },
-            { tenantId: currentTenantId }
-          );
-          
-          // Busca novamente com o tenant corrigido
-          const funcionarioCorrigido = await this.funcionarioRepository.findOne({
-            where: { id: funcionarioId },
+          // Verifica se já existe funcionário com mesmo email no tenant atual
+          const funcionarioExistente = await this.funcionarioRepository.findOne({
+            where: { email: funcionarioRaw.email },
           });
           
-          if (funcionarioCorrigido) {
-            this.logger.log(`✅ TenantId do funcionário corrigido com sucesso!`);
-            // Continua o fluxo com o funcionário corrigido
-            return this.executeCheckIn(funcionarioCorrigido, checkInDto);
+          if (funcionarioExistente) {
+            // Já existe funcionário correto! Use ele ao invés de tentar corrigir o órfão
+            this.logger.log(`✅ Encontrado funcionário correto com mesmo email: ${funcionarioExistente.id}`);
+            funcionario = funcionarioExistente;
+          } else {
+            // Não existe duplicado, podemos corrigir o tenantId
+            this.logger.warn(`🔧 Corrigindo tenantId para: ${currentTenantId}`);
+            
+            try {
+              await this.funcionarioRepository.rawRepository.update(
+                { id: funcionarioId },
+                { tenantId: currentTenantId }
+              );
+              
+              // Busca novamente com o tenant corrigido
+              const funcionarioCorrigido = await this.funcionarioRepository.findOne({
+                where: { id: funcionarioId },
+              });
+              
+              if (funcionarioCorrigido) {
+                this.logger.log(`✅ TenantId do funcionário corrigido com sucesso!`);
+                funcionario = funcionarioCorrigido;
+              }
+            } catch (error) {
+              this.logger.error(`❌ Erro ao corrigir tenantId: ${error.message}`);
+              throw new NotFoundException('Funcionário não encontrado. Por favor, faça login novamente.');
+            }
           }
         }
         
-        this.logger.error(`❌ Funcionário existe mas com tenant diferente! TenantId do funcionário: ${funcionarioRaw.tenantId}`);
-        throw new NotFoundException(`Funcionário não pertence a este tenant. TenantId esperado vs atual: ${funcionarioRaw.tenantId}`);
+        if (!funcionario) {
+          this.logger.error(`❌ Funcionário existe mas com tenant diferente! TenantId do funcionário: ${funcionarioRaw.tenantId}`);
+          throw new NotFoundException(`Funcionário não pertence a este tenant. TenantId esperado vs atual: ${funcionarioRaw.tenantId}`);
+        }
+      } else {
+        this.logger.error(`❌ Funcionário com ID "${funcionarioId}" não encontrado no banco`);
+        throw new NotFoundException('Funcionário não encontrado');
       }
-      this.logger.error(`❌ Funcionário com ID "${funcionarioId}" não encontrado no banco`);
-      throw new NotFoundException('Funcionário não encontrado');
     }
 
     // Executa o check-in com o funcionário encontrado
