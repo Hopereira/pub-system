@@ -429,18 +429,48 @@ export class PedidoService {
   }
   //----------------------------------------------------------
   async findOne(id: string): Promise<Pedido> {
-    const pedido = await this.pedidoRepository.findOne({
+    const relations = [
+      'comanda',
+      'comanda.mesa',
+      'comanda.cliente',
+      'comanda.pontoEntrega',
+      'itens',
+      'itens.produto',
+      'itens.produto.ambiente',
+    ];
+
+    // Primeiro tenta com filtro de tenant
+    let pedido = await this.pedidoRepository.findOne({
       where: { id },
-      relations: [
-        'comanda',
-        'comanda.mesa',
-        'comanda.cliente',
-        'comanda.pontoEntrega',
-        'itens',
-        'itens.produto',
-        'itens.produto.ambiente',
-      ],
+      relations,
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro (pode ter tenantId null)
+    if (!pedido) {
+      this.logger.warn(
+        `⚠️ Pedido não encontrado com filtro de tenant, tentando rawRepository: ${id}`,
+      );
+      
+      pedido = await this.pedidoRepository.rawRepository.findOne({
+        where: { id },
+        relations,
+      });
+      
+      // Se encontrou com rawRepository, corrige o tenantId
+      if (pedido) {
+        const currentTenantId = this.getTenantId();
+        if (!pedido.tenantId && currentTenantId) {
+          this.logger.warn(
+            `🔧 Corrigindo tenantId do pedido ${id} para: ${currentTenantId}`,
+          );
+          pedido.tenantId = currentTenantId;
+          // Salva para corrigir o tenantId permanentemente
+          await this.pedidoRepository.rawRepository.save(pedido);
+          this.logger.log(`✅ TenantId do pedido corrigido!`);
+        }
+      }
+    }
+
     if (!pedido) {
       throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
     }
@@ -866,7 +896,8 @@ export class PedidoService {
     const comanda = item.pedido?.comanda;
     if (comanda) {
       // ✅ CORREÇÃO: Recarrega o pedido completo com todas as relações para o WebSocket
-      const pedidoCompleto = await this.pedidoRepository.findOne({
+      // Usa rawRepository como fallback para pedidos com tenantId null
+      let pedidoCompleto = await this.pedidoRepository.findOne({
         where: { id: item.pedido.id },
         relations: [
           'comanda',
@@ -880,6 +911,33 @@ export class PedidoService {
           'itens.retiradoPorGarcom',
         ],
       });
+
+      // Fallback para rawRepository se não encontrar com filtro de tenant
+      if (!pedidoCompleto) {
+        pedidoCompleto = await this.pedidoRepository.rawRepository.findOne({
+          where: { id: item.pedido.id },
+          relations: [
+            'comanda',
+            'comanda.mesa',
+            'comanda.cliente',
+            'comanda.pontoEntrega',
+            'itens',
+            'itens.produto',
+            'itens.produto.ambiente',
+            'itens.garcomEntrega',
+            'itens.retiradoPorGarcom',
+          ],
+        });
+        
+        // Corrige tenantId se necessário
+        if (pedidoCompleto && !pedidoCompleto.tenantId) {
+          const currentTenantId = this.getTenantId();
+          if (currentTenantId) {
+            pedidoCompleto.tenantId = currentTenantId;
+            await this.pedidoRepository.rawRepository.save(pedidoCompleto);
+          }
+        }
+      }
 
       if (pedidoCompleto) {
         this.pedidosGateway.emitStatusAtualizado(pedidoCompleto);
@@ -1021,7 +1079,8 @@ export class PedidoService {
     const comanda = item.pedido?.comanda;
     if (comanda) {
       // ✅ CORREÇÃO: Recarrega o pedido completo com todas as relações para o WebSocket
-      const pedidoCompleto = await this.pedidoRepository.findOne({
+      // Usa rawRepository como fallback para pedidos com tenantId null
+      let pedidoCompleto = await this.pedidoRepository.findOne({
         where: { id: item.pedido.id },
         relations: [
           'comanda',
@@ -1034,6 +1093,32 @@ export class PedidoService {
           'itens.garcomEntrega',
         ],
       });
+
+      // Fallback para rawRepository se não encontrar com filtro de tenant
+      if (!pedidoCompleto) {
+        pedidoCompleto = await this.pedidoRepository.rawRepository.findOne({
+          where: { id: item.pedido.id },
+          relations: [
+            'comanda',
+            'comanda.mesa',
+            'comanda.cliente',
+            'comanda.pontoEntrega',
+            'itens',
+            'itens.produto',
+            'itens.produto.ambiente',
+            'itens.garcomEntrega',
+          ],
+        });
+        
+        // Corrige tenantId se necessário
+        if (pedidoCompleto && !pedidoCompleto.tenantId) {
+          const currentTenantId = this.getTenantId();
+          if (currentTenantId) {
+            pedidoCompleto.tenantId = currentTenantId;
+            await this.pedidoRepository.rawRepository.save(pedidoCompleto);
+          }
+        }
+      }
 
       // Atualiza status geral do pedido
       if (pedidoCompleto) {
