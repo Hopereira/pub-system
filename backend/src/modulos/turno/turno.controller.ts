@@ -6,7 +6,9 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -55,8 +57,16 @@ export class TurnoController {
   @ApiResponse({ status: 400, description: 'Já existe check-in ativo' })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado' })
-  async checkIn(@Body() checkInDto: CheckInDto): Promise<TurnoResponseDto> {
-    return this.turnoService.checkIn(checkInDto);
+  async checkIn(
+    @Body() checkInDto: CheckInDto,
+    @Req() req: Request,
+  ): Promise<TurnoResponseDto> {
+    // 🔒 Usar ID do JWT para segurança - funcionário só pode fazer check-in de si mesmo
+    const funcionarioIdFromJwt = (req.user as any)?.id || (req.user as any)?.funcionarioId;
+    return this.turnoService.checkIn({
+      ...checkInDto,
+      funcionarioId: funcionarioIdFromJwt,
+    });
   }
 
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
@@ -72,8 +82,16 @@ export class TurnoController {
   })
   @ApiResponse({ status: 400, description: 'Nenhum check-in ativo encontrado' })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
-  async checkOut(@Body() checkOutDto: CheckOutDto): Promise<TurnoResponseDto> {
-    return this.turnoService.checkOut(checkOutDto);
+  async checkOut(
+    @Body() checkOutDto: CheckOutDto,
+    @Req() req: Request,
+  ): Promise<TurnoResponseDto> {
+    // 🔒 Usar ID do JWT para segurança - funcionário só pode fazer check-out de si mesmo
+    const funcionarioIdFromJwt = (req.user as any)?.id || (req.user as any)?.funcionarioId;
+    return this.turnoService.checkOut({
+      ...checkOutDto,
+      funcionarioId: funcionarioIdFromJwt,
+    });
   }
 
   @Get('ativos')
