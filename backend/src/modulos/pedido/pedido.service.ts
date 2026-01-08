@@ -123,6 +123,7 @@ export class PedidoService {
     const produtoMap = new Map(produtos.map(p => [p.id, p]));
     
     // Validar e criar itens
+    // Para rotas públicas (sem tenant), usar rawRepository.create() para evitar erro de tenant
     const itensPedido = itens.map(itemDto => {
       const produto = produtoMap.get(itemDto.produtoId);
       if (!produto) {
@@ -133,13 +134,19 @@ export class PedidoService {
           `Produto com ID "${itemDto.produtoId}" não encontrado.`,
         );
       }
-      return this.itemPedidoRepository.create({
+      
+      const itemData = {
         produto,
         quantidade: itemDto.quantidade,
         precoUnitario: produto.preco,
         observacao: itemDto.observacao,
         status: PedidoStatus.FEITO,
-      });
+        tenantId: comanda.tenantId, // Herdar tenant da comanda
+      };
+      
+      return tenantId
+        ? this.itemPedidoRepository.create(itemData)
+        : this.itemPedidoRepository.rawRepository.create(itemData);
     });
 
     // Usar Decimal.js para cálculos monetários precisos
@@ -150,14 +157,23 @@ export class PedidoService {
       return sum.plus(itemTotal);
     }, new Decimal(0));
 
-    const pedido = this.pedidoRepository.create({
+    // Criar pedido - para rotas públicas, usar rawRepository e herdar tenant da comanda
+    const pedidoData = {
       comanda,
       itens: itensPedido,
       total: total.toNumber(),
       status: PedidoStatus.FEITO,
-    });
+      tenantId: comanda.tenantId, // Herdar tenant da comanda
+    };
+    
+    const pedido = tenantId
+      ? this.pedidoRepository.create(pedidoData)
+      : this.pedidoRepository.rawRepository.create(pedidoData);
 
-    const novoPedido = await this.pedidoRepository.save(pedido);
+    // Para rotas públicas, usar rawRepository.save() também
+    const novoPedido = tenantId
+      ? await this.pedidoRepository.save(pedido)
+      : await this.pedidoRepository.rawRepository.save(pedido);
     
     // Usar método público ou privado dependendo se há tenant
     const pedidoCompleto = tenantId 
