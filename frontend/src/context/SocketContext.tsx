@@ -170,7 +170,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
    * Inscreve um callback em um evento
    */
   const subscribe = useCallback((event: string, callback: SocketCallback) => {
-    if (!socketRef.current) return;
+    console.log(`📡 [SocketContext] subscribe chamado:`, { event, hasSocket: !!socketRef.current });
+    
+    if (!socketRef.current) {
+      console.warn(`⚠️ [SocketContext] Socket não disponível para inscrever em: ${event}`);
+      return;
+    }
 
     // Adiciona ao mapa de listeners
     if (!listenersRef.current.has(event)) {
@@ -180,6 +185,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Registra o listener no socket
     socketRef.current.on(event, callback);
+    
+    console.log(`✅ [SocketContext] Inscrito com sucesso em: ${event}`);
 
     logger.debug(`📡 Inscrito no evento: ${event}`, {
       module: 'SocketContext',

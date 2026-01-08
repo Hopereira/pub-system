@@ -32,6 +32,9 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
   
   // ✅ CORREÇÃO: Usa o SocketContext global ao invés de criar nova conexão
   const { isConnected, subscribe, unsubscribe } = useSocket();
+  
+  // 🔥 DEBUG: Log inicial do hook
+  console.log('🔥 [useAmbienteNotification] Hook inicializado!', { ambienteId, isConnected });
 
   // Inicializa o áudio
   useEffect(() => {
