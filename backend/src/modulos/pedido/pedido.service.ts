@@ -194,6 +194,7 @@ export class PedidoService {
 
   /**
    * Busca um pedido por ID usando rawRepository (para rotas públicas)
+   * ✅ CORREÇÃO: Inclui select explícito para tenantId para WebSocket funcionar
    */
   private async findOnePublic(id: string): Promise<Pedido> {
     const pedido = await this.pedidoRepository.rawRepository.findOne({
@@ -211,6 +212,13 @@ export class PedidoService {
     if (!pedido) {
       throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
     }
+    
+    // ✅ CORREÇÃO: Se tenantId não veio, herda da comanda
+    if (!pedido.tenantId && pedido.comanda?.tenantId) {
+      pedido.tenantId = pedido.comanda.tenantId;
+      this.logger.debug(`📋 TenantId herdado da comanda: ${pedido.tenantId}`);
+    }
+    
     return pedido;
   }
 
