@@ -33,12 +33,17 @@ export class TurnoService {
   async checkIn(checkInDto: CheckInDto): Promise<TurnoResponseDto> {
     const { funcionarioId, eventoId } = checkInDto;
 
+    this.logger.log(`🔍 Check-in solicitado | funcionarioId do JWT: ${funcionarioId}`);
+
     // Verifica se funcionário existe
     const funcionario = await this.funcionarioRepository.findOne({
       where: { id: funcionarioId },
     });
 
+    this.logger.log(`🔍 Funcionário encontrado: ${funcionario ? `${funcionario.nome} (${funcionario.id})` : 'NÃO ENCONTRADO'}`);
+
     if (!funcionario) {
+      this.logger.error(`❌ Funcionário com ID "${funcionarioId}" não encontrado no banco`);
       throw new NotFoundException('Funcionário não encontrado');
     }
 
