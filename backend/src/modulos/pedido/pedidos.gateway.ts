@@ -106,6 +106,13 @@ export class PedidosGateway
           }
         });
       }
+      
+      // ✅ CORREÇÃO: Também emite para o room da comanda (clientes públicos)
+      if (pedido.comanda?.id) {
+        const comandaRoom = `comanda_${pedido.comanda.id}`;
+        this.server.to(comandaRoom).emit('novo_pedido', pedido);
+        this.logger.debug(`📤 Evento 'novo_pedido' emitido para room ${comandaRoom}`);
+      }
     } else {
       // ⚠️ LEGADO: Fallback para broadcast (compatibilidade)
       this.logger.warn(`⚠️ Pedido ${pedido.id} sem tenant_id, usando broadcast`);
@@ -137,6 +144,13 @@ export class PedidosGateway
             ambientesNotificados.add(ambienteId);
           }
         });
+      }
+      
+      // ✅ CORREÇÃO: Também emite para o room da comanda (clientes públicos)
+      if (pedido.comanda?.id) {
+        const comandaRoom = `comanda_${pedido.comanda.id}`;
+        this.server.to(comandaRoom).emit('status_atualizado', pedido);
+        this.logger.debug(`📤 Evento 'status_atualizado' emitido para room ${comandaRoom}`);
       }
     } else {
       // ⚠️ LEGADO: Fallback para broadcast
