@@ -1,10 +1,8 @@
 // Caminho: frontend/src/hooks/useAmbienteNotification.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { Pedido } from '@/types/pedido';
 import { logger } from '@/lib/logger';
-
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { useSocket } from '@/context/SocketContext';
 
 interface UseAmbienteNotificationReturn {
   novoPedidoId: string | null;
@@ -12,12 +10,14 @@ interface UseAmbienteNotificationReturn {
   handleAllowAudio: () => void;
   clearNotification: () => void;
   isConnected: boolean;
-  novoPedidoRecebido: Pedido | null; // Novo pedido completo recebido
+  novoPedidoRecebido: Pedido | null;
 }
 
 /**
  * Hook customizado para receber notificações de novos pedidos em um ambiente específico
  * Toca um som quando um novo pedido chega para o ambiente (cozinha, bar, etc.)
+ * 
+ * ✅ CORREÇÃO: Agora usa SocketContext global com JWT para isolamento por tenant
  * 
  * @param ambienteId - ID do ambiente para monitorar (ex: cozinha, bar)
  * @returns Objeto com estado de notificação e funções de controle
@@ -27,15 +27,16 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
   const [novoPedidoRecebido, setNovoPedidoRecebido] = useState<Pedido | null>(null);
   const [audioConsentNeeded, setAudioConsentNeeded] = useState(true);
   const [isAudioAllowed, setIsAudioAllowed] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const socketRef = useRef<Socket | null>(null);
+  
+  // ✅ CORREÇÃO: Usa o SocketContext global ao invés de criar nova conexão
+  const { isConnected, subscribe, unsubscribe } = useSocket();
 
   // Inicializa o áudio
   useEffect(() => {
     audioRef.current = new Audio('/notification.mp3');
-    audioRef.current.volume = 0.7; // Volume a 70%
+    audioRef.current.volume = 0.7;
     
     return () => {
       if (audioRef.current) {
@@ -85,40 +86,16 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     setNovoPedidoId(null);
   }, []);
 
-  // Conectar ao WebSocket e escutar eventos do ambiente
+  // ✅ CORREÇÃO: Escuta eventos via SocketContext (que tem o token JWT)
   useEffect(() => {
     if (!ambienteId) return;
 
-    // Conecta ao socket
-    socketRef.current = io(SOCKET_URL);
-
-    socketRef.current.on('connect', () => {
-      setIsConnected(true);
-      logger.socket(`Conectado ao ambiente ${ambienteId}`, {
-        socketId: socketRef.current?.id,
-      });
-    });
-
-    socketRef.current.on('disconnect', (reason) => {
-      setIsConnected(false);
-      logger.warn(`Desconectado do WebSocket`, {
-        module: 'WebSocket',
-        data: { ambienteId, reason },
-      });
-      
-      // Log se foi desconexão inesperada
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        logger.error('Desconexão inesperada - Tentando reconectar', {
-          module: 'WebSocket',
-          data: { reason },
-        });
-      }
-    });
-
-    // Escuta novos pedidos para este ambiente específico
     const novoPedidoEvent = `novo_pedido_ambiente:${ambienteId}`;
-    socketRef.current.on(novoPedidoEvent, (pedido: Pedido) => {
-      logger.log(`🆕 Novo pedido recebido`, {
+    const statusAtualizadoEvent = `status_atualizado_ambiente:${ambienteId}`;
+
+    // Handler para novo pedido
+    const handleNovoPedido = (pedido: Pedido) => {
+      logger.log(`🆕 Novo pedido recebido via SocketContext`, {
         module: 'WebSocket',
         data: { ambienteId, pedidoId: pedido.id, itens: pedido.itens?.length },
       });
@@ -139,51 +116,42 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
         setNovoPedidoId(null);
         setNovoPedidoRecebido(null);
       }, 5000);
-    });
+    };
 
-    // Escuta atualizações de status para este ambiente
-    const statusAtualizadoEvent = `status_atualizado_ambiente:${ambienteId}`;
-    socketRef.current.on(statusAtualizadoEvent, (pedido: Pedido) => {
-      logger.log('🔄 Status atualizado', {
+    // Handler para status atualizado
+    const handleStatusAtualizado = (pedido: Pedido) => {
+      logger.log('🔄 Status atualizado via SocketContext', {
         module: 'WebSocket',
         data: { ambienteId, pedidoId: pedido.id },
       });
+      
+      // Notifica a UI sobre atualização
+      setNovoPedidoRecebido(pedido);
+      
+      // Limpa após 2 segundos
+      setTimeout(() => {
+        setNovoPedidoRecebido(null);
+      }, 2000);
+    };
+
+    // ✅ Inscreve nos eventos via SocketContext global
+    logger.log(`📡 Inscrevendo nos eventos do ambiente ${ambienteId}`, {
+      module: 'WebSocket',
+      data: { novoPedidoEvent, statusAtualizadoEvent, isConnected },
     });
     
-    // Escuta erros de conexão
-    socketRef.current.on('connect_error', (error) => {
-      logger.error('Erro ao conectar no WebSocket', {
-        module: 'WebSocket',
-        error: error as Error,
-      });
-    });
-    
-    // Escuta tentativas de reconexão
-    socketRef.current.on('reconnect_attempt', (attempt) => {
-      logger.warn(`Tentando reconectar (${attempt})`, {
-        module: 'WebSocket',
-        data: { ambienteId },
-      });
-    });
-    
-    // Escuta reconexão bem-sucedida
-    socketRef.current.on('reconnect', (attemptNumber) => {
-      logger.log(`✅ Reconectado com sucesso após ${attemptNumber} tentativas`, {
-        module: 'WebSocket',
-        data: { ambienteId },
-      });
-    });
+    subscribe(novoPedidoEvent, handleNovoPedido);
+    subscribe(statusAtualizadoEvent, handleStatusAtualizado);
 
     // Cleanup ao desmontar
     return () => {
-      if (socketRef.current) {
-        socketRef.current.off(novoPedidoEvent);
-        socketRef.current.off(statusAtualizadoEvent);
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
+      logger.log(`🔌 Desinscrevendo dos eventos do ambiente ${ambienteId}`, {
+        module: 'WebSocket',
+      });
+      unsubscribe(novoPedidoEvent, handleNovoPedido);
+      unsubscribe(statusAtualizadoEvent, handleStatusAtualizado);
     };
-  }, [ambienteId, playNotificationSound]);
+  }, [ambienteId, playNotificationSound, subscribe, unsubscribe, isConnected]);
 
   return {
     novoPedidoId,
