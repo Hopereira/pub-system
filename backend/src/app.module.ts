@@ -15,6 +15,7 @@ import { ClienteModule } from './modulos/cliente/cliente.module';
 import { PedidoModule } from './modulos/pedido/pedido.module';
 import { ProdutoModule } from './modulos/produto/produto.module';
 import { SeederModule } from './database/seeder.module';
+import { DatabaseConnectionMonitor } from './database/database-connection.subscriber';
 import { PaginaEventoModule } from './modulos/pagina-evento/pagina-evento.module';
 import { EventoModule } from './modulos/evento/evento.module';
 import { StorageModule } from './shared/storage/storage.module';
@@ -129,31 +130,33 @@ import { PlanModule } from './modulos/plan/plan.module';
         username: configService.get<string>('DB_USER'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true, // Garante que todas as entidades sejam carregadas
-        synchronize: process.env.DB_SYNC === 'true', // Habilitar apenas no primeiro deploy para criar tabelas
-        // SSL para Neon e outros provedores cloud
+        autoLoadEntities: true,
+        synchronize: process.env.DB_SYNC === 'true',
+        // SSL obrigatório para Neon Cloud
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
           : false,
-        // ✅ CORREÇÃO: Configurações robustas para conexões com Neon Cloud
-        // Previne erros de DNS (EAI_AGAIN) e conexões terminadas inesperadamente
+        // ✅ CORREÇÃO: Configurações otimizadas para Neon Cloud
+        // Neon suspende instâncias ociosas e fecha conexões após ~5 minutos
         extra: {
-          // Connection pool
-          max: 10, // Máximo de conexões no pool
-          min: 2,  // Mínimo de conexões no pool
-          idleTimeoutMillis: 30000, // Timeout de conexão ociosa (30s)
-          connectionTimeoutMillis: 10000, // Timeout de conexão inicial (10s)
-          // ✅ Keepalive para manter conexões vivas
+          // Connection pool - menor para Neon (tier gratuito tem limite de 100)
+          max: 5, // Reduzido para evitar esgotar conexões do Neon
+          min: 1, // Mínimo de 1 conexão
+          // ✅ CRÍTICO: Timeouts curtos para detectar conexões mortas rapidamente
+          idleTimeoutMillis: 10000, // 10s - fecha conexões ociosas antes do Neon
+          connectionTimeoutMillis: 15000, // 15s - tempo para conectar (Neon pode demorar ao "acordar")
+          // ✅ Keepalive mais agressivo para manter conexões vivas
           keepAlive: true,
-          keepAliveInitialDelayMillis: 10000, // Inicia keepalive após 10s
-          // ✅ Retry em caso de falha de conexão
-          statement_timeout: 30000, // Timeout de query (30s)
-          query_timeout: 30000,
+          keepAliveInitialDelayMillis: 5000, // Inicia keepalive após 5s
+          // ✅ Identificação da aplicação (ajuda Neon a rastrear)
+          application_name: 'pub-system-backend',
+          // ✅ Reconexão automática quando Neon termina conexão
+          allowExitOnIdle: false, // Não encerra o pool quando ocioso
         },
-        // ✅ Retry automático de conexão
-        retryAttempts: 5,
-        retryDelay: 3000, // 3 segundos entre tentativas
-        // ✅ Logging de queries lentas (útil para debug)
+        // ✅ Retry mais agressivo para quando Neon está "acordando"
+        retryAttempts: 10, // Aumentado para dar tempo do Neon acordar
+        retryDelay: 5000, // 5 segundos entre tentativas
+        // Logging
         logging: process.env.DB_LOGGING === 'true' ? ['error', 'warn', 'query'] : ['error', 'warn'],
       }),
     }),
@@ -199,6 +202,8 @@ import { PlanModule } from './modulos/plan/plan.module';
     //   useClass: TenantRateLimitGuard,
     // },
     RateLimitMonitorService,
+    // ✅ Monitor de conexão com banco de dados (útil para Neon Cloud)
+    DatabaseConnectionMonitor,
   ],
 })
 export class AppModule {}

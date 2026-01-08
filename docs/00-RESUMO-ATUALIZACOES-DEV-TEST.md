@@ -6,6 +6,14 @@
 **Linhas Adicionadas:** ~25.535  
 **Linhas Removidas:** ~2.127
 
+> **Atualização 07/01/2026 (Sessão atual)**  
+> - Rotas públicas revisadas para respeitar multi-tenancy mesmo com `@SkipTenantGuard()`.  
+> - `TenantResolverService` agora remove sufixos numéricos de slugs (`casarao-pub-423 → casarao-pub`).  
+> - `ProdutoService`, `MesaService`, `PontoEntregaService` e `PedidoService` passam a resolver slug → UUID antes de filtrar queries.  
+> - Novos métodos públicos (`findOnePublic`, `findAtivosPublic`, `findPublic`) usando `rawRepository` garantem que serviços não dependam de tenant ativo.  
+> - Cardápio público passou a carregar produtos no client component para que o header `X-Tenant-ID` seja enviado corretamente.  
+> - Fluxo público completo (criar cliente → comanda → definir local) reabilitado; **pendente** revalidar `POST /pedidos/cliente` em produção após deploy na VM Oracle.
+
 ---
 
 ## � Correções Críticas (06/01/2026)
