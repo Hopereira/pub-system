@@ -35,14 +35,26 @@ export class TurnoService {
 
     this.logger.log(`🔍 Check-in solicitado | funcionarioId do JWT: ${funcionarioId}`);
 
-    // Verifica se funcionário existe
+    // Usa rawRepository para ignorar filtro de tenant e debugar
+    const funcionarioRaw = await this.funcionarioRepository.rawRepository.findOne({
+      where: { id: funcionarioId },
+    });
+    
+    this.logger.log(`🔍 Funcionário (rawRepository): ${funcionarioRaw ? `${funcionarioRaw.nome} (tenantId: ${funcionarioRaw.tenantId})` : 'NÃO EXISTE NO BANCO'}`);
+
+    // Verifica se funcionário existe com filtro de tenant
     const funcionario = await this.funcionarioRepository.findOne({
       where: { id: funcionarioId },
     });
 
-    this.logger.log(`🔍 Funcionário encontrado: ${funcionario ? `${funcionario.nome} (${funcionario.id})` : 'NÃO ENCONTRADO'}`);
+    this.logger.log(`🔍 Funcionário (com filtro tenant): ${funcionario ? `${funcionario.nome} (${funcionario.id})` : 'NÃO ENCONTRADO'}`);
 
     if (!funcionario) {
+      // Se existe no raw mas não com filtro, problema é de tenant
+      if (funcionarioRaw) {
+        this.logger.error(`❌ Funcionário existe mas com tenant diferente! TenantId do funcionário: ${funcionarioRaw.tenantId}`);
+        throw new NotFoundException(`Funcionário não pertence a este tenant. TenantId esperado vs atual: ${funcionarioRaw.tenantId}`);
+      }
       this.logger.error(`❌ Funcionário com ID "${funcionarioId}" não encontrado no banco`);
       throw new NotFoundException('Funcionário não encontrado');
     }
