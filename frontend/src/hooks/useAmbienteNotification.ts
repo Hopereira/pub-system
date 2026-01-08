@@ -95,6 +95,7 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
 
     // Handler para novo pedido
     const handleNovoPedido = (pedido: Pedido) => {
+      console.log(`🆕 [useAmbienteNotification] EVENTO RECEBIDO: novo_pedido_ambiente:${ambienteId}`, pedido);
       logger.log(`🆕 Novo pedido recebido via SocketContext`, {
         module: 'WebSocket',
         data: { ambienteId, pedidoId: pedido.id, itens: pedido.itens?.length },
@@ -120,6 +121,7 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
 
     // Handler para status atualizado
     const handleStatusAtualizado = (pedido: Pedido) => {
+      console.log(`🔄 [useAmbienteNotification] EVENTO RECEBIDO: status_atualizado_ambiente:${ambienteId}`, pedido);
       logger.log('🔄 Status atualizado via SocketContext', {
         module: 'WebSocket',
         data: { ambienteId, pedidoId: pedido.id },
@@ -135,6 +137,12 @@ export const useAmbienteNotification = (ambienteId: string | null): UseAmbienteN
     };
 
     // ✅ Inscreve nos eventos via SocketContext global
+    console.log(`📡 [useAmbienteNotification] Inscrevendo nos eventos:`, {
+      novoPedidoEvent,
+      statusAtualizadoEvent,
+      isConnected,
+      ambienteId,
+    });
     logger.log(`📡 Inscrevendo nos eventos do ambiente ${ambienteId}`, {
       module: 'WebSocket',
       data: { novoPedidoEvent, statusAtualizadoEvent, isConnected },

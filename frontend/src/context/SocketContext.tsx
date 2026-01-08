@@ -66,6 +66,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     });
 
     newSocket.on('connect', () => {
+      console.log('✅ [SocketContext] WebSocket conectado!', { socketId: newSocket.id, hasToken: !!token });
       logger.log('✅ WebSocket conectado', {
         module: 'SocketContext',
         data: { socketId: newSocket.id, hasToken: !!token },
