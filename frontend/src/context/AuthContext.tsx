@@ -43,12 +43,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('authToken', access_token);
     setUser(decodedUser);
     setToken(access_token);
+    
+    // ✅ Dispara evento customizado para reconectar WebSocket na mesma aba
+    window.dispatchEvent(new CustomEvent('authTokenChanged', { detail: { hasToken: true } }));
   };
 
   const logout = () => {
     localStorage.removeItem('authToken');
     setUser(null);
     setToken(null);
+    
+    // ✅ Dispara evento customizado para reconectar WebSocket na mesma aba
+    window.dispatchEvent(new CustomEvent('authTokenChanged', { detail: { hasToken: false } }));
   };
 
   return (

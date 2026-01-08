@@ -135,6 +135,26 @@ import { PlanModule } from './modulos/plan/plan.module';
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
           : false,
+        // ✅ CORREÇÃO: Configurações robustas para conexões com Neon Cloud
+        // Previne erros de DNS (EAI_AGAIN) e conexões terminadas inesperadamente
+        extra: {
+          // Connection pool
+          max: 10, // Máximo de conexões no pool
+          min: 2,  // Mínimo de conexões no pool
+          idleTimeoutMillis: 30000, // Timeout de conexão ociosa (30s)
+          connectionTimeoutMillis: 10000, // Timeout de conexão inicial (10s)
+          // ✅ Keepalive para manter conexões vivas
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 10000, // Inicia keepalive após 10s
+          // ✅ Retry em caso de falha de conexão
+          statement_timeout: 30000, // Timeout de query (30s)
+          query_timeout: 30000,
+        },
+        // ✅ Retry automático de conexão
+        retryAttempts: 5,
+        retryDelay: 3000, // 3 segundos entre tentativas
+        // ✅ Logging de queries lentas (útil para debug)
+        logging: process.env.DB_LOGGING === 'true' ? ['error', 'warn', 'query'] : ['error', 'warn'],
       }),
     }),
     // Módulos de funcionalidades da aplicação
