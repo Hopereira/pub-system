@@ -24,7 +24,7 @@ import { useAmbienteNotification } from '@/hooks/useAmbienteNotification';
 import PedidoCard from '@/components/cozinha/PedidoCard';
 import { updateItemStatus } from '@/services/pedidoService';
 import { UpdateItemPedidoStatusDto } from '@/types/pedido.dto';
-import { socket } from '@/lib/socket';
+import { useSocket } from '@/context/SocketContext';
 
 interface PreparoPedidosProps {
   ambienteIdInicial?: string;
@@ -56,7 +56,12 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
     audioConsentNeeded,
     handleAllowAudio,
     clearNotification,
+    novoPedidoRecebido,
+    isConnected,
   } = useAmbienteNotification(ambienteSelecionado);
+  
+  // ✅ CORREÇÃO: Usa SocketContext global com JWT
+  const { subscribe, unsubscribe } = useSocket();
 
   useEffect(() => {
     loadInitialData();
@@ -71,31 +76,63 @@ export default function PreparoPedidos({ ambienteIdInicial }: PreparoPedidosProp
     }
   }, [ambienteSelecionado]);
 
-  // WebSocket - escuta novos pedidos e atualizações
+  // ✅ CORREÇÃO: WebSocket - escuta novos pedidos e atualizações via SocketContext
   useEffect(() => {
-    socket.on('novo_pedido', (novoPedido: Pedido) => {
-      logger.log('🆕 Novo pedido recebido via WebSocket', {
+    if (!ambienteSelecionado) return;
+    
+    // Eventos específicos do ambiente (emitidos para tenant room)
+    const novoPedidoAmbienteEvent = `novo_pedido_ambiente:${ambienteSelecionado}`;
+    const statusAtualizadoAmbienteEvent = `status_atualizado_ambiente:${ambienteSelecionado}`;
+
+    const handleNovoPedido = (novoPedido: Pedido) => {
+      logger.log('🆕 Novo pedido recebido via SocketContext', {
         module: 'PreparoPedidos',
         data: { pedidoId: novoPedido.id },
       });
-      setPedidos((prev) => [novoPedido, ...prev]);
-    });
+      setPedidos((prev) => [novoPedido, ...prev.filter(p => p.id !== novoPedido.id)]);
+    };
 
-    socket.on('status_atualizado', (pedidoAtualizado: Pedido) => {
-      logger.log('🔄 Status atualizado via WebSocket', {
+    const handleStatusAtualizado = (pedidoAtualizado: Pedido) => {
+      logger.log('🔄 Status atualizado via SocketContext', {
         module: 'PreparoPedidos',
         data: { pedidoId: pedidoAtualizado.id },
       });
       setPedidos((prev) =>
         prev.map((p) => (p.id === pedidoAtualizado.id ? pedidoAtualizado : p))
       );
+    };
+
+    subscribe(novoPedidoAmbienteEvent, handleNovoPedido);
+    subscribe(statusAtualizadoAmbienteEvent, handleStatusAtualizado);
+    
+    logger.log(`📡 Inscrito nos eventos do ambiente ${ambienteSelecionado}`, {
+      module: 'PreparoPedidos',
+      data: { events: [novoPedidoAmbienteEvent, statusAtualizadoAmbienteEvent] },
     });
 
     return () => {
-      socket.off('novo_pedido');
-      socket.off('status_atualizado');
+      unsubscribe(novoPedidoAmbienteEvent, handleNovoPedido);
+      unsubscribe(statusAtualizadoAmbienteEvent, handleStatusAtualizado);
     };
-  }, []);
+  }, [ambienteSelecionado, subscribe, unsubscribe]);
+  
+  // ✅ Atualiza lista quando receber notificação do hook
+  useEffect(() => {
+    if (novoPedidoRecebido) {
+      logger.log('📨 novoPedidoRecebido do hook', {
+        module: 'PreparoPedidos',
+        data: { pedidoId: novoPedidoRecebido.id },
+      });
+      setPedidos((prev) => {
+        const existe = prev.find(p => p.id === novoPedidoRecebido.id);
+        if (existe) {
+          return prev.map(p => p.id === novoPedidoRecebido.id ? novoPedidoRecebido : p);
+        } else {
+          return [novoPedidoRecebido, ...prev];
+        }
+      });
+    }
+  }, [novoPedidoRecebido]);
 
   const loadInitialData = async () => {
     try {
