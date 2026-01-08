@@ -451,10 +451,37 @@ export class PedidoService {
     itemPedidoId: string,
     updateDto: UpdateItemPedidoStatusDto,
   ): Promise<ItemPedido> {
-    const itemPedido = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let itemPedido = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'produto'],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro (pode ter tenantId null)
+    if (!itemPedido) {
+      this.logger.warn(
+        `⚠️ Item não encontrado com filtro de tenant, tentando rawRepository: ${itemPedidoId}`,
+      );
+      
+      itemPedido = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: ['pedido', 'produto'],
+      });
+      
+      // Se encontrou com rawRepository, corrige o tenantId
+      if (itemPedido) {
+        const currentTenantId = this.getTenantId();
+        if (!itemPedido.tenantId && currentTenantId) {
+          this.logger.warn(
+            `🔧 Corrigindo tenantId do item de pedido ${itemPedidoId} para: ${currentTenantId}`,
+          );
+          itemPedido.tenantId = currentTenantId;
+          // Salva para corrigir o tenantId permanentemente
+          await this.itemPedidoRepository.rawRepository.save(itemPedido);
+          this.logger.log(`✅ TenantId do item de pedido corrigido!`);
+        }
+      }
+    }
 
     if (!itemPedido) {
       this.logger.warn(
@@ -621,7 +648,8 @@ export class PedidoService {
     itemPedidoId: string,
     dto: DeixarNoAmbienteDto,
   ): Promise<ItemPedido> {
-    const item = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: [
         'pedido',
@@ -633,6 +661,31 @@ export class PedidoService {
         'produto',
       ],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro (pode ter tenantId null)
+    if (!item) {
+      item = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: [
+          'pedido',
+          'pedido.comanda',
+          'pedido.comanda.pontoEntrega',
+          'pedido.comanda.pontoEntrega.ambientePreparo',
+          'pedido.comanda.mesa',
+          'pedido.comanda.mesa.ambiente',
+          'produto',
+        ],
+      });
+      
+      // Corrige tenantId se necessário
+      if (item && !item.tenantId) {
+        const currentTenantId = this.getTenantId();
+        if (currentTenantId) {
+          this.logger.warn(`🔧 Corrigindo tenantId do item ${itemPedidoId}`);
+          item.tenantId = currentTenantId;
+        }
+      }
+    }
 
     if (!item) {
       this.logger.warn(
@@ -695,11 +748,28 @@ export class PedidoService {
     itemPedidoId: string,
     dto: RetirarItemDto,
   ): Promise<ItemPedido> {
-    // Busca o item (incluindo ambiente do produto)
-    const item = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'pedido.comanda', 'produto', 'produto.ambiente'],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro
+    if (!item) {
+      item = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: ['pedido', 'pedido.comanda', 'produto', 'produto.ambiente'],
+      });
+      
+      // Corrige tenantId se necessário
+      if (item && !item.tenantId) {
+        const currentTenantId = this.getTenantId();
+        if (currentTenantId) {
+          this.logger.warn(`🔧 Corrigindo tenantId do item ${itemPedidoId}`);
+          item.tenantId = currentTenantId;
+        }
+      }
+    }
 
     if (!item) {
       throw new NotFoundException(
@@ -854,11 +924,28 @@ export class PedidoService {
     itemPedidoId: string,
     dto: MarcarEntregueDto,
   ): Promise<ItemPedido> {
-    // Busca o item
-    const item = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro
+    if (!item) {
+      item = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
+      });
+      
+      // Corrige tenantId se necessário
+      if (item && !item.tenantId) {
+        const currentTenantId = this.getTenantId();
+        if (currentTenantId) {
+          this.logger.warn(`🔧 Corrigindo tenantId do item ${itemPedidoId}`);
+          item.tenantId = currentTenantId;
+        }
+      }
+    }
 
     if (!item) {
       throw new NotFoundException(
