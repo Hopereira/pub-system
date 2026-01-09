@@ -95,8 +95,19 @@ export class PedidoService {
       ? await this.comandaRepository.findOne({ where: { id: comandaId } })
       : await this.comandaRepository.rawRepository.findOne({ 
           where: { id: comandaId },
-          relations: ['mesa', 'cliente', 'paginaEvento']
+          relations: ['mesa', 'cliente', 'paginaEvento'],
+          select: {
+            id: true,
+            status: true,
+            tenantId: true, // ✅ IMPORTANTE: Carregar tenantId explicitamente!
+            mesa: { id: true, numero: true },
+            cliente: { id: true, nome: true },
+            paginaEvento: { id: true },
+          },
         });
+    
+    // ✅ DEBUG: Log para verificar se tenantId foi carregado
+    this.logger.debug(`📋 Comanda carregada | id: ${comanda?.id} | tenantId: ${comanda?.tenantId || 'NULL'}`);
     
     if (!comanda) {
       this.logger.warn(

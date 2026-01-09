@@ -84,6 +84,9 @@ export class PedidosGateway
   emitNovoPedido(pedido: Pedido, tenantId?: string) {
     const targetTenantId = tenantId || (pedido as any).tenantId;
     
+    // 🔍 DEBUG: Log para verificar estrutura do pedido
+    this.logger.debug(`📊 emitNovoPedido - pedido.id: ${pedido.id}, comanda: ${pedido.comanda?.id || 'NULL'}, tenantId: ${targetTenantId || 'NULL'}`);
+    
     if (targetTenantId) {
       // ✅ ISOLADO: Emite apenas para o tenant do pedido
       this.emitToTenant(targetTenantId, 'novo_pedido', pedido);
@@ -102,6 +105,7 @@ export class PedidosGateway
           ) {
             const ambienteId = item.produto.ambiente.id;
             this.emitToTenant(targetTenantId, `novo_pedido_ambiente:${ambienteId}`, pedido);
+            this.logger.log(`📤 Evento 'novo_pedido_ambiente:${ambienteId}' emitido para tenant ${targetTenantId}`);
             ambientesNotificados.add(ambienteId);
           }
         });
@@ -111,7 +115,7 @@ export class PedidosGateway
       if (pedido.comanda?.id) {
         const comandaRoom = `comanda_${pedido.comanda.id}`;
         this.server.to(comandaRoom).emit('novo_pedido', pedido);
-        this.logger.debug(`📤 Evento 'novo_pedido' emitido para room ${comandaRoom}`);
+        this.logger.log(`📤 Evento 'novo_pedido' TAMBÉM emitido para comanda room: ${comandaRoom}`);
       }
     } else {
       // ⚠️ LEGADO: Fallback para broadcast (compatibilidade)
