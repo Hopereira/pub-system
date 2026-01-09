@@ -183,6 +183,14 @@ export class PedidosGateway
       this.logger.warn(`⚠️ Comanda ${comanda.id} sem tenant_id, usando broadcast`);
       this.server.emit('comanda_atualizada', comanda);
     }
+    
+    // ✅ CORREÇÃO: Também emite para o room da comanda (clientes públicos no portal)
+    // Isso permite que clientes acompanhando sua comanda recebam atualizações em tempo real
+    if (comanda.id) {
+      const comandaRoom = `comanda_${comanda.id}`;
+      this.server.to(comandaRoom).emit('comanda_atualizada', comanda);
+      this.logger.log(`📤 Evento 'comanda_atualizada' TAMBÉM emitido para comanda room: ${comandaRoom}`);
+    }
   }
 
   // ==================================================================
