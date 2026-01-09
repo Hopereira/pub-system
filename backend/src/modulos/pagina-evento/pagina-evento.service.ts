@@ -1,18 +1,16 @@
 // Caminho: backend/src/modulos/pagina-evento/pagina-evento.service.ts
 
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, NotFoundException, Scope } from '@nestjs/common';
 import { CreatePaginaEventoDto } from './dto/create-pagina-evento.dto';
 import { UpdatePaginaEventoDto } from './dto/update-pagina-evento.dto';
 import { PaginaEvento } from './entities/pagina-evento.entity';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
+import { PaginaEventoRepository } from './pagina-evento.repository';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class PaginaEventoService {
   constructor(
-    @InjectRepository(PaginaEvento)
-    private readonly paginaEventoRepository: Repository<PaginaEvento>,
+    private readonly paginaEventoRepository: PaginaEventoRepository,
     private readonly gcsStorageService: GcsStorageService,
   ) {}
 

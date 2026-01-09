@@ -1,24 +1,20 @@
 // Caminho: backend/src/modulos/evento/evento.service.ts
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, NotFoundException, Logger, Scope } from '@nestjs/common';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { Evento } from './entities/evento.entity';
-import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
+import { EventoRepository } from './evento.repository';
+import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
 import { Express } from 'express';
-// TODO: Criar EventoRepository quando necessário para multi-tenancy completo
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class EventoService {
   private readonly logger = new Logger(EventoService.name);
 
   constructor(
-    @InjectRepository(Evento)
-    private readonly eventoRepository: Repository<Evento>,
-    @InjectRepository(PaginaEvento)
-    private readonly paginaEventoRepository: Repository<PaginaEvento>,
+    private readonly eventoRepository: EventoRepository,
+    private readonly paginaEventoRepository: PaginaEventoRepository,
     private readonly storageService: GcsStorageService,
   ) {}
 

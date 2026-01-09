@@ -4,14 +4,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventoService } from './evento.service';
 import { EventoController } from './evento.controller';
 import { Evento } from './entities/evento.entity';
-import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { EventoRepository } from './evento.repository';
-// ✅ 1. Importar o seu módulo a partir do caminho correto
 import { StorageModule } from 'src/shared/storage/storage.module';
+import { PaginaEventoModule } from '../pagina-evento/pagina-evento.module';
 
 @Module({
-  // ✅ 2. Adicionar o StorageModule às importações
-  imports: [TypeOrmModule.forFeature([Evento, PaginaEvento]), StorageModule],
+  imports: [
+    TypeOrmModule.forFeature([Evento]),
+    StorageModule,
+    PaginaEventoModule, // Importa PaginaEventoRepository
+  ],
   controllers: [EventoController],
   providers: [EventoService, EventoRepository],
   exports: [EventoService, EventoRepository],
