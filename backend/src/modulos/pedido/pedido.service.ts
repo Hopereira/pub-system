@@ -364,11 +364,15 @@ export class PedidoService {
         'ambienteRetirada',
       ]);
 
+    // 🔒 CORREÇÃO: Usar andWhere ao invés de where para NÃO sobrescrever o filtro de tenant
+    // O createQueryBuilder do BaseTenantRepository já adiciona WHERE pedido.tenantId = :tenantId
+    // Usar .where() substitui esse WHERE, causando vazamento de dados entre tenants!
+    
     // Filtro por status específico ou padrão
     if (status) {
-      queryBuilder.where('itemPedido.status = :status', { status });
+      queryBuilder.andWhere('itemPedido.status = :status', { status });
     } else {
-      queryBuilder.where('itemPedido.status IN (:...statuses)', {
+      queryBuilder.andWhere('itemPedido.status IN (:...statuses)', {
         statuses: [
           PedidoStatus.FEITO,
           PedidoStatus.EM_PREPARO,
@@ -638,7 +642,8 @@ export class PedidoService {
       .leftJoinAndSelect('comanda.cliente', 'cliente')
       .leftJoinAndSelect('pedido.itens', 'itemPedido')
       .leftJoinAndSelect('itemPedido.produto', 'produto')
-      .where('itemPedido.status = :status', { status: PedidoStatus.PRONTO })
+      // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
+      .andWhere('itemPedido.status = :status', { status: PedidoStatus.PRONTO })
       .orderBy('pedido.data', 'ASC');
 
     if (ambienteId) {

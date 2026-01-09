@@ -880,10 +880,11 @@ export class ComandaService {
     }
 
     // Verifica se tem pedidos EM_PREPARO
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const pedidosEmPreparo = await this.pedidoRepository
       .createQueryBuilder('pedido')
       .leftJoin('pedido.itens', 'item')
-      .where('pedido.comanda.id = :comandaId', { comandaId })
+      .andWhere('pedido.comanda.id = :comandaId', { comandaId })
       .andWhere('item.status = :status', { status: PedidoStatus.EM_PREPARO })
       .getCount();
 

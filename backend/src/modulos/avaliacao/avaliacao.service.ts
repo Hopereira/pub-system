@@ -109,7 +109,8 @@ export class AvaliacaoService {
       .orderBy('avaliacao.criadoEm', 'DESC');
 
     if (dataInicio && dataFim) {
-      queryBuilder.where(
+      // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
+      queryBuilder.andWhere(
         'avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim',
         {
           dataInicio,
@@ -142,7 +143,8 @@ export class AvaliacaoService {
       this.avaliacaoRepository.createQueryBuilder('avaliacao');
 
     if (dataInicio && dataFim) {
-      queryBuilder.where(
+      // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
+      queryBuilder.andWhere(
         'avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim',
         {
           dataInicio,

@@ -152,12 +152,13 @@ export class PedidoAnalyticsService {
     dataInicio: Date,
     dataFim: Date,
   ): Promise<AmbientePerformanceDto[]> {
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const query = this.itemPedidoRepository
       .createQueryBuilder('item')
       .leftJoin('item.pedido', 'pedido')
       .leftJoin('item.produto', 'produto')
       .leftJoin('produto.ambiente', 'ambiente')
-      .where('pedido.data BETWEEN :dataInicio AND :dataFim', {
+      .andWhere('pedido.data BETWEEN :dataInicio AND :dataFim', {
         dataInicio,
         dataFim,
       })
@@ -207,11 +208,12 @@ export class PedidoAnalyticsService {
     dataFim: Date,
     limite: number,
   ): Promise<ProdutoVendasDto[]> {
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const query = this.itemPedidoRepository
       .createQueryBuilder('item')
       .leftJoin('item.pedido', 'pedido')
       .leftJoin('item.produto', 'produto')
-      .where('pedido.data BETWEEN :dataInicio AND :dataFim', {
+      .andWhere('pedido.data BETWEEN :dataInicio AND :dataFim', {
         dataInicio,
         dataFim,
       })
@@ -248,11 +250,12 @@ export class PedidoAnalyticsService {
     dataFim: Date,
     limite: number,
   ): Promise<ProdutoVendasDto[]> {
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const query = this.itemPedidoRepository
       .createQueryBuilder('item')
       .leftJoin('item.pedido', 'pedido')
       .leftJoin('item.produto', 'produto')
-      .where('pedido.data BETWEEN :dataInicio AND :dataFim', {
+      .andWhere('pedido.data BETWEEN :dataInicio AND :dataFim', {
         dataInicio,
         dataFim,
       })
@@ -285,9 +288,10 @@ export class PedidoAnalyticsService {
    * Pedidos por hora do dia
    */
   private async getPedidosPorHora(dataInicio: Date, dataFim: Date) {
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const query = this.pedidoRepository
       .createQueryBuilder('pedido')
-      .where('pedido.data BETWEEN :dataInicio AND :dataFim', {
+      .andWhere('pedido.data BETWEEN :dataInicio AND :dataFim', {
         dataInicio,
         dataFim,
       })
@@ -308,9 +312,10 @@ export class PedidoAnalyticsService {
    * Pedidos por dia da semana
    */
   private async getPedidosPorDiaSemana(dataInicio: Date, dataFim: Date) {
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const query = this.pedidoRepository
       .createQueryBuilder('pedido')
-      .where('pedido.data BETWEEN :dataInicio AND :dataFim', {
+      .andWhere('pedido.data BETWEEN :dataInicio AND :dataFim', {
         dataInicio,
         dataFim,
       })

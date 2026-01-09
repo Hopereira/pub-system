@@ -199,9 +199,10 @@ export class FuncionarioService implements OnModuleInit {
     alterarSenhaDto: AlterarSenhaDto,
   ): Promise<{ message: string }> {
     // Busca o funcionário com a senha (que normalmente não é retornada)
+    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const funcionario = await this.funcionarioRepository
       .createQueryBuilder('funcionario')
-      .where('funcionario.id = :id', { id: funcionarioId })
+      .andWhere('funcionario.id = :id', { id: funcionarioId })
       .addSelect('funcionario.senha')
       .getOne();
 
