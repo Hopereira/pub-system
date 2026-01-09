@@ -831,9 +831,9 @@ export class ComandaService {
         `🔄 Comanda ${comandaId} vinculada à Mesa ${mesa.numero}`,
       );
     }
-    // Se for ponto de entrega - Repository direto já não tem filtro de tenant
+    // Se for ponto de entrega - usar rawRepository para evitar filtro de tenant
     else if (dto.pontoEntregaId) {
-      const ponto = await this.pontoEntregaRepository.findOne({
+      const ponto = await this.pontoEntregaRepository.rawRepository.findOne({
         where: { id: dto.pontoEntregaId },
       });
       if (!ponto) {
