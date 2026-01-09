@@ -5,11 +5,14 @@ import {
   CallHandler,
   Logger,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { TenantContextService } from './tenant-context.service';
 import { TenantResolverService, TenantSource } from './tenant-resolver.service';
 import { JwtService } from '@nestjs/jwt';
+import { REQUIRES_TENANT_KEY } from '../../auth/decorators/public.decorator';
 
 /**
  * TenantInterceptor - Captura Híbrida (Staff vs Cliente)
@@ -37,6 +40,7 @@ export class TenantInterceptor implements NestInterceptor {
     private readonly tenantContext: TenantContextService,
     private readonly tenantResolver: TenantResolverService,
     private readonly jwtService: JwtService,
+    private readonly reflector: Reflector,
   ) {}
 
   async intercept(
@@ -93,7 +97,20 @@ export class TenantInterceptor implements NestInterceptor {
         );
       }
     } catch (error) {
-      // Para rotas públicas, não propagar erro de tenant não encontrado
+      // Verificar se a rota exige tenant (@PublicWithTenant)
+      const requiresTenant = this.reflector.getAllAndOverride<boolean>(
+        REQUIRES_TENANT_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+
+      if (requiresTenant) {
+        // Rota exige tenant mas não foi possível resolver
+        throw new BadRequestException(
+          'Estabelecimento não identificado. Verifique a URL ou o header X-Tenant-ID.'
+        );
+      }
+
+      // Para rotas públicas normais, não propagar erro de tenant não encontrado
       // Apenas logar e continuar - o service decidirá o que fazer
       this.logger?.debug?.(`Tenant não identificado: ${error?.message}`);
       // NÃO propagar erro 404 - deixar a rota decidir se precisa de tenant

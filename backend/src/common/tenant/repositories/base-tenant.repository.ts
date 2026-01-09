@@ -221,7 +221,32 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
 
   /**
    * Busca múltiplos registros SEM filtro de tenant
-   * ⚠️ Use apenas em rotas públicas onde o tenant não é obrigatório
+   * 
+   * ⚠️ **ATENÇÃO: USE COM CUIDADO!**
+   * 
+   * Este método IGNORA completamente o isolamento multi-tenant.
+   * Use APENAS nos seguintes cenários:
+   * 
+   * 1. **Rotas públicas** onde o tenant não é obrigatório
+   *    (ex: cliente buscando bar por slug antes de autenticar)
+   * 
+   * 2. **Entidades globais** que não pertencem a um tenant
+   *    (ex: clientes identificados por CPF)
+   * 
+   * 3. **Operações de Super Admin** que precisam ver todos os tenants
+   * 
+   * 4. **Seeds e migrações** de banco de dados
+   * 
+   * @example
+   * ```typescript
+   * // ✅ Correto: Buscar cliente por CPF (globalmente único)
+   * const cliente = await this.clienteRepository.findWithoutTenant({
+   *   where: { cpf: '12345678900' }
+   * });
+   * 
+   * // ❌ Errado: Buscar produtos (deve usar find() com tenant)
+   * // const produtos = await this.produtoRepository.findWithoutTenant();
+   * ```
    */
   async findWithoutTenant(options?: FindManyOptions<T>): Promise<T[]> {
     return this.repository.find(options);
@@ -229,7 +254,11 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
 
   /**
    * Busca com paginação SEM filtro de tenant
-   * ⚠️ Use apenas em rotas públicas onde o tenant não é obrigatório
+   * 
+   * ⚠️ **ATENÇÃO: USE COM CUIDADO!**
+   * 
+   * Mesmas restrições do `findWithoutTenant()`.
+   * @see findWithoutTenant para documentação completa
    */
   async findAndCountWithoutTenant(options?: FindManyOptions<T>): Promise<[T[], number]> {
     return this.repository.findAndCount(options);
@@ -272,8 +301,32 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
   }
 
   /**
-   * Cria QueryBuilder SEM filtro de tenant (uso interno/admin)
-   * ⚠️ CUIDADO: Use apenas quando realmente necessário
+   * Cria QueryBuilder SEM filtro de tenant
+   * 
+   * ⚠️ **PERIGO: PODE CAUSAR VAZAMENTO DE DADOS!**
+   * 
+   * Este método cria um QueryBuilder que NÃO aplica filtro de tenant.
+   * Use APENAS nos seguintes cenários:
+   * 
+   * 1. **Operações de Super Admin** com validação explícita de permissões
+   * 2. **Relatórios cross-tenant** (dashboard administrativo)
+   * 3. **Migrações e seeds** de dados
+   * 4. **Queries de join** onde o tenant é filtrado na tabela principal
+   * 
+   * @example
+   * ```typescript
+   * // ✅ Correto: Join onde o filtro é aplicado na tabela principal
+   * const qb = this.comandaRepository.createQueryBuilder('c');
+   * // Já tem WHERE c.tenant_id = ?
+   * qb.leftJoin('c.itens', 'i'); // Itens são filtrados pelo join
+   * 
+   * // ❌ Errado: Usar unsafe sem necessidade
+   * // const qb = this.produtoRepository.createQueryBuilderUnsafe('p');
+   * // qb.getMany(); // VAZAMENTO: retorna produtos de TODOS os bares!
+   * ```
+   * 
+   * @param alias - Alias para a tabela principal
+   * @returns QueryBuilder SEM filtro de tenant aplicado
    */
   createQueryBuilderUnsafe(alias: string): SelectQueryBuilder<T> {
     return this.repository.createQueryBuilder(alias);
@@ -369,7 +422,34 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
 
   /**
    * Acesso ao repositório TypeORM original
-   * ⚠️ CUIDADO: Queries sem filtro de tenant!
+   * 
+   * ⚠️ **PERIGO: NENHUM FILTRO DE TENANT!**
+   * 
+   * Use APENAS quando:
+   * 1. Precisa de operações que não existem no BaseTenantRepository
+   * 2. Operações de cleanup/maintenance com validação explícita
+   * 3. Rotas públicas onde o tenant ainda não foi resolvido
+   * 
+   * Para a maioria dos casos, use os métodos do BaseTenantRepository
+   * que já aplicam o filtro de tenant automaticamente.
+   * 
+   * @example
+   * ```typescript
+   * // ✅ Correto: Operação de maintenance com validação
+   * async cleanupOldRecords() {
+   *   // Apenas Super Admin pode executar
+   *   if (!this.isSuperAdmin()) throw new ForbiddenException();
+   *   
+   *   await this.repository.rawRepository
+   *     .createQueryBuilder()
+   *     .delete()
+   *     .where('createdAt < :date', { date: oneYearAgo })
+   *     .execute();
+   * }
+   * 
+   * // ❌ Errado: Usar sem validação
+   * // const all = await this.produtoRepository.rawRepository.find();
+   * ```
    */
   get rawRepository(): Repository<T> {
     return this.repository;

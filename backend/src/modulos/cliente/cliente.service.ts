@@ -11,6 +11,36 @@ import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { Cliente } from './entities/cliente.entity';
 import { ClienteRepository } from './cliente.repository';
 
+/**
+ * ClienteService - Gerenciamento de clientes
+ * 
+ * #### DECISÃO DE DESIGN: CLIENTES SÃO GLOBAIS
+ * 
+ * Os clientes são identificados globalmente por CPF, não por tenant.
+ * Isso significa que:
+ * 
+ * 1. **Um CPF = Um cliente** no sistema inteiro
+ * 2. **Mesmo cliente em vários bares**: Se um cliente frequenta múltiplos
+ *    bares do Pub System, ele usa o mesmo cadastro
+ * 3. **Histórico unificado**: O cliente pode ver seu histórico de todos
+ *    os estabelecimentos (futuro)
+ * 4. **Privacidade**: Cada bar só vê os pedidos feitos no próprio bar
+ *    (filtrado por tenant_id nas comandas/pedidos)
+ * 
+ * #### POR QUE ESSA DECISÃO?
+ * 
+ * - **UX simplificada**: Cliente não precisa se cadastrar em cada bar
+ * - **Fidelização cross-bar**: Futuro programa de fidelidade unificado
+ * - **Consistência de dados**: CPF é naturalmente único no Brasil
+ * 
+ * #### IMPLICAÇÕES TÉCNICAS:
+ * 
+ * - `findByCpf()` usa `findByCpfPublic()` (sem filtro de tenant)
+ * - `create()` verifica CPF globalmente antes de criar
+ * - O tenant_id do cliente é definido quando associado a uma comanda
+ * 
+ * @see ClienteRepository para métodos `*Public()` que ignoram tenant
+ */
 @Injectable()
 export class ClienteService {
   constructor(
