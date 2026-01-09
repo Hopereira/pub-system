@@ -707,7 +707,7 @@ export class ComandaService {
 
       if (!caixaAberto) {
         throw new BadRequestException(
-          'Não há caixa aberto no momento. Por favor, abra o caixa antes de fechar comandas.',
+          'Nenhum caixa aberto encontrado. Abra um caixa em "Gestão de Caixas" ou solicite ao operador de caixa mais próximo para processar o pagamento.',
         );
       }
 
