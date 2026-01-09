@@ -35,4 +35,15 @@ export class PaginaEventoRepository extends BaseTenantRepository<PaginaEvento> {
       where: { id } as any,
     });
   }
+
+  /**
+   * Busca página de evento por ID sem filtro de tenant (para rotas públicas)
+   * ⚠️ CUIDADO: Usado apenas para acesso público via QR Code/Link
+   * @param id - ID da página de evento
+   */
+  async findByIdPublic(id: string) {
+    return this.rawRepository.findOne({
+      where: { id },
+    });
+  }
 }

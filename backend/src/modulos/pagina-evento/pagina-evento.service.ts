@@ -40,6 +40,21 @@ export class PaginaEventoService {
     return paginaEvento;
   }
 
+  // --- Ler Um Público (Read One Public) ---
+  /**
+   * Busca página de evento por ID sem filtro de tenant
+   * ⚠️ Usado apenas para rotas públicas (QR Code/Link)
+   */
+  async findOnePublic(id: string): Promise<PaginaEvento> {
+    const paginaEvento = await this.paginaEventoRepository.findByIdPublic(id);
+    if (!paginaEvento) {
+      throw new NotFoundException(
+        `Página de Evento com ID "${id}" não encontrada.`,
+      );
+    }
+    return paginaEvento;
+  }
+
   // --- Atualizar (Update) ---
   async update(
     id: string,
@@ -87,8 +102,12 @@ export class PaginaEventoService {
   /**
    * Encontra a primeira página de evento que está marcada como "ativa".
    * Retorna nulo se nenhuma for encontrada.
+   * ⚠️ Usado em rota pública - sem filtro de tenant
    */
   async findAtiva(): Promise<PaginaEvento | null> {
-    return this.paginaEventoRepository.findOne({ where: { ativa: true } });
+    const paginasAtivas = await this.paginaEventoRepository.findWithoutTenant({ 
+      where: { ativa: true } as any 
+    });
+    return paginasAtivas.length > 0 ? paginasAtivas[0] : null;
   }
 }
