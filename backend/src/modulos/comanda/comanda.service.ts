@@ -385,8 +385,7 @@ export class ComandaService {
   }
 
   async search(term: string): Promise<Comanda[]> {
-    const tenantId = this.getTenantId();
-    this.logger.log(`🔍 search - tenantId: ${tenantId || 'NENHUM'}`);
+    this.logger.log(`🔍 Buscando comandas abertas ${term ? `com termo: "${term}"` : 'sem filtro'}`);
     
     const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
     queryBuilder
@@ -397,15 +396,9 @@ export class ComandaService {
       .leftJoinAndSelect('comanda.pedidos', 'pedidos')
       .leftJoinAndSelect('pedidos.itens', 'itens')
       .leftJoinAndSelect('itens.produto', 'produto')
-      .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
+      .andWhere('comanda.status = :status', { status: ComandaStatus.ABERTA }); // ✅ andWhere para NÃO sobrescrever filtro de tenant
     
-    // Filtrar por tenant quando disponível
-    if (tenantId) {
-      queryBuilder.andWhere('comanda.tenant_id = :tenantId', { tenantId });
-      this.logger.log(`🔒 Filtrando comandas por tenantId: ${tenantId}`);
-    } else {
-      this.logger.warn(`⚠️ Sem tenantId - retornando TODAS as comandas!`);
-    }
+    // Nota: O filtro de tenant já é aplicado automaticamente pelo createQueryBuilder do BaseTenantRepository
 
     if (term) {
       const searchTerm = term.trim();
