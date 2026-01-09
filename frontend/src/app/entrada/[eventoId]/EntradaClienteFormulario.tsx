@@ -84,10 +84,12 @@ export default function EntradaClienteFormulario({ evento, paginaEvento, mesaId 
       };
       const novoCliente = await findOrCreateClient(valuesComCpfLimpo);
 
+      // ✅ Se paginaEvento.id estiver vazio, significa que é um fallback virtual
+      // Nesse caso, não enviar paginaEventoId - apenas o eventoId é suficiente
       const novaComanda = await abrirComandaPublica({
         clienteId: novoCliente.id,
         mesaId: mesaId,
-        paginaEventoId: paginaEvento.id,
+        paginaEventoId: paginaEvento.id || undefined, // Não enviar ID vazio
         eventoId: evento.id, 
       });
 
