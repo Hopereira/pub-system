@@ -1,14 +1,19 @@
-import api from './api';
+import api, { publicApi } from './api';
 import { Avaliacao, CreateAvaliacaoDto, EstatisticasSatisfacao } from '@/types/avaliacao';
 import { logger } from '@/lib/logger';
 
+/**
+ * Cria uma avaliação de cliente (usa API pública com X-Tenant-ID)
+ * Esta função é usada na página de acesso do cliente após pagamento
+ */
 export const createAvaliacao = async (data: CreateAvaliacaoDto): Promise<Avaliacao> => {
   try {
     logger.log('⭐ Criando avaliação', {
       module: 'AvaliacaoService',
       data: { comandaId: data.comandaId, nota: data.nota },
     });
-    const response = await api.post<Avaliacao>('/avaliacoes', data);
+    // Usa publicApi que envia X-Tenant-ID baseado no subdomínio
+    const response = await publicApi.post<Avaliacao>('/avaliacoes', data);
     logger.log('✅ Avaliação criada com sucesso', {
       module: 'AvaliacaoService',
       data: { avaliacaoId: response.data.id },
