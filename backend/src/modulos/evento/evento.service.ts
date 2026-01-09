@@ -68,6 +68,19 @@ export class EventoService {
     return evento;
   }
 
+  /**
+   * Busca um evento por ID sem filtro de tenant (para rotas públicas)
+   */
+  async findOnePublic(id: string): Promise<Evento> {
+    const evento = await this.eventoRepository.findByIdPublic(id, [
+      'paginaEvento',
+    ]);
+    if (!evento) {
+      throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
+    }
+    return evento;
+  }
+
   async update(id: string, updateEventoDto: UpdateEventoDto): Promise<Evento> {
     const { paginaEventoId, ...restoDoDto } = updateEventoDto;
 

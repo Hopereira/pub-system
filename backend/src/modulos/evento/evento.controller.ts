@@ -126,9 +126,7 @@ export class EventoController {
   @ApiResponse({ status: 200, description: 'Evento retornado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })
   findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
-    // Você precisará de um método findPublicOne no seu EventoService para buscar eventos ativos.
-    // Se não tiver, use findOne e implemente a verificação de ativo no service.
-    return this.eventoService.findOne(id);
+    return this.eventoService.findOnePublic(id);
   }
 
   @Patch(':id')

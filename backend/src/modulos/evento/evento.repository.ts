@@ -47,4 +47,17 @@ export class EventoRepository extends BaseTenantRepository<Evento> {
       relations: ['paginaEvento'],
     });
   }
+
+  /**
+   * Busca evento por ID sem filtro de tenant (para rotas públicas)
+   * ⚠️ CUIDADO: Usado apenas para páginas públicas de eventos
+   * @param eventoId - ID do evento
+   * @param relations - Relações a carregar
+   */
+  async findByIdPublic(eventoId: string, relations: string[] = []) {
+    return this.rawRepository.findOne({
+      where: { id: eventoId },
+      relations,
+    });
+  }
 }
