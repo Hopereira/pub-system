@@ -3,6 +3,7 @@ import { Injectable, NotFoundException, Logger, Scope } from '@nestjs/common';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { Evento } from './entities/evento.entity';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
 import { EventoRepository } from './evento.repository';
 import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
@@ -123,8 +124,8 @@ export class EventoService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.eventoRepository.delete(id);
-    if (result.affected === 0) {
+    const deletedCount = await this.eventoRepository.delete(id);
+    if (deletedCount === 0) {
       throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
     }
   }

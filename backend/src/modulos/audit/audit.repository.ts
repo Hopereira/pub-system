@@ -120,20 +120,53 @@ export class AuditRepository extends BaseTenantRepository<AuditLog> {
   /**
    * Conta registros por período para estatísticas
    */
-  async getStatistics(startDate?: Date, endDate?: Date) {
-    const query = this.createQueryBuilder('audit')
+  async getStatistics(startDate?: Date, endDate?: Date): Promise<{
+    totalLogs: number;
+    byAction: { action: string; count: number }[];
+    byEntity: { entity: string; count: number }[];
+  }> {
+    // Query para contar por ação
+    const actionQuery = this.createQueryBuilder('audit')
       .select('audit.action', 'action')
       .addSelect('COUNT(*)', 'count')
       .groupBy('audit.action');
 
+    // Query para contar por entidade
+    const entityQuery = this.createQueryBuilder('audit')
+      .select('audit.entityName', 'entity')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('audit.entityName');
+
+    // Query para total
+    const totalQuery = this.createQueryBuilder('audit')
+      .select('COUNT(*)', 'total');
+
     if (startDate && endDate) {
-      query.andWhere('audit.createdAt BETWEEN :startDate AND :endDate', {
+      actionQuery.andWhere('audit.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+      entityQuery.andWhere('audit.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+      totalQuery.andWhere('audit.createdAt BETWEEN :startDate AND :endDate', {
         startDate,
         endDate,
       });
     }
 
-    return query.getRawMany();
+    const [byAction, byEntity, totalResult] = await Promise.all([
+      actionQuery.getRawMany(),
+      entityQuery.getRawMany(),
+      totalQuery.getRawOne(),
+    ]);
+
+    return {
+      totalLogs: parseInt(totalResult?.total || '0', 10),
+      byAction: byAction.map(r => ({ action: r.action, count: parseInt(r.count, 10) })),
+      byEntity: byEntity.map(r => ({ entity: r.entity, count: parseInt(r.count, 10) })),
+    };
   }
 
   /**

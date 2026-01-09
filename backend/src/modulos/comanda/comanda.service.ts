@@ -8,8 +8,7 @@ import {
   Optional,
   Scope,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { REQUEST } from '@nestjs/core';
@@ -20,10 +19,10 @@ import { TenantResolverService } from '../../common/tenant/tenant-resolver.servi
 // Entidades de Módulos Associados
 import { Cliente } from '../cliente/entities/cliente.entity';
 import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
-import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
-import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
+import { Evento } from '../evento/entities/evento.entity';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
@@ -32,6 +31,11 @@ import { ComandaRepository } from './comanda.repository';
 import { MesaRepository } from '../mesa/mesa.repository';
 import { ClienteRepository } from '../cliente/cliente.repository';
 import { PedidoRepository } from '../pedido/pedido.repository';
+import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
+import { EventoRepository } from '../evento/evento.repository';
+import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
+import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
+import { ComandaAgregadoRepository } from './comanda-agregado.repository';
 
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
@@ -57,17 +61,12 @@ export class ComandaService {
     private readonly comandaRepository: ComandaRepository,
     private readonly mesaRepository: MesaRepository,
     private readonly clienteRepository: ClienteRepository,
-    @InjectRepository(PaginaEvento)
-    private readonly paginaEventoRepository: Repository<PaginaEvento>,
-    @InjectRepository(Evento)
-    private readonly eventoRepository: Repository<Evento>,
+    private readonly paginaEventoRepository: PaginaEventoRepository,
+    private readonly eventoRepository: EventoRepository,
     private readonly pedidoRepository: PedidoRepository,
-    @InjectRepository(ItemPedido)
-    private readonly itemPedidoRepository: Repository<ItemPedido>,
-    @InjectRepository(PontoEntrega)
-    private readonly pontoEntregaRepository: Repository<PontoEntrega>,
-    @InjectRepository(ComandaAgregado)
-    private readonly comandaAgregadoRepository: Repository<ComandaAgregado>,
+    private readonly itemPedidoRepository: ItemPedidoRepository,
+    private readonly pontoEntregaRepository: PontoEntregaRepository,
+    private readonly comandaAgregadoRepository: ComandaAgregadoRepository,
     private readonly pedidosGateway: PedidosGateway,
     private readonly caixaService: CaixaService,
     @Inject(CACHE_MANAGER)
