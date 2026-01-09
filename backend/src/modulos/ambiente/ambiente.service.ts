@@ -83,6 +83,9 @@ export class AmbienteService {
 
   // --- MÉTODO 'findAll' CORRIGIDO ---
   async findAll(): Promise<any[]> {
+    const tenantId = this.getTenantId();
+    this.logger.log(`🔍 [findAll] TenantId obtido: ${tenantId}`);
+    
     const cacheKey = this.getCacheKey('all');
 
     // Tentar buscar do cache
@@ -94,7 +97,8 @@ export class AmbienteService {
 
     this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
-    const ambientes = await this.ambienteRepository
+    // 🔒 CORREÇÃO: Usar o createQueryBuilder do repository que já aplica filtro de tenant
+    const queryBuilder = this.ambienteRepository
       .createQueryBuilder('ambiente')
       .leftJoin('ambiente.produtos', 'produto')
       .leftJoin('ambiente.mesas', 'mesa')
@@ -104,12 +108,20 @@ export class AmbienteService {
       // --- ADICIONADO PARA CORRIGIR O BUG ---
       .addSelect('ambiente.tipo', 'tipo')
       .addSelect('ambiente.isPontoDeRetirada', 'isPontoDeRetirada')
+      .addSelect('ambiente.tenantId', 'tenantId')
       // --- FIM DA ADIÇÃO ---
       .addSelect('COUNT(DISTINCT produto.id)', 'productCount')
       .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')
       .groupBy('ambiente.id')
-      .orderBy('ambiente.nome', 'ASC')
-      .getRawMany();
+      .orderBy('ambiente.nome', 'ASC');
+    
+    // Log da query SQL para debug
+    this.logger.log(`🔍 [findAll] Query SQL: ${queryBuilder.getQuery()}`);
+    this.logger.log(`🔍 [findAll] Parâmetros: ${JSON.stringify(queryBuilder.getParameters())}`);
+    
+    const ambientes = await queryBuilder.getRawMany();
+    
+    this.logger.log(`🔍 [findAll] Ambientes encontrados: ${ambientes.length} para tenant: ${tenantId}`);
 
     // A conversão de `isPontoDeRetirada` para booleano é feita automaticamente pelo driver.
     // O resto da lógica permanece a mesma.
