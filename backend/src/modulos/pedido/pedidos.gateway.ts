@@ -123,6 +123,9 @@ export class PedidosGateway
   emitStatusAtualizado(pedido: Pedido, tenantId?: string) {
     const targetTenantId = tenantId || (pedido as any).tenantId;
     
+    // 🔍 DEBUG: Log para verificar estrutura do pedido
+    this.logger.debug(`📊 emitStatusAtualizado - pedido.id: ${pedido.id}, comanda: ${pedido.comanda ? pedido.comanda.id : 'NULL'}, tenantId: ${targetTenantId}`);
+    
     if (targetTenantId) {
       // ✅ ISOLADO: Emite apenas para o tenant do pedido
       this.emitToTenant(targetTenantId, 'status_atualizado', pedido);
@@ -150,7 +153,9 @@ export class PedidosGateway
       if (pedido.comanda?.id) {
         const comandaRoom = `comanda_${pedido.comanda.id}`;
         this.server.to(comandaRoom).emit('status_atualizado', pedido);
-        this.logger.debug(`📤 Evento 'status_atualizado' emitido para room ${comandaRoom}`);
+        this.logger.log(`📤 Evento 'status_atualizado' TAMBÉM emitido para comanda room: ${comandaRoom}`);
+      } else {
+        this.logger.warn(`⚠️ Pedido ${pedido.id} não tem comanda associada para emitir evento!`);
       }
     } else {
       // ⚠️ LEGADO: Fallback para broadcast
