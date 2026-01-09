@@ -22,6 +22,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from 'src/auth/decorators/public.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
 import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 import {
@@ -134,8 +135,9 @@ export class ComandaController {
   fecharComanda(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: FecharComandaDto,
+    @CurrentUser() user: { id: string; cargo: string },
   ) {
-    return this.comandaService.fecharComanda(id, dto);
+    return this.comandaService.fecharComanda(id, dto, user.id);
   }
 
   @Get(':id')

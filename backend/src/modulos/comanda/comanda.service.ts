@@ -657,9 +657,9 @@ export class ComandaService {
     };
   }
 
-  async fecharComanda(id: string, dto: FecharComandaDto): Promise<Comanda> {
+  async fecharComanda(id: string, dto: FecharComandaDto, funcionarioId: string): Promise<Comanda> {
     this.logger.log(
-      `🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento}`,
+      `🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento} - Operador: ${funcionarioId}`,
     );
 
     // Buscar comanda com todas as relações necessárias
@@ -699,15 +699,14 @@ export class ComandaService {
 
     this.logger.log(`💰 Total da comanda: R$ ${totalNumber.toFixed(2)}`);
 
-    // ✅ NOVO: Validar e registrar venda no caixa
+    // ✅ Validar e registrar venda no caixa DO OPERADOR ATUAL
     try {
-      // Buscar caixa aberto (pode estar vinculado ao funcionário que abriu a comanda ou ao atual)
-      // Por simplicidade, vamos buscar qualquer caixa aberto no momento
-      const caixaAberto = await this.caixaService.getCaixaAbertoAtual();
+      // Buscar caixa aberto pelo funcionário atual (cada operador só pode usar seu próprio caixa)
+      const caixaAberto = await this.caixaService.getCaixaAbertoAtual(funcionarioId);
 
       if (!caixaAberto) {
         throw new BadRequestException(
-          'Nenhum caixa aberto encontrado. Abra um caixa em "Gestão de Caixas" ou solicite ao operador de caixa mais próximo para processar o pagamento.',
+          'Você precisa abrir um caixa antes de processar pagamentos. Acesse "Gestão de Caixas" para abrir seu caixa.',
         );
       }
 
