@@ -86,6 +86,11 @@ export class AmbienteService {
     const tenantId = this.getTenantId();
     this.logger.log(`🔍 [findAll] TenantId obtido: ${tenantId}`);
     
+    if (!tenantId) {
+      this.logger.error(`❌ [findAll] TenantId é NULL/undefined! Retornando array vazio por segurança.`);
+      return [];
+    }
+    
     const cacheKey = this.getCacheKey('all');
 
     // Tentar buscar do cache
@@ -97,7 +102,8 @@ export class AmbienteService {
 
     this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
-    // 🔒 CORREÇÃO: Usar o createQueryBuilder do repository que já aplica filtro de tenant
+    // 🔒 CORREÇÃO DEFINITIVA: Usar query builder do TypeORM raw com filtro explícito de tenant
+    // O createQueryBuilder do BaseTenantRepository pode perder o WHERE ao usar .select()
     const queryBuilder = this.ambienteRepository
       .createQueryBuilder('ambiente')
       .leftJoin('ambiente.produtos', 'produto')
@@ -105,13 +111,13 @@ export class AmbienteService {
       .select('ambiente.id', 'id')
       .addSelect('ambiente.nome', 'nome')
       .addSelect('ambiente.descricao', 'descricao')
-      // --- ADICIONADO PARA CORRIGIR O BUG ---
       .addSelect('ambiente.tipo', 'tipo')
       .addSelect('ambiente.isPontoDeRetirada', 'isPontoDeRetirada')
       .addSelect('ambiente.tenantId', 'tenantId')
-      // --- FIM DA ADIÇÃO ---
       .addSelect('COUNT(DISTINCT produto.id)', 'productCount')
       .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')
+      // 🔒 GARANTIR filtro de tenant EXPLICITAMENTE (caso o createQueryBuilder não esteja aplicando)
+      .andWhere('ambiente.tenantId = :tenantId', { tenantId })
       .groupBy('ambiente.id')
       .orderBy('ambiente.nome', 'ASC');
     
