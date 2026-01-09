@@ -1,7 +1,8 @@
 # ✅ Correções de TenantId - CONCLUÍDAS - Pub System
 
 > **Data da Análise Inicial:** 9 de Janeiro de 2026  
-> **Data da Conclusão:** 10 de Janeiro de 2026  
+> **Data da Conclusão:** 9 de Janeiro de 2026  
+> **Última Atualização:** 9 de Janeiro de 2026  
 > **Status:** ✅ **TODAS AS CORREÇÕES CONCLUÍDAS**  
 > **Impacto:** Sistema agora com isolamento multi-tenant completo
 
@@ -16,6 +17,21 @@
 | 🟡 MÉDIA | 4 | ✅ **CORRIGIDO** |
 | 🟢 BAIXA | 2 | ✅ **CORRIGIDO** |
 | **TOTAL** | **18** | ✅ **100%** |
+
+---
+
+## 🆕 Correções Adicionais (09/01/2026)
+
+Após a conclusão das correções de multi-tenancy, foram identificados e corrigidos problemas em **rotas públicas** que não conseguiam acessar dados devido ao filtro de tenant:
+
+| Rota | Problema | Solução |
+|------|----------|---------|
+| `POST /avaliacoes` | Erro ao enviar avaliação | Métodos `*Public()` no repository |
+| `GET /paginas-evento/:id/public` | 404 em página de evento | Métodos `*Public()` no repository |
+| `PATCH /comandas/:id/local` | Erro ao mudar local entrega | Usar `rawRepository.findOne()` |
+| `GET /eventos/publicos/:id` | Erro de tenant | Métodos `*Public()` no repository |
+
+**Padrão estabelecido:** Para rotas públicas, usar `this.rawRepository` que acessa o banco sem filtro de tenant.
 
 ---
 
