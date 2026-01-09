@@ -187,4 +187,20 @@ export class AmbienteService {
       throw error;
     }
   }
+
+  // 🔍 MÉTODO DE DIAGNÓSTICO - Busca todos ambientes SEM filtro de tenant
+  async debugFindAllWithoutFilter(): Promise<Ambiente[]> {
+    // Usar rawRepository para buscar TODOS os ambientes do banco (ignorando tenant)
+    const ambientes = await this.ambienteRepository.rawRepository.find({
+      select: ['id', 'nome', 'tenantId'],
+      order: { nome: 'ASC' },
+    });
+    
+    this.logger.warn(`🔍 [DEBUG] Total de ambientes no banco (sem filtro): ${ambientes.length}`);
+    ambientes.forEach(a => {
+      this.logger.warn(`   - ${a.nome}: tenantId=${a.tenantId || 'NULL'}`);
+    });
+    
+    return ambientes;
+  }
 }
