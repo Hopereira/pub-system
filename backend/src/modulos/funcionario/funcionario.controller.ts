@@ -80,28 +80,32 @@ export class FuncionarioController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'Cria um novo funcionário no sistema (Apenas ADMIN)',
+    summary: 'Cria um novo funcionário no sistema (Apenas ADMIN/SUPER_ADMIN)',
   })
   @ApiResponse({ status: 201, description: 'Funcionário criado com sucesso.' })
   @ApiResponse({
     status: 403,
-    description: 'Acesso negado. Rota apenas para administradores.',
+    description: 'Acesso negado ou tentativa de elevação de privilégio.',
   })
   @ApiResponse({
     status: 409,
     description: 'Conflito. O e-mail ou CPF já existe.',
   })
-  create(@Body() createFuncionarioDto: CreateFuncionarioDto) {
-    return this.funcionarioService.create(createFuncionarioDto);
+  create(
+    @Body() createFuncionarioDto: CreateFuncionarioDto,
+    @Request() req: any,
+  ) {
+    const actorCargo = req.user?.cargo as Cargo;
+    return this.funcionarioService.create(createFuncionarioDto, actorCargo);
   }
 
   // --- LISTAR TODOS OS FUNCIONÁRIOS ---
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.SUPER_ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Lista todos os funcionários cadastrados' })
   @ApiResponse({
     status: 200,
@@ -109,7 +113,7 @@ export class FuncionarioController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Acesso negado. Rota apenas para administradores.',
+    description: 'Acesso negado.',
   })
   findAll() {
     return this.funcionarioService.findAll();
@@ -207,7 +211,7 @@ export class FuncionarioController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.SUPER_ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Busca um único funcionário pelo seu ID' })
   @ApiResponse({
     status: 200,
@@ -226,7 +230,7 @@ export class FuncionarioController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.SUPER_ADMIN)
   @ApiOperation({ summary: 'Atualiza os dados de um funcionário específico' })
   @ApiResponse({
     status: 200,
@@ -234,21 +238,23 @@ export class FuncionarioController {
   })
   @ApiResponse({
     status: 403,
-    description: 'Acesso negado. Rota apenas para administradores.',
+    description: 'Acesso negado ou tentativa de elevação de privilégio.',
   })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateFuncionarioDto: UpdateFuncionarioDto,
+    @Request() req: any,
   ) {
-    return this.funcionarioService.update(id, updateFuncionarioDto);
+    const actorCargo = req.user?.cargo as Cargo;
+    return this.funcionarioService.update(id, updateFuncionarioDto, actorCargo);
   }
 
   // --- REMOVER UM FUNCIONÁRIO ---
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.SUPER_ADMIN)
   @ApiOperation({ summary: 'Remove um funcionário do sistema' })
   @ApiResponse({
     status: 200,
@@ -267,7 +273,7 @@ export class FuncionarioController {
   @Patch(':id/upload-foto')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.SUPER_ADMIN)
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload de foto de um funcionário (Admin)' })
   @ApiResponse({ status: 200, description: 'Foto enviada com sucesso.' })

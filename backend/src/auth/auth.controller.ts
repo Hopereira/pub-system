@@ -7,9 +7,12 @@ import {
   Param,
   Ip,
   Headers,
+  Req,
+  Res,
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
@@ -31,13 +34,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Realiza login e retorna access token e refresh token' })
   @ApiResponse({
     status: 200,
-    description: 'Login realizado com sucesso. Retorna access_token e refresh_token.',
+    description: 'Login realizado com sucesso. Retorna access_token. Refresh token via httpOnly cookie.',
   })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas.' })
   async login(
     @Body() loginDto: LoginDto,
     @Ip() ipAddress: string,
-    @Headers('user-agent') userAgent?: string,
+    @Headers('user-agent') userAgent: string,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const user = await this.authService.validateUser(
       loginDto.email,
@@ -47,22 +51,50 @@ export class AuthController {
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
-    return this.authService.login(user, ipAddress, userAgent);
+    const result = await this.authService.login(user, ipAddress, userAgent);
+
+    // Set refresh token as httpOnly cookie (7 days)
+    this.setRefreshCookie(res, result.refresh_token);
+
+    return {
+      access_token: result.access_token,
+      expires_in: result.expires_in,
+      tenant_id: result.tenant_id,
+      user: result.user,
+    };
   }
 
   @ThrottleAPI()
   @Post('refresh')
-  @ApiOperation({ summary: 'Renovar access token usando refresh token' })
+  @ApiOperation({ summary: 'Renovar access token usando refresh token (cookie ou body)' })
   @ApiResponse({
     status: 200,
     description: 'Access token renovado com sucesso.',
   })
   @ApiResponse({ status: 401, description: 'Refresh token inválido ou expirado.' })
   async refresh(
-    @Body('refresh_token') refreshToken: string,
+    @Body('refresh_token') bodyToken: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Ip() ipAddress: string,
   ) {
-    return this.refreshTokenService.refreshAccessToken(refreshToken, ipAddress);
+    // Accept from httpOnly cookie (preferred) or body (backward compat)
+    const refreshToken = req.cookies?.refresh_token || bodyToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token não fornecido');
+    }
+
+    const result = await this.refreshTokenService.refreshAccessToken(refreshToken, ipAddress);
+
+    // If token was rotated, update cookie
+    if (result.refreshToken) {
+      this.setRefreshCookie(res, result.refreshToken);
+    }
+
+    return {
+      access_token: result.accessToken,
+      tenant_id: result.tenantId,
+    };
   }
 
   @ThrottleAPI()
@@ -72,11 +104,17 @@ export class AuthController {
   @ApiOperation({ summary: 'Fazer logout e revogar refresh token' })
   @ApiResponse({ status: 200, description: 'Logout realizado com sucesso.' })
   async logout(
-    @Body('refresh_token') refreshToken: string,
+    @Body('refresh_token') bodyToken: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @CurrentUser() user: any,
     @Ip() ipAddress: string,
   ) {
-    await this.authService.logout(refreshToken, ipAddress, user);
+    const refreshToken = req.cookies?.refresh_token || bodyToken;
+    if (refreshToken) {
+      await this.authService.logout(refreshToken, ipAddress, user);
+    }
+    this.clearRefreshCookie(res);
     return { message: 'Logout realizado com sucesso' };
   }
 
@@ -88,9 +126,11 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logout de todas as sessões realizado.' })
   async logoutAll(
     @CurrentUser() user: any,
+    @Res({ passthrough: true }) res: Response,
     @Ip() ipAddress: string,
   ) {
     await this.authService.logoutAll(user.sub, ipAddress);
+    this.clearRefreshCookie(res);
     return { message: 'Logout de todas as sessões realizado com sucesso' };
   }
 
@@ -132,5 +172,26 @@ export class AuthController {
       ipAddress,
     );
     return { message: 'Sessão revogada com sucesso' };
+  }
+
+  private setRefreshCookie(res: Response, token: string): void {
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('refresh_token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/auth',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+  }
+
+  private clearRefreshCookie(res: Response): void {
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      path: '/auth',
+    });
   }
 }

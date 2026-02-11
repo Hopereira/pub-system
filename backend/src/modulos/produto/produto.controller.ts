@@ -50,7 +50,7 @@ export class ProdutoController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Cria um novo produto com imagem opcional' })
@@ -82,7 +82,7 @@ export class ProdutoController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Atualiza um produto (imagem opcional)' })

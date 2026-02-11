@@ -1,4 +1,11 @@
-import { Controller, Post, Body, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Logger,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Funcionario } from '../modulos/funcionario/entities/funcionario.entity';
@@ -7,8 +14,13 @@ import { FuncionarioStatus } from '../modulos/funcionario/enums/funcionario-stat
 import * as bcrypt from 'bcrypt';
 
 /**
- * Controller temporário para criar Super Admin
- * REMOVER EM PRODUÇÃO
+ * Controller para criar Super Admin — protegido por env vars.
+ *
+ * Só funciona quando:
+ *   ENABLE_SETUP=true  (habilita o endpoint)
+ *   SETUP_TOKEN=<token> (token obrigatório no body para autorizar)
+ *
+ * Em produção, ENABLE_SETUP deve ser false ou ausente.
  */
 @Controller('setup')
 export class CreateSuperAdminController {
@@ -21,8 +33,24 @@ export class CreateSuperAdminController {
 
   @Post('super-admin')
   async createSuperAdmin(
-    @Body() body: { email: string; senha: string; nome: string },
+    @Body()
+    body: { email: string; senha: string; nome: string; setup_token?: string },
   ) {
+    // Bloqueia se ENABLE_SETUP não for explicitamente 'true'
+    if (process.env.ENABLE_SETUP !== 'true') {
+      this.logger.warn(
+        `🚫 Tentativa de acesso a /setup/super-admin com ENABLE_SETUP desabilitado`,
+      );
+      throw new NotFoundException();
+    }
+
+    // Valida setup token se configurado
+    const expectedToken = process.env.SETUP_TOKEN;
+    if (expectedToken && body.setup_token !== expectedToken) {
+      this.logger.warn(`🚫 Setup token inválido em /setup/super-admin`);
+      throw new ForbiddenException('Setup token inválido');
+    }
+
     const { email, senha, nome } = body;
 
     // Verificar se já existe

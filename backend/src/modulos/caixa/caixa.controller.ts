@@ -26,7 +26,7 @@ import { Cargo } from '../funcionario/enums/cargo.enum';
 @ApiBearerAuth()
 @Controller('caixa')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Cargo.ADMIN, Cargo.CAIXA)
+@Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
 export class CaixaController {
   constructor(private readonly caixaService: CaixaService) {}
 
@@ -215,7 +215,7 @@ export class CaixaController {
    * ADMIN vê todos os caixas, CAIXA vê apenas o próprio
    */
   @Get('relatorio/vendas-por-caixa')
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
   @ApiOperation({ 
     summary: 'Relatório de vendas por caixa', 
     description: 'Relatório consolidado de vendas agrupado por funcionário (caixa) com filtros de período. ADMIN vê todos, CAIXA vê apenas o próprio.' 

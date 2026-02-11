@@ -60,7 +60,7 @@ export class ComandaController {
 
   @Get('search')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Busca comandas abertas por número da mesa ou nome/CPF do cliente',
@@ -95,7 +95,7 @@ export class ComandaController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista todas as comandas do sistema com paginação' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Página atual (padrão: 1)' })
@@ -108,7 +108,7 @@ export class ComandaController {
 
   @Get('mesa/:mesaId/aberta')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Busca a comanda aberta de uma mesa específica' })
   findAbertaByMesaId(@Param('mesaId', ParseUUIDPipe) mesaId: string) {
@@ -117,7 +117,7 @@ export class ComandaController {
 
   @Patch(':id/fechar')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({
     summary:
@@ -142,7 +142,7 @@ export class ComandaController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Busca uma comanda específica por ID (visão do funcionário)',
@@ -153,7 +153,7 @@ export class ComandaController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Atualiza os dados de uma comanda' })
   update(

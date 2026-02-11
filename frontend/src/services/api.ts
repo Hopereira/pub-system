@@ -17,7 +17,20 @@ const getApiBaseUrl = () => {
 const api = axios.create({
   baseURL: getApiBaseUrl(),
   timeout: 30000, // 30 segundos
+  withCredentials: true, // Envia httpOnly cookies (refresh_token)
 });
+
+// --- Token refresh state (module-level, não exportado) ---
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (token) prom.resolve(token);
+    else prom.reject(error);
+  });
+  failedQueue = [];
+};
 
 // Configurar retry logic
 axiosRetry(api, {
@@ -81,7 +94,7 @@ api.interceptors.response.use(
     
     return response;
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const config = error.config as InternalAxiosRequestConfig & { metadata?: { startTime: number } };
     const duration = config?.metadata ? Date.now() - config.metadata.startTime : 0;
     
@@ -98,9 +111,58 @@ api.interceptors.response.use(
       
       // Logs específicos por tipo de erro
       if (error.response.status === 401) {
+        const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+        // Não tentar refresh em rotas de auth (evita loop)
+        const isAuthRoute = originalRequest?.url?.includes('/auth/');
+        if (!isAuthRoute && originalRequest && !originalRequest._retry && !isServer) {
+          if (isRefreshing) {
+            // Já está refreshing — enfileira esta request
+            return new Promise((resolve, reject) => {
+              failedQueue.push({
+                resolve: (newToken: string) => {
+                  originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                  resolve(api(originalRequest));
+                },
+                reject,
+              });
+            });
+          }
+
+          originalRequest._retry = true;
+          isRefreshing = true;
+
+          try {
+            // Tenta renovar via httpOnly cookie
+            const refreshRes = await axios.post(
+              `${getApiBaseUrl()}/auth/refresh`,
+              {},
+              { withCredentials: true },
+            );
+            const newToken = refreshRes.data.access_token;
+
+            // Atualiza localStorage e state
+            localStorage.setItem('authToken', newToken);
+            window.dispatchEvent(new CustomEvent('authTokenRefreshed', { detail: { token: newToken } }));
+
+            processQueue(null, newToken);
+
+            // Retry da request original com novo token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          } catch (refreshError) {
+            processQueue(refreshError, null);
+            logger.warn('Refresh token expirado — redirecionando para login', { module: 'API' });
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+            return Promise.reject(refreshError);
+          } finally {
+            isRefreshing = false;
+          }
+        }
+
+        // Fallback: se é rota de auth ou já tentou retry
         logger.warn('Sessão expirada - Token inválido', { module: 'API' });
-        
-        // Limpar token e redirecionar para login
         if (!isServer) {
           localStorage.removeItem('authToken');
           window.location.href = '/login';

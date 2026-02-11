@@ -21,20 +21,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Funcionario } from '@/types/funcionario';
+import { Funcionario, CargoType, CARGO_LABELS } from '@/types/funcionario';
 import { createFuncionario, updateFuncionario } from '@/services/funcionarioService';
 import { CreateFuncionarioDto, UpdateFuncionarioDto } from '@/types/funcionario.dto';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Terminal } from 'lucide-react';
 
+// Cargos disponíveis para seleção (GERENTE incluído)
+const CARGOS_DISPONIVEIS: CargoType[] = ['ADMIN', 'GERENTE', 'CAIXA', 'GARCOM', 'COZINHEIRO', 'COZINHA', 'BARTENDER'];
+
 interface FuncionarioFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (funcionario: Funcionario) => void;
-  funcionarioToEdit?: Funcionario | null; // NOVO: Prop para receber o funcionário a ser editado
+  funcionarioToEdit?: Funcionario | null;
 }
 
-const cargos = ['ADMIN', 'GARCOM', 'CAIXA', 'COZINHEIRO', 'BARTENDER'];
 const initialFormData: CreateFuncionarioDto = { nome: '', email: '', senha: '', cargo: 'GARCOM', telefone: '', endereco: '', fotoUrl: '' };
 
 export default function FuncionarioFormDialog({
@@ -75,7 +77,7 @@ export default function FuncionarioFormDialog({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (value: 'ADMIN' | 'GARCOM' | 'CAIXA' | 'COZINHEIRO' | 'BARTENDER') => {
+  const handleSelectChange = (value: CargoType) => {
     setFormData((prev) => ({ ...prev, cargo: value }));
   };
 
@@ -152,7 +154,11 @@ export default function FuncionarioFormDialog({
                   <SelectValue placeholder="Selecione um cargo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {cargos.map(cargo => <SelectItem key={cargo} value={cargo}>{cargo}</SelectItem>)}
+                  {CARGOS_DISPONIVEIS.map(cargo => (
+                    <SelectItem key={cargo} value={cargo}>
+                      {CARGO_LABELS[cargo] || cargo}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

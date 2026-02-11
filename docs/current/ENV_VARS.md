@@ -35,7 +35,15 @@
 | `REDIS_HOST` | ✅ (Docker) | `redis` | Host do Redis. Injetado pelo docker-compose |
 | `REDIS_PORT` | ✅ (Docker) | `6379` | Porta do Redis |
 
-**Nota:** O `docker-compose.yml` injeta `REDIS_HOST=redis` e `REDIS_PORT=6379` automaticamente. O `.env.example` não inclui essas variáveis, mas elas são necessárias para o backend funcionar.
+**Nota:** O `docker-compose.yml` injeta `REDIS_HOST=redis` e `REDIS_PORT=6379` automaticamente. Validados por Joi com defaults `localhost:6379`.
+
+---
+
+## Ambiente
+
+| Variável | Obrigatória | Padrão | Descrição |
+|----------|-------------|--------|-----------|
+| `NODE_ENV` | ✅ | — | `development`, `production` ou `test`. **Obrigatório.** |
 
 ---
 
@@ -46,6 +54,15 @@
 | `JWT_SECRET` | ✅ | — | Segredo para assinar tokens. **Mínimo 32 caracteres.** Gerar: `openssl rand -base64 32` |
 
 **Validação Joi:** `Joi.string().min(32).required()` em `app.module.ts`
+
+---
+
+## Setup Endpoint
+
+| Variável | Obrigatória | Padrão | Descrição |
+|----------|-------------|--------|-----------|
+| `ENABLE_SETUP` | Não | `false` | Habilita `POST /setup/super-admin`. Só ativar para criar primeiro Super Admin. |
+| `SETUP_TOKEN` | Não | — | Token obrigatório no body quando ENABLE_SETUP=true |
 
 ---
 
@@ -107,23 +124,28 @@ O backend valida as seguintes variáveis na inicialização via Joi:
 ```typescript
 // Extraído de backend/src/app.module.ts
 validationSchema: Joi.object({
+  NODE_ENV: Joi.string().valid('development', 'production', 'test').required(),
   DB_HOST: Joi.string().required(),
   DB_PORT: Joi.number().default(5432),
   DB_USER: Joi.string().required(),
   DB_PASSWORD: Joi.string().required(),
   DB_DATABASE: Joi.string().required(),
-  DB_SSL: Joi.boolean().default(false),
+  DB_SSL: Joi.string().valid('true', 'false').default('false'),
+  DATABASE_URL: Joi.string().optional(),
+  REDIS_HOST: Joi.string().default('localhost'),
+  REDIS_PORT: Joi.number().default(6379),
   JWT_SECRET: Joi.string().min(32).required(),
-  GCS_BUCKET_NAME: Joi.string().optional(),
-  GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(),
+  FRONTEND_URL: Joi.string().uri().required(),
+  ENABLE_SETUP: Joi.string().valid('true', 'false').default('false'),
+  SETUP_TOKEN: Joi.string().optional(),
   ADMIN_EMAIL: Joi.string().email().optional(),
-  ADMIN_SENHA: Joi.string().optional(),
-  BACKEND_URL: Joi.string().optional(),
-  FRONTEND_URL: Joi.string().optional(),
+  ADMIN_SENHA: Joi.string().min(8).optional(),
+  GCS_BUCKET_NAME: Joi.string().allow('').optional(),
+  GOOGLE_APPLICATION_CREDENTIALS: Joi.string().allow('').optional(),
 })
 ```
 
-**⚠️ Nota:** `REDIS_HOST` e `REDIS_PORT` não estão no schema Joi mas são usados pelo `CacheModule`. O docker-compose os injeta via `environment`.
+Todas as variáveis obrigatórias são validadas na inicialização. Erro impede boot.
 
 ---
 
@@ -140,8 +162,18 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=admin
 POSTGRES_DB=pub_system_db
 
+# Ambiente
+NODE_ENV=development
+
+# Redis
+REDIS_HOST=redis
+REDIS_PORT=6379
+
 # JWT
 JWT_SECRET=meu-segredo-super-forte-com-pelo-menos-32-caracteres
+
+# Frontend URL (CORS)
+FRONTEND_URL=http://localhost:3001
 
 # Admin
 ADMIN_EMAIL=admin@admin.com

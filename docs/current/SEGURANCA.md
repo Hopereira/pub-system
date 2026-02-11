@@ -15,9 +15,10 @@
 ```
 1. POST /auth/login { email, senha }
 2. Backend valida credenciais (bcrypt)
-3. Retorna { access_token, refresh_token }
-4. Frontend armazena tokens em localStorage
+3. Retorna { access_token } no body + refresh_token em httpOnly cookie
+4. Frontend armazena access_token em memória (variável JS)
 5. Axios interceptor adiciona Bearer token em todas requisições
+6. Refresh automático via POST /auth/refresh (cookie enviado automaticamente)
 ```
 
 ### Access Token
@@ -28,8 +29,11 @@
 ### Refresh Token
 - **Fonte:** `backend/src/auth/refresh-token.service.ts`
 - Armazenado no banco (entidade `RefreshToken`)
+- Enviado ao client via **httpOnly cookie** (`Path=/auth`, `SameSite=Lax/None`, `Secure` em prod)
 - Permite renovar access token sem re-login
 - Revogável individualmente ou em massa
+- Rotação automática quando `ROTATE_REFRESH_TOKEN=true`
+- Aceita fallback via body para backward compatibility
 
 ### Endpoints de Sessão
 | Endpoint | Descrição |
@@ -114,9 +118,18 @@ ThrottlerModule.forRoot([
 
 ### TenantRateLimitGuard
 
-**⚠️ Status:** DESABILITADO em `app.module.ts:198-203` devido a problemas de DI.
+**✅ Status:** ATIVO — registrado como `APP_GUARD` dentro do `TenantModule`.
 
-Quando ativo, aplica rate limiting por tenant para evitar que um tenant abuse dos recursos.
+Limites por plano:
+
+| Plano | req/min | req/hora | burst/seg |
+|-------|---------|----------|-----------|
+| FREE | 20 | 500 | 5 |
+| BASIC | 60 | 2000 | 15 |
+| PRO | 100 | 5000 | 30 |
+| ENTERPRISE | 500 | 20000 | 100 |
+
+Retorna headers `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Type`.
 
 ---
 
@@ -241,24 +254,27 @@ O módulo de auditoria registra automaticamente:
 3. `TenantInterceptor` injeta filtro em todas queries TypeORM
 4. Serviço acessa dados apenas do tenant correto
 
-### Risco: TenantRateLimitGuard DESABILITADO
-**Arquivo:** `backend/src/app.module.ts:198-203`  
-Guard de rate limiting por tenant está comentado (problemas de DI). Um tenant pode consumir recursos sem limitação.
+### Observabilidade
+- Cada requisição recebe um `X-Request-Id` (UUID) para correlação de logs
+- Header aceito do client ou gerado automaticamente
+- Incluído em todos os logs de entrada/saída (`rid:<uuid>`)
 
 ---
 
 ## 10. Alertas de Segurança
 
-### ❌ P0: SSH Key no Repositório
-**Arquivo:** `ssh-key-2025-12-11.key` na raiz do repo  
-**Ação:** Remover do repo e do histórico git. Revogar a chave.
+### ✅ RESOLVIDO: SSH Key no Repositório
+**Arquivo:** `ssh-key-2025-12-11.key` removido do repo.  
+**Pendente:** Remover do histórico git (`git filter-repo` ou BFG). Revogar a chave no servidor.
 
-### ⚠️ P0: Endpoint /setup/super-admin
+### ✅ RESOLVIDO: Endpoint /setup/super-admin
 **Arquivo:** `backend/src/auth/create-super-admin.controller.ts`  
-**Risco:** Permite criar SUPER_ADMIN sem autenticação  
-**Ação:** Remover em produção ou proteger com flag de ambiente
+**Solução:** Protegido com `ENABLE_SETUP=true` (env var) + `SETUP_TOKEN` (token no body).  
+Retorna 404 quando `ENABLE_SETUP` não está ativo.
 
-### ⚠️ P1: TenantRateLimitGuard Desabilitado
-**Arquivo:** `backend/src/app.module.ts:198-203`  
-**Risco:** Sem rate limiting por tenant em produção  
-**Ação:** Resolver problemas de DI e reativar
+### ✅ RESOLVIDO: TenantRateLimitGuard
+**Solução:** Guard já estava registrado corretamente dentro do `TenantModule`.  
+O código comentado no `app.module.ts` era uma duplicata que causava erro de DI — removido.
+
+### ⚠️ Pendente: SSH key no histórico git
+A chave foi removida do HEAD mas ainda existe no histórico. Executar `bfg --delete-files ssh-key-2025-12-11.key` e `git push --force`.
