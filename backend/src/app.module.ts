@@ -30,7 +30,7 @@ import { LoggerModule } from './common/logger/logger.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AuditModule } from './modulos/audit/audit.module';
-import { TenantModule, TenantRateLimitGuard } from './common/tenant';
+import { TenantModule } from './common/tenant';
 import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 import { PaymentModule } from './modulos/payment/payment.module';
@@ -44,10 +44,13 @@ import { PlanModule } from './modulos/plan/plan.module';
       isGlobal: true,
       envFilePath: '.env',
       validationSchema: Joi.object({
-        // Ambiente
+        // Ambiente (obrigatório — impede boot sem definição explícita)
         NODE_ENV: Joi.string()
           .valid('development', 'production', 'test')
-          .default('development'),
+          .required()
+          .messages({
+            'any.required': 'NODE_ENV é obrigatório (development|production|test)',
+          }),
 
         // Banco de dados (obrigatórios)
         DB_HOST: Joi.string().required().messages({
@@ -63,6 +66,16 @@ import { PlanModule } from './modulos/plan/plan.module';
         DB_DATABASE: Joi.string().required().messages({
           'any.required': 'DB_DATABASE é obrigatório',
         }),
+        DB_SSL: Joi.string().valid('true', 'false').default('false'),
+        DATABASE_URL: Joi.string().optional(),
+
+        // Redis (obrigatório — usado por cache e rate limiting)
+        REDIS_HOST: Joi.string().default('localhost').messages({
+          'string.base': 'REDIS_HOST deve ser uma string',
+        }),
+        REDIS_PORT: Joi.number().default(6379).messages({
+          'number.base': 'REDIS_PORT deve ser um número',
+        }),
 
         // Segurança (obrigatório, mínimo 32 caracteres)
         JWT_SECRET: Joi.string().min(32).required().messages({
@@ -70,11 +83,15 @@ import { PlanModule } from './modulos/plan/plan.module';
           'any.required': 'JWT_SECRET é obrigatório',
         }),
 
-        // CORS (obrigatório em produção)
+        // CORS (obrigatório)
         FRONTEND_URL: Joi.string().uri().required().messages({
           'string.uri': 'FRONTEND_URL deve ser uma URL válida',
           'any.required': 'FRONTEND_URL é obrigatório',
         }),
+
+        // Setup endpoint (desabilitado por padrão)
+        ENABLE_SETUP: Joi.string().valid('true', 'false').default('false'),
+        SETUP_TOKEN: Joi.string().optional(),
 
         // Admin inicial (opcional - apenas primeiro deploy)
         ADMIN_EMAIL: Joi.string().email().optional(),
@@ -195,12 +212,8 @@ import { PlanModule } from './modulos/plan/plan.module';
       provide: APP_GUARD,
       useClass: CustomThrottlerGuard,
     },
-    // ⚠️ TEMPORARIAMENTE DESABILITADO: TenantRateLimitGuard tem problemas de DI quando usado globalmente
-    // TODO: Corrigir injeção de dependências do TenantRateLimitGuard
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: TenantRateLimitGuard,
-    // },
+    // TenantRateLimitGuard é registrado como APP_GUARD dentro do TenantModule
+    // (onde tem acesso correto a CACHE_MANAGER e TenantContextService via DI)
     RateLimitMonitorService,
     // ✅ Monitor de conexão com banco de dados (útil para Neon Cloud)
     DatabaseConnectionMonitor,

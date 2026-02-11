@@ -17,14 +17,15 @@
 
 ### Riscos Técnicos Ativos
 
-| Prioridade | Risco | Arquivo |
-|-----------|-------|---------|
-| P0 | SSH key privada commitada no repo | `ssh-key-2025-12-11.key` |
-| P0 | `/setup/super-admin` público sem auth | `backend/src/auth/create-super-admin.controller.ts` |
-| P0 | TenantRateLimitGuard desabilitado | `backend/src/app.module.ts:198-203` |
-| P1 | Role GERENTE no enum mas sem uso em @Roles() | `cargo.enum.ts` |
-| P1 | REDIS_HOST/PORT não validados por Joi | `app.module.ts` |
-| P2 | Swagger exposto em produção se NODE_ENV não setado | `main.ts` |
+| Prioridade | Risco | Status |
+|-----------|-------|--------|
+| P0 | SSH key privada commitada no repo | ✅ Removida do HEAD. ⚠️ Pendente: limpar histórico git (BFG) |
+| P0 | `/setup/super-admin` público sem auth | ✅ Protegido com ENABLE_SETUP + SETUP_TOKEN |
+| P0 | TenantRateLimitGuard desabilitado | ✅ Já ativo via TenantModule. Código morto removido |
+| P1 | REDIS_HOST/PORT não validados por Joi | ✅ Adicionados ao schema Joi com defaults |
+| P1 | localStorage para tokens (XSS) | ✅ Migrado para httpOnly cookies (backend + frontend) |
+| P2 | Swagger exposto se NODE_ENV não setado | ✅ NODE_ENV agora obrigatório (Joi required) |
+| Baixo | Role GERENTE no enum mas sem uso em @Roles() | Pendente |
 
 ---
 
@@ -103,7 +104,7 @@ Relatórios, tempos, performance garçons/ambientes, ranking, mais vendidos.
 | Refresh tokens | ✅ Implementado | `auth/refresh-token.service.ts`, entidade `RefreshToken` |
 | Sessões revogáveis | ✅ Implementado | `GET/DELETE /auth/sessions` |
 | Rate limiting global | ✅ Implementado | ThrottlerModule com 3 tiers |
-| Rate limiting por tenant | ❌ DESABILITADO | `app.module.ts:198-203` comentado |
+| Rate limiting por tenant | ✅ ATIVO | Registrado como APP_GUARD no TenantModule |
 | Multi-tenant isolation | ✅ Implementado | TenantGuard + TenantInterceptor globais |
 | Tenant suspension | ✅ Implementado | TenantGuard rejeita tenants não-ATIVO |
 | Feature guard | ✅ Implementado | FeatureGuard + @RequireFeature |
@@ -112,8 +113,11 @@ Relatórios, tempos, performance garçons/ambientes, ranking, mais vendidos.
 | CORS | ✅ Implementado | `main.ts:44-74` com whitelist |
 | Audit logging | ✅ Implementado | AuditModule com 5 tipos de ação |
 | Bcrypt passwords | ✅ Implementado | `funcionario.service.ts` |
-| SSH key exposed | ❌ VULNERÁVEL | `ssh-key-2025-12-11.key` na raiz |
-| Super admin público | ❌ VULNERÁVEL | `POST /setup/super-admin` sem auth |
+| SSH key exposed | ✅ REMOVIDA | Deletada do repo + .gitignore atualizado. Pendente: histórico git |
+| Super admin público | ✅ PROTEGIDO | Requer ENABLE_SETUP=true + SETUP_TOKEN |
+| httpOnly cookies | ✅ IMPLEMENTADO | Refresh token via cookie, auto-refresh no frontend |
+| Request ID | ✅ IMPLEMENTADO | X-Request-Id UUID em todos os logs |
+| Cookie parser | ✅ IMPLEMENTADO | cookie-parser middleware no backend |
 
 ---
 
@@ -130,37 +134,39 @@ Passo a passo funcional documentado em `docs/current/SETUP_LOCAL.md`:
 6. Acessar http://localhost:3001 → admin@admin.com / admin123
 ```
 
-Variáveis obrigatórias: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE, JWT_SECRET.  
+Variáveis obrigatórias: NODE_ENV, DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE, JWT_SECRET, FRONTEND_URL.  
 Variáveis injetadas pelo docker-compose: REDIS_HOST, REDIS_PORT, DATABASE_URL, API_URL_SERVER.
 
 ---
 
 ## 6. Top 10 Problemas do Sistema
 
-| # | Problema | Severidade | Ação Recomendada |
-|---|---------|-----------|-----------------|
-| 1 | SSH key privada no repositório | CRÍTICO | Remover do repo + histórico git. Revogar chave. |
-| 2 | `/setup/super-admin` público | CRÍTICO | Remover controller ou proteger com env flag |
-| 3 | TenantRateLimitGuard desabilitado | ALTO | Resolver DI e reativar |
-| 4 | REDIS_HOST/PORT sem validação Joi | MÉDIO | Adicionar ao schema Joi em app.module.ts |
-| 5 | Role GERENTE sem uso | BAIXO | Remover do enum ou implementar permissões |
-| 6 | Swagger exposto se NODE_ENV não setado | MÉDIO | Forçar check explícito |
-| 7 | localStorage para tokens (XSS risk) | MÉDIO | Migrar para httpOnly cookies |
-| 8 | Sem testes automatizados | ALTO | Implementar testes e2e nos fluxos críticos |
-| 9 | Sem backup automatizado do Neon | MÉDIO | Configurar pg_dump periódico |
-| 10 | Sem CI/CD pipeline | MÉDIO | GitHub Actions para lint, test, deploy |
+| # | Problema | Severidade | Status |
+|---|---------|-----------|--------|
+| 1 | SSH key privada no repositório | CRÍTICO | ✅ Removida. ⚠️ Histórico git pendente |
+| 2 | `/setup/super-admin` público | CRÍTICO | ✅ Protegido com ENABLE_SETUP + SETUP_TOKEN |
+| 3 | TenantRateLimitGuard desabilitado | ALTO | ✅ Ativo via TenantModule |
+| 4 | REDIS_HOST/PORT sem validação Joi | MÉDIO | ✅ Adicionados com defaults |
+| 5 | Role GERENTE sem uso | BAIXO | Pendente |
+| 6 | Swagger exposto se NODE_ENV não setado | MÉDIO | ✅ NODE_ENV agora required |
+| 7 | localStorage para tokens (XSS risk) | MÉDIO | ✅ httpOnly cookies implementados |
+| 8 | Sem testes automatizados | ALTO | ✅ auth.e2e-spec.ts criado |
+| 9 | Sem backup automatizado do Neon | MÉDIO | ✅ scripts/backup-db.sh criado |
+| 10 | Sem CI/CD pipeline | MÉDIO | ✅ .github/workflows/ci.yml criado |
 
 ---
 
 ## 7. Recomendações de Próximas Melhorias
 
-1. **Segurança imediata:** Resolver os 3 problemas P0 (SSH key, super-admin, rate limit)
-2. **Testes:** Implementar testes e2e com Jest/Supertest nos fluxos: login → pedido → fechamento
-3. **CI/CD:** GitHub Actions com lint + build + test + deploy automático
+1. ✅ ~~Segurança imediata: P0 resolvidos~~
+2. ✅ ~~Testes e2e: auth.e2e-spec.ts criado~~
+3. ✅ ~~CI/CD: GitHub Actions criado~~
 4. **Monitoramento:** Health check periódico + alertas (UptimeRobot gratuito)
-5. **Backup:** Cron job para pg_dump do Neon
-6. **Auth:** Migrar tokens de localStorage para httpOnly cookies
-7. **Observabilidade:** Structured logging com correlação de request ID
-8. **Performance:** Ativar TenantRateLimitGuard após resolver DI
+5. ✅ ~~Backup: script criado~~
+6. ✅ ~~Auth: httpOnly cookies implementados~~
+7. ✅ ~~Observabilidade: Request ID correlation implementado~~
+8. ✅ ~~Rate limiting: TenantRateLimitGuard ativo~~
 9. **Documentação:** Manter `docs/current/` atualizado a cada PR significativo
 10. **Código morto:** Remover role GERENTE ou implementar permissões específicas
+11. **SSH histórico:** Executar BFG para limpar chave do histórico git
+12. **npm audit:** Resolver 9 vulnerabilidades (conflito peer deps @nestjs/swagger)

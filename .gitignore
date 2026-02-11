@@ -48,6 +48,38 @@ coverage/
 *.lcov
 .nyc_output
 
+# Chaves privadas e certificados — NUNCA COMMITAR
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+ssh-key*
+*.ppk
+
+# Secrets e tokens — NUNCA COMMITAR
+*.secret
+*.secrets
+*_secret*
+*_token*
+api_key*
+apikey*
+credentials*
+!credentials.example*
+secrets.json
+secrets.yaml
+secrets.yml
+
+# Backups de banco de dados
+*.sql
+*.sql.gz
+*.dump
+*.bak
+backups/
+
 # Temporários
 *.tmp
 *.temp

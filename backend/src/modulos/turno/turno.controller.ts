@@ -46,7 +46,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-in')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-in (iniciar turno)' })
   @ApiResponse({
@@ -72,7 +72,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-out')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-out (finalizar turno)' })
   @ApiResponse({
@@ -96,7 +96,7 @@ export class TurnoController {
 
   @Get('ativos')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar funcionários ativos (com check-in)' })
   @ApiResponse({
@@ -110,7 +110,7 @@ export class TurnoController {
 
   @Get('funcionario/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar turnos de um funcionário' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })

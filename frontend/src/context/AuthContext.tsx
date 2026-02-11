@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { login as apiLogin } from '@/services/authService';
+import { login as apiLogin, logoutApi } from '@/services/authService';
 import { LoginCredentials, User } from '@/types/auth';
 import { jwtDecode } from 'jwt-decode';
 
@@ -9,7 +9,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -36,8 +36,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Sincroniza estado React quando o interceptor do api.ts faz refresh transparente
+  useEffect(() => {
+    const handleRefreshed = (e: Event) => {
+      const newToken = (e as CustomEvent).detail?.token;
+      if (newToken) {
+        try {
+          const decoded: User = jwtDecode(newToken);
+          setUser(decoded);
+          setToken(newToken);
+        } catch { /* token inválido, ignora */ }
+      }
+    };
+    window.addEventListener('authTokenRefreshed', handleRefreshed);
+    return () => window.removeEventListener('authTokenRefreshed', handleRefreshed);
+  }, []);
+
   const login = async ({ email, senha }: LoginCredentials) => {
-    // 🔄 Verifica se está trocando de tenant (empresaId diferente)
+    // Verifica se está trocando de tenant (empresaId diferente)
     const oldToken = localStorage.getItem('authToken');
     let oldEmpresaId: string | null = null;
     
@@ -56,7 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     localStorage.setItem('authToken', access_token);
     
-    // 🚨 Se mudou de tenant, força reload completo para limpar todo o cache/estado
+    // Se mudou de tenant, força reload completo para limpar todo o cache/estado
     if (oldEmpresaId && newEmpresaId && oldEmpresaId !== newEmpresaId) {
       console.log('[Auth] Troca de tenant detectada, forçando reload completo');
       // Não atualiza estado React - vai dar reload de qualquer forma
@@ -70,19 +86,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(decodedUser);
     setToken(access_token);
     
-    // ✅ Dispara evento customizado para reconectar WebSocket na mesma aba
+    // Dispara evento customizado para reconectar WebSocket na mesma aba
     window.dispatchEvent(new CustomEvent('authTokenChanged', { detail: { hasToken: true } }));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Revoga refresh token no backend e limpa httpOnly cookie
+    const currentToken = token || localStorage.getItem('authToken');
+    if (currentToken) {
+      await logoutApi(currentToken);
+    }
+
     localStorage.removeItem('authToken');
     setUser(null);
     setToken(null);
     
-    // ✅ Dispara evento customizado para reconectar WebSocket na mesma aba
+    // Dispara evento customizado para reconectar WebSocket na mesma aba
     window.dispatchEvent(new CustomEvent('authTokenChanged', { detail: { hasToken: false } }));
     
-    // 🚨 Força reload completo para limpar todo cache e estado React
+    // Força reload completo para limpar todo cache e estado React
     // Isso garante que dados do tenant anterior não vazem
     window.location.href = '/login';
   };

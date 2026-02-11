@@ -6,6 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { json } from 'express';
 import helmet from 'helmet';
+import * as cookieParser from 'cookie-parser';
 import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
@@ -22,10 +23,31 @@ async function bootstrap() {
   // ✅ SEGURANÇA: Helmet para headers HTTP seguros
   app.use(
     helmet({
-      contentSecurityPolicy: isProduction ? undefined : false, // Desabilita CSP em dev para Swagger
+      contentSecurityPolicy: isProduction
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'", "'unsafe-inline'"], // Necessário para alguns frameworks
+              styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+              fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+              imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+              connectSrc: ["'self'", 'https://api.pubsystem.com.br', 'wss://api.pubsystem.com.br'],
+              frameSrc: ["'none'"],
+              objectSrc: ["'none'"],
+              upgradeInsecureRequests: [],
+            },
+          }
+        : false, // Desabilita CSP em dev para Swagger
       crossOriginEmbedderPolicy: false, // Necessário para algumas integrações
+      hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      noSniff: true,
+      xssFilter: true,
     }),
   );
+
+  // ✅ SEGURANÇA: Cookie parser para httpOnly refresh tokens
+  app.use(cookieParser());
 
   // 🔥 Ativar Interceptor Global de Logs
   app.useGlobalInterceptors(new LoggingInterceptor());

@@ -112,22 +112,74 @@ export class FuncionarioService implements OnModuleInit {
     }
   }
 
+  /**
+   * Cria um novo funcionário com validação de anti-elevação
+   * @param createFuncionarioDto Dados do funcionário
+   * @param actorCargo Cargo do usuário que está criando (para anti-elevação)
+   */
   async create(
     createFuncionarioDto: CreateFuncionarioDto,
+    actorCargo?: Cargo,
   ): Promise<Funcionario> {
+    // 🔒 Anti-elevação: Validar se o actor pode criar este cargo
+    if (actorCargo) {
+      this.validateCargoElevation(actorCargo, createFuncionarioDto.cargo as Cargo);
+    }
+
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
       ...createFuncionarioDto,
       senha: senhaHash,
     });
     try {
-      return await this.funcionarioRepository.save(novoFuncionario);
+      const created = await this.funcionarioRepository.save(novoFuncionario);
+      this.logger.log(`✅ Funcionário criado: ${created.email} (cargo: ${created.cargo}) por ${actorCargo || 'sistema'}`);
+      return created;
     } catch (error) {
       if (error.code === '23505') {
         throw new ConflictException('Este e-mail já está cadastrado.');
       }
       throw error;
     }
+  }
+
+  /**
+   * Valida se o actor pode atribuir o cargo desejado (anti-elevação)
+   * Hierarquia: SUPER_ADMIN > ADMIN > GERENTE > operacionais
+   */
+  private validateCargoElevation(actorCargo: Cargo, targetCargo: Cargo): void {
+    const hierarchy: Record<Cargo, number> = {
+      [Cargo.SUPER_ADMIN]: 100,
+      [Cargo.ADMIN]: 80,
+      [Cargo.GERENTE]: 60,
+      [Cargo.CAIXA]: 40,
+      [Cargo.GARCOM]: 40,
+      [Cargo.COZINHEIRO]: 40,
+      [Cargo.COZINHA]: 40,
+      [Cargo.BARTENDER]: 40,
+    };
+
+    const actorLevel = hierarchy[actorCargo] || 0;
+    const targetLevel = hierarchy[targetCargo] || 0;
+
+    // GERENTE não pode criar/editar funcionários (apenas visualizar)
+    if (actorCargo === Cargo.GERENTE) {
+      throw new ForbiddenException('GERENTE não tem permissão para criar ou editar funcionários.');
+    }
+
+    // Não pode atribuir cargo igual ou superior ao próprio (exceto SUPER_ADMIN)
+    if (actorCargo !== Cargo.SUPER_ADMIN && targetLevel >= actorLevel) {
+      throw new ForbiddenException(
+        `Você não pode atribuir o cargo ${targetCargo}. Apenas cargos inferiores ao seu (${actorCargo}) são permitidos.`
+      );
+    }
+
+    // ADMIN não pode criar SUPER_ADMIN
+    if (actorCargo === Cargo.ADMIN && targetCargo === Cargo.SUPER_ADMIN) {
+      throw new ForbiddenException('ADMIN não pode criar usuários SUPER_ADMIN.');
+    }
+
+    this.logger.debug(`🔒 Anti-elevação OK: ${actorCargo} criando ${targetCargo}`);
   }
 
   /**
@@ -153,10 +205,40 @@ export class FuncionarioService implements OnModuleInit {
     return this.funcionarioRepository.findByEmailForAuth(email);
   }
 
+  /**
+   * Atualiza funcionário com validação de anti-elevação
+   * @param id ID do funcionário
+   * @param updateFuncionarioDto Dados a atualizar
+   * @param actorCargo Cargo do usuário que está editando (para anti-elevação)
+   */
   async update(
     id: string,
     updateFuncionarioDto: UpdateFuncionarioDto,
+    actorCargo?: Cargo,
   ): Promise<Funcionario> {
+    // Buscar funcionário atual para verificar cargo anterior
+    const funcionarioAtual = await this.findOne(id);
+    if (!funcionarioAtual) {
+      throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
+    }
+
+    // 🔒 Anti-elevação: Se está mudando o cargo, validar
+    if (actorCargo && updateFuncionarioDto.cargo) {
+      const novoCargo = updateFuncionarioDto.cargo as Cargo;
+      const cargoAnterior = funcionarioAtual.cargo;
+
+      // Validar se pode atribuir o novo cargo
+      this.validateCargoElevation(actorCargo, novoCargo);
+
+      // Log de auditoria para mudança de cargo
+      if (cargoAnterior !== novoCargo) {
+        this.logger.log(
+          `🔄 AUDITORIA: Cargo alterado de ${cargoAnterior} para ${novoCargo} ` +
+          `| Funcionário: ${funcionarioAtual.email} | Por: ${actorCargo}`
+        );
+      }
+    }
+
     // Se a senha foi enviada, faz o hash antes de salvar
     if (updateFuncionarioDto.senha) {
       updateFuncionarioDto.senha = await bcrypt.hash(

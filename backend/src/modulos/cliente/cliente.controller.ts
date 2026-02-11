@@ -80,10 +80,10 @@ export class ClienteController {
   // Como o seu frontend usa GET /clientes?cpf=..., vamos ajustar a rota existente:
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Lista todos os clientes ou busca por CPF (Admin).',
+    summary: 'Lista todos os clientes ou busca por CPF (Admin/Gerente).',
   })
   findAll(@Query('cpf') cpf?: string) {
     if (cpf) {
@@ -119,10 +119,10 @@ export class ClienteController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Busca um cliente específico por ID (Apenas Admin)',
+    summary: 'Busca um cliente específico por ID (Admin/Gerente)',
   })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.clienteService.findOne(id);
