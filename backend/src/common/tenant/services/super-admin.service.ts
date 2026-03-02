@@ -576,52 +576,74 @@ export class SuperAdminService {
       empresa: false,
     };
 
+    // Helper para executar query com tratamento de erro
+    const safeQuery = async (query: string, params: any[], errorContext: string) => {
+      try {
+        return await this.dataSource.query(query, params);
+      } catch (error) {
+        // Se a tabela não existir, apenas log warning e continua
+        if (error.message?.includes('does not exist')) {
+          this.logger.warn(`⚠️ ${errorContext}: ${error.message}`);
+          return [[], 0];
+        }
+        throw error;
+      }
+    };
+
     // Deletar em ordem para respeitar foreign keys
     // 1. Itens de pedido
-    await this.dataSource.query(`
+    await safeQuery(`
       DELETE FROM item_pedido 
       WHERE pedido_id IN (SELECT id FROM pedidos WHERE tenant_id = $1)
-    `, [tenantId]);
+    `, [tenantId], 'Deletar itens de pedido');
 
     // 2. Pedidos
-    const pedidosResult = await this.pedidoRepository.delete({ tenantId });
-    deletedData.pedidos = pedidosResult.affected || 0;
+    try {
+      const pedidosResult = await this.pedidoRepository.delete({ tenantId });
+      deletedData.pedidos = pedidosResult.affected || 0;
+    } catch (error) {
+      this.logger.warn(`⚠️ Erro ao deletar pedidos: ${error.message}`);
+    }
 
     // 3. Comandas
-    const comandasResult = await this.comandaRepository.delete({ tenantId });
-    deletedData.comandas = comandasResult.affected || 0;
+    try {
+      const comandasResult = await this.comandaRepository.delete({ tenantId });
+      deletedData.comandas = comandasResult.affected || 0;
+    } catch (error) {
+      this.logger.warn(`⚠️ Erro ao deletar comandas: ${error.message}`);
+    }
 
     // 4. Mesas (via ambiente)
-    await this.dataSource.query(`
+    await safeQuery(`
       DELETE FROM mesas 
       WHERE ambiente_id IN (SELECT id FROM ambientes WHERE tenant_id = $1)
-    `, [tenantId]);
+    `, [tenantId], 'Deletar mesas');
 
     // 5. Produtos (via ambiente)
-    await this.dataSource.query(`
+    await safeQuery(`
       DELETE FROM produtos 
       WHERE ambiente_id IN (SELECT id FROM ambientes WHERE tenant_id = $1)
-    `, [tenantId]);
+    `, [tenantId], 'Deletar produtos');
 
     // 6. Ambientes
-    const ambientesResult = await this.dataSource.query(`
+    const ambientesResult = await safeQuery(`
       DELETE FROM ambientes WHERE tenant_id = $1
-    `, [tenantId]);
+    `, [tenantId], 'Deletar ambientes');
     deletedData.ambientes = ambientesResult[1] || 0;
 
     // 7. Funcionários (por tenantId ou empresaId ou via empresa.slug)
-    const funcionariosResult = await this.dataSource.query(`
+    const funcionariosResult = await safeQuery(`
       DELETE FROM funcionarios 
       WHERE tenant_id = $1 
          OR empresa_id = $1 
          OR empresa_id IN (SELECT id FROM empresas WHERE slug = $2)
-    `, [tenantId, tenant.slug]);
+    `, [tenantId, tenant.slug], 'Deletar funcionários');
     deletedData.funcionarios = funcionariosResult[1] || 0;
 
     // 8. Empresa
-    const empresaResult = await this.dataSource.query(`
+    const empresaResult = await safeQuery(`
       DELETE FROM empresas WHERE slug = $1
-    `, [tenant.slug]);
+    `, [tenant.slug], 'Deletar empresa');
     deletedData.empresa = (empresaResult[1] || 0) > 0;
 
     // 9. Tenant
