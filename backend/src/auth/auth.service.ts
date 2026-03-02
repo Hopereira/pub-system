@@ -27,17 +27,23 @@ export class AuthService {
   ) {}
 
   /**
-   * Resolve o tenantId a partir do hostname (subdomain) ou header x-tenant-id.
+   * Resolve o tenantId a partir do hostname (subdomain), header x-tenant-id ou x-tenant-slug.
    * OBRIGATÓRIO - falha se não conseguir resolver.
    */
-  async resolveTenantFromRequest(host?: string, headerTenantId?: string): Promise<string> {
-    // 1. Tentar header x-tenant-id
+  async resolveTenantFromRequest(host?: string, headerTenantId?: string, headerTenantSlug?: string): Promise<string> {
+    // 1. Tentar header x-tenant-id (ID direto)
     if (headerTenantId) {
       const tenant = await this.tenantResolver.resolveById(headerTenantId);
       if (tenant) return tenant.id;
     }
 
-    // 2. Tentar subdomain
+    // 2. Tentar header x-tenant-slug (slug enviado pelo frontend)
+    if (headerTenantSlug) {
+      const tenant = await this.tenantResolver.resolveBySlug(headerTenantSlug);
+      if (tenant) return tenant.id;
+    }
+
+    // 3. Tentar subdomain do hostname
     if (host) {
       const slug = this.tenantResolver.extractSlugFromHostname(host);
       if (slug) {
