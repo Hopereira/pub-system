@@ -142,9 +142,11 @@ export default function TenantDetailsModal({ tenantId, onClose, onUpdate }: Tena
   const handleHardDelete = async () => {
     if (!tenant) return;
     
-    const confirmText = prompt(`⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTodos os dados serão PERMANENTEMENTE removidos:\n- Funcionários\n- Comandas\n- Pedidos\n- Mesas\n- Produtos\n- Ambientes\n- Empresa\n\nDigite "DELETAR ${tenant.slug}" para confirmar:`);
-    if (confirmText !== `DELETAR ${tenant.slug}`) {
-      alert('Texto de confirmação incorreto');
+    const expectedText = `DELETAR ${tenant.slug}`;
+    const confirmText = prompt(`⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!\n\nTodos os dados serão PERMANENTEMENTE removidos:\n- Funcionários\n- Comandas\n- Pedidos\n- Mesas\n- Produtos\n- Ambientes\n- Empresa\n\nDigite "${expectedText}" para confirmar:`);
+    
+    if (!confirmText || confirmText.trim() !== expectedText) {
+      alert(`❌ Texto de confirmação incorreto.\n\nEsperado: "${expectedText}"\nDigitado: "${confirmText || '(vazio)'}"`);
       return;
     }
     
