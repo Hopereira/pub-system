@@ -39,18 +39,18 @@ export class ProdutoService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
 
   /**
    * Gera chave de cache com namespace do tenant
-   * Para produtos, usa 'global' quando não há tenant (rotas públicas de cardápio)
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `produtos:${tenantId}:${params}` : `produtos:global:${params}`;
+    if (!tenantId) return null;
+    return `produtos:${tenantId}:${params}`;
   }
 
   // --- 3. MÉTODO 'CREATE' ATUALIZADO ---
@@ -181,20 +181,20 @@ export class ProdutoService {
     // Criar chave de cache única baseada nos parâmetros com namespace do tenant
     const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
     
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-    
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
-    // Usar findAndCountWithoutTenant para rotas públicas (não requer tenant)
-    const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
-      where: { ativo: true },
+    const [data, total] = await this.produtoRepository.findAndCount({
+      where: { ativo: true } as any,
       relations: ['ambiente'],
-      order: { [sortBy]: sortOrder },
+      order: { [sortBy]: sortOrder } as any,
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -203,8 +203,10 @@ export class ProdutoService {
 
     const response = createPaginatedResponse(data, total, page, limit);
     
-    // Armazenar no cache por 1 hora (3600000 ms)
-    await this.cacheManager.set(cacheKey, response, 3600000);
+    // Armazenar no cache (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, response, 3600000);
+    }
 
     return response;
   }
@@ -213,39 +215,34 @@ export class ProdutoService {
   async findAllNoPagination(): Promise<Produto[]> {
     const cacheKey = this.getCacheKey('all:ativos');
     
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<Produto[]>(cacheKey);
-    if (cached) {
-      this.logger.debug('🎯 Cache HIT: produtos:all:ativos');
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<Produto[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
     
-    this.logger.debug('❌ Cache MISS: produtos:all:ativos');
-    
-    // Usar findWithoutTenant para rotas públicas (não requer tenant)
-    const produtos = await this.produtoRepository.findWithoutTenant({
-      where: { ativo: true },
+    const produtos = await this.produtoRepository.find({
+      where: { ativo: true } as any,
       relations: ['ambiente'],
-      order: { nome: 'ASC' },
+      order: { nome: 'ASC' } as any,
     });
     
-    // Armazenar no cache por 1 hora (3600000 ms)
-    await this.cacheManager.set(cacheKey, produtos, 3600000);
+    // Armazenar no cache (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, produtos, 3600000);
+    }
     
     return produtos;
   }
 
-  // Método privado para invalidar cache de produtos
+  // Método privado para invalidar cache de produtos usando CacheInvalidationService
   private async invalidateProductCache(): Promise<void> {
     try {
-      // Invalidar chaves específicas conhecidas
-      await this.cacheManager.del('produtos:all:ativos');
-      // Invalidar páginas mais comuns (1-10)
-      for (let page = 1; page <= 10; page++) {
-        await this.cacheManager.del(`produtos:page:${page}:limit:20:sort:nome:ASC`);
-        await this.cacheManager.del(`produtos:page:${page}:limit:20:sort:nome:DESC`);
-      }
-      this.logger.log(`🗑️ Cache de produtos invalidado`);
+      await this.cacheInvalidationService.invalidateProdutos();
     } catch (error) {
       this.logger.warn(`⚠️ Erro ao invalidar cache: ${error.message}`);
     }

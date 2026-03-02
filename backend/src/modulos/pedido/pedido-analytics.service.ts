@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Between } from 'typeorm';
 import { Pedido } from './entities/pedido.entity';
 import { ItemPedido } from './entities/item-pedido.entity';
 import {
@@ -11,16 +10,16 @@ import {
   FiltroRelatorioDto,
   PedidoTempoDto,
 } from './dto/analytics.dto';
+import { PedidoRepository } from './pedido.repository';
+import { ItemPedidoRepository } from './item-pedido.repository';
 
 @Injectable()
 export class PedidoAnalyticsService {
   private readonly logger = new Logger(PedidoAnalyticsService.name);
 
   constructor(
-    @InjectRepository(Pedido)
-    private pedidoRepository: Repository<Pedido>,
-    @InjectRepository(ItemPedido)
-    private itemPedidoRepository: Repository<ItemPedido>,
+    private pedidoRepository: PedidoRepository,
+    private itemPedidoRepository: ItemPedidoRepository,
   ) {}
 
   /**

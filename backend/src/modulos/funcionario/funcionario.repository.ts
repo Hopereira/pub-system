@@ -47,17 +47,18 @@ export class FuncionarioRepository extends BaseTenantRepository<Funcionario> {
   }
 
   /**
-   * Busca funcionário por email SEM filtro de tenant
-   * ⚠️ USO EXCLUSIVO PARA AUTENTICAÇÃO - Não usar em outros contextos!
-   * 
-   * Este método é necessário porque o login acontece ANTES do tenant
-   * ser identificado (o tenant é identificado PELO funcionário logado).
+   * Busca funcionário por email E tenant_id para autenticação segura.
+   * O tenant DEVE ser resolvido pelo subdomain ANTES do login.
    */
-  async findByEmailForAuth(email: string): Promise<Funcionario | null> {
+  async findByEmailAndTenantForAuth(
+    email: string,
+    tenantId: string,
+  ): Promise<Funcionario | null> {
     return this.rawRepository
       .createQueryBuilder('funcionario')
       .where('funcionario.email = :email', { email })
-      .addSelect('funcionario.senha') // Inclui senha para validação
+      .andWhere('funcionario.tenant_id = :tenantId', { tenantId })
+      .addSelect('funcionario.senha')
       .getOne();
   }
 }

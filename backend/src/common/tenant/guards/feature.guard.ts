@@ -65,14 +65,10 @@ export class FeatureGuard implements CanActivate {
     // Obter tenantId do contexto ou do JWT do usuário
     let tenantId = this.tenantContext.getTenantIdOrNull();
 
-    // Se não há tenant no contexto, tentar obter do JWT (tenantId ou empresaId)
+    // Se não há tenant no contexto, tentar obter do JWT
     if (!tenantId && user?.tenantId) {
       tenantId = user.tenantId;
       this.logger.debug(`FeatureGuard: Usando tenantId do JWT: ${tenantId}`);
-    }
-    if (!tenantId && user?.empresaId) {
-      tenantId = user.empresaId;
-      this.logger.debug(`FeatureGuard: Usando empresaId do JWT: ${tenantId}`);
     }
 
     if (!tenantId) {

@@ -5,10 +5,11 @@ import { MesaController } from './mesa.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Mesa } from './entities/mesa.entity';
 import { AmbienteModule } from '../ambiente/ambiente.module';
+import { PontoEntregaModule } from '../ponto-entrega/ponto-entrega.module';
 import { MesaRepository } from './mesa.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mesa]), AmbienteModule],
+  imports: [TypeOrmModule.forFeature([Mesa]), AmbienteModule, PontoEntregaModule],
   controllers: [MesaController],
   providers: [MesaService, MesaRepository],
   exports: [MesaService, MesaRepository],

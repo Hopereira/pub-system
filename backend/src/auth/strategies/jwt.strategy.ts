@@ -14,13 +14,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Retornar todos os campos necessários para multi-tenancy
+    if (!payload.tenantId) {
+      throw new UnauthorizedException('Token inválido: tenantId ausente');
+    }
     return {
       id: payload.sub,
       email: payload.email,
       cargo: payload.cargo,
       nome: payload.nome,
-      empresaId: payload.empresaId,
       tenantId: payload.tenantId,
       ambienteId: payload.ambienteId,
     };

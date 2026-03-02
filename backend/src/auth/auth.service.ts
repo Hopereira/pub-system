@@ -1,17 +1,18 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FuncionarioService } from 'src/modulos/funcionario/funcionario.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { AuditService } from '../modulos/audit/audit.service';
 import { AuditAction } from '../modulos/audit/entities/audit-log.entity';
-import { TenantContextService } from '../common/tenant/tenant-context.service';
+import { TenantResolverService } from '../common/tenant/tenant-resolver.service';
 import * as bcrypt from 'bcrypt';
 
 /**
- * AuthService - Serviço de autenticação
+ * AuthService - Serviço de autenticação com isolamento multi-tenant forte
  * 
- * Multi-tenancy: O refresh token é vinculado ao tenant da sessão,
- * impedindo uso cross-tenant de tokens.
+ * O tenant é resolvido OBRIGATORIAMENTE pelo subdomain/header ANTES do login.
+ * A query de busca do usuário usa email + tenant_id (nunca apenas email).
+ * O JWT contém tenantId obrigatório (sem fallbacks ou ambiguidades).
  */
 @Injectable()
 export class AuthService {
@@ -22,21 +23,55 @@ export class AuthService {
     private jwtService: JwtService,
     private refreshTokenService: RefreshTokenService,
     private auditService: AuditService,
-    @Optional() private tenantContext?: TenantContextService,
+    private tenantResolver: TenantResolverService,
   ) {}
 
-  async validateUser(email: string, pass: string, ipAddress?: string): Promise<any> {
-    const user = await this.funcionarioService.findByEmail(email);
+  /**
+   * Resolve o tenantId a partir do hostname (subdomain) ou header x-tenant-id.
+   * OBRIGATÓRIO - falha se não conseguir resolver.
+   */
+  async resolveTenantFromRequest(host?: string, headerTenantId?: string): Promise<string> {
+    // 1. Tentar header x-tenant-id
+    if (headerTenantId) {
+      const tenant = await this.tenantResolver.resolveById(headerTenantId);
+      if (tenant) return tenant.id;
+    }
+
+    // 2. Tentar subdomain
+    if (host) {
+      const slug = this.tenantResolver.extractSlugFromHostname(host);
+      if (slug) {
+        const tenant = await this.tenantResolver.resolveBySlug(slug);
+        if (tenant) return tenant.id;
+      }
+    }
+
+    throw new UnauthorizedException(
+      'Não foi possível identificar o estabelecimento. Acesse pelo endereço correto.',
+    );
+  }
+
+  /**
+   * Valida credenciais do usuário DENTRO do tenant específico.
+   * Busca por email + tenant_id (nunca apenas email).
+   */
+  async validateUser(
+    email: string,
+    pass: string,
+    tenantId: string,
+    ipAddress?: string,
+  ): Promise<any> {
+    const user = await this.funcionarioService.findByEmailAndTenant(email, tenantId);
     if (user && (await bcrypt.compare(pass, user.senha))) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { senha, ...result } = user;
-      this.logger.log(` Autenticação bem-sucedida: ${email} (${user.cargo})`);
+      this.logger.log(`Autenticação bem-sucedida: ${email} (${user.cargo}) [tenant: ${tenantId}]`);
       return result;
     }
     this.logger.warn(
-      ` Falha na autenticação: Email ${email} - Credenciais inválidas`,
+      `Falha na autenticação: Email ${email} [tenant: ${tenantId}] - Credenciais inválidas`,
     );
-    
+
     // Registrar tentativa de login falhada
     if (ipAddress) {
       await this.auditService.log({
@@ -44,36 +79,30 @@ export class AuthService {
         action: AuditAction.LOGIN_FAILED,
         entityName: 'Auth',
         ipAddress,
-        description: `Tentativa de login falhada para ${email}`,
+        tenantId,
+        description: `Tentativa de login falhada para ${email} [tenant: ${tenantId}]`,
       });
     }
-    
+
     return null;
   }
 
-  async login(user: any, ipAddress: string, userAgent?: string, tenantId?: string) {
-    // Capturar tenantId do contexto ou do parâmetro
-    // Usar try-catch porque getTenantId() lança erro se não houver tenant
-    let contextTenantId: string | null = null;
-    try {
-      contextTenantId = this.tenantContext?.getTenantId?.() ?? null;
-    } catch {
-      // Ignorar erro - tenant não definido é válido para login
-    }
-    const effectiveTenantId = tenantId || contextTenantId || user.tenantId || user.empresaId;
-
+  /**
+   * Gera JWT e refresh token para o usuário autenticado.
+   * tenantId é OBRIGATÓRIO e vem do subdomain (já validado).
+   */
+  async login(user: any, tenantId: string, ipAddress: string, userAgent?: string) {
     const payload = {
       id: user.id,
-      sub: user.id, // Mantém sub para compatibilidade
+      sub: user.id,
       email: user.email,
       nome: user.nome,
       cargo: user.cargo,
-      role: user.cargo, // Alias para compatibilidade
-      empresaId: user.empresaId,
+      role: user.cargo,
       ambienteId: user.ambienteId,
-      tenantId: effectiveTenantId, // Incluir tenantId no JWT
+      tenantId, // OBRIGATÓRIO - sem fallback
     };
-    
+
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: '1h',
     });
@@ -82,12 +111,11 @@ export class AuthService {
       user,
       ipAddress,
       userAgent,
-      effectiveTenantId, // Vincular refresh token ao tenant
+      tenantId,
     );
 
     this.logger.log(
-      `🔑 Access token e refresh token gerados para: ${user.email} (ID: ${user.id})` +
-      `${effectiveTenantId ? ` [tenant: ${effectiveTenantId}]` : ''}`,
+      `🔑 Tokens gerados: ${user.email} (ID: ${user.id}) [tenant: ${tenantId}]`,
     );
 
     // Registrar login bem-sucedido
@@ -98,14 +126,15 @@ export class AuthService {
       entityName: 'Auth',
       ipAddress,
       userAgent,
-      description: `Login bem-sucedido${effectiveTenantId ? ` [tenant: ${effectiveTenantId}]` : ''}`,
+      tenantId,
+      description: `Login bem-sucedido [tenant: ${tenantId}]`,
     });
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken.token,
       expires_in: 3600,
-      tenant_id: effectiveTenantId,
+      tenant_id: tenantId,
       user: {
         id: user.id,
         nome: user.nome,

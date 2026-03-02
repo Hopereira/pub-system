@@ -33,8 +33,17 @@ export class FuncionarioService implements OnModuleInit {
   async onModuleInit() {
     const contador = await this.funcionarioRepository.count();
     if (contador === 0) {
+      const tenantId = this.configService.get<string>('DEFAULT_TENANT_ID');
+      if (!tenantId) {
+        this.logger.error(
+          '🚨 Banco vazio mas DEFAULT_TENANT_ID não definido. ' +
+          'Não é possível criar admin sem tenant. Defina DEFAULT_TENANT_ID no .env',
+        );
+        return;
+      }
+
       this.logger.log(
-        'Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...',
+        `Banco de dados de funcionários vazio. Criando ADMIN para tenant ${tenantId}...`,
       );
       const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
       const senhaHash = await bcrypt.hash(senhaPlana, 10);
@@ -43,9 +52,10 @@ export class FuncionarioService implements OnModuleInit {
         email: this.configService.get<string>('ADMIN_EMAIL'),
         senha: senhaHash,
         cargo: Cargo.ADMIN,
+        tenantId,
       });
       await this.funcionarioRepository.save(admin);
-      this.logger.log('Usuário ADMIN padrão criado com sucesso!');
+      this.logger.log(`✅ Usuário ADMIN criado com sucesso [tenant: ${tenantId}]`);
     }
   }
 
@@ -133,12 +143,11 @@ export class FuncionarioService implements OnModuleInit {
   }
 
   /**
-   * Busca funcionário por email para autenticação
-   * ⚠️ Este método NÃO usa filtro de tenant porque o login
-   * acontece ANTES do tenant ser identificado.
+   * Busca funcionário por email + tenantId para autenticação segura.
+   * O tenant DEVE ser resolvido pelo subdomain ANTES do login.
    */
-  findByEmail(email: string): Promise<Funcionario> {
-    return this.funcionarioRepository.findByEmailForAuth(email);
+  findByEmailAndTenant(email: string, tenantId: string): Promise<Funcionario> {
+    return this.funcionarioRepository.findByEmailAndTenantForAuth(email, tenantId);
   }
 
   async update(

@@ -5,18 +5,14 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 export class CustomThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: Record<string, any>): Promise<string> {
     const user = req.user;
-    
-    // Admin não tem limite - retorna chave única que nunca será bloqueada
-    if (user?.cargo === 'ADMIN') {
-      return `admin:${user.sub}:${Date.now()}`;
-    }
+    const tenantId = user?.tenantId || req.headers?.['x-tenant-id'] || 'no-tenant';
 
-    // Usuários autenticados usam user ID
+    // Usuários autenticados: tenant + userId (isolamento por tenant)
     if (user?.sub) {
-      return `user:${user.sub}`;
+      return `tenant:${tenantId}:user:${user.sub}`;
     }
 
-    // Não autenticados usam IP
-    return req.ip;
+    // Não autenticados: tenant + IP (isolamento por tenant)
+    return `tenant:${tenantId}:ip:${req.ip}`;
   }
 }

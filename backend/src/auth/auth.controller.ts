@@ -38,16 +38,25 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent?: string,
+    @Headers('host') host?: string,
+    @Headers('x-tenant-id') headerTenantId?: string,
   ) {
+    // 1. Resolver tenant OBRIGATORIAMENTE antes do login
+    const tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId);
+
+    // 2. Validar credenciais DENTRO do tenant
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.senha,
+      tenantId,
       ipAddress,
     );
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
-    return this.authService.login(user, ipAddress, userAgent);
+
+    // 3. Gerar tokens com tenantId obrigatório
+    return this.authService.login(user, tenantId, ipAddress, userAgent);
   }
 
   @ThrottleAPI()

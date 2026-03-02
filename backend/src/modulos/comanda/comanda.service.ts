@@ -8,8 +8,7 @@ import {
   Optional,
   Scope,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { REQUEST } from '@nestjs/core';
@@ -28,9 +27,14 @@ import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
 // Repositórios tenant-aware
 import { ComandaRepository } from './comanda.repository';
+import { ComandaAgregadoRepository } from './comanda-agregado.repository';
 import { MesaRepository } from '../mesa/mesa.repository';
 import { ClienteRepository } from '../cliente/cliente.repository';
 import { PedidoRepository } from '../pedido/pedido.repository';
+import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
+import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
+import { EventoRepository } from '../evento/evento.repository';
+import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
 
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
@@ -56,17 +60,12 @@ export class ComandaService {
     private readonly comandaRepository: ComandaRepository,
     private readonly mesaRepository: MesaRepository,
     private readonly clienteRepository: ClienteRepository,
-    @InjectRepository(PaginaEvento)
-    private readonly paginaEventoRepository: Repository<PaginaEvento>,
-    @InjectRepository(Evento)
-    private readonly eventoRepository: Repository<Evento>,
+    private readonly paginaEventoRepository: PaginaEventoRepository,
+    private readonly eventoRepository: EventoRepository,
     private readonly pedidoRepository: PedidoRepository,
-    @InjectRepository(ItemPedido)
-    private readonly itemPedidoRepository: Repository<ItemPedido>,
-    @InjectRepository(PontoEntrega)
-    private readonly pontoEntregaRepository: Repository<PontoEntrega>,
-    @InjectRepository(ComandaAgregado)
-    private readonly comandaAgregadoRepository: Repository<ComandaAgregado>,
+    private readonly itemPedidoRepository: ItemPedidoRepository,
+    private readonly pontoEntregaRepository: PontoEntregaRepository,
+    private readonly comandaAgregadoRepository: ComandaAgregadoRepository,
     private readonly pedidosGateway: PedidosGateway,
     private readonly caixaService: CaixaService,
     @Inject(CACHE_MANAGER)
@@ -87,7 +86,7 @@ export class ComandaService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
@@ -95,9 +94,10 @@ export class ComandaService {
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `comandas:${tenantId}:${params}` : `comandas:global:${params}`;
+    if (!tenantId) return null;
+    return `comandas:${tenantId}:${params}`;
   }
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -292,14 +292,15 @@ export class ComandaService {
     const { page = 1, limit = 20, sortBy = 'criadoEm', sortOrder = 'DESC' } = paginationDto || {};
     const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
 
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<PaginatedResponse<Comanda>>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<PaginatedResponse<Comanda>>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     // Buscar do banco com paginação
     const [data, total] = await this.comandaRepository.findAndCount({
@@ -323,8 +324,10 @@ export class ComandaService {
       },
     };
 
-    // Armazenar no cache por 5 minutos (comandas mudam frequentemente)
-    await this.cacheManager.set(cacheKey, response, 300000);
+    // Armazenar no cache por 5 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, response, 300000);
+    }
 
     return response;
   }

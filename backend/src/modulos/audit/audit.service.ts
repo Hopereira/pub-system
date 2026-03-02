@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
 import { AuditLog, AuditAction } from './entities/audit-log.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
+import { AuditLogRepository } from './audit.repository';
 
 export interface CreateAuditLogDto {
   funcionario?: Funcionario;
@@ -17,7 +16,7 @@ export interface CreateAuditLogDto {
   endpoint?: string;
   method?: string;
   description?: string;
-  tenantId?: string; // Multi-tenancy: ID do tenant
+  tenantId?: string;
 }
 
 export interface AuditLogFilters {
@@ -36,8 +35,7 @@ export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
   constructor(
-    @InjectRepository(AuditLog)
-    private readonly auditLogRepository: Repository<AuditLog>,
+    private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
   /**

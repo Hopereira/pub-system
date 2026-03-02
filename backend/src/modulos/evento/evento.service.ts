@@ -1,24 +1,21 @@
 // Caminho: backend/src/modulos/evento/evento.service.ts
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { Evento } from './entities/evento.entity';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
 import { Express } from 'express';
-// TODO: Criar EventoRepository quando necessário para multi-tenancy completo
+import { EventoRepository } from './evento.repository';
+import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
 
 @Injectable()
 export class EventoService {
   private readonly logger = new Logger(EventoService.name);
 
   constructor(
-    @InjectRepository(Evento)
-    private readonly eventoRepository: Repository<Evento>,
-    @InjectRepository(PaginaEvento)
-    private readonly paginaEventoRepository: Repository<PaginaEvento>,
+    private readonly eventoRepository: EventoRepository,
+    private readonly paginaEventoRepository: PaginaEventoRepository,
     private readonly storageService: GcsStorageService,
   ) {}
 
@@ -45,18 +42,17 @@ export class EventoService {
   }
 
   findAll(): Promise<Evento[]> {
-    // ✅ Garante que a paginaEvento (tema) seja sempre incluída na listagem
     return this.eventoRepository.find({
       relations: ['paginaEvento'],
-      order: { dataEvento: 'DESC' },
+      order: { dataEvento: 'DESC' } as any,
     });
   }
 
   findAllPublic(): Promise<Evento[]> {
     return this.eventoRepository.find({
-      where: { ativo: true },
+      where: { ativo: true } as any,
       relations: ['paginaEvento'],
-      order: { dataEvento: 'ASC' },
+      order: { dataEvento: 'ASC' } as any,
     });
   }
 
@@ -94,7 +90,6 @@ export class EventoService {
         }
         evento.paginaEvento = paginaEvento;
       } else {
-        // Permite desassociar um tema ao enviar paginaEventoId: null
         evento.paginaEvento = null;
       }
     }
@@ -105,7 +100,6 @@ export class EventoService {
   async uploadImagem(id: string, file: Express.Multer.File): Promise<Evento> {
     const evento = await this.findOne(id);
 
-    // Se já existir uma imagem antiga, apaga-a do Google Cloud Storage
     if (evento.urlImagem) {
       try {
         await this.storageService.deleteFile(evento.urlImagem);
@@ -118,18 +112,13 @@ export class EventoService {
       }
     }
 
-    // Faz o upload do novo ficheiro para a pasta 'eventos'
     const novaUrl = await this.storageService.uploadFile(file, 'eventos');
-
-    // Atualiza a URL no registo do evento e salva no banco de dados
     evento.urlImagem = novaUrl;
     return this.eventoRepository.save(evento);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.eventoRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
-    }
+    const evento = await this.findOne(id);
+    await this.eventoRepository.remove(evento);
   }
 }

@@ -80,14 +80,19 @@ export class TenantGuard implements CanActivate {
     }
 
     const contextTenantId = this.tenantContext.getTenantId();
-    const userTenantId = user.tenantId || user.empresaId;
+    const userTenantId = user.tenantId;
 
-    // Se usuário não tem tenant associado (admin global?), deixar passar
+    // BLOQUEIO: Usuário sem tenant NÃO pode acessar recursos de nenhum tenant
     if (!userTenantId) {
-      this.logger.warn(
-        `⚠️ Usuário ${user.id} sem tenant associado acessando tenant ${contextTenantId}`
+      this.logger.error(
+        `🚨 Usuário ${user.id} (${user.email}) sem tenantId tentou acessar tenant ${contextTenantId}`
       );
-      return true;
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'Forbidden',
+        message: 'Usuário não está associado a nenhum estabelecimento',
+        details: { reason: 'USER_WITHOUT_TENANT' },
+      });
     }
 
     // VALIDAÇÃO PRINCIPAL: Comparar tenant do JWT com tenant do contexto

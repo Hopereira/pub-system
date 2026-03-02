@@ -30,7 +30,7 @@ export abstract class BaseTenantGateway {
       
       if (token && this.jwtService) {
         const payload = this.jwtService.decode(token) as any;
-        return payload?.empresaId || payload?.tenantId || null;
+        return payload?.tenantId || null;
       }
 
       // Fallback: tenta extrair do query param

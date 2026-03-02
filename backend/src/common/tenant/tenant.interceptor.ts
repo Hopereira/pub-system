@@ -18,7 +18,7 @@ import { JwtService } from '@nestjs/jwt';
  * 
  * 1. **Subdomínio (Staff):** bar-do-ze.pubsystem.com.br
  * 2. **Slug na URL (Cliente via QR Code):** pubsystem.com/menu/bar-do-ze
- * 3. **JWT (Rotas protegidas):** Token contém empresaId
+ * 3. **JWT (Rotas protegidas):** Token contém tenantId
  * 4. **Header X-Tenant-ID (API):** Para integrações externas
  * 
  * Prioridade de resolução:
@@ -70,8 +70,7 @@ export class TenantInterceptor implements NestInterceptor {
         const { tenant, source } = resolved;
         
         // Validar se JWT tenant coincide com URL tenant (segurança)
-        // Priorizar tenantId sobre empresaId
-        const userTenantId = user?.tenantId || user?.empresaId;
+        const userTenantId = user?.tenantId;
         if (userTenantId && tenant.id !== userTenantId) {
           this.logger?.warn?.(
             `⚠️ Mismatch de tenant! JWT: ${userTenantId}, URL: ${tenant.id}`
@@ -133,15 +132,13 @@ export class TenantInterceptor implements NestInterceptor {
       return { tenant, source: 'slug' };
     }
 
-    // 3. Tentar JWT (rotas protegidas) - verificar tenantId ou empresaId
-    // Primeiro tentar do user (se já processado pelo guard)
-    let jwtTenantId = user?.tenantId || user?.empresaId;
+    // 3. Tentar JWT (rotas protegidas) - usar apenas tenantId
+    let jwtTenantId = user?.tenantId;
     
     // Se user não estiver disponível, decodificar JWT diretamente do header
     if (!jwtTenantId && headers?.authorization) {
       const decoded = this.decodeJwtFromHeader(headers.authorization);
-      this.logger?.log?.(`🔍 JWT decodificado: tenantId=${decoded?.tenantId}, empresaId=${decoded?.empresaId}`);
-      jwtTenantId = decoded?.tenantId || decoded?.empresaId;
+      jwtTenantId = decoded?.tenantId;
     }
     
     if (jwtTenantId) {

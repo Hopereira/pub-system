@@ -69,7 +69,7 @@ export class PedidoService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
@@ -77,9 +77,10 @@ export class PedidoService {
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `pedidos:${tenantId}:${params}` : `pedidos:global:${params}`;
+    if (!tenantId) return null;
+    return `pedidos:${tenantId}:${params}`;
   }
 
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
@@ -264,14 +265,15 @@ export class PedidoService {
     // Cache key baseado nos filtros com namespace do tenant
     const cacheKey = this.getCacheKey(`amb:${ambienteId || 'all'}:st:${status || 'all'}:cmd:${comandaId || 'all'}`);
     
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<Pedido[]>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<Pedido[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-    
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     const queryBuilder = this.pedidoRepository
       .createQueryBuilder('pedido')
@@ -372,8 +374,10 @@ export class PedidoService {
       );
     }
 
-    // Armazenar no cache por 2 minutos (pedidos mudam muito frequentemente)
-    await this.cacheManager.set(cacheKey, pedidosFiltrados, 120000);
+    // Armazenar no cache por 2 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, pedidosFiltrados, 120000);
+    }
 
     return pedidosFiltrados;
   }

@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
+import { Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { Comanda } from '../comanda/entities/comanda.entity';
 import { PedidoRepository } from '../pedido/pedido.repository';
+import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
 import { ComandaRepository } from '../comanda/comanda.repository';
 
 interface FiltroRelatorio {
@@ -21,8 +21,7 @@ export class AnalyticsService {
 
   constructor(
     private pedidoRepository: PedidoRepository,
-    @InjectRepository(ItemPedido)
-    private itemPedidoRepository: Repository<ItemPedido>,
+    private itemPedidoRepository: ItemPedidoRepository,
     private comandaRepository: ComandaRepository,
   ) {}
 

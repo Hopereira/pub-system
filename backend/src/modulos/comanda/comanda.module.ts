@@ -8,25 +8,24 @@ import { Mesa } from '../mesa/entities/mesa.entity';
 import { Cliente } from '../cliente/entities/cliente.entity';
 import { PedidoModule } from '../pedido/pedido.module';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
-
-// ✅ 1. Importar as entidades necessárias para a nova lógica de entrada do evento
 import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './entities/comanda-agregado.entity';
-
-// ✅ 2. Importar CaixaModule para integração com sistema de pagamentos
 import { CaixaModule } from '../caixa/caixa.module';
 
-// ✅ 3. Importar repositórios tenant-aware
+// Repositórios tenant-aware
 import { ComandaRepository } from './comanda.repository';
+import { ComandaAgregadoRepository } from './comanda-agregado.repository';
 import { MesaRepository } from '../mesa/mesa.repository';
 import { ClienteRepository } from '../cliente/cliente.repository';
+import { PaginaEventoModule } from '../pagina-evento/pagina-evento.module';
+import { EventoModule } from '../evento/evento.module';
+import { PontoEntregaModule } from '../ponto-entrega/ponto-entrega.module';
 
 @Module({
   imports: [
-    // ✅ 3. Adicionar TODAS as entidades que o ComandaService agora utiliza
     TypeOrmModule.forFeature([
       Comanda,
       Mesa,
@@ -38,11 +37,20 @@ import { ClienteRepository } from '../cliente/cliente.repository';
       PontoEntrega,
       ComandaAgregado,
     ]),
-    forwardRef(() => PedidoModule), // forwardRef para resolver dependência circular
-    CaixaModule, // ✅ Módulo de caixa para registrar vendas
+    forwardRef(() => PedidoModule),
+    forwardRef(() => EventoModule),
+    PaginaEventoModule,
+    PontoEntregaModule,
+    CaixaModule,
   ],
   controllers: [ComandaController],
-  providers: [ComandaService, ComandaRepository, MesaRepository, ClienteRepository],
-  exports: [ComandaService, ComandaRepository],
+  providers: [
+    ComandaService,
+    ComandaRepository,
+    ComandaAgregadoRepository,
+    MesaRepository,
+    ClienteRepository,
+  ],
+  exports: [ComandaService, ComandaRepository, ComandaAgregadoRepository],
 })
 export class ComandaModule {}

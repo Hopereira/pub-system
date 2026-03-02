@@ -1,23 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
 import { Medalha } from './entities/medalha.entity';
 import { MedalhaGarcom } from './entities/medalha-garcom.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { TipoMedalha } from './enums/tipo-medalha.enum';
 import { NivelMedalha } from './enums/nivel-medalha.enum';
+import { MedalhaRepository } from './medalha.repository';
+import { MedalhaGarcomRepository } from './medalha-garcom.repository';
+import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
 
 @Injectable()
 export class MedalhaService {
   private readonly logger = new Logger(MedalhaService.name);
 
   constructor(
-    @InjectRepository(Medalha)
-    private medalhaRepository: Repository<Medalha>,
-    @InjectRepository(MedalhaGarcom)
-    private medalhaGarcomRepository: Repository<MedalhaGarcom>,
-    @InjectRepository(ItemPedido)
-    private itemPedidoRepository: Repository<ItemPedido>,
+    private medalhaRepository: MedalhaRepository,
+    private medalhaGarcomRepository: MedalhaGarcomRepository,
+    private itemPedidoRepository: ItemPedidoRepository,
   ) {}
 
   async getMedalhasGarcom(garcomId: string) {

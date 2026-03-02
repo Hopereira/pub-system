@@ -26,6 +26,7 @@ import {
   MapaCompletoDto,
 } from './dto/mapa.dto';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
+import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 
@@ -36,6 +37,7 @@ export class MesaService {
   constructor(
     private readonly mesaRepository: MesaRepository,
     private readonly ambienteRepository: AmbienteRepository,
+    private readonly pontoEntregaRepository: PontoEntregaRepository,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
     private readonly cacheInvalidationService: CacheInvalidationService,
@@ -54,7 +56,7 @@ export class MesaService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
@@ -62,9 +64,10 @@ export class MesaService {
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `mesas:${tenantId}:${params}` : `mesas:global:${params}`;
+    if (!tenantId) return null;
+    return `mesas:${tenantId}:${params}`;
   }
 
   // --- MÉTODO ATUALIZADO: Aceita posição, tamanho e rotação opcionais ---
@@ -133,14 +136,15 @@ export class MesaService {
   async findAll(): Promise<Mesa[]> {
     const cacheKey = this.getCacheKey('all');
 
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<Mesa[]>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<Mesa[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     const mesas = await this.mesaRepository.find({
       relations: ['ambiente', 'comandas', 'comandas.cliente'],
@@ -169,8 +173,10 @@ export class MesaService {
       };
     });
 
-    // Armazenar no cache por 3 minutos (mesas mudam frequentemente com comandas)
-    await this.cacheManager.set(cacheKey, result, 180000);
+    // Armazenar no cache por 3 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, result, 180000);
+    }
 
     return result;
   }
@@ -342,9 +348,9 @@ export class MesaService {
       order: { numero: 'ASC' },
     });
 
-    // Buscar pontos de entrega do ambiente
-    const pontosEntrega = await this.mesaRepository.manager.find(PontoEntrega, {
-      where: { ambientePreparoId: ambienteId },
+    // Buscar pontos de entrega do ambiente (tenant-aware)
+    const pontosEntrega = await this.pontoEntregaRepository.find({
+      where: { ambientePreparoId: ambienteId } as any,
       relations: ['comandas', 'comandas.pedidos'],
     });
 

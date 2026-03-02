@@ -43,7 +43,7 @@ export class AmbienteService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
@@ -51,9 +51,10 @@ export class AmbienteService {
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `ambientes:${tenantId}:${params}` : `ambientes:global:${params}`;
+    if (!tenantId) return null;
+    return `ambientes:${tenantId}:${params}`;
   }
 
   async create(createAmbienteDto: CreateAmbienteDto): Promise<Ambiente> {
@@ -85,14 +86,15 @@ export class AmbienteService {
   async findAll(): Promise<any[]> {
     const cacheKey = this.getCacheKey('all');
 
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<any[]>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<any[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     const ambientes = await this.ambienteRepository
       .createQueryBuilder('ambiente')
@@ -119,8 +121,10 @@ export class AmbienteService {
       tableCount: parseInt(ambiente.tableCount, 10),
     }));
 
-    // Armazenar no cache por 10 minutos (ambientes mudam raramente)
-    await this.cacheManager.set(cacheKey, result, 600000);
+    // Armazenar no cache por 10 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, result, 600000);
+    }
 
     return result;
   }

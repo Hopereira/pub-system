@@ -4,8 +4,6 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
 import { Avaliacao } from './entities/avaliacao.entity';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
 import {
@@ -14,14 +12,14 @@ import {
 } from './dto/avaliacao-response.dto';
 import { Comanda } from '../comanda/entities/comanda.entity';
 import { ComandaRepository } from '../comanda/comanda.repository';
+import { AvaliacaoRepository } from './avaliacao.repository';
 
 @Injectable()
 export class AvaliacaoService {
   private readonly logger = new Logger(AvaliacaoService.name);
 
   constructor(
-    @InjectRepository(Avaliacao)
-    private avaliacaoRepository: Repository<Avaliacao>,
+    private avaliacaoRepository: AvaliacaoRepository,
     private comandaRepository: ComandaRepository,
   ) {}
 
