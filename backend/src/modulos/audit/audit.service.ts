@@ -191,7 +191,7 @@ export class AuditService {
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
     const result = await this.auditLogRepository
-      .createQueryBuilder()
+      .createQueryBuilderUnsafe('audit')
       .delete()
       .where('createdAt < :cutoffDate', { cutoffDate })
       .execute();
