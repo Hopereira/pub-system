@@ -1,13 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { AmbienteService } from './ambiente.service';
+import { AmbienteRepository } from './ambiente.repository';
 import { Ambiente, TipoAmbiente } from './entities/ambiente.entity';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
 
 describe('AmbienteService', () => {
   let service: AmbienteService;
-  let ambienteRepository: jest.Mocked<Repository<Ambiente>>;
+  let ambienteRepository: any;
 
   const mockAmbienteRepository = {
     create: jest.fn(),
@@ -17,6 +20,7 @@ describe('AmbienteService', () => {
     preload: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findComMesasEProdutos: jest.fn(),
   };
 
   // Mock data
@@ -41,14 +45,30 @@ describe('AmbienteService', () => {
       providers: [
         AmbienteService,
         {
-          provide: getRepositoryToken(Ambiente),
+          provide: AmbienteRepository,
           useValue: mockAmbienteRepository,
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
+        {
+          provide: CacheInvalidationService,
+          useValue: { invalidateAmbientes: jest.fn(), invalidateProdutos: jest.fn(), invalidateMesas: jest.fn(), invalidateComandas: jest.fn(), invalidatePedidos: jest.fn(), invalidatePattern: jest.fn(), invalidateMultiple: jest.fn() },
+        },
+        {
+          provide: TenantContextService,
+          useValue: { getTenantId: jest.fn().mockReturnValue('tenant-uuid'), hasTenant: jest.fn().mockReturnValue(true) },
+        },
+        {
+          provide: REQUEST,
+          useValue: { tenantId: 'tenant-uuid' },
         },
       ],
     }).compile();
 
-    service = module.get<AmbienteService>(AmbienteService);
-    ambienteRepository = module.get(getRepositoryToken(Ambiente));
+    service = await module.resolve<AmbienteService>(AmbienteService);
+    ambienteRepository = module.get(AmbienteRepository);
   });
 
   afterEach(() => {

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
+import { ForbiddenException } from '@nestjs/common';
 import { BaseTenantRepository, TenantAwareEntity } from './base-tenant.repository';
 import { TenantContextService } from '../tenant-context.service';
-import { TenantNotSetError } from '../tenant.types';
 
 // Entidade de teste
 interface TestEntity extends TenantAwareEntity {
@@ -193,7 +193,7 @@ describe('BaseTenantRepository', () => {
       
       const repoSemTenant = new TestTenantRepository(mockTypeOrmRepo, newTenantContext);
 
-      await expect(repoSemTenant.find()).rejects.toThrow(TenantNotSetError);
+      await expect(repoSemTenant.find()).rejects.toThrow(ForbiddenException);
     });
   });
 

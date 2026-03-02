@@ -1,22 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ClienteService } from './cliente.service';
+import { ClienteRepository } from './cliente.repository';
 import { Cliente } from './entities/cliente.entity';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('ClienteService', () => {
   let service: ClienteService;
-  let clienteRepository: jest.Mocked<Repository<Cliente>>;
+  let clienteRepository: any;
 
   const mockClienteRepository = {
     create: jest.fn(),
+    createPublic: jest.fn(),
     save: jest.fn(),
+    savePublic: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
     preload: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findByCpf: jest.fn(),
+    findByCpfPublic: jest.fn(),
+    findByTelefone: jest.fn(),
   };
 
   // Mock data
@@ -41,14 +45,14 @@ describe('ClienteService', () => {
       providers: [
         ClienteService,
         {
-          provide: getRepositoryToken(Cliente),
+          provide: ClienteRepository,
           useValue: mockClienteRepository,
         },
       ],
     }).compile();
 
     service = module.get<ClienteService>(ClienteService);
-    clienteRepository = module.get(getRepositoryToken(Cliente));
+    clienteRepository = module.get(ClienteRepository);
   });
 
   afterEach(() => {
@@ -71,9 +75,9 @@ describe('ClienteService', () => {
     };
 
     it('deve criar cliente com sucesso', async () => {
-      mockClienteRepository.findOne.mockResolvedValue(null);
-      mockClienteRepository.create.mockReturnValue(createDto);
-      mockClienteRepository.save.mockResolvedValue({
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(null);
+      mockClienteRepository.createPublic.mockReturnValue(createDto);
+      mockClienteRepository.savePublic.mockResolvedValue({
         id: 'new-cliente-uuid',
         ...createDto,
       });
@@ -85,11 +89,12 @@ describe('ClienteService', () => {
     });
 
     it('deve lançar ConflictException se CPF já existir', async () => {
-      mockClienteRepository.findOne.mockResolvedValue(mockCliente);
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(mockCliente);
 
       await expect(service.create(createDto)).rejects.toThrow(
         ConflictException,
       );
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(mockCliente);
       await expect(service.create(createDto)).rejects.toThrow(
         'Um cliente com este CPF já está cadastrado.',
       );
@@ -102,9 +107,9 @@ describe('ClienteService', () => {
   describe('createRapido', () => {
     it('deve criar cliente rápido com CPF', async () => {
       const dto = { nome: 'Cliente Rápido', cpf: '55566677788' };
-      mockClienteRepository.findOne.mockResolvedValue(null);
-      mockClienteRepository.create.mockReturnValue(dto);
-      mockClienteRepository.save.mockResolvedValue({
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(null);
+      mockClienteRepository.createPublic.mockReturnValue(dto);
+      mockClienteRepository.savePublic.mockResolvedValue({
         id: 'new-cliente-uuid',
         ...dto,
       });
@@ -117,21 +122,21 @@ describe('ClienteService', () => {
 
     it('deve retornar cliente existente se CPF já existir', async () => {
       const dto = { nome: 'Cliente Rápido', cpf: mockCliente.cpf };
-      mockClienteRepository.findOne.mockResolvedValue(mockCliente);
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(mockCliente);
 
       const result = await service.createRapido(dto);
 
       expect(result).toBe(mockCliente);
-      expect(mockClienteRepository.save).not.toHaveBeenCalled();
+      expect(mockClienteRepository.savePublic).not.toHaveBeenCalled();
     });
 
     it('deve criar cliente com CPF temporário se não fornecido', async () => {
       const dto = { nome: 'Cliente Sem CPF' };
-      mockClienteRepository.create.mockReturnValue({
+      mockClienteRepository.createPublic.mockReturnValue({
         ...dto,
         cpf: '99912345678',
       });
-      mockClienteRepository.save.mockResolvedValue({
+      mockClienteRepository.savePublic.mockResolvedValue({
         id: 'new-cliente-uuid',
         ...dto,
         cpf: '99912345678',
@@ -150,9 +155,9 @@ describe('ClienteService', () => {
         telefone: '11666666666',
         pontoEntregaId: 'ponto-uuid-1',
       };
-      mockClienteRepository.findOne.mockResolvedValue(null);
-      mockClienteRepository.create.mockReturnValue(dto);
-      mockClienteRepository.save.mockResolvedValue({
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(null);
+      mockClienteRepository.createPublic.mockReturnValue(dto);
+      mockClienteRepository.savePublic.mockResolvedValue({
         id: 'new-cliente-uuid',
         ...dto,
       });
@@ -190,7 +195,7 @@ describe('ClienteService', () => {
   // ============================================
   describe('findByCpf', () => {
     it('deve retornar cliente por CPF', async () => {
-      mockClienteRepository.findOne.mockResolvedValue(mockCliente);
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(mockCliente);
 
       const result = await service.findByCpf(mockCliente.cpf);
 
@@ -199,7 +204,7 @@ describe('ClienteService', () => {
     });
 
     it('deve lançar NotFoundException se CPF não existir', async () => {
-      mockClienteRepository.findOne.mockResolvedValue(null);
+      mockClienteRepository.findByCpfPublic.mockResolvedValue(null);
 
       await expect(service.findByCpf('00000000000')).rejects.toThrow(
         NotFoundException,

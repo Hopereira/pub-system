@@ -59,6 +59,8 @@ describe('BaseTenantGateway', () => {
       },
       join: jest.fn(),
       leave: jest.fn(),
+      emit: jest.fn(),
+      disconnect: jest.fn(),
       data: {},
     } as any;
 
@@ -69,7 +71,7 @@ describe('BaseTenantGateway', () => {
   describe('extractTenantId', () => {
     it('deve extrair tenant_id do JWT no auth', () => {
       mockSocket.handshake.auth = { token: 'jwt-token' };
-      mockJwtService.decode.mockReturnValue({ empresaId: TENANT_A_ID });
+      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_A_ID });
 
       const result = gateway.testExtractTenantId(mockSocket);
 
@@ -79,7 +81,7 @@ describe('BaseTenantGateway', () => {
 
     it('deve extrair tenant_id do header Authorization', () => {
       mockSocket.handshake.headers = { authorization: 'Bearer jwt-token' };
-      mockJwtService.decode.mockReturnValue({ empresaId: TENANT_B_ID });
+      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_B_ID });
 
       const result = gateway.testExtractTenantId(mockSocket);
 
@@ -112,7 +114,7 @@ describe('BaseTenantGateway', () => {
   describe('joinTenantRoom', () => {
     it('deve adicionar cliente ao room do tenant', () => {
       mockSocket.handshake.auth = { token: 'jwt-token' };
-      mockJwtService.decode.mockReturnValue({ empresaId: TENANT_A_ID });
+      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_A_ID });
 
       const result = gateway.testJoinTenantRoom(mockSocket);
 
@@ -155,7 +157,7 @@ describe('BaseTenantGateway', () => {
     it('cliente do Tenant A não deve receber eventos do Tenant B', () => {
       // Simula cliente do Tenant A conectado
       mockSocket.handshake.auth = { token: 'jwt-token-a' };
-      mockJwtService.decode.mockReturnValue({ empresaId: TENANT_A_ID });
+      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_A_ID });
       gateway.testJoinTenantRoom(mockSocket);
 
       // Emite evento para Tenant B

@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
 import { FuncionarioService } from './funcionario.service';
+import { FuncionarioRepository } from './funcionario.repository';
 import { Funcionario } from './entities/funcionario.entity';
 import { Cargo } from './enums/cargo.enum';
+import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
 import {
   ConflictException,
   NotFoundException,
@@ -16,8 +16,8 @@ jest.mock('bcrypt');
 
 describe('FuncionarioService', () => {
   let service: FuncionarioService;
-  let funcionarioRepository: jest.Mocked<Repository<Funcionario>>;
-  let configService: jest.Mocked<ConfigService>;
+  let funcionarioRepository: any;
+  let configService: any;
 
   const mockFuncionarioRepository = {
     create: jest.fn(),
@@ -28,7 +28,15 @@ describe('FuncionarioService', () => {
     remove: jest.fn(),
     count: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findAtivos: jest.fn(),
+    findByEmail: jest.fn(),
+    findByCargo: jest.fn(),
     findByEmailAndTenantForAuth: jest.fn(),
+  };
+
+  const mockStorageService = {
+    uploadFile: jest.fn(),
+    deleteFile: jest.fn(),
   };
 
   const mockConfigService = {
@@ -57,18 +65,22 @@ describe('FuncionarioService', () => {
       providers: [
         FuncionarioService,
         {
-          provide: getRepositoryToken(Funcionario),
+          provide: FuncionarioRepository,
           useValue: mockFuncionarioRepository,
         },
         {
           provide: ConfigService,
           useValue: mockConfigService,
         },
+        {
+          provide: GcsStorageService,
+          useValue: mockStorageService,
+        },
       ],
     }).compile();
 
     service = module.get<FuncionarioService>(FuncionarioService);
-    funcionarioRepository = module.get(getRepositoryToken(Funcionario));
+    funcionarioRepository = module.get(FuncionarioRepository);
     configService = module.get(ConfigService);
 
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword123');
@@ -91,6 +103,7 @@ describe('FuncionarioService', () => {
       mockConfigService.get.mockImplementation((key: string) => {
         if (key === 'ADMIN_SENHA') return 'admin123';
         if (key === 'ADMIN_EMAIL') return 'admin@admin.com';
+        if (key === 'DEFAULT_TENANT_ID') return 'tenant-uuid-1';
         return null;
       });
       mockFuncionarioRepository.create.mockReturnValue(mockAdmin);

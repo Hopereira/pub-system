@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { TenantResolverService } from './tenant-resolver.service';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
+import { Tenant } from './entities/tenant.entity';
 
 describe('TenantResolverService', () => {
   let service: TenantResolverService;
@@ -22,6 +23,12 @@ describe('TenantResolverService', () => {
         TenantResolverService,
         {
           provide: getRepositoryToken(Empresa),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Tenant),
           useValue: {
             findOne: jest.fn(),
           },
@@ -98,12 +105,12 @@ describe('TenantResolverService', () => {
       expect(result.nomeFantasia).toBe(mockEmpresa.nomeFantasia);
     });
 
-    it('deve lançar NotFoundException se tenant não encontrado', async () => {
+    it('deve lançar ForbiddenException se tenant não encontrado', async () => {
       empresaRepository.findOne.mockResolvedValue(null);
 
       await expect(
         service.resolveById('550e8400-e29b-41d4-a716-446655440099')
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

@@ -1,21 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { CaixaService } from './caixa.service';
-import { AberturaCaixa } from './entities/abertura-caixa.entity';
-import { FechamentoCaixa } from './entities/fechamento-caixa.entity';
-import { Sangria } from './entities/sangria.entity';
-import { MovimentacaoCaixa } from './entities/movimentacao-caixa.entity';
-import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
+import { AberturaCaixaRepository } from './repositories/abertura-caixa.repository';
+import { FechamentoCaixaRepository } from './repositories/fechamento-caixa.repository';
+import { SangriaRepository } from './repositories/sangria.repository';
+import { MovimentacaoCaixaRepository } from './repositories/movimentacao-caixa.repository';
+import { TurnoRepository } from '../turno/turno.repository';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('CaixaService', () => {
   let service: CaixaService;
-  let aberturaCaixaRepository: Repository<AberturaCaixa>;
-  let fechamentoCaixaRepository: Repository<FechamentoCaixa>;
-  let sangriaRepository: Repository<Sangria>;
-  let movimentacaoCaixaRepository: Repository<MovimentacaoCaixa>;
+  let aberturaCaixaRepository: any;
+  let fechamentoCaixaRepository: any;
+  let sangriaRepository: any;
+  let movimentacaoCaixaRepository: any;
 
   const mockAberturaCaixaRepository = {
     create: jest.fn(),
@@ -56,23 +54,23 @@ describe('CaixaService', () => {
       providers: [
         CaixaService,
         {
-          provide: getRepositoryToken(AberturaCaixa),
+          provide: AberturaCaixaRepository,
           useValue: mockAberturaCaixaRepository,
         },
         {
-          provide: getRepositoryToken(FechamentoCaixa),
+          provide: FechamentoCaixaRepository,
           useValue: mockFechamentoCaixaRepository,
         },
         {
-          provide: getRepositoryToken(Sangria),
+          provide: SangriaRepository,
           useValue: mockSangriaRepository,
         },
         {
-          provide: getRepositoryToken(MovimentacaoCaixa),
+          provide: MovimentacaoCaixaRepository,
           useValue: mockMovimentacaoCaixaRepository,
         },
         {
-          provide: getRepositoryToken(TurnoFuncionario),
+          provide: TurnoRepository,
           useValue: mockTurnoRepository,
         },
         {
@@ -82,19 +80,11 @@ describe('CaixaService', () => {
       ],
     }).compile();
 
-    service = module.get<CaixaService>(CaixaService);
-    aberturaCaixaRepository = module.get<Repository<AberturaCaixa>>(
-      getRepositoryToken(AberturaCaixa),
-    );
-    fechamentoCaixaRepository = module.get<Repository<FechamentoCaixa>>(
-      getRepositoryToken(FechamentoCaixa),
-    );
-    sangriaRepository = module.get<Repository<Sangria>>(
-      getRepositoryToken(Sangria),
-    );
-    movimentacaoCaixaRepository = module.get<Repository<MovimentacaoCaixa>>(
-      getRepositoryToken(MovimentacaoCaixa),
-    );
+    service = await module.resolve<CaixaService>(CaixaService);
+    aberturaCaixaRepository = module.get(AberturaCaixaRepository);
+    fechamentoCaixaRepository = module.get(FechamentoCaixaRepository);
+    sangriaRepository = module.get(SangriaRepository);
+    movimentacaoCaixaRepository = module.get(MovimentacaoCaixaRepository);
   });
 
   afterEach(() => {

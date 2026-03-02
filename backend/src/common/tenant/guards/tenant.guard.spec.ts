@@ -46,7 +46,7 @@ describe('TenantGuard', () => {
     it('deve permitir acesso quando tenant do JWT coincide com contexto', async () => {
       tenantContext.setTenantId(TENANT_A, 'Bar A');
       
-      const user = { id: 'user-1', email: 'user@bara.com', empresaId: TENANT_A };
+      const user = { id: 'user-1', email: 'user@bara.com', tenantId: TENANT_A };
       const context = createMockContext(user);
 
       const result = await guard.canActivate(context);
@@ -57,7 +57,7 @@ describe('TenantGuard', () => {
     it('deve bloquear acesso quando tenant do JWT difere do contexto', async () => {
       tenantContext.setTenantId(TENANT_B, 'Bar B'); // Contexto é Bar B
       
-      const user = { id: 'user-1', email: 'user@bara.com', empresaId: TENANT_A }; // Usuário é do Bar A
+      const user = { id: 'user-1', email: 'user@bara.com', tenantId: TENANT_A }; // Usuário é do Bar A
       const context = createMockContext(user);
 
       await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
@@ -66,7 +66,7 @@ describe('TenantGuard', () => {
     it('deve retornar 403 com detalhes da violação', async () => {
       tenantContext.setTenantId(TENANT_B, 'Bar B');
       
-      const user = { id: 'user-1', email: 'user@bara.com', empresaId: TENANT_A };
+      const user = { id: 'user-1', email: 'user@bara.com', tenantId: TENANT_A };
       const context = createMockContext(user);
 
       try {
@@ -98,7 +98,7 @@ describe('TenantGuard', () => {
 
     it('deve permitir acesso se não há tenant no contexto (rota pública)', async () => {
       // Não define tenant no contexto
-      const user = { id: 'user-1', email: 'user@bara.com', empresaId: TENANT_A };
+      const user = { id: 'user-1', email: 'user@bara.com', tenantId: TENANT_A };
       const context = createMockContext(user);
 
       const result = await guard.canActivate(context);
@@ -106,15 +106,13 @@ describe('TenantGuard', () => {
       expect(result).toBe(true);
     });
 
-    it('deve permitir acesso se usuário não tem tenant associado', async () => {
+    it('deve bloquear acesso se usuário não tem tenant associado', async () => {
       tenantContext.setTenantId(TENANT_A, 'Bar A');
       
-      const user = { id: 'admin-1', email: 'admin@sistema.com' }; // Sem empresaId
+      const user = { id: 'admin-1', email: 'admin@sistema.com' }; // Sem empresaId/tenantId
       const context = createMockContext(user);
 
-      const result = await guard.canActivate(context);
-
-      expect(result).toBe(true);
+      await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
     });
 
     it('deve suportar tenantId como alternativa a empresaId', async () => {
@@ -133,7 +131,7 @@ describe('TenantGuard', () => {
     it('deve pular validação quando decorator está presente', async () => {
       tenantContext.setTenantId(TENANT_B, 'Bar B');
       
-      const user = { id: 'user-1', email: 'user@bara.com', empresaId: TENANT_A };
+      const user = { id: 'user-1', email: 'user@bara.com', tenantId: TENANT_A };
       
       // Simula que o handler tem o decorator
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(true);
@@ -170,7 +168,7 @@ describe('Cenários de Segurança', () => {
     const user = {
       id: 'garcom-joao',
       email: 'joao@bara.com',
-      empresaId: TENANT_BAR_A,
+      tenantId: TENANT_BAR_A,
       cargo: 'GARCOM',
     };
 
@@ -202,7 +200,7 @@ describe('Cenários de Segurança', () => {
     const user = {
       id: 'garcom-joao',
       email: 'joao@bara.com',
-      empresaId: TENANT_BAR_A,
+      tenantId: TENANT_BAR_A,
       cargo: 'GARCOM',
     };
 
