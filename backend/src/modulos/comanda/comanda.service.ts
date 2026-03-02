@@ -556,7 +556,7 @@ export class ComandaService {
     };
   }
 
-  async fecharComanda(id: string, dto: FecharComandaDto): Promise<Comanda> {
+  async fecharComanda(id: string, dto: FecharComandaDto, funcionarioId?: string): Promise<Comanda> {
     this.logger.log(
       `🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento}`,
     );
@@ -602,7 +602,7 @@ export class ComandaService {
     try {
       // Buscar caixa aberto (pode estar vinculado ao funcionário que abriu a comanda ou ao atual)
       // Por simplicidade, vamos buscar qualquer caixa aberto no momento
-      const caixaAberto = await this.caixaService.getCaixaAbertoAtual();
+      const caixaAberto = await this.caixaService.getCaixaAbertoAtual(funcionarioId);
 
       if (!caixaAberto) {
         throw new BadRequestException(

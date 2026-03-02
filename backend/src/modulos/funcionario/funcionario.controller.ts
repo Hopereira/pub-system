@@ -98,7 +98,7 @@ export class FuncionarioController {
     @Request() req: any,
   ) {
     const actorCargo = req.user?.cargo as Cargo;
-    return this.funcionarioService.create(createFuncionarioDto, actorCargo);
+    return this.funcionarioService.create(createFuncionarioDto);
   }
 
   // --- LISTAR TODOS OS FUNCIONÁRIOS ---
@@ -247,7 +247,7 @@ export class FuncionarioController {
     @Request() req: any,
   ) {
     const actorCargo = req.user?.cargo as Cargo;
-    return this.funcionarioService.update(id, updateFuncionarioDto, actorCargo);
+    return this.funcionarioService.update(id, updateFuncionarioDto);
   }
 
   // --- REMOVER UM FUNCIONÁRIO ---

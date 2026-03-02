@@ -126,7 +126,7 @@ export class EventoController {
   @ApiResponse({ status: 200, description: 'Evento retornado com sucesso.' })
   @ApiResponse({ status: 404, description: 'Evento não encontrado.' })
   findPublicOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.eventoService.findOnePublic(id);
+    return this.eventoService.findOne(id);
   }
 
   @Patch(':id')

@@ -10,7 +10,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Req,
 } from '@nestjs/common';
 import { AmbienteService } from './ambiente.service';
 import { CreateAmbienteDto } from './dto/create-ambiente.dto';
@@ -34,40 +33,6 @@ import {
 @Controller('ambientes')
 export class AmbienteController {
   constructor(private readonly ambienteService: AmbienteService) {}
-
-  // 🔍 ENDPOINT DE DIAGNÓSTICO - Verificar tenant e dados
-  @Get('debug/tenant-info')
-  @Roles(Cargo.ADMIN)
-  @ApiOperation({ summary: '[DEBUG] Informações de tenant e diagnóstico' })
-  async debugTenantInfo(@Req() req: any) {
-    const userTenantId = req.user?.tenantId || req.user?.empresaId;
-    const headerTenantId = req.headers?.['x-tenant-id'];
-    const tenantFromContext = req.tenant?.id;
-    
-    // Buscar todos os ambientes SEM filtro para diagnóstico
-    const todosAmbientes = await this.ambienteService.debugFindAllWithoutFilter();
-    
-    return {
-      diagnostico: {
-        userTenantId,
-        headerTenantId,
-        tenantFromContext,
-        user: {
-          id: req.user?.id,
-          email: req.user?.email,
-          cargo: req.user?.cargo,
-          empresaId: req.user?.empresaId,
-          tenantId: req.user?.tenantId,
-        },
-      },
-      ambientesNoBanco: todosAmbientes.map(a => ({
-        id: a.id,
-        nome: a.nome,
-        tenantId: a.tenantId,
-      })),
-      totalAmbientes: todosAmbientes.length,
-    };
-  }
 
   @Post()
   @Roles(Cargo.ADMIN)
