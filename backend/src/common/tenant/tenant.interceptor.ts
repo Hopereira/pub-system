@@ -5,11 +5,14 @@ import {
   CallHandler,
   Logger,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { TenantContextService } from './tenant-context.service';
 import { TenantResolverService, TenantSource } from './tenant-resolver.service';
 import { JwtService } from '@nestjs/jwt';
+import { REQUIRES_TENANT_KEY } from '../../auth/decorators/public.decorator';
 
 /**
  * TenantInterceptor - Captura Híbrida (Staff vs Cliente)
@@ -37,6 +40,7 @@ export class TenantInterceptor implements NestInterceptor {
     private readonly tenantContext: TenantContextService,
     private readonly tenantResolver: TenantResolverService,
     private readonly jwtService: JwtService,
+    private readonly reflector: Reflector,
   ) {}
 
   async intercept(
@@ -92,15 +96,23 @@ export class TenantInterceptor implements NestInterceptor {
         );
       }
     } catch (error) {
-      // Se for erro de tenant não encontrado, deixar propagar
-      if (error?.status === 404 || error?.status === 401) {
-        throw error;
+      // Verificar se a rota exige tenant (@PublicWithTenant)
+      const requiresTenant = this.reflector.getAllAndOverride<boolean>(
+        REQUIRES_TENANT_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+
+      if (requiresTenant) {
+        // Rota exige tenant mas não foi possível resolver
+        throw new BadRequestException(
+          'Estabelecimento não identificado. Verifique a URL ou o header X-Tenant-ID.'
+        );
       }
-      // Outros erros, logar e continuar (pode ser rota pública sem tenant)
-      // Usar console.log como fallback se logger não estiver disponível
-      if (this.logger) {
-        this.logger.debug(`Tenant não identificado: ${error?.message}`);
-      }
+
+      // Para rotas públicas normais, não propagar erro de tenant não encontrado
+      // Apenas logar e continuar - o service decidirá o que fazer
+      this.logger?.debug?.(`Tenant não identificado: ${error?.message}`);
+      // NÃO propagar erro 404 - deixar a rota decidir se precisa de tenant
     }
 
     return next.handle();
@@ -148,11 +160,18 @@ export class TenantInterceptor implements NestInterceptor {
       return { tenant, source: 'jwt' };
     }
 
-    // 4. Tentar header X-Tenant-ID (API externa)
+    // 4. Tentar header X-Tenant-ID (API externa ou rotas públicas)
     const headerTenantId = headers?.['x-tenant-id'];
+    this.logger?.log?.(`🔍 Header X-Tenant-ID: ${headerTenantId || 'NÃO ENVIADO'}`);
     if (headerTenantId) {
-      this.logger?.debug?.(`📍 Tenant detectado no header: ${headerTenantId}`);
-      const tenant = await this.tenantResolver.resolveById(headerTenantId);
+      this.logger?.log?.(`📍 Tenant detectado no header: ${headerTenantId}`);
+      // Verificar se é UUID ou slug
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerTenantId);
+      this.logger?.log?.(`📍 É UUID? ${isUuid}`);
+      const tenant = isUuid 
+        ? await this.tenantResolver.resolveById(headerTenantId)
+        : await this.tenantResolver.resolveBySlug(headerTenantId);
+      this.logger?.log?.(`✅ Tenant resolvido via header: ${tenant?.nomeFantasia} (${tenant?.id})`);
       return { tenant, source: 'header' };
     }
 

@@ -48,16 +48,9 @@ export default function AgendaEventosClientPage() {
   };
   
   // LÓGICA ATUALIZADA: APONTA PARA A ROTA /entrada/
+  // Agora permite gerar QR code mesmo sem tema - a página de entrada usará a imagem do evento como fallback
   const handleShowQrCode = (evento: Evento) => {
-    // A Agenda precisa de uma Página de Evento associada para saber o tema
-    if (evento.paginaEvento && evento.paginaEvento.id) {
-      setEventoParaQrCode(evento);
-    } else {
-      // Se não tiver tema, não podemos gerar uma página de boas-vindas válida.
-      toast.error("Ação inválida!", {
-        description: "Este evento não tem um Tema de Boas-Vindas associado. Por favor, edite o evento e selecione um tema.",
-      });
-    }
+    setEventoParaQrCode(evento);
   };
   
   const handleDownloadQrCode = () => {

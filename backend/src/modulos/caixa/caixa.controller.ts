@@ -19,13 +19,14 @@ import { CreateSuprimentoDto } from './dto/create-suprimento.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 
 @ApiTags('Caixa')
 @ApiBearerAuth()
 @Controller('caixa')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Cargo.ADMIN, Cargo.CAIXA)
+@Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
 export class CaixaController {
   constructor(private readonly caixaService: CaixaService) {}
 
@@ -114,6 +115,7 @@ export class CaixaController {
   async getCaixaAberto(
     @Query('turnoId') turnoId?: string,
     @Query('funcionarioId') funcionarioId?: string,
+    @CurrentUser() user?: { id: string; cargo: string },
   ) {
     if (turnoId) {
       // Busca por turno específico
@@ -123,9 +125,11 @@ export class CaixaController {
       return await this.caixaService.getCaixaAbertoPorFuncionario(
         funcionarioId,
       );
+    } else if (user?.id) {
+      // Busca o caixa do funcionário atual
+      return await this.caixaService.getCaixaAbertoAtual(user.id);
     } else {
-      // Fallback: busca qualquer caixa aberto (manter compatibilidade)
-      return await this.caixaService.getCaixaAbertoAtual();
+      return null;
     }
   }
 
@@ -211,7 +215,7 @@ export class CaixaController {
    * ADMIN vê todos os caixas, CAIXA vê apenas o próprio
    */
   @Get('relatorio/vendas-por-caixa')
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
   @ApiOperation({ 
     summary: 'Relatório de vendas por caixa', 
     description: 'Relatório consolidado de vendas agrupado por funcionário (caixa) com filtros de período. ADMIN vê todos, CAIXA vê apenas o próprio.' 

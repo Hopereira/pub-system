@@ -2,7 +2,6 @@
 
 import { notFound } from 'next/navigation';
 import { getPublicComandaById } from '@/services/comandaService';
-import { getProdutos } from '@/services/produtoService';
 import { ComandaGuard } from '@/components/guards/ComandaGuard';
 import { ComandaStatus } from '@/types/comanda';
 import CardapioClientPage from './CardapioClientPage';
@@ -17,11 +16,8 @@ export default async function CardapioPage({ params }: CardapioPageProps) {
   const { comandaId } = await params;
 
   try {
-    // Usamos Promise.all para buscar os dados em paralelo, otimizando o carregamento
-    const [comanda, produtos] = await Promise.all([
-      getPublicComandaById(comandaId),
-      getProdutos()
-    ]);
+    // Buscar apenas a comanda no servidor
+    const comanda = await getPublicComandaById(comandaId);
 
     // Se a comanda não for encontrada, o Next.js exibirá a página 404 padrão
     if (!comanda) {
@@ -29,13 +25,14 @@ export default async function CardapioPage({ params }: CardapioPageProps) {
     }
 
     // Protege acesso: apenas comandas ABERTAS podem acessar o cardápio
+    // Os produtos serão buscados no Client Component onde o header X-Tenant-ID funciona
     return (
       <ComandaGuard 
         comandaId={comandaId} 
         allowedStatuses={[ComandaStatus.ABERTA]}
         redirectOnInvalid={false}
       >
-        <CardapioClientPage comanda={comanda} produtos={produtos} />
+        <CardapioClientPage comanda={comanda} />
       </ComandaGuard>
     );
 

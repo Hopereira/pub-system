@@ -1,6 +1,7 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Tenant, TenantStatus } from '../entities/tenant.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
 import { Pedido } from '../../../modulos/pedido/entities/pedido.entity';
@@ -60,6 +61,7 @@ export class SuperAdminService {
     private readonly pedidoRepository: Repository<Pedido>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -255,6 +257,32 @@ export class SuperAdminService {
       throw new ForbiddenException('Tenant não encontrado');
     }
 
+    // Buscar admin do tenant
+    // Tenta por tenantId primeiro
+    let admin = await this.funcionarioRepository.findOne({
+      where: { tenantId: tenantId, cargo: 'ADMIN' as any },
+      select: ['id', 'nome', 'email', 'telefone'],
+    });
+    
+    // Fallback: buscar por empresaId = tenantId
+    if (!admin) {
+      admin = await this.funcionarioRepository.findOne({
+        where: { empresaId: tenantId, cargo: 'ADMIN' as any },
+        select: ['id', 'nome', 'email', 'telefone'],
+      });
+    }
+    
+    // Fallback 2: buscar funcionário ADMIN que pertence a uma empresa com mesmo slug do tenant
+    if (!admin) {
+      admin = await this.funcionarioRepository
+        .createQueryBuilder('f')
+        .innerJoin('f.empresa', 'e')
+        .where('e.slug = :slug', { slug: tenant.slug })
+        .andWhere('f.cargo = :cargo', { cargo: 'ADMIN' })
+        .select(['f.id', 'f.nome', 'f.email', 'f.telefone'])
+        .getOne();
+    }
+
     // Estatísticas detalhadas
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -274,12 +302,18 @@ export class SuperAdminService {
         .getCount(),
       this.comandaRepository.createQueryBuilder('c').where('c.tenant_id = :tenantId', { tenantId }).getCount(),
       this.comandaRepository.createQueryBuilder('c').where('c.tenant_id = :tenantId', { tenantId }).andWhere('c.status = :status', { status: 'ABERTA' }).getCount(),
-      this.funcionarioRepository.createQueryBuilder('f').where('f.empresaId = :tenantId', { tenantId }).getCount(),
-      this.funcionarioRepository.createQueryBuilder('f').where('f.empresaId = :tenantId', { tenantId }).andWhere('f.status = :status', { status: 'ATIVO' }).getCount(),
+      this.funcionarioRepository.createQueryBuilder('f').where('f.tenantId = :tenantId OR f.empresaId = :tenantId', { tenantId }).getCount(),
+      this.funcionarioRepository.createQueryBuilder('f').where('(f.tenantId = :tenantId OR f.empresaId = :tenantId)', { tenantId }).andWhere('f.status = :status', { status: 'ATIVO' }).getCount(),
     ]);
 
     return {
       ...tenant,
+      admin: admin ? {
+        id: admin.id,
+        nome: admin.nome,
+        email: admin.email,
+        telefone: admin.telefone,
+      } : null,
       stats: {
         totalPedidos,
         pedidosHoje,
@@ -364,5 +398,242 @@ export class SuperAdminService {
     await this.tenantRepository.save(tenant);
 
     return tenant;
+  }
+
+  /**
+   * Atualiza dados de um tenant
+   */
+  async updateTenant(tenantId: string, data: { nome?: string; cnpj?: string; config?: any }): Promise<Tenant> {
+    this.logger.log(`✏️ Atualizando tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    if (data.nome) tenant.nome = data.nome;
+    if (data.cnpj) tenant.cnpj = data.cnpj;
+    if (data.config) {
+      tenant.config = { ...tenant.config, ...data.config };
+    }
+
+    await this.tenantRepository.save(tenant);
+    this.logger.log(`✅ Tenant ${tenant.slug} atualizado`);
+
+    return tenant;
+  }
+
+  /**
+   * Reseta a senha do admin de um tenant
+   */
+  async resetAdminPassword(tenantId: string, novaSenha: string): Promise<{ success: boolean; email: string }> {
+    this.logger.log(`🔑 Resetando senha do admin do tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    // Buscar o admin do tenant (funcionário com cargo ADMIN)
+    // Tenta primeiro por tenantId
+    let admin = await this.funcionarioRepository.findOne({
+      where: { 
+        tenantId: tenantId,
+        cargo: 'ADMIN' as any,
+      },
+    });
+
+    // Fallback: buscar por empresaId
+    if (!admin) {
+      admin = await this.funcionarioRepository.findOne({
+        where: { 
+          empresaId: tenantId,
+          cargo: 'ADMIN' as any,
+        },
+      });
+    }
+
+    // Fallback 2: buscar via slug da empresa
+    if (!admin) {
+      admin = await this.funcionarioRepository
+        .createQueryBuilder('f')
+        .innerJoin('f.empresa', 'e')
+        .where('e.slug = :slug', { slug: tenant.slug })
+        .andWhere('f.cargo = :cargo', { cargo: 'ADMIN' })
+        .getOne();
+    }
+
+    if (!admin) {
+      throw new NotFoundException('Admin do tenant não encontrado. Verifique se existe um funcionário com cargo ADMIN vinculado a este tenant.');
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(novaSenha, 10);
+    admin.senha = hashedPassword;
+
+    await this.funcionarioRepository.save(admin);
+    this.logger.log(`✅ Senha do admin ${admin.email} resetada`);
+
+    return { success: true, email: admin.email };
+  }
+
+  /**
+   * Lista funcionários de um tenant
+   */
+  async listTenantFuncionarios(tenantId: string) {
+    this.logger.log(`👥 Listando funcionários do tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    // Busca por tenantId primeiro
+    let funcionarios = await this.funcionarioRepository.find({
+      where: { tenantId: tenantId },
+      select: ['id', 'nome', 'email', 'cargo', 'status'],
+      order: { cargo: 'ASC', nome: 'ASC' },
+    });
+
+    // Fallback: buscar por empresaId se não encontrou por tenantId
+    if (funcionarios.length === 0) {
+      funcionarios = await this.funcionarioRepository.find({
+        where: { empresaId: tenantId },
+        select: ['id', 'nome', 'email', 'cargo', 'status'],
+        order: { cargo: 'ASC', nome: 'ASC' },
+      });
+    }
+
+    // Fallback 2: buscar via slug da empresa
+    if (funcionarios.length === 0 && tenant) {
+      funcionarios = await this.funcionarioRepository
+        .createQueryBuilder('f')
+        .innerJoin('f.empresa', 'e')
+        .where('e.slug = :slug', { slug: tenant.slug })
+        .select(['f.id', 'f.nome', 'f.email', 'f.cargo', 'f.status'])
+        .orderBy('f.cargo', 'ASC')
+        .addOrderBy('f.nome', 'ASC')
+        .getMany();
+    }
+
+    return funcionarios;
+  }
+
+  /**
+   * Deleta um tenant (soft delete - muda status para INATIVO)
+   */
+  async deleteTenant(tenantId: string): Promise<{ success: boolean; message: string }> {
+    this.logger.warn(`⚠️ Deletando tenant ${tenantId}`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    tenant.status = TenantStatus.INATIVO;
+    (tenant.config as any) = {
+      ...tenant.config,
+      deletedAt: new Date().toISOString(),
+    };
+
+    await this.tenantRepository.save(tenant);
+    this.logger.log(`🗑️ Tenant ${tenant.slug} marcado como INATIVO`);
+
+    return { success: true, message: `Tenant ${tenant.nome} deletado com sucesso` };
+  }
+
+  /**
+   * Hard delete - Remove completamente um tenant e todos os dados relacionados
+   * CUIDADO: Esta ação é irreversível!
+   */
+  async hardDeleteTenant(tenantId: string): Promise<{ success: boolean; message: string; deletedData: any }> {
+    this.logger.warn(`🔴 HARD DELETE do tenant ${tenantId} - IRREVERSÍVEL!`);
+
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('Tenant não encontrado');
+    }
+
+    const deletedData = {
+      tenant: tenant.slug,
+      funcionarios: 0,
+      comandas: 0,
+      pedidos: 0,
+      mesas: 0,
+      ambientes: 0,
+      produtos: 0,
+      empresa: false,
+    };
+
+    // Deletar em ordem para respeitar foreign keys
+    // 1. Itens de pedido
+    await this.dataSource.query(`
+      DELETE FROM item_pedido 
+      WHERE pedido_id IN (SELECT id FROM pedidos WHERE tenant_id = $1)
+    `, [tenantId]);
+
+    // 2. Pedidos
+    const pedidosResult = await this.pedidoRepository.delete({ tenantId });
+    deletedData.pedidos = pedidosResult.affected || 0;
+
+    // 3. Comandas
+    const comandasResult = await this.comandaRepository.delete({ tenantId });
+    deletedData.comandas = comandasResult.affected || 0;
+
+    // 4. Mesas (via ambiente)
+    await this.dataSource.query(`
+      DELETE FROM mesas 
+      WHERE ambiente_id IN (SELECT id FROM ambientes WHERE tenant_id = $1)
+    `, [tenantId]);
+
+    // 5. Produtos (via ambiente)
+    await this.dataSource.query(`
+      DELETE FROM produtos 
+      WHERE ambiente_id IN (SELECT id FROM ambientes WHERE tenant_id = $1)
+    `, [tenantId]);
+
+    // 6. Ambientes
+    const ambientesResult = await this.dataSource.query(`
+      DELETE FROM ambientes WHERE tenant_id = $1
+    `, [tenantId]);
+    deletedData.ambientes = ambientesResult[1] || 0;
+
+    // 7. Funcionários (por tenantId ou empresaId ou via empresa.slug)
+    const funcionariosResult = await this.dataSource.query(`
+      DELETE FROM funcionarios 
+      WHERE tenant_id = $1 
+         OR empresa_id = $1 
+         OR empresa_id IN (SELECT id FROM empresas WHERE slug = $2)
+    `, [tenantId, tenant.slug]);
+    deletedData.funcionarios = funcionariosResult[1] || 0;
+
+    // 8. Empresa
+    const empresaResult = await this.dataSource.query(`
+      DELETE FROM empresas WHERE slug = $1
+    `, [tenant.slug]);
+    deletedData.empresa = (empresaResult[1] || 0) > 0;
+
+    // 9. Tenant
+    await this.tenantRepository.delete({ id: tenantId });
+
+    this.logger.log(`🗑️ HARD DELETE concluído para ${tenant.slug}`);
+    this.logger.log(`   Dados removidos: ${JSON.stringify(deletedData)}`);
+
+    return { 
+      success: true, 
+      message: `Tenant ${tenant.nome} (${tenant.slug}) removido permanentemente`,
+      deletedData,
+    };
   }
 }

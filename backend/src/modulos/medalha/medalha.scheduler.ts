@@ -9,6 +9,10 @@ import { MedalhaService } from '../medalha/medalha.service';
 @Injectable()
 export class MedalhaScheduler {
   private readonly logger = new Logger(MedalhaScheduler.name);
+  
+  // ✅ Controle de erros consecutivos para evitar spam de logs
+  private errosConsecutivos = 0;
+  private readonly MAX_ERROS_LOG = 3;
 
   constructor(
     @InjectRepository(Funcionario)
@@ -18,8 +22,6 @@ export class MedalhaScheduler {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async verificarMedalhasGarcons() {
-    this.logger.log('🔄 Iniciando verificação automática de medalhas...');
-
     try {
       // Buscar todos os garçons ativos
       const garcons = await this.funcionarioRepository.find({
@@ -28,7 +30,17 @@ export class MedalhaScheduler {
         },
       });
 
-      this.logger.log(`📋 Verificando ${garcons.length} garçons`);
+      // ✅ Reset contador de erros após sucesso
+      if (this.errosConsecutivos > 0) {
+        this.logger.log('✅ Conexão com banco restaurada');
+        this.errosConsecutivos = 0;
+      }
+
+      if (garcons.length === 0) {
+        return;
+      }
+
+      this.logger.debug(`📋 Verificando ${garcons.length} garçons`);
 
       let totalNovasMedalhas = 0;
 
@@ -44,18 +56,31 @@ export class MedalhaScheduler {
             );
           }
         } catch (error) {
-          this.logger.error(
-            `❌ Erro ao verificar medalhas de ${garcom.nome}:`,
-            error.message,
-          );
+          // Erro específico de um garçom, continua com os outros
+          this.logger.warn(`⚠️ Erro ao verificar medalhas de ${garcom.nome}`);
         }
       }
 
-      this.logger.log(
-        `✅ Verificação concluída: ${totalNovasMedalhas} nova(s) medalha(s) conquistada(s)`,
-      );
+      if (totalNovasMedalhas > 0) {
+        this.logger.log(
+          `✅ Verificação concluída: ${totalNovasMedalhas} nova(s) medalha(s) conquistada(s)`,
+        );
+      }
     } catch (error) {
-      this.logger.error('❌ Erro na verificação de medalhas:', error.message);
+      this.errosConsecutivos++;
+      
+      // ✅ Só loga os primeiros erros para evitar spam de logs
+      if (this.errosConsecutivos <= this.MAX_ERROS_LOG) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes('EAI_AGAIN') || errorMessage.includes('ECONNRESET') || errorMessage.includes('terminated unexpectedly')) {
+          this.logger.warn(`⚠️ Erro de conexão com banco (tentativa ${this.errosConsecutivos}/${this.MAX_ERROS_LOG})`);
+        } else {
+          this.logger.error(`❌ Erro na verificação de medalhas: ${errorMessage}`);
+        }
+      } else if (this.errosConsecutivos === this.MAX_ERROS_LOG + 1) {
+        this.logger.warn('⚠️ Suprimindo logs de erro até conexão ser restaurada...');
+      }
     }
   }
 

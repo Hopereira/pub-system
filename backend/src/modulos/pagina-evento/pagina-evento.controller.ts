@@ -140,7 +140,7 @@ export class PaginaEventoController {
   @ApiResponse({ status: 200, description: 'Página de evento encontrada.' })
   @ApiResponse({ status: 404, description: 'Página de evento não encontrada.' })
   findOnePublic(@Param('id', ParseUUIDPipe) id: string) {
-    // Reutiliza o método findOne, pois ele já busca pelo ID.
-    return this.paginaEventoService.findOne(id);
+    // ✅ CORREÇÃO: Usa método público sem filtro de tenant
+    return this.paginaEventoService.findOnePublic(id);
   }
 }

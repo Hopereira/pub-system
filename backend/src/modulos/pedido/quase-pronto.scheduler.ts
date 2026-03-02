@@ -24,6 +24,10 @@ export class QuaseProntoScheduler {
   // Tempo de fallback para produtos sem histórico (5 minutos)
   private readonly TEMPO_FALLBACK_MINUTOS = 5;
 
+  // ✅ Controle de erros consecutivos para evitar spam de logs
+  private errosConsecutivos = 0;
+  private readonly MAX_ERROS_LOG = 3;
+
   constructor(
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
@@ -46,6 +50,12 @@ export class QuaseProntoScheduler {
         relations: ['produto', 'pedido', 'pedido.comanda'],
         take: 50, // Limita para não sobrecarregar
       });
+
+      // ✅ Reset contador de erros após sucesso
+      if (this.errosConsecutivos > 0) {
+        this.logger.log('✅ Conexão com banco restaurada');
+        this.errosConsecutivos = 0;
+      }
 
       if (itensEmPreparo.length === 0) {
         return; // Sem itens para processar
@@ -93,7 +103,22 @@ export class QuaseProntoScheduler {
         );
       }
     } catch (error) {
-      this.logger.error('❌ Erro ao verificar itens quase prontos:', error);
+      this.errosConsecutivos++;
+      
+      // ✅ Só loga os primeiros erros para evitar spam de logs
+      if (this.errosConsecutivos <= this.MAX_ERROS_LOG) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // ✅ Mensagem simplificada para erros de conexão conhecidos
+        if (errorMessage.includes('EAI_AGAIN') || errorMessage.includes('ECONNRESET') || errorMessage.includes('terminated unexpectedly')) {
+          this.logger.warn(`⚠️ Erro de conexão com banco (tentativa ${this.errosConsecutivos}/${this.MAX_ERROS_LOG})`);
+        } else {
+          this.logger.error(`❌ Erro ao verificar itens quase prontos: ${errorMessage}`);
+        }
+      } else if (this.errosConsecutivos === this.MAX_ERROS_LOG + 1) {
+        this.logger.warn('⚠️ Suprimindo logs de erro até conexão ser restaurada...');
+      }
+      // Erros de conexão são esperados em ambientes cloud, não precisa re-throw
     }
   }
 

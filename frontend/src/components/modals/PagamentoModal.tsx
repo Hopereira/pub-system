@@ -71,9 +71,8 @@ export function PagamentoModal({ isOpen, onClose, comandaId, total, onConfirm }:
       
       onClose();
     } catch (error: any) {
-      toast.error('Erro ao fechar comanda', {
-        description: error?.message || 'Tente novamente',
-      });
+      // O erro já é tratado pelo componente pai (page.tsx) que mostra a mensagem específica do backend
+      // Não exibimos toast duplicado aqui
     } finally {
       setLoading(false);
     }

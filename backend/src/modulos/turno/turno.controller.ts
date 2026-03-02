@@ -6,7 +6,9 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -44,7 +46,7 @@ export class TurnoController {
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-in')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-in (iniciar turno)' })
   @ApiResponse({
@@ -55,14 +57,22 @@ export class TurnoController {
   @ApiResponse({ status: 400, description: 'Já existe check-in ativo' })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
   @ApiResponse({ status: 404, description: 'Funcionário não encontrado' })
-  async checkIn(@Body() checkInDto: CheckInDto): Promise<TurnoResponseDto> {
-    return this.turnoService.checkIn(checkInDto);
+  async checkIn(
+    @Body() checkInDto: CheckInDto,
+    @Req() req: Request,
+  ): Promise<TurnoResponseDto> {
+    // 🔒 Usar ID do JWT para segurança - funcionário só pode fazer check-in de si mesmo
+    const funcionarioIdFromJwt = (req.user as any)?.id || (req.user as any)?.funcionarioId;
+    return this.turnoService.checkIn({
+      ...checkInDto,
+      funcionarioId: funcionarioIdFromJwt,
+    });
   }
 
   // ✅ CORREÇÃO DE SEGURANÇA: Adicionado autenticação JWT
   @Post('check-out')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Fazer check-out (finalizar turno)' })
   @ApiResponse({
@@ -72,13 +82,21 @@ export class TurnoController {
   })
   @ApiResponse({ status: 400, description: 'Nenhum check-in ativo encontrado' })
   @ApiResponse({ status: 401, description: 'Não autenticado' })
-  async checkOut(@Body() checkOutDto: CheckOutDto): Promise<TurnoResponseDto> {
-    return this.turnoService.checkOut(checkOutDto);
+  async checkOut(
+    @Body() checkOutDto: CheckOutDto,
+    @Req() req: Request,
+  ): Promise<TurnoResponseDto> {
+    // 🔒 Usar ID do JWT para segurança - funcionário só pode fazer check-out de si mesmo
+    const funcionarioIdFromJwt = (req.user as any)?.id || (req.user as any)?.funcionarioId;
+    return this.turnoService.checkOut({
+      ...checkOutDto,
+      funcionarioId: funcionarioIdFromJwt,
+    });
   }
 
   @Get('ativos')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar funcionários ativos (com check-in)' })
   @ApiResponse({
@@ -92,7 +110,7 @@ export class TurnoController {
 
   @Get('funcionario/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.COZINHEIRO, Cargo.COZINHA, Cargo.BARTENDER, Cargo.CAIXA)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar turnos de um funcionário' })
   @ApiQuery({ name: 'dataInicio', required: false, type: Date })

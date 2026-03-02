@@ -4,10 +4,10 @@
 import { getPedidos, updateItemStatus } from '@/services/pedidoService';
 import { UpdateItemPedidoStatusDto } from '@/types/pedido.dto';
 import { Pedido, PedidoStatus } from '@/types/pedido';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import PedidoCard from './PedidoCard';
 import { Skeleton } from '../ui/skeleton';
-import { socket } from '@/lib/socket';
+import { useSocket } from '@/context/SocketContext';
 import { toast } from 'sonner';
 import { useAmbienteNotification } from '@/hooks/useAmbienteNotification';
 import { Button } from '../ui/button';
@@ -40,7 +40,11 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
     novoPedidoId, 
     audioConsentNeeded, 
     handleAllowAudio,
+    novoPedidoRecebido,
   } = useAmbienteNotification(ambienteSelecionado);
+  
+  // ✅ CORREÇÃO: Usa SocketContext global com JWT
+  const { subscribe, unsubscribe, isConnected } = useSocket();
 
   useEffect(() => {
     const fetchAmbientes = async () => {
@@ -92,11 +96,58 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
     fetchPedidos();
   }, []);
 
+  // ✅ CORREÇÃO: Escuta eventos via SocketContext (que tem o token JWT)
+  // Eventos são emitidos para o room do tenant, então precisamos usar o SocketContext
   useEffect(() => {
-    socket.on('novo_pedido', (novoPedido: Pedido) => setPedidos(prev => [novoPedido, ...prev]));
-    socket.on('status_atualizado', (pedidoAtualizado: Pedido) => setPedidos(prev => prev.map(p => p.id === pedidoAtualizado.id ? pedidoAtualizado : p)));
-    return () => { socket.off('novo_pedido'); socket.off('status_atualizado'); };
-  }, []);
+    if (!ambienteSelecionado) return;
+    
+    // Eventos específicos do ambiente (emitidos para tenant room)
+    const novoPedidoAmbienteEvent = `novo_pedido_ambiente:${ambienteSelecionado}`;
+    const statusAtualizadoAmbienteEvent = `status_atualizado_ambiente:${ambienteSelecionado}`;
+    
+    // Handler para novo pedido
+    const handleNovoPedido = (novoPedido: Pedido) => {
+      console.log('🆕 [CozinhaPage] Novo pedido recebido:', novoPedido.id);
+      setPedidos(prev => [novoPedido, ...prev.filter(p => p.id !== novoPedido.id)]);
+    };
+    
+    // Handler para status atualizado
+    const handleStatusAtualizado = (pedidoAtualizado: Pedido) => {
+      console.log('🔄 [CozinhaPage] Status atualizado:', pedidoAtualizado.id);
+      setPedidos(prev => prev.map(p => p.id === pedidoAtualizado.id ? pedidoAtualizado : p));
+    };
+
+    // Inscreve nos eventos via SocketContext
+    subscribe(novoPedidoAmbienteEvent, handleNovoPedido);
+    subscribe(statusAtualizadoAmbienteEvent, handleStatusAtualizado);
+    
+    console.log(`📡 [CozinhaPage] Inscrito nos eventos do ambiente ${ambienteSelecionado}`, {
+      isConnected,
+      events: [novoPedidoAmbienteEvent, statusAtualizadoAmbienteEvent]
+    });
+
+    return () => {
+      unsubscribe(novoPedidoAmbienteEvent, handleNovoPedido);
+      unsubscribe(statusAtualizadoAmbienteEvent, handleStatusAtualizado);
+    };
+  }, [ambienteSelecionado, subscribe, unsubscribe, isConnected]);
+
+  // ✅ Atualiza lista quando receber notificação do hook
+  useEffect(() => {
+    if (novoPedidoRecebido) {
+      console.log('📨 [CozinhaPage] novoPedidoRecebido do hook:', novoPedidoRecebido.id);
+      setPedidos(prev => {
+        const existe = prev.find(p => p.id === novoPedidoRecebido.id);
+        if (existe) {
+          // Atualiza pedido existente
+          return prev.map(p => p.id === novoPedidoRecebido.id ? novoPedidoRecebido : p);
+        } else {
+          // Adiciona novo pedido
+          return [novoPedidoRecebido, ...prev];
+        }
+      });
+    }
+  }, [novoPedidoRecebido]);
 
   const handleItemStatusChange = async (itemPedidoId: string, novoStatus: PedidoStatus) => {
     try {

@@ -103,7 +103,14 @@ export const useComandaSubscription = (comandaId: string | null) => {
     });
 
     socket.on('comanda_atualizada', (comandaAtualizada: Comanda) => {
+      logger.socket(`Evento comanda_atualizada recebido: ${comandaAtualizada.id}, status: ${comandaAtualizada.status}`);
       if (comandaAtualizada.id === comandaId) {
+        // Se a comanda foi fechada/paga, atualiza imediatamente para mostrar tela de sucesso
+        if (comandaAtualizada.status === 'FECHADA' || comandaAtualizada.status === 'PAGA') {
+          logger.socket('Comanda fechada/paga - atualizando estado diretamente');
+          setComanda(prev => prev ? { ...prev, status: comandaAtualizada.status } : prev);
+        }
+        // Sempre recarrega para obter dados completos
         fetchComanda();
       }
     });

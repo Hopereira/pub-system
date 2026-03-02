@@ -5,7 +5,11 @@ import {
   BadRequestException,
   Logger,
   Scope,
+  Inject,
+  Optional,
 } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
+import { TenantResolverService } from '../../common/tenant/tenant-resolver.service';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
 import { PontoEntregaRepository } from './ponto-entrega.repository';
 import { CreatePontoEntregaDto } from './dto/create-ponto-entrega.dto';
@@ -18,17 +22,30 @@ export class PontoEntregaService {
 
   constructor(
     private readonly pontoEntregaRepository: PontoEntregaRepository,
+    @Optional() @Inject(REQUEST) private readonly request?: any,
+    @Optional() private readonly tenantResolver?: TenantResolverService,
   ) {}
 
   async create(createDto: CreatePontoEntregaDto): Promise<PontoEntrega> {
     this.logger.log(`📍 Criando ponto de entrega: ${createDto.nome}`);
 
+    // Obter empresaId do usuário autenticado
+    const empresaId = this.request?.user?.empresaId;
+    if (!empresaId) {
+      this.logger.error('❌ empresaId não encontrado no usuário autenticado');
+      throw new BadRequestException('Empresa não identificada. Faça login novamente.');
+    }
+
     // O tenant_id é injetado automaticamente pelo BaseTenantRepository
-    const ponto = this.pontoEntregaRepository.create(createDto);
+    // Mas precisamos adicionar o empresaId manualmente
+    const ponto = this.pontoEntregaRepository.create({
+      ...createDto,
+      empresaId,
+    });
     const novoPonto = await this.pontoEntregaRepository.save(ponto);
 
     this.logger.log(
-      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id})`,
+      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id}) | empresaId: ${empresaId}`,
     );
 
     return this.findOne(novoPonto.id);
@@ -42,8 +59,44 @@ export class PontoEntregaService {
   }
 
   async findAllAtivos(): Promise<PontoEntrega[]> {
-    // O filtro de tenant é aplicado automaticamente pelo BaseTenantRepository
-    return this.pontoEntregaRepository.findAtivos();
+    // Obter tenantId do request.tenant (já resolvido pelo TenantInterceptor)
+    let tenantId = this.request?.tenant?.id;
+    
+    // Se não tiver tenant resolvido, tentar resolver do header X-Tenant-ID
+    if (!tenantId) {
+      const headerValue = this.request?.headers?.['x-tenant-id'];
+      if (headerValue) {
+        // Verificar se é UUID ou slug
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerValue);
+        if (isUuid) {
+          tenantId = headerValue;
+        } else {
+          // É um slug, resolver para UUID
+          try {
+            const resolved = await this.tenantResolver?.resolveBySlug(headerValue);
+            tenantId = resolved?.id;
+            this.logger.log(`🔄 Slug "${headerValue}" resolvido para UUID: ${tenantId}`);
+          } catch (error) {
+            this.logger.warn(`⚠️ Não foi possível resolver slug "${headerValue}": ${error.message}`);
+          }
+        }
+      }
+    }
+    
+    // Construir where clause com filtro de tenant
+    const whereClause: any = { ativo: true };
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+      this.logger.log(`🔒 Pontos de entrega públicos filtrando por tenantId: ${tenantId}`);
+    } else {
+      this.logger.warn(`⚠️ Pontos de entrega públicos SEM tenantId - retornando TODOS!`);
+    }
+    
+    return this.pontoEntregaRepository.rawRepository.find({
+      where: whereClause,
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
+      order: { nome: 'ASC' },
+    });
   }
 
   async findByAmbiente(ambienteId: string): Promise<PontoEntrega[]> {

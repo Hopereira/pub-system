@@ -26,7 +26,7 @@ describe('authService', () => {
       expect(publicApi.post).toHaveBeenCalledWith('/auth/login', {
         email: 'admin@admin.com',
         senha: 'admin123',
-      });
+      }, { withCredentials: true });
       expect(result).toEqual({ access_token: 'jwt-token-mock' });
     });
 

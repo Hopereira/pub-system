@@ -14,6 +14,7 @@ interface SocketContextType {
   unsubscribe: (event: string, callback: SocketCallback) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit: (event: string, data?: any) => void;
+  reconnect: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -30,39 +31,50 @@ interface SocketProviderProps {
  * - Eventos centralizados
  * - Melhor gerenciamento de reconexão
  * - 40% menos overhead
+ * - ✅ Isolamento por tenant via JWT
  */
 export function SocketProvider({ children }: SocketProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const listenersRef = useRef<Map<string, Set<SocketCallback>>>(new Map());
+  const [tokenVersion, setTokenVersion] = useState(0);
 
-  useEffect(() => {
+  // ✅ Função para criar conexão WebSocket
+  const createConnection = useCallback(() => {
     const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    
+    // ✅ Obtém o token JWT para enviar no handshake
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     
     logger.log('🔌 Iniciando conexão WebSocket única', {
       module: 'SocketContext',
-      data: { url: SOCKET_URL },
+      data: { url: SOCKET_URL, hasToken: !!token },
     });
 
     // ✅ ÚNICA conexão para toda a aplicação
-    socketRef.current = io(SOCKET_URL, {
+    // ✅ CORREÇÃO: Envia o token JWT no handshake para isolamento por tenant
+    const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       timeout: 20000,
+      auth: {
+        token: token, // Backend extrai tenant_id do JWT
+      },
     });
 
-    socketRef.current.on('connect', () => {
+    newSocket.on('connect', () => {
+      console.log('✅ [SocketContext] WebSocket conectado!', { socketId: newSocket.id, hasToken: !!token });
       logger.log('✅ WebSocket conectado', {
         module: 'SocketContext',
-        data: { socketId: socketRef.current?.id },
+        data: { socketId: newSocket.id, hasToken: !!token },
       });
       setIsConnected(true);
     });
 
-    socketRef.current.on('disconnect', (reason) => {
+    newSocket.on('disconnect', (reason) => {
       logger.warn('⚠️ WebSocket desconectado', {
         module: 'SocketContext',
         data: { reason },
@@ -70,22 +82,73 @@ export function SocketProvider({ children }: SocketProviderProps) {
       setIsConnected(false);
     });
 
-    socketRef.current.on('connect_error', (error) => {
+    newSocket.on('connect_error', (error) => {
       logger.error('❌ Erro de conexão WebSocket', {
         module: 'SocketContext',
         error: error as Error,
       });
     });
 
-    socketRef.current.on('reconnect', (attemptNumber) => {
+    newSocket.on('reconnect', (attemptNumber) => {
       logger.log('🔄 WebSocket reconectado', {
         module: 'SocketContext',
         data: { attemptNumber },
       });
     });
 
+    return newSocket;
+  }, []);
+
+  // ✅ Função para reconectar com novo token
+  const reconnect = useCallback(() => {
+    logger.log('🔄 Reconectando WebSocket com novo token', {
+      module: 'SocketContext',
+    });
+    
+    // Desconecta socket antigo
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    
+    // Cria nova conexão
+    socketRef.current = createConnection();
+    
+    // Re-registra todos os listeners salvos
+    listenersRef.current.forEach((callbacks, event) => {
+      callbacks.forEach((callback) => {
+        socketRef.current?.on(event, callback);
+      });
+    });
+  }, [createConnection]);
+
+  useEffect(() => {
+    socketRef.current = createConnection();
+
+    // ✅ Escuta mudanças no localStorage (login/logout em outras abas)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'authToken') {
+        logger.log('🔄 Token alterado em outra aba, reconectando WebSocket', {
+          module: 'SocketContext',
+        });
+        setTokenVersion((v) => v + 1);
+      }
+    };
+    
+    // ✅ Escuta evento customizado (login/logout na mesma aba)
+    const handleAuthTokenChanged = () => {
+      logger.log('🔄 Token alterado na mesma aba, reconectando WebSocket', {
+        module: 'SocketContext',
+      });
+      setTokenVersion((v) => v + 1);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('authTokenChanged', handleAuthTokenChanged);
+
     // Cleanup ao desmontar
     return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authTokenChanged', handleAuthTokenChanged);
       if (socketRef.current) {
         logger.log('🔌 Desconectando WebSocket', {
           module: 'SocketContext',
@@ -94,13 +157,25 @@ export function SocketProvider({ children }: SocketProviderProps) {
         socketRef.current = null;
       }
     };
-  }, []);
+  }, [createConnection]);
+
+  // ✅ Reconecta quando o tokenVersion mudar
+  useEffect(() => {
+    if (tokenVersion > 0) {
+      reconnect();
+    }
+  }, [tokenVersion, reconnect]);
 
   /**
    * Inscreve um callback em um evento
    */
   const subscribe = useCallback((event: string, callback: SocketCallback) => {
-    if (!socketRef.current) return;
+    console.log(`📡 [SocketContext] subscribe chamado:`, { event, hasSocket: !!socketRef.current });
+    
+    if (!socketRef.current) {
+      console.warn(`⚠️ [SocketContext] Socket não disponível para inscrever em: ${event}`);
+      return;
+    }
 
     // Adiciona ao mapa de listeners
     if (!listenersRef.current.has(event)) {
@@ -110,6 +185,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Registra o listener no socket
     socketRef.current.on(event, callback);
+    
+    console.log(`✅ [SocketContext] Inscrito com sucesso em: ${event}`);
 
     logger.debug(`📡 Inscrito no evento: ${event}`, {
       module: 'SocketContext',
@@ -162,6 +239,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         subscribe,
         unsubscribe,
         emit,
+        reconnect,
       }}
     >
       {children}

@@ -90,9 +90,26 @@ export class PedidoService {
       `📝 Criando novo pedido | Comanda: ${comandaId} | ${itens.length} itens`,
     );
 
-    const comanda = await this.comandaRepository.findOne({
-      where: { id: comandaId },
-    });
+    // Usar rawRepository para rotas públicas (sem tenant)
+    const tenantId = this.getTenantId();
+    const comanda = tenantId 
+      ? await this.comandaRepository.findOne({ where: { id: comandaId } })
+      : await this.comandaRepository.rawRepository.findOne({ 
+          where: { id: comandaId },
+          relations: ['mesa', 'cliente', 'paginaEvento'],
+          select: {
+            id: true,
+            status: true,
+            tenantId: true, // ✅ IMPORTANTE: Carregar tenantId explicitamente!
+            mesa: { id: true, numero: true },
+            cliente: { id: true, nome: true },
+            paginaEvento: { id: true },
+          },
+        });
+    
+    // ✅ DEBUG: Log para verificar se tenantId foi carregado
+    this.logger.debug(`📋 Comanda carregada | id: ${comanda?.id} | tenantId: ${comanda?.tenantId || 'NULL'}`);
+    
     if (!comanda) {
       this.logger.warn(
         `⚠️ Tentativa de criar pedido para comanda inexistente: ${comandaId}`,
@@ -110,12 +127,15 @@ export class PedidoService {
 
     // ✅ OTIMIZAÇÃO: Buscar todos os produtos de uma vez (resolve N+1 query)
     const produtoIds = itens.map(item => item.produtoId);
-    const produtos = await this.produtoRepository.findByIds(produtoIds);
+    const produtos = tenantId
+      ? await this.produtoRepository.findByIds(produtoIds)
+      : await this.produtoRepository.rawRepository.findByIds(produtoIds);
     
     // Criar mapa para lookup O(1)
     const produtoMap = new Map(produtos.map(p => [p.id, p]));
     
     // Validar e criar itens
+    // Para rotas públicas (sem tenant), usar rawRepository.create() para evitar erro de tenant
     const itensPedido = itens.map(itemDto => {
       const produto = produtoMap.get(itemDto.produtoId);
       if (!produto) {
@@ -126,13 +146,19 @@ export class PedidoService {
           `Produto com ID "${itemDto.produtoId}" não encontrado.`,
         );
       }
-      return this.itemPedidoRepository.create({
+      
+      const itemData = {
         produto,
         quantidade: itemDto.quantidade,
         precoUnitario: produto.preco,
         observacao: itemDto.observacao,
         status: PedidoStatus.FEITO,
-      });
+        tenantId: comanda.tenantId, // Herdar tenant da comanda
+      };
+      
+      return tenantId
+        ? this.itemPedidoRepository.create(itemData)
+        : this.itemPedidoRepository.rawRepository.create(itemData);
     });
 
     // Usar Decimal.js para cálculos monetários precisos
@@ -143,15 +169,28 @@ export class PedidoService {
       return sum.plus(itemTotal);
     }, new Decimal(0));
 
-    const pedido = this.pedidoRepository.create({
+    // Criar pedido - para rotas públicas, usar rawRepository e herdar tenant da comanda
+    const pedidoData = {
       comanda,
       itens: itensPedido,
       total: total.toNumber(),
       status: PedidoStatus.FEITO,
-    });
+      tenantId: comanda.tenantId, // Herdar tenant da comanda
+    };
+    
+    const pedido = tenantId
+      ? this.pedidoRepository.create(pedidoData)
+      : this.pedidoRepository.rawRepository.create(pedidoData);
 
-    const novoPedido = await this.pedidoRepository.save(pedido);
-    const pedidoCompleto = await this.findOne(novoPedido.id);
+    // Para rotas públicas, usar rawRepository.save() também
+    const novoPedido = tenantId
+      ? await this.pedidoRepository.save(pedido)
+      : await this.pedidoRepository.rawRepository.save(pedido);
+    
+    // Usar método público ou privado dependendo se há tenant
+    const pedidoCompleto = tenantId 
+      ? await this.findOne(novoPedido.id)
+      : await this.findOnePublic(novoPedido.id);
 
     this.logger.log(
       `✅ Pedido criado com sucesso | ID: ${pedidoCompleto.id} | Total: R$ ${total.toFixed(2)} | Itens: ${itensPedido.length}`,
@@ -163,6 +202,36 @@ export class PedidoService {
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
 
     return pedidoCompleto;
+  }
+
+  /**
+   * Busca um pedido por ID usando rawRepository (para rotas públicas)
+   * ✅ CORREÇÃO: Inclui select explícito para tenantId para WebSocket funcionar
+   */
+  private async findOnePublic(id: string): Promise<Pedido> {
+    const pedido = await this.pedidoRepository.rawRepository.findOne({
+      where: { id },
+      relations: [
+        'comanda',
+        'comanda.mesa',
+        'comanda.cliente',
+        'comanda.pontoEntrega',
+        'itens',
+        'itens.produto',
+        'itens.produto.ambiente',
+      ],
+    });
+    if (!pedido) {
+      throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
+    }
+    
+    // ✅ CORREÇÃO: Se tenantId não veio, herda da comanda
+    if (!pedido.tenantId && pedido.comanda?.tenantId) {
+      pedido.tenantId = pedido.comanda.tenantId;
+      this.logger.debug(`📋 TenantId herdado da comanda: ${pedido.tenantId}`);
+    }
+    
+    return pedido;
   }
 
   // ✅ NOVO: Criar pedido pelo garçom (com criação automática de comanda)
@@ -297,11 +366,15 @@ export class PedidoService {
         'ambienteRetirada',
       ]);
 
+    // 🔒 CORREÇÃO: Usar andWhere ao invés de where para NÃO sobrescrever o filtro de tenant
+    // O createQueryBuilder do BaseTenantRepository já adiciona WHERE pedido.tenantId = :tenantId
+    // Usar .where() substitui esse WHERE, causando vazamento de dados entre tenants!
+    
     // Filtro por status específico ou padrão
     if (status) {
-      queryBuilder.where('itemPedido.status = :status', { status });
+      queryBuilder.andWhere('itemPedido.status = :status', { status });
     } else {
-      queryBuilder.where('itemPedido.status IN (:...statuses)', {
+      queryBuilder.andWhere('itemPedido.status IN (:...statuses)', {
         statuses: [
           PedidoStatus.FEITO,
           PedidoStatus.EM_PREPARO,
@@ -383,18 +456,48 @@ export class PedidoService {
   }
   //----------------------------------------------------------
   async findOne(id: string): Promise<Pedido> {
-    const pedido = await this.pedidoRepository.findOne({
+    const relations = [
+      'comanda',
+      'comanda.mesa',
+      'comanda.cliente',
+      'comanda.pontoEntrega',
+      'itens',
+      'itens.produto',
+      'itens.produto.ambiente',
+    ];
+
+    // Primeiro tenta com filtro de tenant
+    let pedido = await this.pedidoRepository.findOne({
       where: { id },
-      relations: [
-        'comanda',
-        'comanda.mesa',
-        'comanda.cliente',
-        'comanda.pontoEntrega',
-        'itens',
-        'itens.produto',
-        'itens.produto.ambiente',
-      ],
+      relations,
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro (pode ter tenantId null)
+    if (!pedido) {
+      this.logger.warn(
+        `⚠️ Pedido não encontrado com filtro de tenant, tentando rawRepository: ${id}`,
+      );
+      
+      pedido = await this.pedidoRepository.rawRepository.findOne({
+        where: { id },
+        relations,
+      });
+      
+      // Se encontrou com rawRepository, corrige o tenantId
+      if (pedido) {
+        const currentTenantId = this.getTenantId();
+        if (!pedido.tenantId && currentTenantId) {
+          this.logger.warn(
+            `🔧 Corrigindo tenantId do pedido ${id} para: ${currentTenantId}`,
+          );
+          pedido.tenantId = currentTenantId;
+          // Salva para corrigir o tenantId permanentemente
+          await this.pedidoRepository.rawRepository.save(pedido);
+          this.logger.log(`✅ TenantId do pedido corrigido!`);
+        }
+      }
+    }
+
     if (!pedido) {
       throw new NotFoundException(`Pedido com ID "${id}" não encontrado.`);
     }
@@ -405,10 +508,37 @@ export class PedidoService {
     itemPedidoId: string,
     updateDto: UpdateItemPedidoStatusDto,
   ): Promise<ItemPedido> {
-    const itemPedido = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let itemPedido = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'produto'],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro (pode ter tenantId null)
+    if (!itemPedido) {
+      this.logger.warn(
+        `⚠️ Item não encontrado com filtro de tenant, tentando rawRepository: ${itemPedidoId}`,
+      );
+      
+      itemPedido = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: ['pedido', 'produto'],
+      });
+      
+      // Se encontrou com rawRepository, corrige o tenantId
+      if (itemPedido) {
+        const currentTenantId = this.getTenantId();
+        if (!itemPedido.tenantId && currentTenantId) {
+          this.logger.warn(
+            `🔧 Corrigindo tenantId do item de pedido ${itemPedidoId} para: ${currentTenantId}`,
+          );
+          itemPedido.tenantId = currentTenantId;
+          // Salva para corrigir o tenantId permanentemente
+          await this.itemPedidoRepository.rawRepository.save(itemPedido);
+          this.logger.log(`✅ TenantId do item de pedido corrigido!`);
+        }
+      }
+    }
 
     if (!itemPedido) {
       this.logger.warn(
@@ -516,7 +646,8 @@ export class PedidoService {
       .leftJoinAndSelect('comanda.cliente', 'cliente')
       .leftJoinAndSelect('pedido.itens', 'itemPedido')
       .leftJoinAndSelect('itemPedido.produto', 'produto')
-      .where('itemPedido.status = :status', { status: PedidoStatus.PRONTO })
+      // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
+      .andWhere('itemPedido.status = :status', { status: PedidoStatus.PRONTO })
       .orderBy('pedido.data', 'ASC');
 
     if (ambienteId) {
@@ -575,7 +706,8 @@ export class PedidoService {
     itemPedidoId: string,
     dto: DeixarNoAmbienteDto,
   ): Promise<ItemPedido> {
-    const item = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: [
         'pedido',
@@ -587,6 +719,31 @@ export class PedidoService {
         'produto',
       ],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro (pode ter tenantId null)
+    if (!item) {
+      item = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: [
+          'pedido',
+          'pedido.comanda',
+          'pedido.comanda.pontoEntrega',
+          'pedido.comanda.pontoEntrega.ambientePreparo',
+          'pedido.comanda.mesa',
+          'pedido.comanda.mesa.ambiente',
+          'produto',
+        ],
+      });
+      
+      // Corrige tenantId se necessário
+      if (item && !item.tenantId) {
+        const currentTenantId = this.getTenantId();
+        if (currentTenantId) {
+          this.logger.warn(`🔧 Corrigindo tenantId do item ${itemPedidoId}`);
+          item.tenantId = currentTenantId;
+        }
+      }
+    }
 
     if (!item) {
       this.logger.warn(
@@ -649,11 +806,28 @@ export class PedidoService {
     itemPedidoId: string,
     dto: RetirarItemDto,
   ): Promise<ItemPedido> {
-    // Busca o item (incluindo ambiente do produto)
-    const item = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'pedido.comanda', 'produto', 'produto.ambiente'],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro
+    if (!item) {
+      item = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: ['pedido', 'pedido.comanda', 'produto', 'produto.ambiente'],
+      });
+      
+      // Corrige tenantId se necessário
+      if (item && !item.tenantId) {
+        const currentTenantId = this.getTenantId();
+        if (currentTenantId) {
+          this.logger.warn(`🔧 Corrigindo tenantId do item ${itemPedidoId}`);
+          item.tenantId = currentTenantId;
+        }
+      }
+    }
 
     if (!item) {
       throw new NotFoundException(
@@ -750,7 +924,8 @@ export class PedidoService {
     const comanda = item.pedido?.comanda;
     if (comanda) {
       // ✅ CORREÇÃO: Recarrega o pedido completo com todas as relações para o WebSocket
-      const pedidoCompleto = await this.pedidoRepository.findOne({
+      // Usa rawRepository como fallback para pedidos com tenantId null
+      let pedidoCompleto = await this.pedidoRepository.findOne({
         where: { id: item.pedido.id },
         relations: [
           'comanda',
@@ -764,6 +939,33 @@ export class PedidoService {
           'itens.retiradoPorGarcom',
         ],
       });
+
+      // Fallback para rawRepository se não encontrar com filtro de tenant
+      if (!pedidoCompleto) {
+        pedidoCompleto = await this.pedidoRepository.rawRepository.findOne({
+          where: { id: item.pedido.id },
+          relations: [
+            'comanda',
+            'comanda.mesa',
+            'comanda.cliente',
+            'comanda.pontoEntrega',
+            'itens',
+            'itens.produto',
+            'itens.produto.ambiente',
+            'itens.garcomEntrega',
+            'itens.retiradoPorGarcom',
+          ],
+        });
+        
+        // Corrige tenantId se necessário
+        if (pedidoCompleto && !pedidoCompleto.tenantId) {
+          const currentTenantId = this.getTenantId();
+          if (currentTenantId) {
+            pedidoCompleto.tenantId = currentTenantId;
+            await this.pedidoRepository.rawRepository.save(pedidoCompleto);
+          }
+        }
+      }
 
       if (pedidoCompleto) {
         this.pedidosGateway.emitStatusAtualizado(pedidoCompleto);
@@ -799,11 +1001,28 @@ export class PedidoService {
     itemPedidoId: string,
     dto: MarcarEntregueDto,
   ): Promise<ItemPedido> {
-    // Busca o item
-    const item = await this.itemPedidoRepository.findOne({
+    // Primeiro tenta com filtro de tenant
+    let item = await this.itemPedidoRepository.findOne({
       where: { id: itemPedidoId },
       relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
     });
+
+    // Se não encontrou com filtro de tenant, busca sem filtro
+    if (!item) {
+      item = await this.itemPedidoRepository.rawRepository.findOne({
+        where: { id: itemPedidoId },
+        relations: ['pedido', 'pedido.comanda', 'produto', 'garcomEntrega'],
+      });
+      
+      // Corrige tenantId se necessário
+      if (item && !item.tenantId) {
+        const currentTenantId = this.getTenantId();
+        if (currentTenantId) {
+          this.logger.warn(`🔧 Corrigindo tenantId do item ${itemPedidoId}`);
+          item.tenantId = currentTenantId;
+        }
+      }
+    }
 
     if (!item) {
       throw new NotFoundException(
@@ -879,7 +1098,8 @@ export class PedidoService {
     const comanda = item.pedido?.comanda;
     if (comanda) {
       // ✅ CORREÇÃO: Recarrega o pedido completo com todas as relações para o WebSocket
-      const pedidoCompleto = await this.pedidoRepository.findOne({
+      // Usa rawRepository como fallback para pedidos com tenantId null
+      let pedidoCompleto = await this.pedidoRepository.findOne({
         where: { id: item.pedido.id },
         relations: [
           'comanda',
@@ -892,6 +1112,32 @@ export class PedidoService {
           'itens.garcomEntrega',
         ],
       });
+
+      // Fallback para rawRepository se não encontrar com filtro de tenant
+      if (!pedidoCompleto) {
+        pedidoCompleto = await this.pedidoRepository.rawRepository.findOne({
+          where: { id: item.pedido.id },
+          relations: [
+            'comanda',
+            'comanda.mesa',
+            'comanda.cliente',
+            'comanda.pontoEntrega',
+            'itens',
+            'itens.produto',
+            'itens.produto.ambiente',
+            'itens.garcomEntrega',
+          ],
+        });
+        
+        // Corrige tenantId se necessário
+        if (pedidoCompleto && !pedidoCompleto.tenantId) {
+          const currentTenantId = this.getTenantId();
+          if (currentTenantId) {
+            pedidoCompleto.tenantId = currentTenantId;
+            await this.pedidoRepository.rawRepository.save(pedidoCompleto);
+          }
+        }
+      }
 
       // Atualiza status geral do pedido
       if (pedidoCompleto) {

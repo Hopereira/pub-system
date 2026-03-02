@@ -24,6 +24,8 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { Cargo } from 'src/modulos/funcionario/enums/cargo.enum';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 
 // --- DECORADORES DO SWAGGER ---
 import {
@@ -42,6 +44,8 @@ export class MesaController {
 
   // ===== ENDPOINT PÚBLICO PARA CLIENTES =====
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get('publicas/livres')
   @ApiOperation({ summary: 'Lista mesas livres (Rota Pública para clientes)' })
   @ApiResponse({ status: 200, description: 'Lista de mesas livres retornada.' })
@@ -50,7 +54,7 @@ export class MesaController {
   }
 
   @Post()
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Cria uma nova mesa no sistema' })
   @ApiResponse({ status: 201, description: 'Mesa criada com sucesso.' })
   @ApiResponse({
@@ -76,7 +80,7 @@ export class MesaController {
   }
 
   @Get('ambiente/:ambienteId')
-  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM)
   @ApiOperation({ summary: 'Lista mesas de um ambiente específico' })
   @ApiResponse({
     status: 200,
@@ -99,7 +103,7 @@ export class MesaController {
   }
 
   @Patch(':id')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Atualiza o número de uma mesa' })
   @ApiResponse({ status: 200, description: 'Mesa atualizada com sucesso.' })
   @ApiResponse({
@@ -134,7 +138,7 @@ export class MesaController {
   // ===== ENDPOINTS DE MAPA VISUAL =====
 
   @Get('mapa/visualizar')
-  @Roles(Cargo.ADMIN, Cargo.GARCOM, Cargo.CAIXA)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM, Cargo.CAIXA)
   @ApiOperation({ summary: 'Obter mapa visual completo do estabelecimento' })
   @ApiResponse({
     status: 200,

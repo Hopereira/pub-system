@@ -62,4 +62,16 @@ export class PontoEntregaRepository extends BaseTenantRepository<PontoEntrega> {
       relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo', 'empresa'],
     });
   }
+
+  /**
+   * Busca pontos de entrega ativos (sem filtro de tenant)
+   * Para uso em rotas públicas
+   */
+  async findAtivosPublic() {
+    return this.rawRepository.find({
+      where: { ativo: true },
+      relations: ['mesaProxima', 'ambienteAtendimento', 'ambientePreparo'],
+      order: { nome: 'ASC' },
+    });
+  }
 }

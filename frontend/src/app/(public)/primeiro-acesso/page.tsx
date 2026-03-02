@@ -8,12 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Sparkles, Beer } from 'lucide-react';
 
 export default function PrimeiroAcessoPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    nomeEstabelecimento: '',
     nome: '',
     email: '',
     senha: '',
@@ -23,6 +24,12 @@ export default function PrimeiroAcessoPage() {
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+
+    if (!formData.nomeEstabelecimento.trim()) {
+      newErrors.nomeEstabelecimento = 'Nome do estabelecimento é obrigatório';
+    } else if (formData.nomeEstabelecimento.trim().length < 3) {
+      newErrors.nomeEstabelecimento = 'Nome deve ter no mínimo 3 caracteres';
+    }
 
     if (!formData.nome.trim()) {
       newErrors.nome = 'Nome é obrigatório';
@@ -59,14 +66,14 @@ export default function PrimeiroAcessoPage() {
     setLoading(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${API_URL}/funcionarios/registro`, {
+      const response = await fetch(`${API_URL}/registro`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nome: formData.nome,
-          email: formData.email,
-          senha: formData.senha,
-          cargo: 'ADMIN' // Será forçado no backend de qualquer forma
+          nomeEstabelecimento: formData.nomeEstabelecimento,
+          nomeAdmin: formData.nome,
+          emailAdmin: formData.email,
+          senhaAdmin: formData.senha,
         })
       });
 
@@ -75,7 +82,9 @@ export default function PrimeiroAcessoPage() {
         throw new Error(error.message || 'Erro ao criar conta');
       }
 
-      toast.success('🎉 Conta de administrador criada com sucesso!');
+      const result = await response.json();
+      toast.success('🎉 Pub registrado com sucesso!');
+      toast.info(`Acesse: ${result.dados?.urlAcesso || 'pubsystem.com.br'}`);
       
       // Aguarda 2 segundos para o usuário ver a mensagem
       setTimeout(() => {
@@ -84,9 +93,8 @@ export default function PrimeiroAcessoPage() {
     } catch (error: any) {
       console.error('Erro ao criar conta:', error);
       
-      if (error.message.includes('já existe')) {
-        toast.error('Já existe um usuário no sistema. Faça login ou contate um administrador.');
-        setTimeout(() => router.push('/login'), 2000);
+      if (error.message.includes('já existe') || error.message.includes('já está')) {
+        toast.error('Este email ou nome de estabelecimento já está em uso.');
       } else {
         toast.error(error.message || 'Erro ao criar conta. Tente novamente.');
       }
@@ -109,30 +117,53 @@ export default function PrimeiroAcessoPage() {
         <CardHeader className="text-center space-y-2 pb-8">
           <div className="flex justify-center mb-4">
             <div className="relative">
-              <Sparkles className="h-16 w-16 text-indigo-600 animate-pulse" />
-              <div className="absolute inset-0 bg-indigo-600 blur-xl opacity-20 animate-pulse"></div>
+              <Beer className="h-16 w-16 text-amber-500" />
+              <div className="absolute inset-0 bg-amber-500 blur-xl opacity-20 animate-pulse"></div>
             </div>
           </div>
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
             Bem-vindo ao Pub System!
           </CardTitle>
           <CardDescription className="text-base">
-            Este é o primeiro acesso ao sistema.
+            Cadastre seu estabelecimento e comece a usar.
           </CardDescription>
-          <Alert className="bg-indigo-50 border-indigo-200">
-            <CheckCircle2 className="h-4 w-4 text-indigo-600" />
-            <AlertDescription className="text-indigo-900 font-medium">
-              Você será o <strong>administrador principal</strong> do sistema.
+          <Alert className="bg-amber-50 border-amber-200">
+            <CheckCircle2 className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-900 font-medium">
+              Você será o <strong>administrador principal</strong> do seu pub.
             </AlertDescription>
           </Alert>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Nome */}
+            {/* Nome do Estabelecimento */}
+            <div className="space-y-2">
+              <Label htmlFor="nomeEstabelecimento" className="text-sm font-medium">
+                Nome do Estabelecimento *
+              </Label>
+              <Input
+                id="nomeEstabelecimento"
+                type="text"
+                required
+                value={formData.nomeEstabelecimento}
+                onChange={(e) => handleInputChange('nomeEstabelecimento', e.target.value)}
+                placeholder="Bar do João, Pub Central, etc."
+                className={errors.nomeEstabelecimento ? 'border-red-500' : ''}
+                disabled={loading}
+              />
+              {errors.nomeEstabelecimento && (
+                <p className="text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.nomeEstabelecimento}
+                </p>
+              )}
+            </div>
+
+            {/* Nome do Admin */}
             <div className="space-y-2">
               <Label htmlFor="nome" className="text-sm font-medium">
-                Nome Completo *
+                Seu Nome Completo *
               </Label>
               <Input
                 id="nome"
@@ -225,19 +256,19 @@ export default function PrimeiroAcessoPage() {
             {/* Botão Submit */}
             <Button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700" 
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700" 
               disabled={loading}
               size="lg"
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando sua conta...
+                  Registrando seu pub...
                 </>
               ) : (
                 <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Criar Conta de Administrador
+                  <Beer className="mr-2 h-4 w-4" />
+                  Registrar Meu Pub
                 </>
               )}
             </Button>

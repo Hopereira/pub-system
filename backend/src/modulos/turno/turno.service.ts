@@ -33,19 +33,89 @@ export class TurnoService {
   async checkIn(checkInDto: CheckInDto): Promise<TurnoResponseDto> {
     const { funcionarioId, eventoId } = checkInDto;
 
-    // Verifica se funcionário existe
-    const funcionario = await this.funcionarioRepository.findOne({
+    this.logger.log(`🔍 Check-in solicitado | funcionarioId do JWT: ${funcionarioId}`);
+
+    // Usa rawRepository para ignorar filtro de tenant e debugar
+    const funcionarioRaw = await this.funcionarioRepository.rawRepository.findOne({
+      where: { id: funcionarioId },
+    });
+    
+    this.logger.log(`🔍 Funcionário (rawRepository): ${funcionarioRaw ? `${funcionarioRaw.nome} (tenantId: ${funcionarioRaw.tenantId})` : 'NÃO EXISTE NO BANCO'}`);
+
+    // Verifica se funcionário existe com filtro de tenant
+    let funcionario = await this.funcionarioRepository.findOne({
       where: { id: funcionarioId },
     });
 
+    this.logger.log(`🔍 Funcionário (com filtro tenant): ${funcionario ? `${funcionario.nome} (${funcionario.id})` : 'NÃO ENCONTRADO'}`);
+
     if (!funcionario) {
-      throw new NotFoundException('Funcionário não encontrado');
+      // Se existe no raw mas não com filtro, problema é de tenant
+      if (funcionarioRaw) {
+        // Se tenantId é null, pode ser um funcionário órfão duplicado
+        if (funcionarioRaw.tenantId === null) {
+          const currentTenantId = this.funcionarioRepository.getCurrentTenantId();
+          this.logger.warn(`⚠️ Funcionário ${funcionarioRaw.nome} tem tenantId nulo.`);
+          
+          // Verifica se já existe funcionário com mesmo email no tenant atual
+          const funcionarioExistente = await this.funcionarioRepository.findOne({
+            where: { email: funcionarioRaw.email },
+          });
+          
+          if (funcionarioExistente) {
+            // Já existe funcionário correto! Use ele ao invés de tentar corrigir o órfão
+            this.logger.log(`✅ Encontrado funcionário correto com mesmo email: ${funcionarioExistente.id}`);
+            funcionario = funcionarioExistente;
+          } else {
+            // Não existe duplicado, podemos corrigir o tenantId
+            this.logger.warn(`🔧 Corrigindo tenantId para: ${currentTenantId}`);
+            
+            try {
+              await this.funcionarioRepository.rawRepository.update(
+                { id: funcionarioId },
+                { tenantId: currentTenantId }
+              );
+              
+              // Busca novamente com o tenant corrigido
+              const funcionarioCorrigido = await this.funcionarioRepository.findOne({
+                where: { id: funcionarioId },
+              });
+              
+              if (funcionarioCorrigido) {
+                this.logger.log(`✅ TenantId do funcionário corrigido com sucesso!`);
+                funcionario = funcionarioCorrigido;
+              }
+            } catch (error) {
+              this.logger.error(`❌ Erro ao corrigir tenantId: ${error.message}`);
+              throw new NotFoundException('Funcionário não encontrado. Por favor, faça login novamente.');
+            }
+          }
+        }
+        
+        if (!funcionario) {
+          this.logger.error(`❌ Funcionário existe mas com tenant diferente! TenantId do funcionário: ${funcionarioRaw.tenantId}`);
+          throw new NotFoundException(`Funcionário não pertence a este tenant. TenantId esperado vs atual: ${funcionarioRaw.tenantId}`);
+        }
+      } else {
+        this.logger.error(`❌ Funcionário com ID "${funcionarioId}" não encontrado no banco`);
+        throw new NotFoundException('Funcionário não encontrado');
+      }
     }
+
+    // Executa o check-in com o funcionário encontrado
+    return this.executeCheckIn(funcionario, checkInDto);
+  }
+
+  /**
+   * Executa o check-in após validações do funcionário
+   */
+  private async executeCheckIn(funcionario: Funcionario, checkInDto: CheckInDto): Promise<TurnoResponseDto> {
+    const { funcionarioId, eventoId } = checkInDto;
 
     // Verifica se já existe check-in ativo
     const turnoAtivo = await this.turnoRepository.findOne({
       where: {
-        funcionarioId,
+        funcionarioId: funcionario.id,
         ativo: true,
         checkOut: IsNull(),
       },
@@ -59,7 +129,7 @@ export class TurnoService {
 
     // Cria novo turno com tenant_id do funcionário
     const turno = this.turnoRepository.create({
-      funcionarioId,
+      funcionarioId: funcionario.id,
       eventoId,
       checkIn: new Date(),
       ativo: true,

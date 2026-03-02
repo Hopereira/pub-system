@@ -27,7 +27,7 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('pedidos/relatorio-geral')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Relatório geral de pedidos com todas as métricas' })
   @ApiResponse({ status: 200, description: 'Relatório gerado com sucesso' })
   @ApiQuery({ name: 'dataInicio', required: false, type: String })
@@ -52,7 +52,7 @@ export class AnalyticsController {
   }
 
   @Get('pedidos/tempos')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Tempos detalhados de pedidos' })
   @ApiResponse({ status: 200, description: 'Tempos carregados com sucesso' })
   @ApiQuery({ name: 'dataInicio', required: false, type: String })
@@ -71,7 +71,7 @@ export class AnalyticsController {
   }
 
   @Get('garcons/performance')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Performance de garçons' })
   @ApiResponse({
     status: 200,
@@ -90,7 +90,7 @@ export class AnalyticsController {
   }
 
   @Get('ambientes/performance')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Performance de ambientes' })
   @ApiResponse({
     status: 200,
@@ -109,7 +109,7 @@ export class AnalyticsController {
   }
 
   @Get('produtos/mais-vendidos')
-  @Roles(Cargo.ADMIN)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE)
   @ApiOperation({ summary: 'Produtos mais vendidos' })
   @ApiResponse({ status: 200, description: 'Produtos carregados com sucesso' })
   @ApiQuery({ name: 'dataInicio', required: false, type: String })
@@ -128,7 +128,7 @@ export class AnalyticsController {
   }
 
   @Get('garcons/ranking')
-  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM)
   @ApiOperation({ summary: 'Ranking de garçons com pontuação e métricas' })
   @ApiResponse({ status: 200, description: 'Ranking gerado com sucesso' })
   @ApiQuery({
@@ -162,7 +162,7 @@ export class AnalyticsController {
   }
 
   @Get('garcons/:id/estatisticas')
-  @Roles(Cargo.ADMIN, Cargo.GARCOM)
+  @Roles(Cargo.ADMIN, Cargo.GERENTE, Cargo.GARCOM)
   @ApiOperation({ summary: 'Estatísticas detalhadas de um garçom' })
   @ApiResponse({
     status: 200,

@@ -38,4 +38,26 @@ export class AvaliacaoRepository extends BaseTenantRepository<Avaliacao> {
       where: { comandaId } as any,
     });
   }
+
+  /**
+   * Busca avaliação por comanda SEM filtro de tenant (para rota pública)
+   * ⚠️ CUIDADO: Usado apenas para verificar duplicidade em avaliação pública
+   */
+  async findByComandaIdPublic(comandaId: string) {
+    return this.rawRepository.findOne({
+      where: { comandaId },
+    });
+  }
+
+  /**
+   * Cria e salva avaliação usando o tenantId da comanda
+   * ⚠️ CUIDADO: Usado apenas para avaliação via rota pública
+   */
+  async createPublic(data: Partial<Avaliacao>, tenantId: string): Promise<Avaliacao> {
+    const avaliacao = this.rawRepository.create({
+      ...data,
+      tenantId,
+    });
+    return this.rawRepository.save(avaliacao);
+  }
 }

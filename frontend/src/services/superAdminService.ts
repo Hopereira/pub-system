@@ -78,6 +78,40 @@ export interface SlugAvailability {
   suggestions: string[];
 }
 
+export interface TenantFuncionario {
+  id: string;
+  nome: string;
+  email: string;
+  cargo: string;
+  status: string;
+}
+
+export interface TenantDetails {
+  id: string;
+  nome: string;
+  slug: string;
+  cnpj?: string;
+  status: string;
+  plano: string;
+  config?: any;
+  createdAt: string;
+  updatedAt: string;
+  admin?: {
+    id: string;
+    nome: string;
+    email: string;
+    telefone?: string;
+  } | null;
+  stats: {
+    totalPedidos: number;
+    pedidosHoje: number;
+    totalComandas: number;
+    comandasAbertas: number;
+    totalFuncionarios: number;
+    funcionariosAtivos: number;
+  };
+}
+
 /**
  * SuperAdminService - Serviço para gestão da plataforma SaaS
  */
@@ -143,6 +177,43 @@ const superAdminService = {
    */
   async checkSlugAvailability(slug: string): Promise<SlugAvailability> {
     const response = await api.get(`/super-admin/slugs/${slug}/available`);
+    return response.data;
+  },
+
+  /**
+   * Atualiza dados de um tenant
+   */
+  async updateTenant(id: string, data: { nome?: string; cnpj?: string; config?: any }) {
+    const response = await api.put(`/super-admin/tenants/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Reseta a senha do admin de um tenant
+   */
+  async resetAdminPassword(id: string, novaSenha: string): Promise<{ success: boolean; email: string }> {
+    const response = await api.post(`/super-admin/tenants/${id}/reset-admin-password`, { novaSenha });
+    return response.data;
+  },
+
+  /**
+   * Lista funcionários de um tenant
+   */
+  async listTenantFuncionarios(id: string): Promise<TenantFuncionario[]> {
+    const response = await api.get(`/super-admin/tenants/${id}/funcionarios`);
+    return response.data;
+  },
+
+  /**
+   * Deleta um tenant
+   */
+  async deleteTenant(tenantId: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete(`/super-admin/tenants/${tenantId}`);
+    return response.data;
+  },
+
+  async hardDeleteTenant(tenantId: string): Promise<{ success: boolean; message: string; deletedData: any }> {
+    const response = await api.delete(`/super-admin/tenants/${tenantId}/hard`);
     return response.data;
   },
 };

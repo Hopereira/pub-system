@@ -18,12 +18,37 @@ export class ClienteRepository extends BaseTenantRepository<Cliente> {
   }
 
   /**
-   * Busca cliente por CPF
+   * Busca cliente por CPF (com filtro de tenant)
    */
   async findByCpf(cpf: string) {
     return this.findOne({
       where: { cpf } as any,
     });
+  }
+
+  /**
+   * Busca cliente por CPF SEM filtro de tenant (para rotas públicas)
+   * CPF é único globalmente, então não há risco de conflito
+   */
+  async findByCpfPublic(cpf: string) {
+    return this.rawRepository.findOne({
+      where: { cpf },
+    });
+  }
+
+  /**
+   * Cria cliente SEM exigir tenant (para rotas públicas)
+   * O tenantId será definido depois quando o cliente for associado a uma comanda
+   */
+  createPublic(data: Partial<Cliente>): Cliente {
+    return this.rawRepository.create(data);
+  }
+
+  /**
+   * Salva cliente SEM exigir tenant (para rotas públicas)
+   */
+  async savePublic(cliente: Cliente): Promise<Cliente> {
+    return this.rawRepository.save(cliente);
   }
 
   /**

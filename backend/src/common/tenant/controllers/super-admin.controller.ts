@@ -3,6 +3,8 @@ import {
   Get,
   Post,
   Patch,
+  Put,
+  Delete,
   Param,
   Body,
   UseGuards,
@@ -152,5 +154,76 @@ export class SuperAdminController {
     const available = await this.provisioningService.isSlugAvailable(slug);
     const suggestions = available ? [] : await this.provisioningService.suggestSlugs(slug);
     return { slug, available, suggestions };
+  }
+
+  /**
+   * Atualiza dados de um tenant
+   */
+  @Put('tenants/:id')
+  @ApiOperation({ summary: 'Atualiza dados de um tenant' })
+  @ApiResponse({ status: 200, description: 'Tenant atualizado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  @ApiResponse({ status: 404, description: 'Tenant não encontrado' })
+  async updateTenant(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() data: { nome?: string; cnpj?: string; config?: any },
+  ) {
+    this.checkSuperAdmin(user);
+    return this.superAdminService.updateTenant(id, data);
+  }
+
+  /**
+   * Reseta a senha do admin de um tenant
+   */
+  @Post('tenants/:id/reset-admin-password')
+  @ApiOperation({ summary: 'Reseta a senha do admin de um tenant' })
+  @ApiResponse({ status: 200, description: 'Senha resetada' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  @ApiResponse({ status: 404, description: 'Tenant ou admin não encontrado' })
+  async resetAdminPassword(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('novaSenha') novaSenha: string,
+  ) {
+    this.checkSuperAdmin(user);
+    return this.superAdminService.resetAdminPassword(id, novaSenha);
+  }
+
+  /**
+   * Lista funcionários de um tenant
+   */
+  @Get('tenants/:id/funcionarios')
+  @ApiOperation({ summary: 'Lista funcionários de um tenant' })
+  @ApiResponse({ status: 200, description: 'Lista de funcionários' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  async listTenantFuncionarios(@CurrentUser() user: any, @Param('id') id: string) {
+    this.checkSuperAdmin(user);
+    return this.superAdminService.listTenantFuncionarios(id);
+  }
+
+  /**
+   * Deleta um tenant (soft delete - muda status para INATIVO)
+   */
+  @Delete('tenants/:id')
+  @ApiOperation({ summary: 'Deleta um tenant (soft delete)' })
+  @ApiResponse({ status: 200, description: 'Tenant deletado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  async deleteTenant(@CurrentUser() user: any, @Param('id') id: string) {
+    this.checkSuperAdmin(user);
+    return this.superAdminService.deleteTenant(id);
+  }
+
+  /**
+   * Hard delete - Remove completamente um tenant e todos os dados
+   * CUIDADO: Esta ação é irreversível!
+   */
+  @Delete('tenants/:id/hard')
+  @ApiOperation({ summary: 'Remove permanentemente um tenant e todos os dados (IRREVERSÍVEL)' })
+  @ApiResponse({ status: 200, description: 'Tenant removido permanentemente' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  async hardDeleteTenant(@CurrentUser() user: any, @Param('id') id: string) {
+    this.checkSuperAdmin(user);
+    return this.superAdminService.hardDeleteTenant(id);
   }
 }

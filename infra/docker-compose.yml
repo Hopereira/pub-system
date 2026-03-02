@@ -1,0 +1,129 @@
+services:
+  # --- Serviço do Back-end (nossa API NestJS) ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pub_system_backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+      - ./backend/gcs-credentials.json:/usr/src/app/gcs-credentials.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pub_network
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_DATABASE}?schema=public
+      - JWT_SECRET=${JWT_SECRET}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:3000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
+      - NODE_OPTIONS=--max-old-space-size=1024
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file:
+      - ./.env
+    command: npm run start:dev
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 512M
+
+  # --- Serviço Redis para Cache ---
+  redis:
+    image: redis:7-alpine
+    container_name: pub_system_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pub_network
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # --- Serviço do Banco de Dados PostgreSQL ---
+  db:
+    image: postgres:15-alpine
+    container_name: pub_system_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pub_network
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # --- Serviço do PGAdmin ---
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pub_system_pgadmin
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    networks:
+      - pub_network
+    env_file:
+      - ./.env
+
+  # --- Serviço do Front-end (nossa aplicação Next.js) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pub_system_frontend
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - pub_network
+    environment:
+      - API_URL_SERVER=http://backend:3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NODE_OPTIONS=--max-old-space-size=2048
+      - WATCHPACK_POLLING=true
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 2.5G
+        reservations:
+          memory: 1G
+
+networks:
+  pub_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

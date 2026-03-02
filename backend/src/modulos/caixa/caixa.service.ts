@@ -433,16 +433,23 @@ export class CaixaService {
   }
 
   /**
-   * Busca qualquer caixa aberto no momento (para fechamento de comandas)
-   * @deprecated Use getCaixaAbertoPorFuncionario para garantir isolamento
+   * Busca o caixa aberto do funcionário específico (para fechamento de comandas)
+   * Cada operador só pode usar seu próprio caixa
+   * @param funcionarioId - ID do funcionário logado
    */
-  async getCaixaAbertoAtual(): Promise<AberturaCaixa | null> {
+  async getCaixaAbertoAtual(funcionarioId: string): Promise<AberturaCaixa | null> {
+    if (!funcionarioId) {
+      this.logger.warn('⚠️ getCaixaAbertoAtual chamado sem funcionarioId');
+      return null;
+    }
+
     return await this.aberturaRepository.findOne({
       where: {
+        funcionarioId,
         status: StatusCaixa.ABERTO,
       },
       order: {
-        dataAbertura: 'DESC', // Pega o mais recente
+        dataAbertura: 'DESC',
         horaAbertura: 'DESC',
       },
     });

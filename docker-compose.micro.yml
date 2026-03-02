@@ -19,6 +19,11 @@ services:
     container_name: pub-backend
     ports:
       - "3000:3000"
+    # ✅ DNS confiáveis para resolver Neon Cloud (evita EAI_AGAIN)
+    dns:
+      - 8.8.8.8        # Google DNS primário
+      - 8.8.4.4        # Google DNS secundário
+      - 1.1.1.1        # Cloudflare DNS
     environment:
       - NODE_ENV=production
       - NODE_OPTIONS=--max-old-space-size=384
@@ -30,8 +35,13 @@ services:
       # Google Cloud Storage (opcional)
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs-credentials.json
+      # Cloudflare DNS (criação automática de subdomínios)
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
+      - CLOUDFLARE_BASE_DOMAIN=${CLOUDFLARE_BASE_DOMAIN:-pubsystem.com.br}
+      - CLOUDFLARE_TARGET_IP=${CLOUDFLARE_TARGET_IP:-134.65.248.235}
     env_file:
-      - ./.env.micro
+      - ./.env
     volumes:
       - ./gcs-credentials.json:/app/gcs-credentials.json:ro
     restart: unless-stopped

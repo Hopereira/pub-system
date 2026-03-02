@@ -3,6 +3,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SeederService } from './seeder.service';
+import { Tenant } from '../common/tenant/entities/tenant.entity';
 import { Ambiente } from '../modulos/ambiente/entities/ambiente.entity';
 import { Mesa } from '../modulos/mesa/entities/mesa.entity';
 import { Produto } from '../modulos/produto/entities/produto.entity';
@@ -11,7 +12,7 @@ import { Comanda } from '../modulos/comanda/entities/comanda.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Ambiente, Mesa, Produto, Cliente, Comanda]),
+    TypeOrmModule.forFeature([Tenant, Ambiente, Mesa, Produto, Cliente, Comanda]),
   ],
   providers: [SeederService],
   exports: [SeederService],

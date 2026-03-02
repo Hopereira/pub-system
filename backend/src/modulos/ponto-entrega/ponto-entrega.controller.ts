@@ -25,6 +25,8 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
 
 /**
@@ -42,6 +44,8 @@ export class PontoEntregaController {
 
   // ===== ENDPOINT PÚBLICO PARA CLIENTES =====
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get('publicos/ativos')
   @ApiOperation({ summary: 'Lista pontos de entrega ativos (Rota Pública para clientes)' })
   @ApiResponse({ status: 200, description: 'Lista de pontos ativos retornada.' })

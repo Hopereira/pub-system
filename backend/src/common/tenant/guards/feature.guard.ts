@@ -7,11 +7,13 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SetMetadata } from '@nestjs/common';
+import { IS_PUBLIC_KEY } from '../../../auth/decorators/public.decorator';
 import { TenantContextService } from '../tenant-context.service';
 import { PlanFeaturesService, Feature } from '../services/plan-features.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
+import { Empresa } from '../../../modulos/empresa/entities/empresa.entity';
 
 /**
  * Decorator para marcar rotas que requerem uma feature específica
@@ -41,9 +43,21 @@ export class FeatureGuard implements CanActivate {
     private readonly planFeaturesService: PlanFeaturesService,
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(Empresa)
+    private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Verificar se a rota é pública - rotas públicas não precisam de verificação de feature
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      this.logger.debug('FeatureGuard: Rota pública, permitindo acesso');
+      return true;
+    }
+
     // Verificar se é SUPER_ADMIN - tem acesso total
     const request = context.switchToHttp().getRequest();
     const user = request.user;
@@ -83,12 +97,43 @@ export class FeatureGuard implements CanActivate {
     }
 
     // Buscar plano do tenant
-    const tenant = await this.tenantRepository.findOne({
+    let tenant = await this.tenantRepository.findOne({
       where: { id: tenantId },
       select: ['id', 'plano', 'nome'],
     });
 
+    // Fallback: se não encontrou na tabela tenants, buscar empresa pelo tenantId
     if (!tenant) {
+      const empresa = await this.empresaRepository.findOne({
+        where: { tenantId },
+        select: ['tenantId'],
+      });
+      
+      if (empresa?.tenantId) {
+        tenant = await this.tenantRepository.findOne({
+          where: { id: empresa.tenantId },
+          select: ['id', 'plano', 'nome'],
+        });
+      }
+    }
+
+    // Fallback: buscar empresa pelo id (caso tenantId seja empresaId)
+    if (!tenant) {
+      const empresa = await this.empresaRepository.findOne({
+        where: { id: tenantId },
+        select: ['tenantId'],
+      });
+      
+      if (empresa?.tenantId) {
+        tenant = await this.tenantRepository.findOne({
+          where: { id: empresa.tenantId },
+          select: ['id', 'plano', 'nome'],
+        });
+      }
+    }
+
+    if (!tenant) {
+      this.logger.warn(`🚫 FeatureGuard: Tenant não encontrado para id: ${tenantId}`);
       throw new ForbiddenException('Tenant não encontrado');
     }
 

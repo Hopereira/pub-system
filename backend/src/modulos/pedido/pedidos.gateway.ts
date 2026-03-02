@@ -90,6 +90,9 @@ export class PedidosGateway
   emitNovoPedido(pedido: Pedido, tenantId?: string) {
     const targetTenantId = tenantId || (pedido as any).tenantId;
     
+    // 🔍 DEBUG: Log para verificar estrutura do pedido
+    this.logger.debug(`📊 emitNovoPedido - pedido.id: ${pedido.id}, comanda: ${pedido.comanda?.id || 'NULL'}, tenantId: ${targetTenantId || 'NULL'}`);
+    
     if (targetTenantId) {
       // ✅ ISOLADO: Emite apenas para o tenant do pedido
       this.emitToTenant(targetTenantId, 'novo_pedido', pedido);
@@ -108,9 +111,17 @@ export class PedidosGateway
           ) {
             const ambienteId = item.produto.ambiente.id;
             this.emitToTenant(targetTenantId, `novo_pedido_ambiente:${ambienteId}`, pedido);
+            this.logger.log(`📤 Evento 'novo_pedido_ambiente:${ambienteId}' emitido para tenant ${targetTenantId}`);
             ambientesNotificados.add(ambienteId);
           }
         });
+      }
+      
+      // ✅ CORREÇÃO: Também emite para o room da comanda (clientes públicos)
+      if (pedido.comanda?.id) {
+        const comandaRoom = `comanda_${pedido.comanda.id}`;
+        this.server.to(comandaRoom).emit('novo_pedido', pedido);
+        this.logger.log(`📤 Evento 'novo_pedido' TAMBÉM emitido para comanda room: ${comandaRoom}`);
       }
     } else {
       this.logger.error(`🚫 Pedido ${pedido.id} sem tenant_id — evento descartado (sem broadcast)`);
@@ -119,6 +130,9 @@ export class PedidosGateway
 
   emitStatusAtualizado(pedido: Pedido, tenantId?: string) {
     const targetTenantId = tenantId || (pedido as any).tenantId;
+    
+    // 🔍 DEBUG: Log para verificar estrutura do pedido
+    this.logger.debug(`📊 emitStatusAtualizado - pedido.id: ${pedido.id}, comanda: ${pedido.comanda ? pedido.comanda.id : 'NULL'}, tenantId: ${targetTenantId}`);
     
     if (targetTenantId) {
       this.emitToTenant(targetTenantId, 'status_atualizado', pedido);
@@ -140,6 +154,15 @@ export class PedidosGateway
           }
         });
       }
+      
+      // ✅ CORREÇÃO: Também emite para o room da comanda (clientes públicos)
+      if (pedido.comanda?.id) {
+        const comandaRoom = `comanda_${pedido.comanda.id}`;
+        this.server.to(comandaRoom).emit('status_atualizado', pedido);
+        this.logger.log(`📤 Evento 'status_atualizado' TAMBÉM emitido para comanda room: ${comandaRoom}`);
+      } else {
+        this.logger.warn(`⚠️ Pedido ${pedido.id} não tem comanda associada para emitir evento!`);
+      }
     } else {
       this.logger.error(`🚫 Pedido ${pedido.id} sem tenant_id — evento descartado (sem broadcast)`);
     }
@@ -158,6 +181,14 @@ export class PedidosGateway
       );
     } else {
       this.logger.error(`🚫 Comanda ${comanda.id} sem tenant_id — evento descartado (sem broadcast)`);
+    }
+    
+    // ✅ CORREÇÃO: Também emite para o room da comanda (clientes públicos no portal)
+    // Isso permite que clientes acompanhando sua comanda recebam atualizações em tempo real
+    if (comanda.id) {
+      const comandaRoom = `comanda_${comanda.id}`;
+      this.server.to(comandaRoom).emit('comanda_atualizada', comanda);
+      this.logger.log(`📤 Evento 'comanda_atualizada' TAMBÉM emitido para comanda room: ${comandaRoom}`);
     }
   }
 

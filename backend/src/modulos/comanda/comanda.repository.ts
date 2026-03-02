@@ -37,4 +37,25 @@ export class ComandaRepository extends BaseTenantRepository<Comanda> {
       relations: ['mesa', 'cliente', 'pedidos', 'pedidos.itens'],
     });
   }
+
+  /**
+   * Busca comanda por ID sem filtro de tenant (para rotas públicas)
+   * ⚠️ CUIDADO: Usado apenas para avaliação de clientes via página pública
+   * @param comandaId - ID da comanda
+   * @param relations - Relações a carregar
+   */
+  async findByIdPublic(comandaId: string, relations: string[] = []) {
+    return this.rawRepository.findOne({
+      where: { id: comandaId },
+      relations,
+    });
+  }
+
+  /**
+   * Retorna o EntityManager do rawRepository (sem exigir tenant)
+   * Para uso em transações de rotas públicas
+   */
+  get publicManager() {
+    return this.rawRepository.manager;
+  }
 }

@@ -101,6 +101,18 @@ export default function EventoClientPage({ evento, paginaEvento, mesaId }: Event
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Ocorreu um erro ao criar a sua sessão. Tente novamente.';
+      
+      // ✅ TRATAR CASO DE COMANDA JÁ ABERTA - extrair ID e redirecionar
+      if (error.response?.status === 400 && errorMessage.includes('já possui uma comanda aberta')) {
+        // Extrair ID da comanda do formato: "...comanda aberta (ID: uuid). Por favor..."
+        const match = errorMessage.match(/\(ID:\s*([a-f0-9-]+)\)/i);
+        if (match && match[1]) {
+          toast.info(`Você já possui uma comanda aberta. Redirecionando...`);
+          router.push(`/portal-cliente/${match[1]}`);
+          return;
+        }
+      }
+      
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Comanda } from '@/types/comanda';
 import ProdutoCard from '@/components/cardapio/ProdutoCard';
@@ -16,6 +16,7 @@ import { PedidoReviewSheet } from '@/components/pedidos/PedidoReviewSheet';
 import { AddProdutoDialog } from '@/components/cardapio/AddProdutoDialog';
 import { EditItemDialog } from '@/components/cardapio/EditItemDialog';
 import { Produto } from '@/types/produto';
+import { getProdutosPublic } from '@/services/produtoService';
 
 interface CarrinhoItem {
   id?: string;
@@ -40,10 +41,11 @@ const groupProdutosByCategoria = (produtos: Produto[]) => {
 
 interface CardapioClientPageProps {
   comanda: Comanda;
-  produtos: Produto[];
 }
 
-export default function CardapioClientPage({ comanda, produtos }: CardapioClientPageProps) {
+export default function CardapioClientPage({ comanda }: CardapioClientPageProps) {
+  const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [isLoadingProdutos, setIsLoadingProdutos] = useState(true);
   const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
   const [isCarrinhoOpen, setIsCarrinhoOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +55,24 @@ export default function CardapioClientPage({ comanda, produtos }: CardapioClient
 
   const [termoBusca, setTermoBusca] = useState('');
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('Todos');
+
+  // Buscar produtos no client side para que o header X-Tenant-ID seja enviado corretamente
+  useEffect(() => {
+    const fetchProdutos = async () => {
+      try {
+        setIsLoadingProdutos(true);
+        const data = await getProdutosPublic();
+        setProdutos(data);
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+        toast.error('Erro ao carregar o cardápio');
+      } finally {
+        setIsLoadingProdutos(false);
+      }
+    };
+
+    fetchProdutos();
+  }, []);
 
   const handleAddToCart = (produto: Produto) => {
     setProdutoSelecionado(produto);

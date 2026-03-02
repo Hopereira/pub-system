@@ -1,4 +1,4 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, Logger } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { redisStore } from 'cache-manager-redis-yet';
@@ -11,17 +11,29 @@ import { CacheInvalidationService } from './cache-invalidation.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => {
-        const store = await redisStore({
-          socket: {
-            host: configService.get('REDIS_HOST', 'localhost'),
-            port: configService.get('REDIS_PORT', 6379),
-          },
-          ttl: 3600,
-        });
-        return {
-          store,
-          max: 100,
-        };
+        const logger = new Logger('CacheModule');
+        const redisEnabled = configService.get('REDIS_ENABLED', 'false') === 'true';
+        const redisHost = configService.get('REDIS_HOST', 'localhost');
+        const redisPort = configService.get('REDIS_PORT', 6379);
+
+        if (redisEnabled) {
+          try {
+            const store = await redisStore({
+              socket: {
+                host: redisHost,
+                port: redisPort,
+              },
+              ttl: 3600,
+            });
+            logger.log(`✅ Redis cache habilitado (${redisHost}:${redisPort})`);
+            return { store, max: 100, ttl: 3600 };
+          } catch (error) {
+            logger.warn(`⚠️ Falha ao conectar Redis, usando cache em memória: ${error.message}`);
+          }
+        }
+
+        logger.log('📦 Usando cache em memória (Redis desabilitado)');
+        return { ttl: 3600, max: 100 };
       },
     }),
   ],

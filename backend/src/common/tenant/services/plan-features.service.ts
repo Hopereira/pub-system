@@ -69,6 +69,7 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
     Feature.EVENTOS,
     Feature.PONTOS_ENTREGA,
     Feature.TURNOS, // Turnos é essencial para check-in/check-out de funcionários
+    Feature.ANALYTICS, // Analytics básico para relatórios do dashboard
   ],
   [TenantPlano.PRO]: [
     Feature.PEDIDOS,
