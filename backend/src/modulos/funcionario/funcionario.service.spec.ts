@@ -28,6 +28,7 @@ describe('FuncionarioService', () => {
     remove: jest.fn(),
     count: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findByEmailAndTenantForAuth: jest.fn(),
   };
 
   const mockConfigService = {
@@ -274,38 +275,27 @@ describe('FuncionarioService', () => {
   });
 
   // ============================================
-  // TESTES: findByEmail()
+  // TESTES: findByEmailAndTenant()
   // ============================================
-  describe('findByEmail', () => {
-    it('deve retornar funcionário por email com senha', async () => {
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(mockFuncionario),
-      };
-      mockFuncionarioRepository.createQueryBuilder.mockReturnValue(
-        mockQueryBuilder as any,
-      );
+  describe('findByEmailAndTenant', () => {
+    const mockTenantId = 'tenant-uuid-1';
 
-      const result = await service.findByEmail(mockFuncionario.email);
+    it('deve retornar funcionário por email e tenantId', async () => {
+      mockFuncionarioRepository.findByEmailAndTenantForAuth = jest.fn().mockResolvedValue(mockFuncionario);
+
+      const result = await service.findByEmailAndTenant(mockFuncionario.email, mockTenantId);
 
       expect(result).toBeDefined();
-      expect(mockQueryBuilder.addSelect).toHaveBeenCalledWith(
-        'funcionario.senha',
+      expect(mockFuncionarioRepository.findByEmailAndTenantForAuth).toHaveBeenCalledWith(
+        mockFuncionario.email,
+        mockTenantId,
       );
     });
 
-    it('deve retornar null se email não existir', async () => {
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(null),
-      };
-      mockFuncionarioRepository.createQueryBuilder.mockReturnValue(
-        mockQueryBuilder as any,
-      );
+    it('deve retornar null se email não existir no tenant', async () => {
+      mockFuncionarioRepository.findByEmailAndTenantForAuth = jest.fn().mockResolvedValue(null);
 
-      const result = await service.findByEmail('inexistente@email.com');
+      const result = await service.findByEmailAndTenant('inexistente@email.com', mockTenantId);
 
       expect(result).toBeNull();
     });

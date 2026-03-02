@@ -3,6 +3,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import {
   Ambiente,
   TipoAmbiente,
@@ -14,15 +15,12 @@ import {
   Comanda,
   ComandaStatus,
 } from '../modulos/comanda/entities/comanda.entity';
-import { Tenant, TenantStatus, TenantPlano } from '../common/tenant/entities/tenant.entity';
 
 @Injectable()
 export class SeederService {
   private readonly logger = new Logger(SeederService.name);
 
   constructor(
-    @InjectRepository(Tenant)
-    private readonly tenantRepository: Repository<Tenant>,
     @InjectRepository(Ambiente)
     private readonly ambienteRepository: Repository<Ambiente>,
     @InjectRepository(Mesa)
@@ -33,77 +31,78 @@ export class SeederService {
     private readonly clienteRepository: Repository<Cliente>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
+    private readonly configService: ConfigService,
   ) {}
 
   async seed() {
-    // 1. Verifica se o banco já tem tenants para evitar duplicatas
-    const countTenants = await this.tenantRepository.count();
-    if (countTenants > 0) {
+    // 1. Verifica se o banco já tem ambientes para evitar duplicatas
+    const countAmbientes = await this.ambienteRepository.count();
+    if (countAmbientes > 0) {
       this.logger.log(
         'O banco de dados já contém dados. Seeding não será executado.',
       );
       return;
     }
 
-    this.logger.log('Iniciando o processo de seeding...');
+    // Multi-tenant: exigir DEFAULT_TENANT_ID para seed
+    const tenantId = this.configService.get<string>('DEFAULT_TENANT_ID');
+    if (!tenantId) {
+      this.logger.error(
+        '🚨 DEFAULT_TENANT_ID não definido. Seeding bloqueado para evitar registros sem tenant.',
+      );
+      return;
+    }
 
-    // 1.1 Criar Tenant padrão
-    const tenant = await this.tenantRepository.save({
-      nome: 'Pub Demo',
-      slug: 'pub-demo',
-      status: TenantStatus.ATIVO,
-      plano: TenantPlano.PRO,
-    });
-    this.logger.log('✅ Tenant padrão criado: ' + tenant.slug);
+    this.logger.log(`Iniciando o processo de seeding para tenant ${tenantId}...`);
 
     // 2. Criar Ambientes (diversos tipos para demonstrar o sistema dinâmico)
     const cozinhaQuente = await this.ambienteRepository.save({
       nome: 'Cozinha Quente',
       descricao: 'Preparo de pratos quentes, grelhados e frituras',
       tipo: TipoAmbiente.PREPARO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const cozinhaFria = await this.ambienteRepository.save({
       nome: 'Cozinha Fria',
       descricao: 'Preparo de saladas, frios e sobremesas',
       tipo: TipoAmbiente.PREPARO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const bar = await this.ambienteRepository.save({
       nome: 'Bar Principal',
       descricao: 'Preparo de bebidas e drinks',
       tipo: TipoAmbiente.PREPARO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const churrasqueira = await this.ambienteRepository.save({
       nome: 'Churrasqueira',
       descricao: 'Preparo de carnes na brasa',
       tipo: TipoAmbiente.PREPARO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const confeitaria = await this.ambienteRepository.save({
       nome: 'Confeitaria',
       descricao: 'Preparo de doces e bolos',
       tipo: TipoAmbiente.PREPARO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const salao = await this.ambienteRepository.save({
       nome: 'Salão Principal',
       descricao: 'Área de atendimento principal',
       tipo: TipoAmbiente.ATENDIMENTO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const varanda = await this.ambienteRepository.save({
       nome: 'Varanda',
       descricao: 'Área externa coberta',
       tipo: TipoAmbiente.ATENDIMENTO,
-      tenantId: tenant.id,
+      tenantId,
     });
     const vip = await this.ambienteRepository.save({
       nome: 'Área VIP',
       descricao: 'Espaço reservado premium',
       tipo: TipoAmbiente.ATENDIMENTO,
-      tenantId: tenant.id,
+      tenantId,
     });
     this.logger.log(
       '✅ 8 Ambientes criados (5 de preparo + 3 de atendimento).',
@@ -112,15 +111,15 @@ export class SeederService {
     // 3. Criar Mesas (distribuídas pelos ambientes de atendimento)
     // Salão Principal: Mesas 1-10
     for (let i = 1; i <= 10; i++) {
-      await this.mesaRepository.save({ numero: i, ambiente: salao, tenantId: tenant.id });
+      await this.mesaRepository.save({ numero: i, ambiente: salao, tenantId });
     }
     // Varanda: Mesas 11-18
     for (let i = 11; i <= 18; i++) {
-      await this.mesaRepository.save({ numero: i, ambiente: varanda, tenantId: tenant.id });
+      await this.mesaRepository.save({ numero: i, ambiente: varanda, tenantId });
     }
     // Área VIP: Mesas 19-22
     for (let i = 19; i <= 22; i++) {
-      await this.mesaRepository.save({ numero: i, ambiente: vip, tenantId: tenant.id });
+      await this.mesaRepository.save({ numero: i, ambiente: vip, tenantId });
     }
     this.logger.log(
       '✅ 22 Mesas criadas (10 no salão + 8 na varanda + 4 VIP).',
@@ -398,8 +397,7 @@ export class SeederService {
       },
     ];
 
-    // Adicionar tenantId a todos os produtos
-    const produtosComTenant = produtos.map(p => ({ ...p, tenantId: tenant.id }));
+    const produtosComTenant = produtos.map(p => ({ ...p, tenantId }));
     await this.produtoRepository.save(produtosComTenant);
     this.logger.log(
       '✅ 42 Produtos criados (distribuídos por 5 ambientes de preparo).',
@@ -411,7 +409,7 @@ export class SeederService {
       nome: 'João Silva',
       email: 'joao.silva@email.com',
       celular: '11987654321',
-      tenantId: tenant.id,
+      tenantId,
     });
 
     const cliente2 = await this.clienteRepository.save({
@@ -419,7 +417,7 @@ export class SeederService {
       nome: 'Maria Santos',
       email: 'maria.santos@email.com',
       celular: '11976543210',
-      tenantId: tenant.id,
+      tenantId,
     });
 
     const cliente3 = await this.clienteRepository.save({
@@ -427,7 +425,7 @@ export class SeederService {
       nome: 'Pedro Oliveira',
       email: 'pedro.oliveira@email.com',
       celular: '11965432109',
-      tenantId: tenant.id,
+      tenantId,
     });
 
     const cliente4 = await this.clienteRepository.save({
@@ -435,7 +433,7 @@ export class SeederService {
       nome: 'Ana Costa',
       email: 'ana.costa@email.com',
       celular: '11954321098',
-      tenantId: tenant.id,
+      tenantId,
     });
 
     const cliente5 = await this.clienteRepository.save({
@@ -443,7 +441,7 @@ export class SeederService {
       nome: 'Carlos Pereira',
       email: 'carlos.pereira@email.com',
       celular: '11943210987',
-      tenantId: tenant.id,
+      tenantId,
     });
 
     this.logger.log('✅ 5 Clientes criados.');
@@ -457,7 +455,7 @@ export class SeederService {
       status: ComandaStatus.ABERTA,
       cliente: cliente1,
       mesa: mesasDisponiveis[0],
-      tenantId: tenant.id,
+      tenantId,
     });
 
     // Comanda 2: Maria Santos na Mesa 5
@@ -465,7 +463,7 @@ export class SeederService {
       status: ComandaStatus.ABERTA,
       cliente: cliente2,
       mesa: mesasDisponiveis[1],
-      tenantId: tenant.id,
+      tenantId,
     });
 
     // Comanda 3: Pedro Oliveira na Mesa 10 (Mesa do Salão)
@@ -473,15 +471,15 @@ export class SeederService {
       status: ComandaStatus.ABERTA,
       cliente: cliente3,
       mesa: mesasDisponiveis[2],
-      tenantId: tenant.id,
+      tenantId,
     });
 
     // Comanda 4: Ana Costa sem mesa (Balcão)
     await this.comandaRepository.save({
       status: ComandaStatus.ABERTA,
       cliente: cliente4,
-      mesa: null, // Comanda sem mesa (balcão/delivery)
-      tenantId: tenant.id,
+      mesa: null,
+      tenantId,
     });
 
     // Comanda 5: Carlos Pereira na Mesa 15 (Varanda)
@@ -489,7 +487,7 @@ export class SeederService {
       status: ComandaStatus.ABERTA,
       cliente: cliente5,
       mesa: mesasDisponiveis[3],
-      tenantId: tenant.id,
+      tenantId,
     });
 
     this.logger.log(

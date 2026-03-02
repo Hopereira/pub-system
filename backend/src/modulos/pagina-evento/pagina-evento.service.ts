@@ -1,13 +1,13 @@
 // Caminho: backend/src/modulos/pagina-evento/pagina-evento.service.ts
 
-import { Injectable, NotFoundException, Scope } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePaginaEventoDto } from './dto/create-pagina-evento.dto';
 import { UpdatePaginaEventoDto } from './dto/update-pagina-evento.dto';
 import { PaginaEvento } from './entities/pagina-evento.entity';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
 import { PaginaEventoRepository } from './pagina-evento.repository';
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class PaginaEventoService {
   constructor(
     private readonly paginaEventoRepository: PaginaEventoRepository,
@@ -32,21 +32,6 @@ export class PaginaEventoService {
     const paginaEvento = await this.paginaEventoRepository.findOne({
       where: { id },
     });
-    if (!paginaEvento) {
-      throw new NotFoundException(
-        `Página de Evento com ID "${id}" não encontrada.`,
-      );
-    }
-    return paginaEvento;
-  }
-
-  // --- Ler Um Público (Read One Public) ---
-  /**
-   * Busca página de evento por ID sem filtro de tenant
-   * ⚠️ Usado apenas para rotas públicas (QR Code/Link)
-   */
-  async findOnePublic(id: string): Promise<PaginaEvento> {
-    const paginaEvento = await this.paginaEventoRepository.findByIdPublic(id);
     if (!paginaEvento) {
       throw new NotFoundException(
         `Página de Evento com ID "${id}" não encontrada.`,
@@ -102,12 +87,8 @@ export class PaginaEventoService {
   /**
    * Encontra a primeira página de evento que está marcada como "ativa".
    * Retorna nulo se nenhuma for encontrada.
-   * ⚠️ Usado em rota pública - sem filtro de tenant
    */
   async findAtiva(): Promise<PaginaEvento | null> {
-    const paginasAtivas = await this.paginaEventoRepository.findWithoutTenant({ 
-      where: { ativa: true } as any 
-    });
-    return paginasAtivas.length > 0 ? paginasAtivas[0] : null;
+    return this.paginaEventoRepository.findOne({ where: { ativa: true } });
   }
 }

@@ -14,28 +14,27 @@ import { Cache } from 'cache-manager';
 import { REQUEST } from '@nestjs/core';
 import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
 import { TenantContextService } from '../../common/tenant/tenant-context.service';
-import { TenantResolverService } from '../../common/tenant/tenant-resolver.service';
 
 // Entidades de Módulos Associados
 import { Cliente } from '../cliente/entities/cliente.entity';
 import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
+import { Evento } from '../evento/entities/evento.entity';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
-import { Evento } from '../evento/entities/evento.entity';
-import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './entities/comanda-agregado.entity';
 
 // Repositórios tenant-aware
 import { ComandaRepository } from './comanda.repository';
+import { ComandaAgregadoRepository } from './comanda-agregado.repository';
 import { MesaRepository } from '../mesa/mesa.repository';
 import { ClienteRepository } from '../cliente/cliente.repository';
 import { PedidoRepository } from '../pedido/pedido.repository';
 import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
-import { EventoRepository } from '../evento/evento.repository';
 import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
+import { EventoRepository } from '../evento/evento.repository';
 import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
-import { ComandaAgregadoRepository } from './comanda-agregado.repository';
 
 // Entidades e DTOs Locais
 import { CreateComandaDto } from './dto/create-comanda.dto';
@@ -74,14 +73,12 @@ export class ComandaService {
     private readonly cacheInvalidationService: CacheInvalidationService,
     @Optional() private readonly tenantContext?: TenantContextService,
     @Optional() @Inject(REQUEST) private readonly request?: any,
-    @Optional() private readonly tenantResolver?: TenantResolverService,
   ) {}
 
   /**
    * Obtém o tenantId do contexto atual para namespace de cache
    */
   private getTenantId(): string | null {
-    // 1. Tentar do TenantContextService
     try {
       if (this.tenantContext?.hasTenant?.()) {
         return this.tenantContext.getTenantId();
@@ -89,60 +86,18 @@ export class ComandaService {
     } catch {
       // Ignorar
     }
-    
-    // 2. Tentar do request.tenant (definido pelo TenantInterceptor)
-    if (this.request?.tenant?.id) {
-      return this.request.tenant.id;
-    }
-    
-    // 3. Tentar do user (JWT)
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
-    
-    // 4. Tentar do header X-Tenant-ID
     return this.request?.headers?.['x-tenant-id'] || null;
   }
 
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `comandas:${tenantId}:${params}` : `comandas:global:${params}`;
-  }
-
-  /**
-   * Resolve o tenantId a partir do slug no header ou do contexto
-   * ✅ ESSENCIAL para rotas públicas que precisam associar ao tenant correto
-   */
-  private async resolveAndGetTenantId(): Promise<string | null> {
-    // 1. Se já tem tenantId do contexto/JWT, usar
-    const tenantIdFromContext = this.getTenantId();
-    if (tenantIdFromContext && this.isValidUUID(tenantIdFromContext)) {
-      return tenantIdFromContext;
-    }
-    
-    // 2. Se header x-tenant-id for um slug (não UUID), resolver para UUID
-    const headerValue = this.request?.headers?.['x-tenant-id'];
-    if (headerValue && !this.isValidUUID(headerValue) && this.tenantResolver) {
-      try {
-        const tenant = await this.tenantResolver.resolveBySlug(headerValue);
-        this.logger.debug(`🔄 Slug "${headerValue}" resolvido para UUID: ${tenant.id}`);
-        return tenant.id;
-      } catch (error) {
-        this.logger.warn(`⚠️ Não foi possível resolver tenant pelo slug "${headerValue}": ${error.message}`);
-      }
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Valida se uma string é um UUID válido
-   */
-  private isValidUUID(str: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
+    if (!tenantId) return null;
+    return `comandas:${tenantId}:${params}`;
   }
 
   async create(createComandaDto: CreateComandaDto): Promise<Comanda> {
@@ -169,15 +124,21 @@ export class ComandaService {
       );
     }
 
+    // Obter tenantId do contexto ANTES da transação (imutável durante a request)
+    const tenantId = this.getTenantId();
+    if (!tenantId) {
+      throw new BadRequestException('Tenant não identificado. Impossível criar comanda.');
+    }
+
     // ✅ USAR TRANSAÇÃO COM LOCK PESSIMISTA PARA EVITAR RACE CONDITION
-    // Usar publicManager para permitir criação de comanda em rotas públicas (sem tenant)
-    return await this.comandaRepository.publicManager
+    // IMPORTANTE: Todas as queries dentro da transação DEVEM filtrar por tenantId
+    // pois transactionalEntityManager bypassa BaseTenantRepository
+    return await this.comandaRepository.manager
       .transaction(async (transactionalEntityManager) => {
         let mesa: Mesa | null = null;
         if (mesaId) {
-          // Lock pessimista para evitar que duas requisições simultâneas ocupem a mesma mesa
           mesa = await transactionalEntityManager.findOne(Mesa, {
-            where: { id: mesaId },
+            where: { id: mesaId, tenantId },
             lock: { mode: 'pessimistic_write' },
           });
           if (!mesa)
@@ -194,7 +155,7 @@ export class ComandaService {
         let cliente: Cliente | null = null;
         if (clienteId) {
           cliente = await transactionalEntityManager.findOne(Cliente, {
-            where: { id: clienteId },
+            where: { id: clienteId, tenantId },
           });
           if (!cliente)
             throw new NotFoundException(
@@ -207,6 +168,7 @@ export class ComandaService {
               where: {
                 cliente: { id: clienteId },
                 status: ComandaStatus.ABERTA,
+                tenantId,
               },
             });
 
@@ -224,7 +186,7 @@ export class ComandaService {
         if (paginaEventoId) {
           paginaEvento = await transactionalEntityManager.findOne(
             PaginaEvento,
-            { where: { id: paginaEventoId } },
+            { where: { id: paginaEventoId, tenantId } },
           );
           if (!paginaEvento) {
             this.logger.warn(
@@ -239,7 +201,7 @@ export class ComandaService {
           pontoEntrega = await transactionalEntityManager.findOne(
             PontoEntrega,
             {
-              where: { id: pontoEntregaId },
+              where: { id: pontoEntregaId, tenantId },
             },
           );
           if (!pontoEntrega) {
@@ -257,19 +219,13 @@ export class ComandaService {
           );
         }
 
-        // ✅ RESOLVER TENANT ID DO SLUG ANTES DE CRIAR A COMANDA
-        const resolvedTenantId = await this.resolveAndGetTenantId();
-        this.logger.log(
-          `🏢 Criando comanda com tenantId: ${resolvedTenantId || 'NULL'}`,
-        );
-
         const comanda = transactionalEntityManager.create(Comanda, {
           mesa,
           cliente,
           pontoEntrega,
           paginaEvento,
           status: ComandaStatus.ABERTA,
-          tenantId: resolvedTenantId, // ✅ GARANTIR TENANT ID NA COMANDA
+          tenantId,
         });
 
         const novaComanda = await transactionalEntityManager.save(comanda);
@@ -282,6 +238,7 @@ export class ComandaService {
               nome: agr.nome,
               cpf: agr.cpf,
               ordem: index + 1,
+              tenantId,
             }),
           );
           await transactionalEntityManager.save(agregadosEntities);
@@ -293,7 +250,7 @@ export class ComandaService {
         // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
         if (eventoId) {
           const evento = await transactionalEntityManager.findOne(Evento, {
-            where: { id: eventoId },
+            where: { id: eventoId, tenantId },
           });
           if (evento && evento.valor > 0) {
             this.logger.log(
@@ -306,6 +263,7 @@ export class ComandaService {
               precoUnitario: evento.valor,
               observacao: `Couvert Artístico - ${evento.titulo}`,
               status: PedidoStatus.ENTREGUE,
+              tenantId,
             });
 
             const pedidoEntrada = transactionalEntityManager.create(Pedido, {
@@ -313,6 +271,7 @@ export class ComandaService {
               itens: [itemEntrada],
               total: evento.valor,
               status: PedidoStatus.ENTREGUE,
+              tenantId,
             });
 
             await transactionalEntityManager.save(itemEntrada);
@@ -329,8 +288,7 @@ export class ComandaService {
       })
       .then(async (novaComanda) => {
         // Recarregamos a comanda para garantir que ela retorne com o novo pedido de entrada incluído
-        // Usar rawRepository para evitar erro de tenant em rotas públicas
-        const comandaCompleta = await this.findOnePublic(novaComanda.id);
+        const comandaCompleta = await this.findOne(novaComanda.id);
         
         // Invalidar cache após criar comanda (afeta comandas e mesas)
         await this.cacheInvalidationService.invalidateComandas();
@@ -346,14 +304,15 @@ export class ComandaService {
     const { page = 1, limit = 20, sortBy = 'criadoEm', sortOrder = 'DESC' } = paginationDto || {};
     const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
 
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<PaginatedResponse<Comanda>>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<PaginatedResponse<Comanda>>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     // Buscar do banco com paginação
     const [data, total] = await this.comandaRepository.findAndCount({
@@ -377,15 +336,15 @@ export class ComandaService {
       },
     };
 
-    // Armazenar no cache por 5 minutos (comandas mudam frequentemente)
-    await this.cacheManager.set(cacheKey, response, 300000);
+    // Armazenar no cache por 5 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, response, 300000);
+    }
 
     return response;
   }
 
   async search(term: string): Promise<Comanda[]> {
-    this.logger.log(`🔍 Buscando comandas abertas ${term ? `com termo: "${term}"` : 'sem filtro'}`);
-    
     const queryBuilder = this.comandaRepository.createQueryBuilder('comanda');
     queryBuilder
       .leftJoinAndSelect('comanda.mesa', 'mesa')
@@ -395,9 +354,7 @@ export class ComandaService {
       .leftJoinAndSelect('comanda.pedidos', 'pedidos')
       .leftJoinAndSelect('pedidos.itens', 'itens')
       .leftJoinAndSelect('itens.produto', 'produto')
-      .andWhere('comanda.status = :status', { status: ComandaStatus.ABERTA }); // ✅ andWhere para NÃO sobrescrever filtro de tenant
-    
-    // Nota: O filtro de tenant já é aplicado automaticamente pelo createQueryBuilder do BaseTenantRepository
+      .where('comanda.status = :status', { status: ComandaStatus.ABERTA });
 
     if (term) {
       const searchTerm = term.trim();
@@ -464,63 +421,6 @@ export class ComandaService {
       comanda.pedidos.forEach((pedido) => {
         const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
           // Itens de entrada (sem produto) também devem ser somados
-          if (item.status !== PedidoStatus.CANCELADO) {
-            const itemTotal = new Decimal(item.precoUnitario).times(
-              new Decimal(item.quantidade),
-            );
-            return sum.plus(itemTotal);
-          }
-          return sum;
-        }, new Decimal(0));
-
-        pedido.total = totalPedidoCalculado.toNumber();
-        totalComandaCalculado =
-          totalComandaCalculado.plus(totalPedidoCalculado);
-      });
-    }
-    (comanda as any).total = totalComandaCalculado.toNumber();
-
-    return comanda;
-  }
-
-  /**
-   * Busca comanda por ID SEM filtro de tenant (para rotas públicas)
-   * Usado após criar comanda em rotas públicas para recarregar com relações
-   */
-  async findOnePublic(id: string): Promise<Comanda> {
-    const comanda = await this.comandaRepository.rawRepository.findOne({
-      where: { id },
-      relations: [
-        'mesa',
-        'cliente',
-        'paginaEvento',
-        'pontoEntrega',
-        'pontoEntrega.mesaProxima',
-        'pontoEntrega.ambientePreparo',
-        'agregados',
-        'pedidos',
-        'pedidos.itens',
-        'pedidos.itens.produto',
-        'pedidos.itens.ambienteRetirada',
-      ],
-      order: {
-        agregados: {
-          ordem: 'ASC',
-        },
-        pedidos: {
-          data: 'ASC',
-        },
-      },
-    });
-
-    if (!comanda) {
-      throw new NotFoundException(`Comanda com ID "${id}" não encontrada.`);
-    }
-
-    let totalComandaCalculado = new Decimal(0);
-    if (comanda.pedidos) {
-      comanda.pedidos.forEach((pedido) => {
-        const totalPedidoCalculado = pedido.itens.reduce((sum, item) => {
           if (item.status !== PedidoStatus.CANCELADO) {
             const itemTotal = new Decimal(item.precoUnitario).times(
               new Decimal(item.quantidade),
@@ -618,8 +518,7 @@ export class ComandaService {
   }
 
   async findPublicOne(id: string) {
-    // Usar findOnePublic para evitar erro de tenant em rotas públicas
-    const comanda = await this.findOnePublic(id);
+    const comanda = await this.findOne(id);
 
     // Simplificamos o retorno dos itens para o frontend não se confundir
     const pedidosSimplificados = comanda.pedidos.map((p) => ({
@@ -657,9 +556,9 @@ export class ComandaService {
     };
   }
 
-  async fecharComanda(id: string, dto: FecharComandaDto, funcionarioId: string): Promise<Comanda> {
+  async fecharComanda(id: string, dto: FecharComandaDto): Promise<Comanda> {
     this.logger.log(
-      `🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento} - Operador: ${funcionarioId}`,
+      `🔒 Iniciando fechamento da comanda ${id} - Forma: ${dto.formaPagamento}`,
     );
 
     // Buscar comanda com todas as relações necessárias
@@ -699,14 +598,15 @@ export class ComandaService {
 
     this.logger.log(`💰 Total da comanda: R$ ${totalNumber.toFixed(2)}`);
 
-    // ✅ Validar e registrar venda no caixa DO OPERADOR ATUAL
+    // ✅ NOVO: Validar e registrar venda no caixa
     try {
-      // Buscar caixa aberto pelo funcionário atual (cada operador só pode usar seu próprio caixa)
-      const caixaAberto = await this.caixaService.getCaixaAbertoAtual(funcionarioId);
+      // Buscar caixa aberto (pode estar vinculado ao funcionário que abriu a comanda ou ao atual)
+      // Por simplicidade, vamos buscar qualquer caixa aberto no momento
+      const caixaAberto = await this.caixaService.getCaixaAbertoAtual();
 
       if (!caixaAberto) {
         throw new BadRequestException(
-          'Você precisa abrir um caixa antes de processar pagamentos. Acesse "Gestão de Caixas" para abrir seu caixa.',
+          'Não há caixa aberto no momento. Por favor, abra o caixa antes de fechar comandas.',
         );
       }
 
@@ -804,8 +704,7 @@ export class ComandaService {
     comandaId: string,
     dto: { mesaId?: string | null; pontoEntregaId?: string | null },
   ): Promise<Comanda> {
-    // Usar findOnePublic para rotas públicas (sem filtro de tenant)
-    const comanda = await this.findOnePublic(comandaId);
+    const comanda = await this.findOne(comandaId);
 
     if (comanda.status !== ComandaStatus.ABERTA) {
       throw new BadRequestException(
@@ -813,9 +712,9 @@ export class ComandaService {
       );
     }
 
-    // Se for mesa - usar rawRepository para evitar filtro de tenant
+    // Se for mesa
     if (dto.mesaId) {
-      const mesa = await this.mesaRepository.rawRepository.findOne({
+      const mesa = await this.mesaRepository.findOne({
         where: { id: dto.mesaId },
       });
       if (!mesa) {
@@ -830,9 +729,9 @@ export class ComandaService {
         `🔄 Comanda ${comandaId} vinculada à Mesa ${mesa.numero}`,
       );
     }
-    // Se for ponto de entrega - usar rawRepository para evitar filtro de tenant
+    // Se for ponto de entrega
     else if (dto.pontoEntregaId) {
-      const ponto = await this.pontoEntregaRepository.rawRepository.findOne({
+      const ponto = await this.pontoEntregaRepository.findOne({
         where: { id: dto.pontoEntregaId },
       });
       if (!ponto) {
@@ -860,8 +759,7 @@ export class ComandaService {
       this.logger.log(`🔄 Comanda ${comandaId} sem local definido`);
     }
 
-    // Usar rawRepository para salvar sem filtro de tenant
-    const comandaAtualizada = await this.comandaRepository.rawRepository.save(comanda);
+    const comandaAtualizada = await this.comandaRepository.save(comanda);
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
 
     return comandaAtualizada;
@@ -880,11 +778,10 @@ export class ComandaService {
     }
 
     // Verifica se tem pedidos EM_PREPARO
-    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const pedidosEmPreparo = await this.pedidoRepository
       .createQueryBuilder('pedido')
       .leftJoin('pedido.itens', 'item')
-      .andWhere('pedido.comanda.id = :comandaId', { comandaId })
+      .where('pedido.comanda.id = :comandaId', { comandaId })
       .andWhere('item.status = :status', { status: PedidoStatus.EM_PREPARO })
       .getCount();
 

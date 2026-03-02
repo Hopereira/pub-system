@@ -43,7 +43,7 @@ export class AmbienteService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
@@ -51,9 +51,10 @@ export class AmbienteService {
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `ambientes:${tenantId}:${params}` : `ambientes:global:${params}`;
+    if (!tenantId) return null;
+    return `ambientes:${tenantId}:${params}`;
   }
 
   async create(createAmbienteDto: CreateAmbienteDto): Promise<Ambiente> {
@@ -83,51 +84,34 @@ export class AmbienteService {
 
   // --- MÉTODO 'findAll' CORRIGIDO ---
   async findAll(): Promise<any[]> {
-    const tenantId = this.getTenantId();
-    this.logger.log(`🔍 [findAll] TenantId obtido: ${tenantId}`);
-    
-    if (!tenantId) {
-      this.logger.error(`❌ [findAll] TenantId é NULL/undefined! Retornando array vazio por segurança.`);
-      return [];
-    }
-    
     const cacheKey = this.getCacheKey('all');
 
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<any[]>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<any[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
 
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
-
-    // 🔒 CORREÇÃO DEFINITIVA: Usar query builder do TypeORM raw com filtro explícito de tenant
-    // O createQueryBuilder do BaseTenantRepository pode perder o WHERE ao usar .select()
-    const queryBuilder = this.ambienteRepository
+    const ambientes = await this.ambienteRepository
       .createQueryBuilder('ambiente')
       .leftJoin('ambiente.produtos', 'produto')
       .leftJoin('ambiente.mesas', 'mesa')
       .select('ambiente.id', 'id')
       .addSelect('ambiente.nome', 'nome')
       .addSelect('ambiente.descricao', 'descricao')
+      // --- ADICIONADO PARA CORRIGIR O BUG ---
       .addSelect('ambiente.tipo', 'tipo')
       .addSelect('ambiente.isPontoDeRetirada', 'isPontoDeRetirada')
-      .addSelect('ambiente.tenantId', 'tenantId')
+      // --- FIM DA ADIÇÃO ---
       .addSelect('COUNT(DISTINCT produto.id)', 'productCount')
       .addSelect('COUNT(DISTINCT mesa.id)', 'tableCount')
-      // 🔒 GARANTIR filtro de tenant EXPLICITAMENTE (caso o createQueryBuilder não esteja aplicando)
-      .andWhere('ambiente.tenantId = :tenantId', { tenantId })
       .groupBy('ambiente.id')
-      .orderBy('ambiente.nome', 'ASC');
-    
-    // Log da query SQL para debug
-    this.logger.log(`🔍 [findAll] Query SQL: ${queryBuilder.getQuery()}`);
-    this.logger.log(`🔍 [findAll] Parâmetros: ${JSON.stringify(queryBuilder.getParameters())}`);
-    
-    const ambientes = await queryBuilder.getRawMany();
-    
-    this.logger.log(`🔍 [findAll] Ambientes encontrados: ${ambientes.length} para tenant: ${tenantId}`);
+      .orderBy('ambiente.nome', 'ASC')
+      .getRawMany();
 
     // A conversão de `isPontoDeRetirada` para booleano é feita automaticamente pelo driver.
     // O resto da lógica permanece a mesma.
@@ -137,8 +121,10 @@ export class AmbienteService {
       tableCount: parseInt(ambiente.tableCount, 10),
     }));
 
-    // Armazenar no cache por 10 minutos (ambientes mudam raramente)
-    await this.cacheManager.set(cacheKey, result, 600000);
+    // Armazenar no cache por 10 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, result, 600000);
+    }
 
     return result;
   }
@@ -186,21 +172,5 @@ export class AmbienteService {
       }
       throw error;
     }
-  }
-
-  // 🔍 MÉTODO DE DIAGNÓSTICO - Busca todos ambientes SEM filtro de tenant
-  async debugFindAllWithoutFilter(): Promise<Ambiente[]> {
-    // Usar rawRepository para buscar TODOS os ambientes do banco (ignorando tenant)
-    const ambientes = await this.ambienteRepository.rawRepository.find({
-      select: ['id', 'nome', 'tenantId'],
-      order: { nome: 'ASC' },
-    });
-    
-    this.logger.warn(`🔍 [DEBUG] Total de ambientes no banco (sem filtro): ${ambientes.length}`);
-    ambientes.forEach(a => {
-      this.logger.warn(`   - ${a.nome}: tenantId=${a.tenantId || 'NULL'}`);
-    });
-    
-    return ambientes;
   }
 }

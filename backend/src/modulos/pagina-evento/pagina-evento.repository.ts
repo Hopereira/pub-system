@@ -17,33 +17,7 @@ export class PaginaEventoRepository extends BaseTenantRepository<PaginaEvento> {
     super(repository, tenantContext, request);
   }
 
-  /**
-   * Busca páginas de evento ativas
-   */
-  async findAtivas() {
-    return this.find({
-      where: { ativa: true } as any,
-      order: { titulo: 'ASC' } as any,
-    });
-  }
-
-  /**
-   * Busca página de evento por ID
-   */
-  async findById(id: string) {
-    return this.findOne({
-      where: { id } as any,
-    });
-  }
-
-  /**
-   * Busca página de evento por ID sem filtro de tenant (para rotas públicas)
-   * ⚠️ CUIDADO: Usado apenas para acesso público via QR Code/Link
-   * @param id - ID da página de evento
-   */
-  async findByIdPublic(id: string) {
-    return this.rawRepository.findOne({
-      where: { id },
-    });
+  async findAtiva(): Promise<PaginaEvento | null> {
+    return this.findOne({ where: { ativa: true } as any });
   }
 }

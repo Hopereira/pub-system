@@ -4,13 +4,13 @@ import { AuditService } from './audit.service';
 import { AuditController } from './audit.controller';
 import { AuditLog } from './entities/audit-log.entity';
 import { AuditCleanupService } from './audit-cleanup.service';
-import { AuditRepository } from './audit.repository';
+import { AuditLogRepository } from './audit.repository';
 
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature([AuditLog])],
-  providers: [AuditService, AuditCleanupService, AuditRepository],
+  providers: [AuditService, AuditCleanupService, AuditLogRepository],
   controllers: [AuditController],
-  exports: [AuditService, AuditRepository],
+  exports: [AuditService, AuditLogRepository],
 })
 export class AuditModule {}

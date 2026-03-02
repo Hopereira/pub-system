@@ -3,14 +3,13 @@ import {
   NotFoundException,
   ConflictException,
   Logger,
-  Scope,
 } from '@nestjs/common';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { Empresa } from './entities/empresa.entity';
 import { EmpresaRepository } from './empresa.repository';
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class EmpresaService {
   private readonly logger = new Logger(EmpresaService.name);
 
@@ -19,28 +18,28 @@ export class EmpresaService {
   ) {}
 
   async create(createEmpresaDto: CreateEmpresaDto): Promise<Empresa> {
-    // Verificar se já existe empresa com este CNPJ
-    if (createEmpresaDto.cnpj) {
-      const existente = await this.empresaRepository.findByCnpj(createEmpresaDto.cnpj);
-      if (existente) {
+    const empresa = this.empresaRepository.create(createEmpresaDto);
+    try {
+      return await this.empresaRepository.save(empresa);
+    } catch (error) {
+      if (error.code === '23505') {
         throw new ConflictException(
           'Uma empresa com este CNPJ já está cadastrada.',
         );
       }
+      throw error;
     }
-
-    const empresa = this.empresaRepository.create(createEmpresaDto);
-    return this.empresaRepository.save(empresa);
   }
 
   async findOne(): Promise<Empresa> {
-    // Usa repositório tenant-aware para buscar empresa do tenant atual
-    const empresa = await this.empresaRepository.findEmpresaAtual();
-    
+    // BaseTenantRepository auto-filtra por tenant_id do contexto
+    const empresas = await this.empresaRepository.find();
+    const empresa = empresas[0] ?? null;
+
     if (!empresa) {
       throw new NotFoundException('Nenhuma empresa encontrada para este tenant.');
     }
-    
+
     this.logger.log(`✅ Empresa encontrada: ${empresa.nomeFantasia}`);
     return empresa;
   }
@@ -49,18 +48,16 @@ export class EmpresaService {
     id: string,
     updateEmpresaDto: UpdateEmpresaDto,
   ): Promise<Empresa> {
-    // Buscar empresa com filtro de tenant (automático via repositório)
-    const existingEmpresa = await this.empresaRepository.findOne({
-      where: { id } as any,
+    // BaseTenantRepository auto-filtra por tenant_id
+    const empresa = await this.empresaRepository.preload({
+      id,
+      ...updateEmpresaDto,
     });
-    
-    if (!existingEmpresa) {
+
+    if (!empresa) {
       throw new NotFoundException(`Empresa com ID "${id}" não encontrada para este tenant.`);
     }
 
-    // Atualiza campos
-    Object.assign(existingEmpresa, updateEmpresaDto);
-
-    return this.empresaRepository.save(existingEmpresa);
+    return this.empresaRepository.save(empresa);
   }
 }

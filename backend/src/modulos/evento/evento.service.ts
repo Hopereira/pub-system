@@ -1,15 +1,15 @@
 // Caminho: backend/src/modulos/evento/evento.service.ts
-import { Injectable, NotFoundException, Logger, Scope } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { Evento } from './entities/evento.entity';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
+import { Express } from 'express';
 import { EventoRepository } from './evento.repository';
 import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
-import { Express } from 'express';
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class EventoService {
   private readonly logger = new Logger(EventoService.name);
 
@@ -42,18 +42,17 @@ export class EventoService {
   }
 
   findAll(): Promise<Evento[]> {
-    // ✅ Garante que a paginaEvento (tema) seja sempre incluída na listagem
     return this.eventoRepository.find({
       relations: ['paginaEvento'],
-      order: { dataEvento: 'DESC' },
+      order: { dataEvento: 'DESC' } as any,
     });
   }
 
   findAllPublic(): Promise<Evento[]> {
     return this.eventoRepository.find({
-      where: { ativo: true },
+      where: { ativo: true } as any,
       relations: ['paginaEvento'],
-      order: { dataEvento: 'ASC' },
+      order: { dataEvento: 'ASC' } as any,
     });
   }
 
@@ -62,19 +61,6 @@ export class EventoService {
       where: { id },
       relations: ['paginaEvento'],
     });
-    if (!evento) {
-      throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
-    }
-    return evento;
-  }
-
-  /**
-   * Busca um evento por ID sem filtro de tenant (para rotas públicas)
-   */
-  async findOnePublic(id: string): Promise<Evento> {
-    const evento = await this.eventoRepository.findByIdPublic(id, [
-      'paginaEvento',
-    ]);
     if (!evento) {
       throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
     }
@@ -104,7 +90,6 @@ export class EventoService {
         }
         evento.paginaEvento = paginaEvento;
       } else {
-        // Permite desassociar um tema ao enviar paginaEventoId: null
         evento.paginaEvento = null;
       }
     }
@@ -115,7 +100,6 @@ export class EventoService {
   async uploadImagem(id: string, file: Express.Multer.File): Promise<Evento> {
     const evento = await this.findOne(id);
 
-    // Se já existir uma imagem antiga, apaga-a do Google Cloud Storage
     if (evento.urlImagem) {
       try {
         await this.storageService.deleteFile(evento.urlImagem);
@@ -128,18 +112,13 @@ export class EventoService {
       }
     }
 
-    // Faz o upload do novo ficheiro para a pasta 'eventos'
     const novaUrl = await this.storageService.uploadFile(file, 'eventos');
-
-    // Atualiza a URL no registo do evento e salva no banco de dados
     evento.urlImagem = novaUrl;
     return this.eventoRepository.save(evento);
   }
 
   async remove(id: string): Promise<void> {
-    const deletedCount = await this.eventoRepository.delete(id);
-    if (deletedCount === 0) {
-      throw new NotFoundException(`Evento com ID "${id}" não encontrado.`);
-    }
+    const evento = await this.findOne(id);
+    await this.eventoRepository.remove(evento);
   }
 }

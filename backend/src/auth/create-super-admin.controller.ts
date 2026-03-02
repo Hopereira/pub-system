@@ -62,7 +62,7 @@ export class CreateSuperAdminController {
       // Atualizar para SUPER_ADMIN
       existing.cargo = Cargo.SUPER_ADMIN;
       existing.senha = await bcrypt.hash(senha, 10);
-      existing.empresaId = null;
+      existing.tenantId = null as any; // SUPER_ADMIN não pertence a nenhum tenant
       await this.funcionarioRepository.save(existing);
       this.logger.log(`✅ Super Admin atualizado: ${email}`);
       return { message: 'Super Admin atualizado', email };

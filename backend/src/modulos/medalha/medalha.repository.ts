@@ -17,22 +17,7 @@ export class MedalhaRepository extends BaseTenantRepository<Medalha> {
     super(repository, tenantContext, request);
   }
 
-  /**
-   * Busca medalhas ativas ordenadas por tipo e nível
-   */
-  async findAtivas() {
-    return this.find({
-      where: { ativo: true } as any,
-      order: { tipo: 'ASC', nivel: 'ASC' } as any,
-    });
-  }
-
-  /**
-   * Busca medalha por tipo e nível
-   */
-  async findByTipoENivel(tipo: string, nivel: string) {
-    return this.findOne({
-      where: { tipo, nivel, ativo: true } as any,
-    });
+  async findAtivas(): Promise<Medalha[]> {
+    return this.find({ where: { ativo: true } as any, order: { tipo: 'ASC', nivel: 'ASC' } as any });
   }
 }

@@ -1,5 +1,8 @@
-import { Injectable, Logger, Scope } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
+import { Pedido } from '../pedido/entities/pedido.entity';
+import { ItemPedido } from '../pedido/entities/item-pedido.entity';
+import { Comanda } from '../comanda/entities/comanda.entity';
 import { PedidoRepository } from '../pedido/pedido.repository';
 import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
 import { ComandaRepository } from '../comanda/comanda.repository';
@@ -12,14 +15,14 @@ interface FiltroRelatorio {
   limite?: number;
 }
 
-@Injectable({ scope: Scope.REQUEST })
+@Injectable()
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
   constructor(
-    private readonly pedidoRepository: PedidoRepository,
-    private readonly itemPedidoRepository: ItemPedidoRepository,
-    private readonly comandaRepository: ComandaRepository,
+    private pedidoRepository: PedidoRepository,
+    private itemPedidoRepository: ItemPedidoRepository,
+    private comandaRepository: ComandaRepository,
   ) {}
 
   async getRelatorioGeral(filtro: FiltroRelatorio) {

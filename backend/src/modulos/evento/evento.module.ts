@@ -4,15 +4,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventoService } from './evento.service';
 import { EventoController } from './evento.controller';
 import { Evento } from './entities/evento.entity';
+import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { EventoRepository } from './evento.repository';
-import { StorageModule } from 'src/shared/storage/storage.module';
 import { PaginaEventoModule } from '../pagina-evento/pagina-evento.module';
+import { StorageModule } from 'src/shared/storage/storage.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Evento]),
+    TypeOrmModule.forFeature([Evento, PaginaEvento]),
+    PaginaEventoModule,
     StorageModule,
-    PaginaEventoModule, // Importa PaginaEventoRepository
   ],
   controllers: [EventoController],
   providers: [EventoService, EventoRepository],

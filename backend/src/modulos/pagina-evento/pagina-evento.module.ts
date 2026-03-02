@@ -5,8 +5,8 @@ import { PaginaEventoService } from './pagina-evento.service';
 import { PaginaEventoController } from './pagina-evento.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaginaEvento } from './entities/pagina-evento.entity';
-import { StorageModule } from 'src/shared/storage/storage.module';
 import { PaginaEventoRepository } from './pagina-evento.repository';
+import { StorageModule } from 'src/shared/storage/storage.module';
 
 @Module({
   imports: [
@@ -15,6 +15,6 @@ import { PaginaEventoRepository } from './pagina-evento.repository';
   ],
   controllers: [PaginaEventoController],
   providers: [PaginaEventoService, PaginaEventoRepository],
-  exports: [PaginaEventoService, PaginaEventoRepository],
+  exports: [PaginaEventoRepository],
 })
 export class PaginaEventoModule {}

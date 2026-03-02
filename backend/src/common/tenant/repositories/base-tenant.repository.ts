@@ -75,7 +75,7 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
     }
 
     // 3. Tentar do request.user (do JWT)
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) {
       return createTenantId(userTenantId);
     }

@@ -17,37 +17,11 @@ export class MedalhaGarcomRepository extends BaseTenantRepository<MedalhaGarcom>
     super(repository, tenantContext, request);
   }
 
-  /**
-   * Busca medalhas conquistadas por um garçom
-   */
-  async findByGarcom(garcomId: string) {
+  async findByFuncionarioId(funcionarioId: string): Promise<MedalhaGarcom[]> {
     return this.find({
-      where: { funcionarioId: garcomId } as any,
+      where: { funcionarioId } as any,
       relations: ['medalha'],
       order: { conquistadaEm: 'DESC' } as any,
     });
-  }
-
-  /**
-   * Verifica se garçom já tem determinada medalha
-   */
-  async existeMedalha(garcomId: string, medalhaId: string): Promise<boolean> {
-    const count = await this.count({
-      where: { funcionarioId: garcomId, medalhaId } as any,
-    });
-    return count > 0;
-  }
-
-  /**
-   * Busca medalhas conquistadas em um período
-   */
-  async findMedalhasRecentes(dataInicio: Date) {
-    const qb = this.createQueryBuilder('mg')
-      .leftJoinAndSelect('mg.medalha', 'medalha')
-      .leftJoinAndSelect('mg.funcionario', 'funcionario')
-      .andWhere('mg.conquistadaEm >= :dataInicio', { dataInicio })
-      .orderBy('mg.conquistadaEm', 'DESC');
-
-    return qb.getMany();
   }
 }

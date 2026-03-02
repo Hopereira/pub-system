@@ -6,7 +6,6 @@ import { Empresa } from '../../../modulos/empresa/entities/empresa.entity';
 import { Ambiente } from '../../../modulos/ambiente/entities/ambiente.entity';
 import { Mesa, MesaStatus } from '../../../modulos/mesa/entities/mesa.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
-import { CloudflareDnsService } from './cloudflare-dns.service';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -44,12 +43,6 @@ export interface ProvisioningResult {
     email: string;
     senhaTemporaria: string;
   };
-  dns?: {
-    success: boolean;
-    subdomain: string;
-    fullDomain: string;
-    error?: string;
-  };
 }
 
 /**
@@ -81,7 +74,6 @@ export class TenantProvisioningService {
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly dataSource: DataSource,
-    private readonly cloudflareDnsService: CloudflareDnsService,
   ) {}
 
   /**
@@ -133,7 +125,7 @@ export class TenantProvisioningService {
       await queryRunner.manager.save(tenant);
       this.logger.log(`✅ Tenant criado: ${tenant.id}`);
 
-      // 2. Criar Empresa (vinculada ao tenant)
+      // 2. Criar Empresa
       const empresa = queryRunner.manager.create(Empresa, {
         nomeFantasia: dto.nomeFantasia,
         razaoSocial: dto.razaoSocial || dto.nomeFantasia,
@@ -143,7 +135,7 @@ export class TenantProvisioningService {
         endereco: dto.endereco,
         slug: dto.slug,
         ativo: true,
-        tenantId: tenant.id, // Vincular empresa ao tenant
+        tenantId: tenant.id,
       });
       await queryRunner.manager.save(empresa);
       this.logger.log(`✅ Empresa criada: ${empresa.id}`);
@@ -177,6 +169,7 @@ export class TenantProvisioningService {
           numero: i,
           status: MesaStatus.LIVRE,
           ambiente: salao,
+          tenantId: tenant.id,
         } as any);
         await queryRunner.manager.save(mesa);
         mesas.push(mesa);
@@ -192,23 +185,14 @@ export class TenantProvisioningService {
         cargo: 'ADMIN',
         status: 'ATIVO',
         empresa: empresa,
-        empresaId: empresa.id,
         tenantId: tenant.id,
       } as any);
       await queryRunner.manager.save(admin);
-      this.logger.log(`✅ Admin criado: ${admin.email} (tenant: ${tenant.id})`);
+      this.logger.log(`✅ Admin criado: ${admin.email}`);
 
       // Commit da transação
       await queryRunner.commitTransaction();
       this.logger.log(`🎉 Provisionamento concluído com sucesso para: ${dto.slug}`);
-
-      // 6. Criar registro DNS no Cloudflare (após commit para não bloquear)
-      const dnsResult = await this.cloudflareDnsService.createSubdomain(dto.slug);
-      if (dnsResult.success) {
-        this.logger.log(`🌐 DNS criado: ${dnsResult.fullDomain}`);
-      } else {
-        this.logger.warn(`⚠️ DNS não criado: ${dnsResult.error}`);
-      }
 
       return {
         tenant,
@@ -220,7 +204,6 @@ export class TenantProvisioningService {
           email: dto.adminEmail,
           senhaTemporaria: dto.adminSenha,
         },
-        dns: dnsResult,
       };
     } catch (error) {
       // Rollback em caso de erro

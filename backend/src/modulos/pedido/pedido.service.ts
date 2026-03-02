@@ -69,7 +69,7 @@ export class PedidoService {
     } catch {
       // Ignorar
     }
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
     return this.request?.headers?.['x-tenant-id'] || null;
   }
@@ -77,9 +77,10 @@ export class PedidoService {
   /**
    * Gera chave de cache com namespace do tenant
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `pedidos:${tenantId}:${params}` : `pedidos:global:${params}`;
+    if (!tenantId) return null;
+    return `pedidos:${tenantId}:${params}`;
   }
 
   async create(createPedidoDto: CreatePedidoDto): Promise<Pedido> {
@@ -333,14 +334,15 @@ export class PedidoService {
     // Cache key baseado nos filtros com namespace do tenant
     const cacheKey = this.getCacheKey(`amb:${ambienteId || 'all'}:st:${status || 'all'}:cmd:${comandaId || 'all'}`);
     
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<Pedido[]>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<Pedido[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
-    
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
 
     const queryBuilder = this.pedidoRepository
       .createQueryBuilder('pedido')
@@ -445,8 +447,10 @@ export class PedidoService {
       );
     }
 
-    // Armazenar no cache por 2 minutos (pedidos mudam muito frequentemente)
-    await this.cacheManager.set(cacheKey, pedidosFiltrados, 120000);
+    // Armazenar no cache por 2 minutos (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, pedidosFiltrados, 120000);
+    }
 
     return pedidosFiltrados;
   }
@@ -967,33 +971,24 @@ export class PedidoService {
         this.pedidosGateway.emitStatusAtualizado(pedidoCompleto);
       }
 
-      // Evento específico de item retirado
-      this.pedidosGateway.server.emit('item_retirado', {
-        itemId: item.id,
-        pedidoId: item.pedido.id,
-        produtoNome: item.produto?.nome,
-        ambienteId: ambientePreparo?.id,
-        ambienteNome: ambientePreparo?.nome,
-        garcomId: dto.garcomId,
-        garcomNome: garcom.nome,
-        retiradoEm: agora,
-        tempoReacaoMinutos,
-        statusAnterior: PedidoStatus.PRONTO,
-        statusAtual: PedidoStatus.RETIRADO,
-      });
-
-      // Emite também para sala de gestão
-      this.pedidosGateway.server.to('gestao').emit('item_retirado', {
-        itemId: item.id,
-        pedidoId: item.pedido.id,
-        produtoNome: item.produto?.nome,
-        ambienteId: ambientePreparo?.id,
-        ambienteNome: ambientePreparo?.nome,
-        garcomId: dto.garcomId,
-        garcomNome: garcom.nome,
-        retiradoEm: agora,
-        tempoReacaoMinutos,
-      });
+      // Evento específico de item retirado (isolado por tenant)
+      const tenantId = this.getTenantId();
+      if (tenantId) {
+        const itemRetiradoPayload = {
+          itemId: item.id,
+          pedidoId: item.pedido.id,
+          produtoNome: item.produto?.nome,
+          ambienteId: ambientePreparo?.id,
+          ambienteNome: ambientePreparo?.nome,
+          garcomId: dto.garcomId,
+          garcomNome: garcom.nome,
+          retiradoEm: agora,
+          tempoReacaoMinutos,
+          statusAnterior: PedidoStatus.PRONTO,
+          statusAtual: PedidoStatus.RETIRADO,
+        };
+        this.pedidosGateway.server.to(`tenant_${tenantId}`).emit('item_retirado', itemRetiradoPayload);
+      }
     }
 
     return item;
@@ -1149,24 +1144,27 @@ export class PedidoService {
         this.pedidosGateway.emitStatusAtualizado(pedidoCompleto);
       }
 
-      // Evento específico de item entregue (broadcast para todos)
-      this.pedidosGateway.server.emit('item_entregue', {
-        itemId: item.id,
-        pedidoId: item.pedido.id,
-        produtoNome: item.produto?.nome,
-        garcomNome: garcom.nome,
-        tempoEntregaFinalMinutos,
-        tempoEntregaMinutos,
-      });
-
-      // Notifica cliente específico da comanda
-      this.pedidosGateway.server
-        .to(`comanda_${comanda.id}`)
-        .emit('item_entregue', {
+      // Evento específico de item entregue (isolado por tenant)
+      const tenantId = this.getTenantId();
+      if (tenantId) {
+        this.pedidosGateway.server.to(`tenant_${tenantId}`).emit('item_entregue', {
           itemId: item.id,
+          pedidoId: item.pedido.id,
           produtoNome: item.produto?.nome,
           garcomNome: garcom.nome,
+          tempoEntregaFinalMinutos,
+          tempoEntregaMinutos,
         });
+
+        // Notifica cliente específico da comanda (room com tenantId)
+        this.pedidosGateway.server
+          .to(`comanda_${tenantId}_${comanda.id}`)
+          .emit('item_entregue', {
+            itemId: item.id,
+            produtoNome: item.produto?.nome,
+            garcomNome: garcom.nome,
+          });
+      }
     }
 
     return item;

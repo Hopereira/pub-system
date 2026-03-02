@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AuditLog, AuditAction } from './entities/audit-log.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
-import { AuditRepository } from './audit.repository';
+import { AuditLogRepository } from './audit.repository';
 
 export interface CreateAuditLogDto {
   funcionario?: Funcionario;
@@ -16,7 +16,7 @@ export interface CreateAuditLogDto {
   endpoint?: string;
   method?: string;
   description?: string;
-  tenantId?: string; // Multi-tenancy: ID do tenant
+  tenantId?: string;
 }
 
 export interface AuditLogFilters {
@@ -35,25 +35,24 @@ export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
   constructor(
-    private readonly auditRepository: AuditRepository,
+    private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
   /**
    * Cria um registro de auditoria
-   * Nota: Usa rawRepository para permitir criação sem contexto de tenant
    */
   async log(dto: CreateAuditLogDto): Promise<AuditLog> {
     try {
       // Obter tenantId do DTO, do funcionário ou usar um valor padrão
       const tenantId = dto.tenantId || dto.funcionario?.tenantId || null;
       
-      const auditLog = this.auditRepository.rawRepository.create({
+      const auditLog = this.auditLogRepository.create({
         ...dto,
         funcionarioEmail: dto.funcionario?.email || dto.funcionarioEmail,
         tenantId,
       });
 
-      const saved = await this.auditRepository.rawRepository.save(auditLog);
+      const saved = await this.auditLogRepository.save(auditLog);
 
       this.logger.debug(
         `📝 Auditoria: ${dto.action} em ${dto.entityName} por ${dto.funcionarioEmail || 'Sistema'}`,
@@ -68,24 +67,101 @@ export class AuditService {
 
   /**
    * Busca registros de auditoria com filtros
-   * Filtro de tenant aplicado automaticamente pelo repository
    */
   async findAll(filters: AuditLogFilters) {
-    return this.auditRepository.findWithFilters(filters);
+    const {
+      funcionarioId,
+      entityName,
+      entityId,
+      action,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 50,
+    } = filters;
+
+    const query = this.auditLogRepository
+      .createQueryBuilder('audit')
+      .leftJoinAndSelect('audit.funcionario', 'funcionario');
+
+    if (funcionarioId) {
+      query.andWhere('audit.funcionarioId = :funcionarioId', { funcionarioId });
+    }
+
+    if (entityName) {
+      query.andWhere('audit.entityName = :entityName', { entityName });
+    }
+
+    if (entityId) {
+      query.andWhere('audit.entityId = :entityId', { entityId });
+    }
+
+    if (action) {
+      if (Array.isArray(action)) {
+        query.andWhere('audit.action IN (:...actions)', { actions: action });
+      } else {
+        query.andWhere('audit.action = :action', { action });
+      }
+    }
+
+    if (startDate && endDate) {
+      query.andWhere('audit.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+    } else if (startDate) {
+      query.andWhere('audit.createdAt >= :startDate', { startDate });
+    } else if (endDate) {
+      query.andWhere('audit.createdAt <= :endDate', { endDate });
+    }
+
+    query
+      .orderBy('audit.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   /**
    * Busca histórico de alterações de uma entidade
    */
   async getEntityHistory(entityName: string, entityId: string) {
-    return this.auditRepository.getEntityHistory(entityName, entityId);
+    return this.auditLogRepository.find({
+      where: {
+        entityName,
+        entityId,
+      },
+      relations: ['funcionario'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
   }
 
   /**
    * Busca atividades recentes de um usuário
    */
   async getUserActivity(funcionarioId: string, limit: number = 50) {
-    return this.auditRepository.getUserActivities(funcionarioId, limit);
+    return this.auditLogRepository.find({
+      where: {
+        funcionario: { id: funcionarioId },
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      take: limit,
+    });
   }
 
   /**
@@ -109,14 +185,13 @@ export class AuditService {
 
   /**
    * Remove registros antigos de auditoria (GDPR compliance)
-   * Usa rawRepository para não aplicar filtro de tenant
    */
   async cleanupOldLogs(daysToKeep: number = 365): Promise<number> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-    const result = await this.auditRepository.rawRepository
-      .createQueryBuilder()
+    const result = await this.auditLogRepository
+      .createQueryBuilderUnsafe('audit')
       .delete()
       .where('createdAt < :cutoffDate', { cutoffDate })
       .execute();
@@ -134,13 +209,58 @@ export class AuditService {
    * Estatísticas de auditoria
    */
   async getStatistics(startDate?: Date, endDate?: Date) {
-    return this.auditRepository.getStatistics(startDate, endDate);
+    const query = this.auditLogRepository.createQueryBuilder('audit');
+
+    if (startDate && endDate) {
+      query.where('audit.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      });
+    }
+
+    const totalLogs = await query.getCount();
+
+    const actionStats = await query
+      .select('audit.action', 'action')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('audit.action')
+      .getRawMany();
+
+    const entityStats = await query
+      .select('audit.entityName', 'entity')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('audit.entityName')
+      .getRawMany();
+
+    const userStats = await query
+      .select('audit.funcionarioEmail', 'user')
+      .addSelect('COUNT(*)', 'count')
+      .where('audit.funcionarioEmail IS NOT NULL')
+      .groupBy('audit.funcionarioEmail')
+      .orderBy('count', 'DESC')
+      .limit(10)
+      .getRawMany();
+
+    return {
+      totalLogs,
+      byAction: actionStats,
+      byEntity: entityStats,
+      topUsers: userStats,
+    };
   }
 
   /**
    * Busca tentativas de login falhadas
    */
-  async getFailedLogins(hours: number = 24) {
-    return this.auditRepository.getFailedLogins(hours);
+  async getFailedLogins(limit: number = 50) {
+    return this.auditLogRepository.find({
+      where: {
+        action: AuditAction.LOGIN_FAILED,
+      },
+      order: {
+        createdAt: 'DESC',
+      },
+      take: limit,
+    });
   }
 }

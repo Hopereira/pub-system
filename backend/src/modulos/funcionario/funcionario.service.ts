@@ -33,20 +33,18 @@ export class FuncionarioService implements OnModuleInit {
   async onModuleInit() {
     const contador = await this.funcionarioRepository.count();
     if (contador === 0) {
-      this.logger.log(
-        'Banco de dados de funcionários vazio. Criando usuário ADMIN padrão...',
-      );
-      
-      // Buscar o primeiro tenant disponível para associar o admin
-      const tenantResult = await this.funcionarioRepository.manager.query(
-        'SELECT id FROM tenants LIMIT 1'
-      );
-      const tenantId = tenantResult[0]?.id;
-      
+      const tenantId = this.configService.get<string>('DEFAULT_TENANT_ID');
       if (!tenantId) {
-        this.logger.warn('⚠️ Nenhum tenant encontrado. Admin será criado sem tenant.');
+        this.logger.error(
+          '🚨 Banco vazio mas DEFAULT_TENANT_ID não definido. ' +
+          'Não é possível criar admin sem tenant. Defina DEFAULT_TENANT_ID no .env',
+        );
+        return;
       }
-      
+
+      this.logger.log(
+        `Banco de dados de funcionários vazio. Criando ADMIN para tenant ${tenantId}...`,
+      );
       const senhaPlana = this.configService.get<string>('ADMIN_SENHA');
       const senhaHash = await bcrypt.hash(senhaPlana, 10);
       const admin = this.funcionarioRepository.create({
@@ -54,10 +52,10 @@ export class FuncionarioService implements OnModuleInit {
         email: this.configService.get<string>('ADMIN_EMAIL'),
         senha: senhaHash,
         cargo: Cargo.ADMIN,
-        tenantId: tenantId || null,
+        tenantId,
       });
       await this.funcionarioRepository.save(admin);
-      this.logger.log(`✅ Usuário ADMIN padrão criado com sucesso! (tenant: ${tenantId || 'nenhum'})`);
+      this.logger.log(`✅ Usuário ADMIN criado com sucesso [tenant: ${tenantId}]`);
     }
   }
 
@@ -112,74 +110,22 @@ export class FuncionarioService implements OnModuleInit {
     }
   }
 
-  /**
-   * Cria um novo funcionário com validação de anti-elevação
-   * @param createFuncionarioDto Dados do funcionário
-   * @param actorCargo Cargo do usuário que está criando (para anti-elevação)
-   */
   async create(
     createFuncionarioDto: CreateFuncionarioDto,
-    actorCargo?: Cargo,
   ): Promise<Funcionario> {
-    // 🔒 Anti-elevação: Validar se o actor pode criar este cargo
-    if (actorCargo) {
-      this.validateCargoElevation(actorCargo, createFuncionarioDto.cargo as Cargo);
-    }
-
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
       ...createFuncionarioDto,
       senha: senhaHash,
     });
     try {
-      const created = await this.funcionarioRepository.save(novoFuncionario);
-      this.logger.log(`✅ Funcionário criado: ${created.email} (cargo: ${created.cargo}) por ${actorCargo || 'sistema'}`);
-      return created;
+      return await this.funcionarioRepository.save(novoFuncionario);
     } catch (error) {
       if (error.code === '23505') {
         throw new ConflictException('Este e-mail já está cadastrado.');
       }
       throw error;
     }
-  }
-
-  /**
-   * Valida se o actor pode atribuir o cargo desejado (anti-elevação)
-   * Hierarquia: SUPER_ADMIN > ADMIN > GERENTE > operacionais
-   */
-  private validateCargoElevation(actorCargo: Cargo, targetCargo: Cargo): void {
-    const hierarchy: Record<Cargo, number> = {
-      [Cargo.SUPER_ADMIN]: 100,
-      [Cargo.ADMIN]: 80,
-      [Cargo.GERENTE]: 60,
-      [Cargo.CAIXA]: 40,
-      [Cargo.GARCOM]: 40,
-      [Cargo.COZINHEIRO]: 40,
-      [Cargo.COZINHA]: 40,
-      [Cargo.BARTENDER]: 40,
-    };
-
-    const actorLevel = hierarchy[actorCargo] || 0;
-    const targetLevel = hierarchy[targetCargo] || 0;
-
-    // GERENTE não pode criar/editar funcionários (apenas visualizar)
-    if (actorCargo === Cargo.GERENTE) {
-      throw new ForbiddenException('GERENTE não tem permissão para criar ou editar funcionários.');
-    }
-
-    // Não pode atribuir cargo igual ou superior ao próprio (exceto SUPER_ADMIN)
-    if (actorCargo !== Cargo.SUPER_ADMIN && targetLevel >= actorLevel) {
-      throw new ForbiddenException(
-        `Você não pode atribuir o cargo ${targetCargo}. Apenas cargos inferiores ao seu (${actorCargo}) são permitidos.`
-      );
-    }
-
-    // ADMIN não pode criar SUPER_ADMIN
-    if (actorCargo === Cargo.ADMIN && targetCargo === Cargo.SUPER_ADMIN) {
-      throw new ForbiddenException('ADMIN não pode criar usuários SUPER_ADMIN.');
-    }
-
-    this.logger.debug(`🔒 Anti-elevação OK: ${actorCargo} criando ${targetCargo}`);
   }
 
   /**
@@ -197,48 +143,17 @@ export class FuncionarioService implements OnModuleInit {
   }
 
   /**
-   * Busca funcionário por email para autenticação
-   * ⚠️ Este método NÃO usa filtro de tenant porque o login
-   * acontece ANTES do tenant ser identificado.
+   * Busca funcionário por email + tenantId para autenticação segura.
+   * O tenant DEVE ser resolvido pelo subdomain ANTES do login.
    */
-  findByEmail(email: string): Promise<Funcionario> {
-    return this.funcionarioRepository.findByEmailForAuth(email);
+  findByEmailAndTenant(email: string, tenantId: string): Promise<Funcionario> {
+    return this.funcionarioRepository.findByEmailAndTenantForAuth(email, tenantId);
   }
 
-  /**
-   * Atualiza funcionário com validação de anti-elevação
-   * @param id ID do funcionário
-   * @param updateFuncionarioDto Dados a atualizar
-   * @param actorCargo Cargo do usuário que está editando (para anti-elevação)
-   */
   async update(
     id: string,
     updateFuncionarioDto: UpdateFuncionarioDto,
-    actorCargo?: Cargo,
   ): Promise<Funcionario> {
-    // Buscar funcionário atual para verificar cargo anterior
-    const funcionarioAtual = await this.findOne(id);
-    if (!funcionarioAtual) {
-      throw new NotFoundException(`Funcionário com ID "${id}" não encontrado.`);
-    }
-
-    // 🔒 Anti-elevação: Se está mudando o cargo, validar
-    if (actorCargo && updateFuncionarioDto.cargo) {
-      const novoCargo = updateFuncionarioDto.cargo as Cargo;
-      const cargoAnterior = funcionarioAtual.cargo;
-
-      // Validar se pode atribuir o novo cargo
-      this.validateCargoElevation(actorCargo, novoCargo);
-
-      // Log de auditoria para mudança de cargo
-      if (cargoAnterior !== novoCargo) {
-        this.logger.log(
-          `🔄 AUDITORIA: Cargo alterado de ${cargoAnterior} para ${novoCargo} ` +
-          `| Funcionário: ${funcionarioAtual.email} | Por: ${actorCargo}`
-        );
-      }
-    }
-
     // Se a senha foi enviada, faz o hash antes de salvar
     if (updateFuncionarioDto.senha) {
       updateFuncionarioDto.senha = await bcrypt.hash(
@@ -281,10 +196,9 @@ export class FuncionarioService implements OnModuleInit {
     alterarSenhaDto: AlterarSenhaDto,
   ): Promise<{ message: string }> {
     // Busca o funcionário com a senha (que normalmente não é retornada)
-    // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
     const funcionario = await this.funcionarioRepository
       .createQueryBuilder('funcionario')
-      .andWhere('funcionario.id = :id', { id: funcionarioId })
+      .where('funcionario.id = :id', { id: funcionarioId })
       .addSelect('funcionario.senha')
       .getOne();
 

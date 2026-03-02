@@ -47,38 +47,18 @@ export class FuncionarioRepository extends BaseTenantRepository<Funcionario> {
   }
 
   /**
-   * Busca funcionário por email SEM filtro de tenant
-   * ⚠️ USO EXCLUSIVO PARA AUTENTICAÇÃO - Não usar em outros contextos!
-   * 
-   * Este método é necessário porque o login acontece ANTES do tenant
-   * ser identificado (o tenant é identificado PELO funcionário logado).
-   * 
-   * IMPORTANTE: Prioriza funcionário com tenantId definido sobre funcionário órfão (tenantId null)
+   * Busca funcionário por email E tenant_id para autenticação segura.
+   * O tenant DEVE ser resolvido pelo subdomain ANTES do login.
    */
-  async findByEmailForAuth(email: string): Promise<Funcionario | null> {
-    // Busca todos os funcionários com esse email
-    const funcionarios = await this.rawRepository
+  async findByEmailAndTenantForAuth(
+    email: string,
+    tenantId: string,
+  ): Promise<Funcionario | null> {
+    return this.rawRepository
       .createQueryBuilder('funcionario')
       .where('funcionario.email = :email', { email })
-      .addSelect('funcionario.senha') // Inclui senha para validação
-      .getMany();
-    
-    if (funcionarios.length === 0) {
-      return null;
-    }
-    
-    // Se só existe um, retorna ele
-    if (funcionarios.length === 1) {
-      return funcionarios[0];
-    }
-    
-    // Se existem múltiplos, prioriza o que tem tenantId definido
-    const funcionarioComTenant = funcionarios.find(f => f.tenantId !== null);
-    if (funcionarioComTenant) {
-      return funcionarioComTenant;
-    }
-    
-    // Se nenhum tem tenant (todos órfãos), retorna o primeiro
-    return funcionarios[0];
+      .andWhere('funcionario.tenant_id = :tenantId', { tenantId })
+      .addSelect('funcionario.senha')
+      .getOne();
   }
 }

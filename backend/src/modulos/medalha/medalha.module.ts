@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MedalhaService } from './medalha.service';
 import { MedalhaController } from './medalha.controller';
@@ -14,7 +14,7 @@ import { PedidoModule } from '../pedido/pedido.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Medalha, MedalhaGarcom, ItemPedido, Funcionario]),
-    PedidoModule, // Importa ItemPedidoRepository
+    forwardRef(() => PedidoModule),
   ],
   controllers: [MedalhaController],
   providers: [MedalhaService, MedalhaScheduler, MedalhaRepository, MedalhaGarcomRepository],

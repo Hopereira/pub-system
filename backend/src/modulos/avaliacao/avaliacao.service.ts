@@ -4,7 +4,6 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Between } from 'typeorm';
 import { Avaliacao } from './entities/avaliacao.entity';
 import { CreateAvaliacaoDto } from './dto/create-avaliacao.dto';
 import {
@@ -20,31 +19,28 @@ export class AvaliacaoService {
   private readonly logger = new Logger(AvaliacaoService.name);
 
   constructor(
-    private readonly avaliacaoRepository: AvaliacaoRepository,
-    private readonly comandaRepository: ComandaRepository,
+    private avaliacaoRepository: AvaliacaoRepository,
+    private comandaRepository: ComandaRepository,
   ) {}
 
   async create(createAvaliacaoDto: CreateAvaliacaoDto): Promise<Avaliacao> {
     const { comandaId, nota, comentario } = createAvaliacaoDto;
 
-    this.logger.log(`⭐ Criando avaliação para comanda: ${comandaId}`);
-
-    // Busca a comanda SEM filtro de tenant (rota pública)
-    // O cliente acessa via página pública e não tem contexto de tenant
-    const comanda = await this.comandaRepository.findByIdPublic(comandaId, [
-      'cliente',
-      'mesa',
-      'mesa.ambiente',
-      'pedidos',
-      'pedidos.itens',
-    ]);
+    // Busca a comanda com todas as relações necessárias
+    const comanda = await this.comandaRepository.findOne({
+      where: { id: comandaId },
+      relations: [
+        'cliente',
+        'mesa',
+        'mesa.ambiente',
+        'pedidos',
+        'pedidos.itens',
+      ],
+    });
 
     if (!comanda) {
-      this.logger.warn(`❌ Comanda não encontrada: ${comandaId}`);
       throw new NotFoundException('Comanda não encontrada');
     }
-
-    this.logger.log(`✅ Comanda encontrada: ${comandaId.slice(0, 8)}... - Status: ${comanda.status}`);
 
     if (comanda.status !== 'FECHADA') {
       throw new BadRequestException(
@@ -52,8 +48,10 @@ export class AvaliacaoService {
       );
     }
 
-    // Verifica se já existe avaliação para esta comanda (SEM filtro de tenant)
-    const avaliacaoExistente = await this.avaliacaoRepository.findByComandaIdPublic(comandaId);
+    // Verifica se já existe avaliação para esta comanda
+    const avaliacaoExistente = await this.avaliacaoRepository.findOne({
+      where: { comandaId },
+    });
 
     if (avaliacaoExistente) {
       throw new BadRequestException('Esta comanda já foi avaliada');
@@ -76,18 +74,17 @@ export class AvaliacaoService {
         return total + valorPedido;
       }, 0) || 0;
 
-    // Cria a avaliação usando o tenantId da comanda
-    const avaliacaoSalva = await this.avaliacaoRepository.createPublic(
-      {
-        comandaId,
-        clienteId: comanda.cliente?.id,
-        nota,
-        comentario: comentario || null,
-        tempoEstadia,
-        valorGasto,
-      },
-      comanda.tenantId, // Usa o tenantId da comanda
-    );
+    // Cria a avaliação
+    const avaliacao = this.avaliacaoRepository.create({
+      comandaId,
+      clienteId: comanda.cliente?.id,
+      nota,
+      comentario: comentario || null,
+      tempoEstadia,
+      valorGasto,
+    });
+
+    const avaliacaoSalva = await this.avaliacaoRepository.save(avaliacao);
 
     this.logger.log(
       `⭐ Nova avaliação | Nota: ${nota}/5 | Comanda: ${comandaId.slice(0, 8)} | Cliente: ${comanda.cliente?.nome || 'Anônimo'}`,
@@ -109,8 +106,7 @@ export class AvaliacaoService {
       .orderBy('avaliacao.criadoEm', 'DESC');
 
     if (dataInicio && dataFim) {
-      // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
-      queryBuilder.andWhere(
+      queryBuilder.where(
         'avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim',
         {
           dataInicio,
@@ -143,8 +139,7 @@ export class AvaliacaoService {
       this.avaliacaoRepository.createQueryBuilder('avaliacao');
 
     if (dataInicio && dataFim) {
-      // 🔒 CORREÇÃO: Usar andWhere para NÃO sobrescrever filtro de tenant
-      queryBuilder.andWhere(
+      queryBuilder.where(
         'avaliacao.criadoEm BETWEEN :dataInicio AND :dataFim',
         {
           dataInicio,

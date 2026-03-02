@@ -3,7 +3,6 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { REQUEST } from '@nestjs/core';
 import { TenantContextService } from '../../common/tenant/tenant-context.service';
-import { TenantResolverService } from '../../common/tenant/tenant-resolver.service';
 import { CreateProdutoDto } from './dto/create-produto.dto';
 import { UpdateProdutoDto } from './dto/update-produto.dto';
 import { Produto } from './entities/produto.entity';
@@ -27,14 +26,12 @@ export class ProdutoService {
     private readonly cacheInvalidationService: CacheInvalidationService,
     @Optional() private readonly tenantContext?: TenantContextService,
     @Optional() @Inject(REQUEST) private readonly request?: any,
-    @Optional() private readonly tenantResolver?: TenantResolverService,
   ) {}
 
   /**
    * Obtém o tenantId do contexto atual para namespace de cache
    */
   private getTenantId(): string | null {
-    // 1. Tentar do TenantContextService
     try {
       if (this.tenantContext?.hasTenant?.()) {
         return this.tenantContext.getTenantId();
@@ -42,27 +39,18 @@ export class ProdutoService {
     } catch {
       // Ignorar
     }
-    
-    // 2. Tentar do request.tenant (definido pelo TenantInterceptor)
-    if (this.request?.tenant?.id) {
-      return this.request.tenant.id;
-    }
-    
-    // 3. Tentar do user (JWT)
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
-    
-    // 4. Tentar do header X-Tenant-ID
     return this.request?.headers?.['x-tenant-id'] || null;
   }
 
   /**
    * Gera chave de cache com namespace do tenant
-   * Para produtos, usa 'global' quando não há tenant (rotas públicas de cardápio)
    */
-  private getCacheKey(params: string): string {
+  private getCacheKey(params: string): string | null {
     const tenantId = this.getTenantId();
-    return tenantId ? `produtos:${tenantId}:${params}` : `produtos:global:${params}`;
+    if (!tenantId) return null;
+    return `produtos:${tenantId}:${params}`;
   }
 
   // --- 3. MÉTODO 'CREATE' ATUALIZADO ---
@@ -186,49 +174,39 @@ export class ProdutoService {
     return removedProduto;
   }
 
-  // ✅ ATUALIZADO: findAll com paginação e cache (filtra por tenant quando disponível)
+  // ✅ ATUALIZADO: findAll com paginação e cache (rota pública - sem filtro de tenant)
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
 
     // Criar chave de cache única baseada nos parâmetros com namespace do tenant
     const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
     
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
-    if (cached) {
-      this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
-      return cached;
-    }
-    
-    this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
-
-    // Obter tenantId do contexto
-    const tenantId = this.getTenantId();
-    this.logger.log(`🔍 findAll - tenantId obtido: ${tenantId || 'NENHUM'}`);
-    
-    // Construir where clause com filtro de tenant quando disponível
-    const whereClause: any = { ativo: true };
-    if (tenantId) {
-      whereClause.tenantId = tenantId;
-      this.logger.log(`🔒 Filtrando produtos por tenantId: ${tenantId}`);
-    } else {
-      this.logger.warn(`⚠️ Sem tenantId - retornando TODOS os produtos!`);
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<PaginatedResponse<Produto>>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
 
-    const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
-      where: whereClause,
+    const [data, total] = await this.produtoRepository.findAndCount({
+      where: { ativo: true } as any,
       relations: ['ambiente'],
-      order: { [sortBy]: sortOrder },
+      order: { [sortBy]: sortOrder } as any,
       skip: (page - 1) * limit,
       take: limit,
     });
 
-    this.logger.log(`📋 Listando produtos | Tenant: ${tenantId || 'global'} | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
+    this.logger.log(`📋 Listando produtos | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
 
     const response = createPaginatedResponse(data, total, page, limit);
     
-    // Armazenar no cache por 1 hora (3600000 ms)
-    await this.cacheManager.set(cacheKey, response, 3600000);
+    // Armazenar no cache (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, response, 3600000);
+    }
 
     return response;
   }
@@ -237,97 +215,34 @@ export class ProdutoService {
   async findAllNoPagination(): Promise<Produto[]> {
     const cacheKey = this.getCacheKey('all:ativos');
     
-    // Tentar buscar do cache
-    const cached = await this.cacheManager.get<Produto[]>(cacheKey);
-    if (cached) {
-      this.logger.debug('🎯 Cache HIT: produtos:all:ativos');
-      return cached;
+    // Tentar buscar do cache (apenas se tenant disponível)
+    if (cacheKey) {
+      const cached = await this.cacheManager.get<Produto[]>(cacheKey);
+      if (cached) {
+        this.logger.debug(`🎯 Cache HIT: ${cacheKey}`);
+        return cached;
+      }
+      this.logger.debug(`❌ Cache MISS: ${cacheKey}`);
     }
     
-    this.logger.debug('❌ Cache MISS: produtos:all:ativos');
-    
-    // Obter tenantId do contexto
-    const tenantId = this.getTenantId();
-    
-    // Construir where clause com filtro de tenant quando disponível
-    const whereClause: any = { ativo: true };
-    if (tenantId) {
-      whereClause.tenantId = tenantId;
-    }
-    
-    const produtos = await this.produtoRepository.findWithoutTenant({
-      where: whereClause,
+    const produtos = await this.produtoRepository.find({
+      where: { ativo: true } as any,
       relations: ['ambiente'],
-      order: { nome: 'ASC' },
+      order: { nome: 'ASC' } as any,
     });
     
-    // Armazenar no cache por 1 hora (3600000 ms)
-    await this.cacheManager.set(cacheKey, produtos, 3600000);
+    // Armazenar no cache (apenas se tenant disponível)
+    if (cacheKey) {
+      await this.cacheManager.set(cacheKey, produtos, 3600000);
+    }
     
     return produtos;
   }
 
-  // ===== MÉTODO PÚBLICO PARA CARDÁPIO (filtra por tenant do header X-Tenant-ID) =====
-  async findCardapioPublic(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
-    const { page = 1, limit = 100, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
-
-    // Obter tenantId do request.tenant (já resolvido pelo TenantInterceptor)
-    let tenantId = this.request?.tenant?.id;
-    
-    // Se não tiver tenant resolvido, tentar resolver do header X-Tenant-ID
-    if (!tenantId) {
-      const headerValue = this.request?.headers?.['x-tenant-id'];
-      if (headerValue) {
-        // Verificar se é UUID ou slug
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(headerValue);
-        if (isUuid) {
-          tenantId = headerValue;
-        } else {
-          // É um slug, resolver para UUID
-          try {
-            const resolved = await this.tenantResolver?.resolveBySlug(headerValue);
-            tenantId = resolved?.id;
-            this.logger.log(`🔄 Slug "${headerValue}" resolvido para UUID: ${tenantId}`);
-          } catch (error) {
-            this.logger.warn(`⚠️ Não foi possível resolver slug "${headerValue}": ${error.message}`);
-          }
-        }
-      }
-    }
-    
-    // Construir where clause com filtro de tenant
-    const whereClause: any = { ativo: true };
-    if (tenantId) {
-      whereClause.tenantId = tenantId;
-      this.logger.log(`🔒 Cardápio público filtrando por tenantId: ${tenantId}`);
-    } else {
-      this.logger.warn(`⚠️ Cardápio público SEM tenantId - retornando TODOS os produtos!`);
-    }
-
-    const [data, total] = await this.produtoRepository.findAndCountWithoutTenant({
-      where: whereClause,
-      relations: ['ambiente'],
-      order: { [sortBy]: sortOrder },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    this.logger.log(`📋 Cardápio público | Tenant: ${tenantId || 'NENHUM'} | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
-
-    return createPaginatedResponse(data, total, page, limit);
-  }
-
-  // Método privado para invalidar cache de produtos
+  // Método privado para invalidar cache de produtos usando CacheInvalidationService
   private async invalidateProductCache(): Promise<void> {
     try {
-      // Invalidar chaves específicas conhecidas
-      await this.cacheManager.del('produtos:all:ativos');
-      // Invalidar páginas mais comuns (1-10)
-      for (let page = 1; page <= 10; page++) {
-        await this.cacheManager.del(`produtos:page:${page}:limit:20:sort:nome:ASC`);
-        await this.cacheManager.del(`produtos:page:${page}:limit:20:sort:nome:DESC`);
-      }
-      this.logger.log(`🗑️ Cache de produtos invalidado`);
+      await this.cacheInvalidationService.invalidateProdutos();
     } catch (error) {
       this.logger.warn(`⚠️ Erro ao invalidar cache: ${error.message}`);
     }

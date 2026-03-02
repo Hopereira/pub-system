@@ -30,7 +30,7 @@ export abstract class BaseTenantGateway {
       
       if (token && this.jwtService) {
         const payload = this.jwtService.decode(token) as any;
-        return payload?.empresaId || payload?.tenantId || null;
+        return payload?.tenantId || null;
       }
 
       // Fallback: tenta extrair do query param
@@ -66,7 +66,9 @@ export abstract class BaseTenantGateway {
       this.logger.log(`🏢 Cliente ${client.id} entrou no room: ${roomName}`);
       return tenantId;
     } else {
-      this.logger.warn(`⚠️ Cliente ${client.id} conectou sem tenant_id`);
+      this.logger.warn(`🚫 Cliente ${client.id} conectou sem tenant_id — desconectando`);
+      client.emit('error', { message: 'Tenant não identificado' });
+      client.disconnect(true);
       return null;
     }
   }

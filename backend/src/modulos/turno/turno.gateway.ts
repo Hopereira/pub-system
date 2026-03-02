@@ -45,9 +45,8 @@ export class TurnoGateway
     const tenantId = this.joinTenantRoom(client);
     if (tenantId) {
       this.logger.log(`✅ Cliente ${client.id} conectado ao TurnoGateway | Tenant: ${tenantId}`);
-    } else {
-      this.logger.warn(`⚠️ Cliente ${client.id} conectado sem tenant (modo legado)`);
     }
+    // Sem tenantId → BaseTenantGateway já desconectou o cliente
   }
 
   handleDisconnect(client: Socket) {
@@ -65,8 +64,7 @@ export class TurnoGateway
       this.emitToTenant(targetTenantId, 'funcionario_check_in', turno);
       this.logger.log(`🔒 Check-in emitido para tenant ${targetTenantId} | Funcionário: ${turno.funcionarioId}`);
     } else {
-      this.logger.warn(`⚠️ Turno sem tenant_id, usando broadcast`);
-      this.server.emit('funcionario_check_in', turno);
+      this.logger.error(`🚫 Turno sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 
@@ -80,8 +78,7 @@ export class TurnoGateway
       this.emitToTenant(targetTenantId, 'funcionario_check_out', turno);
       this.logger.log(`🔒 Check-out emitido para tenant ${targetTenantId} | Funcionário: ${turno.funcionarioId}`);
     } else {
-      this.logger.warn(`⚠️ Turno sem tenant_id, usando broadcast`);
-      this.server.emit('funcionario_check_out', turno);
+      this.logger.error(`🚫 Turno sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 
@@ -93,8 +90,7 @@ export class TurnoGateway
       this.emitToTenant(tenantId, 'funcionarios_ativos_atualizado', {});
       this.logger.log(`🔒 Funcionários atualizados emitido para tenant ${tenantId}`);
     } else {
-      this.logger.warn(`⚠️ Sem tenant_id, usando broadcast`);
-      this.server.emit('funcionarios_ativos_atualizado');
+      this.logger.error(`🚫 Sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 }

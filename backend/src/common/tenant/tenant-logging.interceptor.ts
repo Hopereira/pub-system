@@ -39,7 +39,7 @@ export class TenantLoggingInterceptor implements NestInterceptor {
 
     // Extrai tenant diretamente do request (definido pelo TenantInterceptor)
     // ou do JWT do usuário autenticado
-    const tenantId = request.tenant?.id || request.user?.empresaId || null;
+    const tenantId = request.tenant?.id || request.user?.tenantId || null;
     const tenantName = request.tenant?.nomeFantasia || '';
     const tenantPrefix = tenantId 
       ? `[tenant:${tenantId.substring(0, 8)}]${tenantName ? ` (${tenantName})` : ''}` 

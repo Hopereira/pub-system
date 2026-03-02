@@ -45,7 +45,7 @@ export class CacheInvalidationService {
     }
 
     // 3. Tentar do request.user
-    const userTenantId = this.request?.user?.tenantId || this.request?.user?.empresaId;
+    const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) {
       return userTenantId;
     }
@@ -65,13 +65,13 @@ export class CacheInvalidationService {
    * @param params - Parâmetros adicionais da chave
    * @param tenantId - TenantId opcional (usa o do contexto se não fornecido)
    */
-  generateCacheKey(entity: string, params: string, tenantId?: string): string {
+  generateCacheKey(entity: string, params: string, tenantId?: string): string | null {
     const effectiveTenantId = tenantId || this.getTenantId();
-    if (effectiveTenantId) {
-      return `${entity}:${effectiveTenantId}:${params}`;
+    if (!effectiveTenantId) {
+      this.logger.warn(`⚠️ Cache key rejected: no tenant for ${entity}:${params}`);
+      return null;
     }
-    // Fallback para chave global (rotas públicas sem tenant)
-    return `${entity}:global:${params}`;
+    return `${entity}:${effectiveTenantId}:${params}`;
   }
 
   /**
@@ -112,14 +112,12 @@ export class CacheInvalidationService {
    */
   async invalidateProdutos(): Promise<void> {
     const tenantId = this.getTenantId();
-    if (tenantId) {
-      this.logger.log(`🔄 Invalidando cache de produtos do tenant ${tenantId}...`);
-      await this.invalidatePattern(`produtos:${tenantId}:*`);
-    } else {
-      // Fallback: invalidar cache global (rotas públicas)
-      this.logger.log('🔄 Invalidando cache global de produtos...');
-      await this.invalidatePattern('produtos:global:*');
+    if (!tenantId) {
+      this.logger.warn('⚠️ Não é possível invalidar cache de produtos sem tenant');
+      return;
     }
+    this.logger.log(`🔄 Invalidando cache de produtos do tenant ${tenantId}...`);
+    await this.invalidatePattern(`produtos:${tenantId}:*`);
   }
 
   /**
@@ -129,15 +127,13 @@ export class CacheInvalidationService {
    */
   async invalidateComandas(): Promise<void> {
     const tenantId = this.getTenantId();
-    if (tenantId) {
-      this.logger.log(`🔄 Invalidando cache de comandas e mesas do tenant ${tenantId}...`);
-      await this.invalidatePattern(`comandas:${tenantId}:*`);
-      await this.invalidatePattern(`mesas:${tenantId}:*`);
-    } else {
-      this.logger.log('🔄 Invalidando cache global de comandas e mesas...');
-      await this.invalidatePattern('comandas:global:*');
-      await this.invalidatePattern('mesas:global:*');
+    if (!tenantId) {
+      this.logger.warn('⚠️ Não é possível invalidar cache de comandas sem tenant');
+      return;
     }
+    this.logger.log(`🔄 Invalidando cache de comandas e mesas do tenant ${tenantId}...`);
+    await this.invalidatePattern(`comandas:${tenantId}:*`);
+    await this.invalidatePattern(`mesas:${tenantId}:*`);
   }
 
   /**
@@ -146,13 +142,12 @@ export class CacheInvalidationService {
    */
   async invalidatePedidos(): Promise<void> {
     const tenantId = this.getTenantId();
-    if (tenantId) {
-      this.logger.log(`🔄 Invalidando cache de pedidos do tenant ${tenantId}...`);
-      await this.invalidatePattern(`pedidos:${tenantId}:*`);
-    } else {
-      this.logger.log('🔄 Invalidando cache global de pedidos...');
-      await this.invalidatePattern('pedidos:global:*');
+    if (!tenantId) {
+      this.logger.warn('⚠️ Não é possível invalidar cache de pedidos sem tenant');
+      return;
     }
+    this.logger.log(`🔄 Invalidando cache de pedidos do tenant ${tenantId}...`);
+    await this.invalidatePattern(`pedidos:${tenantId}:*`);
   }
 
   /**
@@ -161,15 +156,13 @@ export class CacheInvalidationService {
    */
   async invalidateAmbientes(): Promise<void> {
     const tenantId = this.getTenantId();
-    if (tenantId) {
-      this.logger.log(`🔄 Invalidando cache de ambientes e produtos do tenant ${tenantId}...`);
-      await this.invalidatePattern(`ambientes:${tenantId}:*`);
-      await this.invalidatePattern(`produtos:${tenantId}:*`);
-    } else {
-      this.logger.log('🔄 Invalidando cache global de ambientes e produtos...');
-      await this.invalidatePattern('ambientes:global:*');
-      await this.invalidatePattern('produtos:global:*');
+    if (!tenantId) {
+      this.logger.warn('⚠️ Não é possível invalidar cache de ambientes sem tenant');
+      return;
     }
+    this.logger.log(`🔄 Invalidando cache de ambientes e produtos do tenant ${tenantId}...`);
+    await this.invalidatePattern(`ambientes:${tenantId}:*`);
+    await this.invalidatePattern(`produtos:${tenantId}:*`);
   }
 
   /**
@@ -178,13 +171,12 @@ export class CacheInvalidationService {
    */
   async invalidateMesas(): Promise<void> {
     const tenantId = this.getTenantId();
-    if (tenantId) {
-      this.logger.log(`🔄 Invalidando cache de mesas do tenant ${tenantId}...`);
-      await this.invalidatePattern(`mesas:${tenantId}:*`);
-    } else {
-      this.logger.log('🔄 Invalidando cache global de mesas...');
-      await this.invalidatePattern('mesas:global:*');
+    if (!tenantId) {
+      this.logger.warn('⚠️ Não é possível invalidar cache de mesas sem tenant');
+      return;
     }
+    this.logger.log(`🔄 Invalidando cache de mesas do tenant ${tenantId}...`);
+    await this.invalidatePattern(`mesas:${tenantId}:*`);
   }
 
   /**
