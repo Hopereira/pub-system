@@ -153,6 +153,53 @@ Test Suites: 1 passed, 1 total
 Tests:       18 passed, 18 total
 ```
 
+---
+
+## Round 2: Auditoria Profunda (grep manual)
+
+Apos a implementacao inicial, foi feita uma auditoria profunda com os seguintes comandos:
+
+```bash
+grep -r "@InjectRepository" src/     # 8 arquivos encontrados
+grep -r "manager." src/              # 40 matches
+grep -r "createQueryBuilder(" src/   # 34 matches
+grep -r "server.emit(" src/          # 6 matches (broadcasts cross-tenant)
+```
+
+### Vulnerabilidades Adicionais Encontradas e Corrigidas
+
+| # | Severidade | Vulnerabilidade | Arquivo | Correcao |
+|---|-----------|----------------|---------|----------|
+| 21 | CRITICA | ComandaService: 16 transactionalEntityManager bypassa BaseTenantRepository. findOne sem filtro tenant = leitura cross-tenant por ID | `comanda.service.ts` | tenantId injetado em todos os findOne WHERE e create() |
+| 22 | CRITICA | PedidosGateway: 6x server.emit() broadcast para TODOS os clientes conectados | `pedidos.gateway.ts` | Substituido por `server.to(tenant_${tenantId}).emit()` |
+| 23 | CRITICA | join_comanda: room `comanda_{id}` sem tenant = eavesdropping cross-tenant | `pedidos.gateway.ts` | Room agora: `comanda_{tenantId}_{comandaId}` |
+| 24 | ALTA | BaseTenantGateway: cliente sem tenantId ficava conectado (so warning) | `base-tenant.gateway.ts` | Agora desconecta (disconnect) imediatamente |
+| 25 | ALTA | TurnoGateway: 3x server.emit() broadcast | `turno.gateway.ts` | Substituido por emit isolado por tenant |
+| 26 | ALTA | pedido.service: 2x server.emit() broadcast (item_retirado, item_entregue) | `pedido.service.ts` | Substituido por tenant room emit |
+| 27 | ALTA | quase-pronto.scheduler: server.emit() broadcast | `quase-pronto.scheduler.ts` | Usa tenantId da entidade para emit isolado |
+| 28 | ALTA | TenantProvisioningService: Mesa e Admin criados SEM tenantId (crash apos migration NOT NULL) | `tenant-provisioning.service.ts` | tenantId adicionado a Empresa, Mesa e Admin |
+| 29 | ALTA | SeederService: 80+ entidades criadas SEM tenantId (crash apos migration) | `seeder.service.ts` | Requer DEFAULT_TENANT_ID, todos os creates incluem tenantId |
+
+### Verificacao Final (pos Round 2)
+
+```bash
+# Zero broadcasts restantes
+grep -r "server.emit(" src/ → 0 resultados
+
+# @InjectRepository restantes (todos justificados):
+# - PaymentService (4): platform-level entities
+# - SuperAdminService (4): platform-level operations
+# - TenantProvisioningService (5): platform-level (cria tenants)
+# - SeederService (5): dev tool (agora com tenantId)
+# - CreateSuperAdminController (1): setup temporario
+# - RefreshTokenService (1): token management com validacao explicita
+# - PlanFeaturesController (1): platform-level
+# - TenantResolverService (1): resolve tenant (precisa ser cross-tenant)
+# - QuaseProntoScheduler (1): cron job sem request context (usa tenantId da entidade)
+
+# 18/18 testes passando
+```
+
 ## Proximos Passos (Deploy)
 
 Ver `docs/MULTI_TENANT_ISOLATION_DEPLOY.md` para o plano completo. Resumo:
@@ -164,3 +211,12 @@ Ver `docs/MULTI_TENANT_ISOLATION_DEPLOY.md` para o plano completo. Resumo:
 5. **Deploy** nova imagem do backend
 6. **Forcar** re-login de todos os usuarios (JWTs antigos serao rejeitados)
 7. **Validar** com o checklist pos-deploy
+
+## Validacao Manual Recomendada
+
+Alem dos 18 testes automatizados, recomenda-se:
+
+1. **Teste de invasao manual:** Login Tenant A → copiar token → request para subdomain Tenant B → deve retornar 403
+2. **Teste de orfao:** `INSERT INTO funcionarios (..., tenant_id) VALUES (..., NULL)` → deve falhar (NOT NULL)
+3. **Teste WebSocket:** Conectar socket com token A → tentar ouvir eventos do Tenant B → deve ser desconectado
+4. **Opcional (proximo nivel):** Ativar Row Level Security (RLS) no PostgreSQL para protecao a nivel de banco
