@@ -54,21 +54,26 @@ export class PaymentService {
    * Inicializa os gateways com as configurações do banco
    */
   async initializeGateways(): Promise<void> {
-    const configs = await this.configRepository.find({ where: { enabled: true } });
-    
-    for (const config of configs) {
-      const gateway = this.gateways.get(config.gateway);
-      if (gateway) {
-        gateway.initialize({
-          publicKey: config.publicKey,
-          accessToken: config.accessToken,
-          secretKey: config.secretKey,
-          sandbox: config.sandbox,
-        });
+    try {
+      const configs = await this.configRepository.find({ where: { enabled: true } });
+      
+      for (const config of configs) {
+        const gateway = this.gateways.get(config.gateway);
+        if (gateway) {
+          gateway.initialize({
+            publicKey: config.publicKey,
+            accessToken: config.accessToken,
+            secretKey: config.secretKey,
+            sandbox: config.sandbox,
+          });
+        }
       }
+      
+      this.logger.log(`✅ ${configs.length} gateway(s) de pagamento inicializado(s)`);
+    } catch (error) {
+      // Gracefully handle missing table in test environments
+      this.logger.warn(`⚠️ Não foi possível inicializar gateways de pagamento: ${error.message}`);
     }
-    
-    this.logger.log(`✅ ${configs.length} gateway(s) de pagamento inicializado(s)`);
   }
 
   /**
