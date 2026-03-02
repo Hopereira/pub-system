@@ -1,17 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { ProdutoService } from './produto.service';
-import { Produto } from './entities/produto.entity';
-import { Ambiente } from '../ambiente/entities/ambiente.entity';
+import { ProdutoRepository } from './produto.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('ProdutoService', () => {
   let service: ProdutoService;
-  let produtoRepository: jest.Mocked<Repository<Produto>>;
-  let ambienteRepository: jest.Mocked<Repository<Ambiente>>;
-  let storageService: jest.Mocked<GcsStorageService>;
+  let produtoRepository: any;
+  let ambienteRepository: any;
+  let storageService: any;
 
   const mockProdutoRepository = {
     create: jest.fn(),
@@ -19,6 +21,10 @@ describe('ProdutoService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     preload: jest.fn(),
+    findAtivosComAmbiente: jest.fn(),
+    findByIdComAmbiente: jest.fn(),
+    count: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockAmbienteRepository = {
@@ -65,23 +71,39 @@ describe('ProdutoService', () => {
       providers: [
         ProdutoService,
         {
-          provide: getRepositoryToken(Produto),
+          provide: ProdutoRepository,
           useValue: mockProdutoRepository,
         },
         {
-          provide: getRepositoryToken(Ambiente),
+          provide: AmbienteRepository,
           useValue: mockAmbienteRepository,
         },
         {
           provide: GcsStorageService,
           useValue: mockStorageService,
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
+        {
+          provide: CacheInvalidationService,
+          useValue: { invalidate: jest.fn() },
+        },
+        {
+          provide: TenantContextService,
+          useValue: { getTenantId: jest.fn().mockReturnValue('tenant-uuid'), hasTenant: jest.fn().mockReturnValue(true) },
+        },
+        {
+          provide: REQUEST,
+          useValue: { tenantId: 'tenant-uuid' },
+        },
       ],
     }).compile();
 
-    service = module.get<ProdutoService>(ProdutoService);
-    produtoRepository = module.get(getRepositoryToken(Produto));
-    ambienteRepository = module.get(getRepositoryToken(Ambiente));
+    service = await module.resolve<ProdutoService>(ProdutoService);
+    produtoRepository = module.get(ProdutoRepository);
+    ambienteRepository = module.get(AmbienteRepository);
     storageService = module.get(GcsStorageService);
   });
 

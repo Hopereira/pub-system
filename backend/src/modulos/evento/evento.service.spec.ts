@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { EventoService } from './evento.service';
+import { EventoRepository } from './evento.repository';
+import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
 import { Evento } from './entities/evento.entity';
 import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
 import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
@@ -9,9 +9,9 @@ import { NotFoundException } from '@nestjs/common';
 
 describe('EventoService', () => {
   let service: EventoService;
-  let eventoRepository: jest.Mocked<Repository<Evento>>;
-  let paginaEventoRepository: jest.Mocked<Repository<PaginaEvento>>;
-  let storageService: jest.Mocked<GcsStorageService>;
+  let eventoRepository: any;
+  let paginaEventoRepository: any;
+  let storageService: any;
 
   const mockEventoRepository = {
     create: jest.fn(),
@@ -20,10 +20,16 @@ describe('EventoService', () => {
     findOne: jest.fn(),
     preload: jest.fn(),
     delete: jest.fn(),
+    findAtivosComPaginaEvento: jest.fn(),
+    findAllComPaginaEvento: jest.fn(),
+    findByIdComPaginaEvento: jest.fn(),
+    findByIdPublic: jest.fn(),
+    count: jest.fn(),
   };
 
   const mockPaginaEventoRepository = {
     findOne: jest.fn(),
+    findAtiva: jest.fn(),
   };
 
   const mockStorageService = {
@@ -61,11 +67,11 @@ describe('EventoService', () => {
       providers: [
         EventoService,
         {
-          provide: getRepositoryToken(Evento),
+          provide: EventoRepository,
           useValue: mockEventoRepository,
         },
         {
-          provide: getRepositoryToken(PaginaEvento),
+          provide: PaginaEventoRepository,
           useValue: mockPaginaEventoRepository,
         },
         {
@@ -75,9 +81,9 @@ describe('EventoService', () => {
       ],
     }).compile();
 
-    service = module.get<EventoService>(EventoService);
-    eventoRepository = module.get(getRepositoryToken(Evento));
-    paginaEventoRepository = module.get(getRepositoryToken(PaginaEvento));
+    service = await module.resolve<EventoService>(EventoService);
+    eventoRepository = module.get(EventoRepository);
+    paginaEventoRepository = module.get(PaginaEventoRepository);
     storageService = module.get(GcsStorageService);
   });
 

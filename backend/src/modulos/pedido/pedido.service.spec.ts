@@ -1,30 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { PedidoService } from './pedido.service';
-import { Pedido } from './entities/pedido.entity';
-import { ItemPedido } from './entities/item-pedido.entity';
-import { RetiradaItem } from './entities/retirada-item.entity';
-import { Comanda } from '../comanda/entities/comanda.entity';
-import { Produto } from '../produto/entities/produto.entity';
-import { Ambiente } from '../ambiente/entities/ambiente.entity';
-import { Funcionario } from '../funcionario/entities/funcionario.entity';
-import { TurnoFuncionario } from '../turno/entities/turno-funcionario.entity';
+import { PedidoRepository } from './pedido.repository';
+import { ItemPedidoRepository } from './item-pedido.repository';
+import { RetiradaItemRepository } from './retirada-item.repository';
+import { ComandaRepository } from '../comanda/comanda.repository';
+import { ProdutoRepository } from '../produto/produto.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
+import { FuncionarioRepository } from '../funcionario/funcionario.repository';
+import { TurnoRepository } from '../turno/turno.repository';
 import { PedidosGateway } from './pedidos.gateway';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { PedidoStatus } from './enums/pedido-status.enum';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('PedidoService', () => {
   let service: PedidoService;
-  let pedidoRepository: jest.Mocked<Repository<Pedido>>;
-  let itemPedidoRepository: jest.Mocked<Repository<ItemPedido>>;
-  let retiradaItemRepository: jest.Mocked<Repository<RetiradaItem>>;
-  let comandaRepository: jest.Mocked<Repository<Comanda>>;
-  let produtoRepository: jest.Mocked<Repository<Produto>>;
-  let ambienteRepository: jest.Mocked<Repository<Ambiente>>;
-  let funcionarioRepository: jest.Mocked<Repository<Funcionario>>;
-  let turnoRepository: jest.Mocked<Repository<TurnoFuncionario>>;
-  let pedidosGateway: jest.Mocked<PedidosGateway>;
+  let pedidoRepository: any;
+  let itemPedidoRepository: any;
+  let retiradaItemRepository: any;
+  let comandaRepository: any;
+  let produtoRepository: any;
+  let ambienteRepository: any;
+  let funcionarioRepository: any;
+  let turnoRepository: any;
+  let pedidosGateway: any;
 
   const mockPedidoRepository = {
     create: jest.fn(),
@@ -34,6 +36,9 @@ describe('PedidoService', () => {
     preload: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findByStatusComItens: jest.fn(),
+    findByComandaId: jest.fn(),
+    count: jest.fn(),
   };
 
   const mockItemPedidoRepository = {
@@ -130,53 +135,69 @@ describe('PedidoService', () => {
       providers: [
         PedidoService,
         {
-          provide: getRepositoryToken(Pedido),
+          provide: PedidoRepository,
           useValue: mockPedidoRepository,
         },
         {
-          provide: getRepositoryToken(ItemPedido),
+          provide: ItemPedidoRepository,
           useValue: mockItemPedidoRepository,
         },
         {
-          provide: getRepositoryToken(RetiradaItem),
+          provide: RetiradaItemRepository,
           useValue: mockRetiradaItemRepository,
         },
         {
-          provide: getRepositoryToken(Comanda),
+          provide: ComandaRepository,
           useValue: mockComandaRepository,
         },
         {
-          provide: getRepositoryToken(Produto),
+          provide: ProdutoRepository,
           useValue: mockProdutoRepository,
         },
         {
-          provide: getRepositoryToken(Ambiente),
+          provide: AmbienteRepository,
           useValue: mockAmbienteRepository,
         },
         {
-          provide: getRepositoryToken(Funcionario),
+          provide: FuncionarioRepository,
           useValue: mockFuncionarioRepository,
         },
         {
-          provide: getRepositoryToken(TurnoFuncionario),
+          provide: TurnoRepository,
           useValue: mockTurnoRepository,
         },
         {
           provide: PedidosGateway,
           useValue: mockPedidosGateway,
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
+        {
+          provide: CacheInvalidationService,
+          useValue: { invalidate: jest.fn() },
+        },
+        {
+          provide: TenantContextService,
+          useValue: { getTenantId: jest.fn().mockReturnValue('tenant-uuid'), hasTenant: jest.fn().mockReturnValue(true) },
+        },
+        {
+          provide: REQUEST,
+          useValue: { tenantId: 'tenant-uuid' },
+        },
       ],
     }).compile();
 
-    service = module.get<PedidoService>(PedidoService);
-    pedidoRepository = module.get(getRepositoryToken(Pedido));
-    itemPedidoRepository = module.get(getRepositoryToken(ItemPedido));
-    retiradaItemRepository = module.get(getRepositoryToken(RetiradaItem));
-    comandaRepository = module.get(getRepositoryToken(Comanda));
-    produtoRepository = module.get(getRepositoryToken(Produto));
-    ambienteRepository = module.get(getRepositoryToken(Ambiente));
-    funcionarioRepository = module.get(getRepositoryToken(Funcionario));
-    turnoRepository = module.get(getRepositoryToken(TurnoFuncionario));
+    service = await module.resolve<PedidoService>(PedidoService);
+    pedidoRepository = module.get(PedidoRepository);
+    itemPedidoRepository = module.get(ItemPedidoRepository);
+    retiradaItemRepository = module.get(RetiradaItemRepository);
+    comandaRepository = module.get(ComandaRepository);
+    produtoRepository = module.get(ProdutoRepository);
+    ambienteRepository = module.get(AmbienteRepository);
+    funcionarioRepository = module.get(FuncionarioRepository);
+    turnoRepository = module.get(TurnoRepository);
     pedidosGateway = module.get(PedidosGateway);
   });
 

@@ -1,30 +1,34 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { ComandaService } from './comanda.service';
-import { Comanda, ComandaStatus } from './entities/comanda.entity';
-import { ComandaAgregado } from './entities/comanda-agregado.entity';
-import { Mesa, MesaStatus } from '../mesa/entities/mesa.entity';
-import { Cliente } from '../cliente/entities/cliente.entity';
-import { PaginaEvento } from '../pagina-evento/entities/pagina-evento.entity';
-import { Evento } from '../evento/entities/evento.entity';
-import { Pedido } from '../pedido/entities/pedido.entity';
-import { ItemPedido } from '../pedido/entities/item-pedido.entity';
-import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
+import { ComandaRepository } from './comanda.repository';
+import { ComandaAgregadoRepository } from './comanda-agregado.repository';
+import { MesaRepository } from '../mesa/mesa.repository';
+import { ClienteRepository } from '../cliente/cliente.repository';
+import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
+import { EventoRepository } from '../evento/evento.repository';
+import { PedidoRepository } from '../pedido/pedido.repository';
+import { ItemPedidoRepository } from '../pedido/item-pedido.repository';
+import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
 import { CaixaService } from '../caixa/caixa.service';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
+import { Comanda, ComandaStatus } from './entities/comanda.entity';
+import { MesaStatus } from '../mesa/entities/mesa.entity';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 import { FormaPagamento } from '../caixa/dto/create-venda.dto';
 
 describe('ComandaService', () => {
   let service: ComandaService;
-  let comandaRepository: jest.Mocked<Repository<Comanda>>;
-  let mesaRepository: jest.Mocked<Repository<Mesa>>;
-  let clienteRepository: jest.Mocked<Repository<Cliente>>;
-  let pontoEntregaRepository: jest.Mocked<Repository<PontoEntrega>>;
-  let pedidosGateway: jest.Mocked<PedidosGateway>;
-  let caixaService: jest.Mocked<CaixaService>;
+  let comandaRepository: any;
+  let mesaRepository: any;
+  let clienteRepository: any;
+  let pontoEntregaRepository: any;
+  let pedidosGateway: any;
+  let caixaService: any;
 
   // Mock do EntityManager para transações
   const mockTransactionManager = {
@@ -41,6 +45,10 @@ describe('ComandaService', () => {
     preload: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findAbertasComRelacoes: jest.fn(),
+    findByMesaId: jest.fn(),
+    findByIdPublic: jest.fn(),
+    count: jest.fn(),
     manager: {
       transaction: jest.fn((cb) => cb(mockTransactionManager)),
     },
@@ -145,39 +153,39 @@ describe('ComandaService', () => {
       providers: [
         ComandaService,
         {
-          provide: getRepositoryToken(Comanda),
+          provide: ComandaRepository,
           useValue: mockComandaRepository,
         },
         {
-          provide: getRepositoryToken(Mesa),
+          provide: MesaRepository,
           useValue: mockMesaRepository,
         },
         {
-          provide: getRepositoryToken(Cliente),
+          provide: ClienteRepository,
           useValue: mockClienteRepository,
         },
         {
-          provide: getRepositoryToken(PaginaEvento),
+          provide: PaginaEventoRepository,
           useValue: mockPaginaEventoRepository,
         },
         {
-          provide: getRepositoryToken(Evento),
+          provide: EventoRepository,
           useValue: mockEventoRepository,
         },
         {
-          provide: getRepositoryToken(Pedido),
+          provide: PedidoRepository,
           useValue: mockPedidoRepository,
         },
         {
-          provide: getRepositoryToken(ItemPedido),
+          provide: ItemPedidoRepository,
           useValue: mockItemPedidoRepository,
         },
         {
-          provide: getRepositoryToken(PontoEntrega),
+          provide: PontoEntregaRepository,
           useValue: mockPontoEntregaRepository,
         },
         {
-          provide: getRepositoryToken(ComandaAgregado),
+          provide: ComandaAgregadoRepository,
           useValue: mockComandaAgregadoRepository,
         },
         {
@@ -188,14 +196,30 @@ describe('ComandaService', () => {
           provide: CaixaService,
           useValue: mockCaixaService,
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
+        {
+          provide: CacheInvalidationService,
+          useValue: { invalidate: jest.fn() },
+        },
+        {
+          provide: TenantContextService,
+          useValue: { getTenantId: jest.fn().mockReturnValue('tenant-uuid'), hasTenant: jest.fn().mockReturnValue(true) },
+        },
+        {
+          provide: REQUEST,
+          useValue: { tenantId: 'tenant-uuid' },
+        },
       ],
     }).compile();
 
-    service = module.get<ComandaService>(ComandaService);
-    comandaRepository = module.get(getRepositoryToken(Comanda));
-    mesaRepository = module.get(getRepositoryToken(Mesa));
-    clienteRepository = module.get(getRepositoryToken(Cliente));
-    pontoEntregaRepository = module.get(getRepositoryToken(PontoEntrega));
+    service = await module.resolve<ComandaService>(ComandaService);
+    comandaRepository = module.get(ComandaRepository);
+    mesaRepository = module.get(MesaRepository);
+    clienteRepository = module.get(ClienteRepository);
+    pontoEntregaRepository = module.get(PontoEntregaRepository);
     pedidosGateway = module.get(PedidosGateway);
     caixaService = module.get(CaixaService);
   });

@@ -1,49 +1,30 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Put,
-  Param,
-  Delete,
-  ParseUUIDPipe,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AmbienteController } from './ambiente.controller';
 import { AmbienteService } from './ambiente.service';
-import { CreateAmbienteDto } from './dto/create-ambiente.dto';
-import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 
-@Controller('ambientes')
-export class AmbienteController {
-  constructor(private readonly ambienteService: AmbienteService) {}
+describe('AmbienteController', () => {
+  let controller: AmbienteController;
 
-  @Post()
-  create(@Body() createAmbienteDto: CreateAmbienteDto) {
-    return this.ambienteService.create(createAmbienteDto);
-  }
+  const mockAmbienteService = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
 
-  @Get()
-  findAll() {
-    return this.ambienteService.findAll();
-  }
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AmbienteController],
+      providers: [
+        { provide: AmbienteService, useValue: mockAmbienteService },
+      ],
+    }).compile();
 
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.ambienteService.findOne(id);
-  }
+    controller = module.get<AmbienteController>(AmbienteController);
+  });
 
-  @Put(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateAmbienteDto: UpdateAmbienteDto,
-  ) {
-    return this.ambienteService.update(id, updateAmbienteDto);
-  }
-
-  @Delete(':id')
-  @HttpCode(HttpStatus.NO_CONTENT) // Retorna status 204 No Content, padrão para delete
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.ambienteService.remove(id);
-  }
-}
+  it('deve estar definido', () => {
+    expect(controller).toBeDefined();
+  });
+});

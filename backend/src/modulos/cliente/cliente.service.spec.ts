@@ -1,13 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ClienteService } from './cliente.service';
+import { ClienteRepository } from './cliente.repository';
 import { Cliente } from './entities/cliente.entity';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('ClienteService', () => {
   let service: ClienteService;
-  let clienteRepository: jest.Mocked<Repository<Cliente>>;
+  let clienteRepository: any;
 
   const mockClienteRepository = {
     create: jest.fn(),
@@ -17,6 +16,10 @@ describe('ClienteService', () => {
     preload: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),
+    findByCpf: jest.fn(),
+    findByCpfPublic: jest.fn(),
+    savePublic: jest.fn(),
+    findByTelefone: jest.fn(),
   };
 
   // Mock data
@@ -41,14 +44,14 @@ describe('ClienteService', () => {
       providers: [
         ClienteService,
         {
-          provide: getRepositoryToken(Cliente),
+          provide: ClienteRepository,
           useValue: mockClienteRepository,
         },
       ],
     }).compile();
 
     service = module.get<ClienteService>(ClienteService);
-    clienteRepository = module.get(getRepositoryToken(Cliente));
+    clienteRepository = module.get(ClienteRepository);
   });
 
   afterEach(() => {

@@ -1,15 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { REQUEST } from '@nestjs/core';
 import { MesaService } from './mesa.service';
+import { MesaRepository } from './mesa.repository';
+import { AmbienteRepository } from '../ambiente/ambiente.repository';
+import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
+import { CacheInvalidationService } from '../../cache/cache-invalidation.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 import { Mesa, MesaStatus } from './entities/mesa.entity';
 import { Ambiente } from '../ambiente/entities/ambiente.entity';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('MesaService', () => {
   let service: MesaService;
-  let mesaRepository: jest.Mocked<Repository<Mesa>>;
-  let ambienteRepository: jest.Mocked<Repository<Ambiente>>;
+  let mesaRepository: any;
+  let ambienteRepository: any;
 
   const mockMesaRepository = {
     create: jest.fn(),
@@ -18,6 +23,10 @@ describe('MesaService', () => {
     findOne: jest.fn(),
     preload: jest.fn(),
     remove: jest.fn(),
+    findComAmbiente: jest.fn(),
+    findByAmbienteId: jest.fn(),
+    findByNumero: jest.fn(),
+    findPublic: jest.fn(),
     manager: {
       find: jest.fn(),
     },
@@ -61,19 +70,39 @@ describe('MesaService', () => {
       providers: [
         MesaService,
         {
-          provide: getRepositoryToken(Mesa),
+          provide: MesaRepository,
           useValue: mockMesaRepository,
         },
         {
-          provide: getRepositoryToken(Ambiente),
+          provide: AmbienteRepository,
           useValue: mockAmbienteRepository,
+        },
+        {
+          provide: PontoEntregaRepository,
+          useValue: { find: jest.fn(), findOne: jest.fn() },
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
+        },
+        {
+          provide: CacheInvalidationService,
+          useValue: { invalidate: jest.fn() },
+        },
+        {
+          provide: TenantContextService,
+          useValue: { getTenantId: jest.fn().mockReturnValue('tenant-uuid'), hasTenant: jest.fn().mockReturnValue(true) },
+        },
+        {
+          provide: REQUEST,
+          useValue: { tenantId: 'tenant-uuid' },
         },
       ],
     }).compile();
 
-    service = module.get<MesaService>(MesaService);
-    mesaRepository = module.get(getRepositoryToken(Mesa));
-    ambienteRepository = module.get(getRepositoryToken(Ambiente));
+    service = await module.resolve<MesaService>(MesaService);
+    mesaRepository = module.get(MesaRepository);
+    ambienteRepository = module.get(AmbienteRepository);
   });
 
   afterEach(() => {

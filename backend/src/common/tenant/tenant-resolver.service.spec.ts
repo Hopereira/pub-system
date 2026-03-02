@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { TenantResolverService } from './tenant-resolver.service';
 import { Empresa } from '../../modulos/empresa/entities/empresa.entity';
+import { Tenant } from './entities/tenant.entity';
 
 describe('TenantResolverService', () => {
   let service: TenantResolverService;
@@ -22,6 +23,12 @@ describe('TenantResolverService', () => {
         TenantResolverService,
         {
           provide: getRepositoryToken(Empresa),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Tenant),
           useValue: {
             findOne: jest.fn(),
           },
