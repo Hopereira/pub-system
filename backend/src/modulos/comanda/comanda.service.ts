@@ -124,14 +124,21 @@ export class ComandaService {
       );
     }
 
+    // Obter tenantId do contexto ANTES da transação (imutável durante a request)
+    const tenantId = this.getTenantId();
+    if (!tenantId) {
+      throw new BadRequestException('Tenant não identificado. Impossível criar comanda.');
+    }
+
     // ✅ USAR TRANSAÇÃO COM LOCK PESSIMISTA PARA EVITAR RACE CONDITION
+    // IMPORTANTE: Todas as queries dentro da transação DEVEM filtrar por tenantId
+    // pois transactionalEntityManager bypassa BaseTenantRepository
     return await this.comandaRepository.manager
       .transaction(async (transactionalEntityManager) => {
         let mesa: Mesa | null = null;
         if (mesaId) {
-          // Lock pessimista para evitar que duas requisições simultâneas ocupem a mesma mesa
           mesa = await transactionalEntityManager.findOne(Mesa, {
-            where: { id: mesaId },
+            where: { id: mesaId, tenantId },
             lock: { mode: 'pessimistic_write' },
           });
           if (!mesa)
@@ -148,7 +155,7 @@ export class ComandaService {
         let cliente: Cliente | null = null;
         if (clienteId) {
           cliente = await transactionalEntityManager.findOne(Cliente, {
-            where: { id: clienteId },
+            where: { id: clienteId, tenantId },
           });
           if (!cliente)
             throw new NotFoundException(
@@ -161,6 +168,7 @@ export class ComandaService {
               where: {
                 cliente: { id: clienteId },
                 status: ComandaStatus.ABERTA,
+                tenantId,
               },
             });
 
@@ -178,7 +186,7 @@ export class ComandaService {
         if (paginaEventoId) {
           paginaEvento = await transactionalEntityManager.findOne(
             PaginaEvento,
-            { where: { id: paginaEventoId } },
+            { where: { id: paginaEventoId, tenantId } },
           );
           if (!paginaEvento) {
             this.logger.warn(
@@ -193,7 +201,7 @@ export class ComandaService {
           pontoEntrega = await transactionalEntityManager.findOne(
             PontoEntrega,
             {
-              where: { id: pontoEntregaId },
+              where: { id: pontoEntregaId, tenantId },
             },
           );
           if (!pontoEntrega) {
@@ -217,6 +225,7 @@ export class ComandaService {
           pontoEntrega,
           paginaEvento,
           status: ComandaStatus.ABERTA,
+          tenantId,
         });
 
         const novaComanda = await transactionalEntityManager.save(comanda);
@@ -229,6 +238,7 @@ export class ComandaService {
               nome: agr.nome,
               cpf: agr.cpf,
               ordem: index + 1,
+              tenantId,
             }),
           );
           await transactionalEntityManager.save(agregadosEntities);
@@ -240,7 +250,7 @@ export class ComandaService {
         // ✅ LÓGICA PARA ADICIONAR O VALOR DE ENTRADA DO EVENTO (COVER ARTÍSTICO)
         if (eventoId) {
           const evento = await transactionalEntityManager.findOne(Evento, {
-            where: { id: eventoId },
+            where: { id: eventoId, tenantId },
           });
           if (evento && evento.valor > 0) {
             this.logger.log(
@@ -253,6 +263,7 @@ export class ComandaService {
               precoUnitario: evento.valor,
               observacao: `Couvert Artístico - ${evento.titulo}`,
               status: PedidoStatus.ENTREGUE,
+              tenantId,
             });
 
             const pedidoEntrada = transactionalEntityManager.create(Pedido, {
@@ -260,6 +271,7 @@ export class ComandaService {
               itens: [itemEntrada],
               total: evento.valor,
               status: PedidoStatus.ENTREGUE,
+              tenantId,
             });
 
             await transactionalEntityManager.save(itemEntrada);

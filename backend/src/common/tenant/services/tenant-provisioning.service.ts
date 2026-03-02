@@ -135,6 +135,7 @@ export class TenantProvisioningService {
         endereco: dto.endereco,
         slug: dto.slug,
         ativo: true,
+        tenantId: tenant.id,
       });
       await queryRunner.manager.save(empresa);
       this.logger.log(`✅ Empresa criada: ${empresa.id}`);
@@ -168,6 +169,7 @@ export class TenantProvisioningService {
           numero: i,
           status: MesaStatus.LIVRE,
           ambiente: salao,
+          tenantId: tenant.id,
         } as any);
         await queryRunner.manager.save(mesa);
         mesas.push(mesa);
@@ -183,6 +185,7 @@ export class TenantProvisioningService {
         cargo: 'ADMIN',
         status: 'ATIVO',
         empresa: empresa,
+        tenantId: tenant.id,
       } as any);
       await queryRunner.manager.save(admin);
       this.logger.log(`✅ Admin criado: ${admin.email}`);

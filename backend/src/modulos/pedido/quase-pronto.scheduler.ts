@@ -154,26 +154,21 @@ export class QuaseProntoScheduler {
     if (comanda) {
       this.pedidosGateway.emitStatusAtualizado(item.pedido);
 
-      // Evento específico de item quase pronto
-      this.pedidosGateway.server.emit('item_quase_pronto', {
-        itemId: item.id,
-        pedidoId: item.pedido.id,
-        comandaId: comanda.id,
-        produtoNome: item.produto?.nome,
-        ambienteId: item.ambienteRetiradaId,
-        etaSegundos,
-        quaseProntoEm: agora,
-        statusAnterior: PedidoStatus.EM_PREPARO,
-        statusAtual: PedidoStatus.QUASE_PRONTO,
-      });
-
-      // Emite também para sala de gestão
-      this.pedidosGateway.server.to('gestao').emit('item_quase_pronto', {
-        itemId: item.id,
-        pedidoId: item.pedido.id,
-        produtoNome: item.produto?.nome,
-        etaSegundos,
-      });
+      // Evento específico de item quase pronto (isolado por tenant)
+      const itemTenantId = (item as any).tenantId || (item.pedido as any)?.tenantId;
+      if (itemTenantId) {
+        this.pedidosGateway.server.to(`tenant_${itemTenantId}`).emit('item_quase_pronto', {
+          itemId: item.id,
+          pedidoId: item.pedido.id,
+          comandaId: comanda.id,
+          produtoNome: item.produto?.nome,
+          ambienteId: item.ambienteRetiradaId,
+          etaSegundos,
+          quaseProntoEm: agora,
+          statusAnterior: PedidoStatus.EM_PREPARO,
+          statusAtual: PedidoStatus.QUASE_PRONTO,
+        });
+      }
     }
   }
 

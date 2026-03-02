@@ -48,9 +48,8 @@ export class PedidosGateway
     const tenantId = this.joinTenantRoom(client);
     if (tenantId) {
       this.logger.log(`✅ Cliente ${client.id} conectado ao tenant: ${tenantId}`);
-    } else {
-      this.logger.warn(`⚠️ Cliente ${client.id} conectado sem tenant (modo legado)`);
     }
+    // Sem tenantId → BaseTenantGateway já desconectou o cliente
   }
 
   handleDisconnect(client: Socket) {
@@ -64,7 +63,13 @@ export class PedidosGateway
    */
   @SubscribeMessage('join_comanda')
   handleJoinComanda(client: Socket, comandaId: string) {
-    const roomName = `comanda_${comandaId}`;
+    const clientTenantId = client.data.tenantId;
+    if (!clientTenantId) {
+      this.logger.warn(`🚫 Cliente ${client.id} sem tenant tentou join_comanda`);
+      return { success: false, error: 'Tenant não identificado' };
+    }
+    // Room inclui tenantId para isolamento: comanda_{tenantId}_{comandaId}
+    const roomName = `comanda_${clientTenantId}_${comandaId}`;
     client.join(roomName);
     this.logger.log(`Cliente ${client.id} entrou no room: ${roomName}`);
     return { success: true, room: roomName };
@@ -75,7 +80,8 @@ export class PedidosGateway
    */
   @SubscribeMessage('leave_comanda')
   handleLeaveComanda(client: Socket, comandaId: string) {
-    const roomName = `comanda_${comandaId}`;
+    const clientTenantId = client.data.tenantId;
+    const roomName = `comanda_${clientTenantId}_${comandaId}`;
     client.leave(roomName);
     this.logger.log(`Cliente ${client.id} saiu do room: ${roomName}`);
     return { success: true, room: roomName };
@@ -107,9 +113,7 @@ export class PedidosGateway
         });
       }
     } else {
-      // ⚠️ LEGADO: Fallback para broadcast (compatibilidade)
-      this.logger.warn(`⚠️ Pedido ${pedido.id} sem tenant_id, usando broadcast`);
-      this.server.emit('novo_pedido', pedido);
+      this.logger.error(`🚫 Pedido ${pedido.id} sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 
@@ -117,13 +121,11 @@ export class PedidosGateway
     const targetTenantId = tenantId || (pedido as any).tenantId;
     
     if (targetTenantId) {
-      // ✅ ISOLADO: Emite apenas para o tenant do pedido
       this.emitToTenant(targetTenantId, 'status_atualizado', pedido);
       this.logger.log(
         `🔒 Evento 'status_atualizado' emitido para tenant ${targetTenantId} | Pedido: ${pedido.id}`,
       );
 
-      // Emite eventos específicos por ambiente quando status muda
       if (pedido.itens && pedido.itens.length > 0) {
         const ambientesNotificados = new Set<string>();
 
@@ -139,9 +141,7 @@ export class PedidosGateway
         });
       }
     } else {
-      // ⚠️ LEGADO: Fallback para broadcast
-      this.logger.warn(`⚠️ Pedido ${pedido.id} sem tenant_id, usando broadcast`);
-      this.server.emit('status_atualizado', pedido);
+      this.logger.error(`🚫 Pedido ${pedido.id} sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 
@@ -157,8 +157,7 @@ export class PedidosGateway
         `🔒 Evento 'comanda_atualizada' emitido para tenant ${targetTenantId} | Comanda: ${comanda.id}`,
       );
     } else {
-      this.logger.warn(`⚠️ Comanda ${comanda.id} sem tenant_id, usando broadcast`);
-      this.server.emit('comanda_atualizada', comanda);
+      this.logger.error(`🚫 Comanda ${comanda.id} sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 
@@ -174,8 +173,7 @@ export class PedidosGateway
         `🔒 Evento 'nova_comanda' emitido para tenant ${targetTenantId} | Comanda: ${comanda.id}`,
       );
     } else {
-      this.logger.warn(`⚠️ Comanda ${comanda.id} sem tenant_id, usando broadcast`);
-      this.server.emit('nova_comanda', comanda);
+      this.logger.error(`🚫 Comanda ${comanda.id} sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 
@@ -190,8 +188,7 @@ export class PedidosGateway
         `🔒 Evento 'caixa_atualizado' emitido para tenant ${tenantId} | Caixa: ${aberturaCaixaId}`,
       );
     } else {
-      this.logger.warn(`⚠️ Caixa ${aberturaCaixaId} sem tenant_id, usando broadcast`);
-      this.server.emit('caixa_atualizado', { aberturaCaixaId });
+      this.logger.error(`🚫 Caixa ${aberturaCaixaId} sem tenant_id — evento descartado (sem broadcast)`);
     }
   }
 }
