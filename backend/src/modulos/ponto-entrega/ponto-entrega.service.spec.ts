@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { REQUEST } from '@nestjs/core';
 import { PontoEntregaService } from './ponto-entrega.service';
 import { PontoEntrega } from './entities/ponto-entrega.entity';
 import { PontoEntregaRepository } from './ponto-entrega.repository';
+import { TenantResolverService } from '../../common/tenant/tenant-resolver.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('PontoEntregaService', () => {
@@ -18,6 +20,10 @@ describe('PontoEntregaService', () => {
     findAtivos: jest.fn(),
     findByAmbiente: jest.fn(),
     findByIdComRelacoes: jest.fn(),
+    rawRepository: {
+      find: jest.fn(),
+      findOne: jest.fn(),
+    },
   };
 
   // Mock data
@@ -48,10 +54,18 @@ describe('PontoEntregaService', () => {
           provide: PontoEntregaRepository,
           useValue: mockPontoEntregaRepository,
         },
+        {
+          provide: TenantResolverService,
+          useValue: { resolveBySlug: jest.fn(), resolveById: jest.fn() },
+        },
+        {
+          provide: REQUEST,
+          useValue: { tenantId: 'tenant-uuid', user: { empresaId: 'empresa-uuid-1' } },
+        },
       ],
     }).compile();
 
-    service = module.get<PontoEntregaService>(PontoEntregaService);
+    service = await module.resolve<PontoEntregaService>(PontoEntregaService);
   });
 
   afterEach(() => {
@@ -87,7 +101,10 @@ describe('PontoEntregaService', () => {
 
       expect(result).toBeDefined();
       expect(result.nome).toBe(createDto.nome);
-      expect(mockPontoEntregaRepository.create).toHaveBeenCalledWith(createDto);
+      expect(mockPontoEntregaRepository.create).toHaveBeenCalledWith({
+        ...createDto,
+        empresaId: 'empresa-uuid-1',
+      });
     });
   });
 
@@ -113,12 +130,12 @@ describe('PontoEntregaService', () => {
   // ============================================
   describe('findAllAtivos', () => {
     it('deve retornar apenas pontos ativos', async () => {
-      mockPontoEntregaRepository.findAtivos.mockResolvedValue([mockPontoEntrega]);
+      mockPontoEntregaRepository.rawRepository.find.mockResolvedValue([mockPontoEntrega]);
 
       const result = await service.findAllAtivos();
 
       expect(result).toHaveLength(1);
-      expect(mockPontoEntregaRepository.findAtivos).toHaveBeenCalled();
+      expect(mockPontoEntregaRepository.rawRepository.find).toHaveBeenCalled();
     });
   });
 

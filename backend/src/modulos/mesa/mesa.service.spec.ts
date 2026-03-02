@@ -27,12 +27,22 @@ describe('MesaService', () => {
     findByAmbienteId: jest.fn(),
     findByNumero: jest.fn(),
     findPublic: jest.fn(),
+    rawRepository: {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    },
     manager: {
       find: jest.fn(),
     },
   };
 
   const mockAmbienteRepository = {
+    findOne: jest.fn(),
+  };
+
+  const mockPontoEntregaRepository = {
+    find: jest.fn(),
     findOne: jest.fn(),
   };
 
@@ -79,7 +89,7 @@ describe('MesaService', () => {
         },
         {
           provide: PontoEntregaRepository,
-          useValue: { find: jest.fn(), findOne: jest.fn() },
+          useValue: mockPontoEntregaRepository,
         },
         {
           provide: CACHE_MANAGER,
@@ -87,7 +97,7 @@ describe('MesaService', () => {
         },
         {
           provide: CacheInvalidationService,
-          useValue: { invalidate: jest.fn() },
+          useValue: { invalidateAmbientes: jest.fn(), invalidateProdutos: jest.fn(), invalidateMesas: jest.fn(), invalidateComandas: jest.fn(), invalidatePedidos: jest.fn(), invalidatePattern: jest.fn(), invalidateMultiple: jest.fn() },
         },
         {
           provide: TenantContextService,
@@ -392,7 +402,7 @@ describe('MesaService', () => {
   describe('getMapa', () => {
     it('deve retornar mapa completo do ambiente', async () => {
       mockMesaRepository.find.mockResolvedValue([mockMesa, mockMesa2]);
-      mockMesaRepository.manager.find.mockResolvedValue([]);
+      mockPontoEntregaRepository.find.mockResolvedValue([]);
 
       const result = await service.getMapa(mockAmbiente.id);
 
@@ -403,7 +413,7 @@ describe('MesaService', () => {
 
     it('deve incluir pontos de entrega no mapa', async () => {
       mockMesaRepository.find.mockResolvedValue([mockMesa]);
-      mockMesaRepository.manager.find.mockResolvedValue([
+      mockPontoEntregaRepository.find.mockResolvedValue([
         {
           id: 'ponto-1',
           nome: 'Balcão',

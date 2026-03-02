@@ -20,6 +20,7 @@ describe('ProdutoService', () => {
     save: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
+    findAndCount: jest.fn(),
     preload: jest.fn(),
     findAtivosComAmbiente: jest.fn(),
     findByIdComAmbiente: jest.fn(),
@@ -88,7 +89,7 @@ describe('ProdutoService', () => {
         },
         {
           provide: CacheInvalidationService,
-          useValue: { invalidate: jest.fn() },
+          useValue: { invalidateAmbientes: jest.fn(), invalidateProdutos: jest.fn(), invalidateMesas: jest.fn(), invalidateComandas: jest.fn(), invalidatePedidos: jest.fn(), invalidatePattern: jest.fn(), invalidateMultiple: jest.fn() },
         },
         {
           provide: TenantContextService,
@@ -169,25 +170,23 @@ describe('ProdutoService', () => {
   // TESTES: findAll()
   // ============================================
   describe('findAll', () => {
-    it('deve retornar lista de produtos ativos', async () => {
-      mockProdutoRepository.find.mockResolvedValue([mockProduto]);
+    it('deve retornar lista paginada de produtos ativos', async () => {
+      mockProdutoRepository.findAndCount.mockResolvedValue([[mockProduto], 1]);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(1);
-      expect(mockProdutoRepository.find).toHaveBeenCalledWith({
-        where: { ativo: true },
-        relations: ['ambiente'],
-        order: { nome: 'ASC' },
-      });
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.total).toBe(1);
+      expect(mockProdutoRepository.findAndCount).toHaveBeenCalled();
     });
 
     it('deve retornar lista vazia se não houver produtos', async () => {
-      mockProdutoRepository.find.mockResolvedValue([]);
+      mockProdutoRepository.findAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
+      expect(result.meta.total).toBe(0);
     });
   });
 

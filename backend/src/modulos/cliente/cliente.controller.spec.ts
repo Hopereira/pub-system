@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClienteController } from './cliente.controller';
 import { ClienteService } from './cliente.service';
-import { Reflector } from '@nestjs/core';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { FeatureGuard } from '../../common/tenant/guards/feature.guard';
 
 describe('ClienteController', () => {
   let controller: ClienteController;
@@ -22,13 +24,11 @@ describe('ClienteController', () => {
       controllers: [ClienteController],
       providers: [
         { provide: ClienteService, useValue: mockClienteService },
-        Reflector,
       ],
     })
-      .overrideGuard('JwtAuthGuard').useValue({ canActivate: () => true })
-      .overrideGuard('RolesGuard').useValue({ canActivate: () => true })
-      .overrideGuard('TenantGuard').useValue({ canActivate: () => true })
-      .overrideGuard('FeatureGuard').useValue({ canActivate: () => true })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(RolesGuard).useValue({ canActivate: () => true })
+      .overrideGuard(FeatureGuard).useValue({ canActivate: () => true })
       .compile();
 
     controller = module.get<ClienteController>(ClienteController);

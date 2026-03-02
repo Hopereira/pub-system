@@ -54,7 +54,7 @@ describe('AmbienteService', () => {
         },
         {
           provide: CacheInvalidationService,
-          useValue: { invalidate: jest.fn() },
+          useValue: { invalidateAmbientes: jest.fn(), invalidateProdutos: jest.fn(), invalidateMesas: jest.fn(), invalidateComandas: jest.fn(), invalidatePedidos: jest.fn(), invalidatePattern: jest.fn(), invalidateMultiple: jest.fn() },
         },
         {
           provide: TenantContextService,

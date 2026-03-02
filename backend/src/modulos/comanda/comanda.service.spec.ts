@@ -49,6 +49,7 @@ describe('ComandaService', () => {
     findByMesaId: jest.fn(),
     findByIdPublic: jest.fn(),
     count: jest.fn(),
+    findAndCount: jest.fn(),
     manager: {
       transaction: jest.fn((cb) => cb(mockTransactionManager)),
     },
@@ -91,6 +92,7 @@ describe('ComandaService', () => {
   const mockPedidosGateway = {
     emitComandaAtualizada: jest.fn(),
     emitNovoPedido: jest.fn(),
+    emitNovaComanda: jest.fn(),
   };
 
   const mockCaixaService = {
@@ -202,7 +204,7 @@ describe('ComandaService', () => {
         },
         {
           provide: CacheInvalidationService,
-          useValue: { invalidate: jest.fn() },
+          useValue: { invalidateAmbientes: jest.fn(), invalidateProdutos: jest.fn(), invalidateMesas: jest.fn(), invalidateComandas: jest.fn(), invalidatePedidos: jest.fn(), invalidatePattern: jest.fn(), invalidateMultiple: jest.fn() },
         },
         {
           provide: TenantContextService,
@@ -332,23 +334,23 @@ describe('ComandaService', () => {
   // TESTES: findAll()
   // ============================================
   describe('findAll', () => {
-    it('deve retornar lista de comandas', async () => {
-      mockComandaRepository.find.mockResolvedValue([mockComanda]);
+    it('deve retornar lista paginada de comandas', async () => {
+      mockComandaRepository.findAndCount.mockResolvedValue([[mockComanda], 1]);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(1);
-      expect(mockComandaRepository.find).toHaveBeenCalledWith({
-        relations: ['mesa', 'cliente', 'paginaEvento'],
-      });
+      expect(result.data).toHaveLength(1);
+      expect(result.meta.total).toBe(1);
+      expect(mockComandaRepository.findAndCount).toHaveBeenCalled();
     });
 
     it('deve retornar lista vazia se não houver comandas', async () => {
-      mockComandaRepository.find.mockResolvedValue([]);
+      mockComandaRepository.findAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(result).toHaveLength(0);
+      expect(result.data).toHaveLength(0);
+      expect(result.meta.total).toBe(0);
     });
   });
 

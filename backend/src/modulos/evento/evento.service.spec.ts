@@ -19,6 +19,7 @@ describe('EventoService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     preload: jest.fn(),
+    remove: jest.fn(),
     delete: jest.fn(),
     findAtivosComPaginaEvento: jest.fn(),
     findAllComPaginaEvento: jest.fn(),
@@ -357,15 +358,16 @@ describe('EventoService', () => {
   // ============================================
   describe('remove', () => {
     it('deve remover evento', async () => {
-      mockEventoRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
+      mockEventoRepository.findOne.mockResolvedValue(mockEvento);
+      mockEventoRepository.remove.mockResolvedValue(mockEvento);
 
       await service.remove(mockEvento.id);
 
-      expect(mockEventoRepository.delete).toHaveBeenCalledWith(mockEvento.id);
+      expect(mockEventoRepository.remove).toHaveBeenCalledWith(mockEvento);
     });
 
     it('deve lançar NotFoundException se evento não existir', async () => {
-      mockEventoRepository.delete.mockResolvedValue({ affected: 0, raw: {} });
+      mockEventoRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove('id-invalido')).rejects.toThrow(
         NotFoundException,

@@ -39,6 +39,11 @@ describe('PedidoService', () => {
     findByStatusComItens: jest.fn(),
     findByComandaId: jest.fn(),
     count: jest.fn(),
+    rawRepository: {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn(),
+    },
   };
 
   const mockItemPedidoRepository = {
@@ -46,6 +51,11 @@ describe('PedidoService', () => {
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    rawRepository: {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn(),
+    },
   };
 
   const mockRetiradaItemRepository = {
@@ -61,6 +71,11 @@ describe('PedidoService', () => {
 
   const mockProdutoRepository = {
     findOne: jest.fn(),
+    findByIds: jest.fn(),
+    rawRepository: {
+      findOne: jest.fn(),
+      findByIds: jest.fn(),
+    },
   };
 
   const mockAmbienteRepository = {
@@ -176,7 +191,7 @@ describe('PedidoService', () => {
         },
         {
           provide: CacheInvalidationService,
-          useValue: { invalidate: jest.fn() },
+          useValue: { invalidateAmbientes: jest.fn(), invalidateProdutos: jest.fn(), invalidateMesas: jest.fn(), invalidateComandas: jest.fn(), invalidatePedidos: jest.fn(), invalidatePattern: jest.fn(), invalidateMultiple: jest.fn() },
         },
         {
           provide: TenantContextService,
@@ -222,7 +237,7 @@ describe('PedidoService', () => {
 
     it('deve criar um pedido com sucesso', async () => {
       mockComandaRepository.findOne.mockResolvedValue(mockComanda);
-      mockProdutoRepository.findOne.mockResolvedValue(mockProduto);
+      mockProdutoRepository.findByIds.mockResolvedValue([mockProduto]);
       mockItemPedidoRepository.create.mockReturnValue(mockItemPedido);
       mockPedidoRepository.create.mockReturnValue(mockPedido);
       mockPedidoRepository.save.mockResolvedValue(mockPedido);
@@ -237,7 +252,7 @@ describe('PedidoService', () => {
       expect(mockComandaRepository.findOne).toHaveBeenCalledWith({
         where: { id: createPedidoDto.comandaId },
       });
-      expect(mockProdutoRepository.findOne).toHaveBeenCalled();
+      expect(mockProdutoRepository.findByIds).toHaveBeenCalled();
       expect(mockPedidoRepository.save).toHaveBeenCalled();
       expect(mockPedidosGateway.emitNovoPedido).toHaveBeenCalled();
     });
@@ -268,7 +283,7 @@ describe('PedidoService', () => {
 
     it('deve lançar NotFoundException se produto não existir', async () => {
       mockComandaRepository.findOne.mockResolvedValue(mockComanda);
-      mockProdutoRepository.findOne.mockResolvedValue(null);
+      mockProdutoRepository.findByIds.mockResolvedValue([]);
 
       await expect(service.create(createPedidoDto)).rejects.toThrow(
         NotFoundException,
@@ -280,7 +295,7 @@ describe('PedidoService', () => {
       const itemComQuantidade = { ...mockItemPedido, quantidade: 3, precoUnitario: 15.99 };
 
       mockComandaRepository.findOne.mockResolvedValue(mockComanda);
-      mockProdutoRepository.findOne.mockResolvedValue(produtoComPrecoDecimal);
+      mockProdutoRepository.findByIds.mockResolvedValue([produtoComPrecoDecimal]);
       mockItemPedidoRepository.create.mockReturnValue(itemComQuantidade);
       mockPedidoRepository.create.mockImplementation((data) => ({
         ...mockPedido,
