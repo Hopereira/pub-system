@@ -40,9 +40,10 @@ export class AuthController {
     @Headers('user-agent') userAgent?: string,
     @Headers('host') host?: string,
     @Headers('x-tenant-id') headerTenantId?: string,
+    @Headers('x-tenant-slug') headerTenantSlug?: string,
   ) {
     // 1. Resolver tenant OBRIGATORIAMENTE antes do login
-    const tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId);
+    const tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId, headerTenantSlug);
 
     // 2. Validar credenciais DENTRO do tenant
     const user = await this.authService.validateUser(

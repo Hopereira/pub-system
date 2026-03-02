@@ -2,12 +2,43 @@
 
 import { publicApi } from './api';
 
+/**
+ * Extrai o slug do tenant do hostname
+ * Ex: casarao-pub-423.pubsystem.com.br -> casarao-pub-423
+ */
+const extractTenantSlug = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  
+  const hostname = window.location.hostname;
+  
+  // Desenvolvimento local: localhost ou 127.0.0.1
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return null; // Sem multi-tenant em dev local
+  }
+  
+  // Produção: extrair primeiro segmento do subdomínio
+  // Ex: casarao-pub-423.pubsystem.com.br -> casarao-pub-423
+  const parts = hostname.split('.');
+  if (parts.length >= 3) {
+    return parts[0]; // Primeiro segmento é o slug do tenant
+  }
+  
+  return null;
+};
+
 export const login = async (email: string, senha: string) => {
   try {
+    const tenantSlug = extractTenantSlug();
+    
     const response = await publicApi.post('/auth/login', {
       email,
       senha,
-    }, { withCredentials: true });
+    }, { 
+      withCredentials: true,
+      headers: tenantSlug ? {
+        'x-tenant-slug': tenantSlug, // Envia slug do tenant
+      } : {},
+    });
 
     return response.data;
   } catch (error: unknown) {
