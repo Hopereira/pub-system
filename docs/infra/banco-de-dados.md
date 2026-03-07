@@ -20,7 +20,7 @@ O banco de dados roda em um container Docker (`pub-postgres`) na mesma VM do bac
 O backend usa exclusivamente a variavel `DATABASE_URL`:
 
 ```
-DATABASE_URL=postgresql://pubuser:SenhaForte123@pub-postgres:5432/pubsystem
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pub-postgres:5432/${POSTGRES_DB}
 ```
 
 `DB_SSL` deve ser `false` pois o banco esta na mesma rede Docker.
@@ -32,9 +32,9 @@ As variaveis individuais (`DB_HOST`, `DB_USER`, etc.) existem apenas para compat
 O container PostgreSQL usa estas variaveis na inicializacao:
 
 ```env
-POSTGRES_USER=pubuser
-POSTGRES_PASSWORD=SenhaForte123
-POSTGRES_DB=pubsystem
+POSTGRES_USER=${POSTGRES_USER}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}   # Definir no .env (NUNCA versionar)
+POSTGRES_DB=${POSTGRES_DB}
 ```
 
 ### Volume Persistente
@@ -53,7 +53,7 @@ docker volume inspect pub_postgres_data
 
 ```bash
 # psql dentro do container
-docker exec -it pub-postgres psql -U pubuser -d pubsystem
+docker exec -it pub-postgres psql -U $POSTGRES_USER -d $POSTGRES_DB
 
 # Listar tabelas
 \dt
@@ -68,7 +68,7 @@ O container possui healthcheck configurado no docker-compose:
 
 ```yaml
 healthcheck:
-  test: ["CMD-SHELL", "pg_isready -U pubuser -d pubsystem"]
+  test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
   interval: 10s
   timeout: 5s
   retries: 5
@@ -79,6 +79,6 @@ O backend depende do healthcheck para iniciar (`depends_on: condition: service_h
 
 ### Multi-tenancy
 
-O sistema opera com multi-tenancy logico. Todas as entidades possuem coluna `empresaId` e o isolamento e feito via `TenantInterceptor` no backend, que injeta o tenant do JWT em cada requisicao.
+O sistema opera com multi-tenancy logico. Todas as entidades possuem coluna `tenant_id` com FK para `tenants(id)` ON DELETE CASCADE. O isolamento e feito via `TenantInterceptor` + `BaseTenantRepository` no backend, que injeta o tenant do JWT em cada requisicao.
 
 Nao ha schemas separados por tenant.

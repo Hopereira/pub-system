@@ -14,7 +14,7 @@ COPY package*.json ./
 
 # 5. Instala todas as dependências (incluindo as de desenvolvimento)
 # A flag --force é necessária devido a conflitos de versão entre as dependências
-RUN npm install --force
+RUN npm install --legacy-peer-deps
 
 # 6. Copia todo o resto do código-fonte
 COPY . .

@@ -9,9 +9,10 @@ import {
 } from 'typeorm';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { Medalha } from './medalha.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('medalhas_garcons')
-export class MedalhaGarcom {
+export class MedalhaGarcom extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -41,8 +42,4 @@ export class MedalhaGarcom {
     observacao?: string;
   };
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_medalha_garcom_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

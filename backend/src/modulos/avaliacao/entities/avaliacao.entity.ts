@@ -9,9 +9,10 @@ import {
 } from 'typeorm';
 import { Comanda } from '../../comanda/entities/comanda.entity';
 import { Cliente } from '../../cliente/entities/cliente.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('avaliacoes')
-export class Avaliacao {
+export class Avaliacao extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -48,8 +49,4 @@ export class Avaliacao {
   @CreateDateColumn()
   criadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_avaliacao_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

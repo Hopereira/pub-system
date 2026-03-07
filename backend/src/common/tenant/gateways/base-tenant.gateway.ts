@@ -24,30 +24,19 @@ export abstract class BaseTenantGateway {
    */
   protected extractTenantId(client: Socket): string | null {
     try {
-      // Tenta extrair do token JWT no handshake
+      // SECURITY: Only accept tenantId from verified JWT token
+      // Query params and headers are NOT trusted (attacker can spoof)
       const token = client.handshake.auth?.token || 
                     client.handshake.headers?.authorization?.replace('Bearer ', '');
       
       if (token && this.jwtService) {
-        const payload = this.jwtService.decode(token) as any;
+        const payload = this.jwtService.verify(token) as any;
         return payload?.tenantId || null;
-      }
-
-      // Fallback: tenta extrair do query param
-      const tenantId = client.handshake.query?.tenantId as string;
-      if (tenantId) {
-        return tenantId;
-      }
-
-      // Fallback: tenta extrair do header
-      const headerTenantId = client.handshake.headers?.['x-tenant-id'] as string;
-      if (headerTenantId) {
-        return headerTenantId;
       }
 
       return null;
     } catch (error) {
-      this.logger.warn(`Erro ao extrair tenant_id: ${error.message}`);
+      this.logger.warn(`Erro ao extrair tenant_id do JWT: ${error.message}`);
       return null;
     }
   }

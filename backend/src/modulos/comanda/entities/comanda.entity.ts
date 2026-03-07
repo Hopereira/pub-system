@@ -16,6 +16,7 @@ import { PaginaEvento } from '../../pagina-evento/entities/pagina-evento.entity'
 import { PontoEntrega } from '../../ponto-entrega/entities/ponto-entrega.entity';
 import { ComandaAgregado } from './comanda-agregado.entity';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 export enum ComandaStatus {
   ABERTA = 'ABERTA',
@@ -24,7 +25,7 @@ export enum ComandaStatus {
 }
 
 @Entity('comandas')
-export class Comanda {
+export class Comanda extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -89,8 +90,4 @@ export class Comanda {
   @JoinColumn({ name: 'criado_por_id' })
   criadoPor: Funcionario;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_comanda_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

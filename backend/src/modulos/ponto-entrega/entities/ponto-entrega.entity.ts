@@ -14,9 +14,10 @@ import { Empresa } from '../../empresa/entities/empresa.entity';
 import { Mesa } from '../../mesa/entities/mesa.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import { Comanda } from '../../comanda/entities/comanda.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('pontos_entrega')
-export class PontoEntrega {
+export class PontoEntrega extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -84,8 +85,4 @@ export class PontoEntrega {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_ponto_entrega_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

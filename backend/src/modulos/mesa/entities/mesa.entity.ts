@@ -11,7 +11,8 @@ import {
   Unique,
 } from 'typeorm';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
-import { Comanda } from '../../comanda/entities/comanda.entity'; // NOVO: Importamos a Comanda
+import { Comanda } from '../../comanda/entities/comanda.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 export enum MesaStatus {
   LIVRE = 'LIVRE',
@@ -21,8 +22,8 @@ export enum MesaStatus {
 }
 
 @Entity('mesas')
-@Unique(['numero', 'ambiente'])
-export class Mesa {
+@Index('idx_mesa_numero_ambiente_tenant', ['numero', 'ambienteId', 'tenantId'], { unique: true })
+export class Mesa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -55,11 +56,6 @@ export class Mesa {
   @ManyToOne(() => Ambiente, (ambiente) => ambiente.mesas)
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;
-
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_mesa_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 
   // Coluna auxiliar para ambiente
   @Column({ type: 'uuid', nullable: true, name: 'ambiente_id' })

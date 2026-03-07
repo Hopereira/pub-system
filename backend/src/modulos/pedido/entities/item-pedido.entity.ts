@@ -14,10 +14,11 @@ import { Produto } from '../../produto/entities/produto.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('itens_pedido')
 @Check('chk_quantidade_positiva', '"quantidade" > 0')
-export class ItemPedido {
+export class ItemPedido extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -113,8 +114,4 @@ export class ItemPedido {
   })
   tempoEntregaFinalMinutos: number;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_item_pedido_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

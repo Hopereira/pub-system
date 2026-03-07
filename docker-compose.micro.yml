@@ -1,14 +1,47 @@
 # ============================================
 # Docker Compose - Oracle E2.1.Micro (1GB RAM)
 # ============================================
-# Arquitetura Híbrida:
+# Arquitetura:
 # - Backend: Oracle E2.1.Micro (este arquivo)
 # - Frontend: Vercel (deploy separado)
-# - Database: Neon PostgreSQL (cloud)
+# - Database: PostgreSQL 17 local (Docker)
 #
-# Uso: docker-compose -f docker-compose.micro.yml up -d
+# Uso: docker compose -f docker-compose.micro.yml up -d
 
 services:
+  # ============================================
+  # PostgreSQL 17 - Banco local
+  # ============================================
+  postgres:
+    image: postgres:17-alpine
+    container_name: pub-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pubuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-pubsystem}
+    volumes:
+      - pub_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pubuser} -d ${POSTGRES_DB:-pubsystem}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
   # ============================================
   # Backend API (NestJS) - Otimizado para 512MB
   # ============================================
@@ -19,27 +52,27 @@ services:
     container_name: pub-backend
     ports:
       - "3000:3000"
-    # ✅ DNS confiáveis para resolver Neon Cloud (evita EAI_AGAIN)
-    dns:
-      - 8.8.8.8        # Google DNS primário
-      - 8.8.4.4        # Google DNS secundário
-      - 1.1.1.1        # Cloudflare DNS
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       - NODE_ENV=production
       - NODE_OPTIONS=--max-old-space-size=384
-      # Database: Neon PostgreSQL (configurar no .env.micro)
-      - DATABASE_URL=${DATABASE_URL}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER:-pubuser}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_DATABASE=${POSTGRES_DB:-pubsystem}
+      - DB_SSL=false
       - JWT_SECRET=${JWT_SECRET}
       - BACKEND_URL=${BACKEND_URL}
       - FRONTEND_URL=${FRONTEND_URL}
-      # Google Cloud Storage (opcional)
       - GCS_BUCKET_NAME=${GCS_BUCKET_NAME:-}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcs-credentials.json
-      # Cloudflare DNS (criação automática de subdomínios)
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
       - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
       - CLOUDFLARE_BASE_DOMAIN=${CLOUDFLARE_BASE_DOMAIN:-pubsystem.com.br}
-      - CLOUDFLARE_TARGET_IP=${CLOUDFLARE_TARGET_IP:-134.65.248.235}
+      - CLOUDFLARE_TARGET_IP=${CLOUDFLARE_TARGET_IP}
     env_file:
       - ./.env
     volumes:
@@ -82,3 +115,6 @@ services:
         limits:
           memory: 64M
           cpus: '0.1'
+
+volumes:
+  pub_postgres_data:

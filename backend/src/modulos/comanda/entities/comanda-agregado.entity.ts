@@ -9,9 +9,10 @@ import {
   Index,
 } from 'typeorm';
 import { Comanda } from './comanda.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('comanda_agregados')
-export class ComandaAgregado {
+export class ComandaAgregado extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -36,8 +37,4 @@ export class ComandaAgregado {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_comanda_agregado_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

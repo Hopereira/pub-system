@@ -13,6 +13,7 @@ import { TurnoFuncionario } from '../../turno/entities/turno-funcionario.entity'
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { Sangria } from './sangria.entity';
 import { MovimentacaoCaixa } from './movimentacao-caixa.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 export enum StatusCaixa {
   ABERTO = 'ABERTO',
@@ -21,7 +22,7 @@ export enum StatusCaixa {
 }
 
 @Entity('aberturas_caixa')
-export class AberturaCaixa {
+export class AberturaCaixa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -73,8 +74,4 @@ export class AberturaCaixa {
   @UpdateDateColumn()
   atualizadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_abertura_caixa_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

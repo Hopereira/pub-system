@@ -8,9 +8,10 @@ import {
 } from 'typeorm';
 import { TipoMedalha } from '../enums/tipo-medalha.enum';
 import { NivelMedalha } from '../enums/nivel-medalha.enum';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('medalhas')
-export class Medalha {
+export class Medalha extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -65,8 +66,4 @@ export class Medalha {
   @UpdateDateColumn({ name: 'atualizado_em' })
   atualizadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_medalha_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

@@ -3,6 +3,7 @@
 import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Mesa } from '../../mesa/entities/mesa.entity';
 import { Produto } from '../../produto/entities/produto.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 // --- 1. DEFINIÇÃO DO ENUM ---
 // Define os tipos possíveis para um ambiente. Isso garante consistência no banco de dados.
@@ -14,7 +15,7 @@ export enum TipoAmbiente {
 
 @Entity('ambientes')
 @Index('idx_ambiente_nome_tenant', ['nome', 'tenantId'], { unique: true })
-export class Ambiente {
+export class Ambiente extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -40,11 +41,6 @@ export class Ambiente {
   isPontoDeRetirada: boolean;
 
   // --- FIM DA ADIÇÃO ---
-
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_ambiente_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 
   @OneToMany(() => Mesa, (mesa) => mesa.ambiente)
   mesas: Mesa[];

@@ -14,9 +14,10 @@ import { Comanda } from '../../comanda/entities/comanda.entity';
 import { ItemPedido } from './item-pedido.entity';
 import { PedidoStatus } from '../enums/pedido-status.enum';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('pedidos')
-export class Pedido {
+export class Pedido extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -79,11 +80,6 @@ export class Pedido {
   // Tempo total em minutos (calculado automaticamente)
   @Column({ name: 'tempo_total_minutos', type: 'integer', nullable: true })
   tempoTotalMinutos: number;
-
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_pedido_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 
   // Coluna auxiliar para comanda
   @Column({ type: 'uuid', nullable: true, name: 'comandaId' })
