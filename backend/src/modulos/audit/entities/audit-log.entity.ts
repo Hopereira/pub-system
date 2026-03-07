@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 export enum AuditAction {
   CREATE = 'CREATE',
@@ -28,7 +29,7 @@ export enum AuditAction {
 @Index(['entityName', 'entityId'])
 @Index(['action', 'createdAt'])
 @Index(['createdAt'])
-export class AuditLog {
+export class AuditLog extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -75,8 +76,4 @@ export class AuditLog {
   @CreateDateColumn()
   createdAt: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_audit_log_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

@@ -8,9 +8,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('paginas_evento')
-export class PaginaEvento {
+export class PaginaEvento extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -30,8 +31,4 @@ export class PaginaEvento {
   @UpdateDateColumn({ name: 'atualizado_em' })
   atualizadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_pagina_evento_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

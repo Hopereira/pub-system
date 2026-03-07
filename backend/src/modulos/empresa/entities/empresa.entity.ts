@@ -1,7 +1,8 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('empresas')
-export class Empresa {
+export class Empresa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -35,8 +36,4 @@ export class Empresa {
   @Column({ default: true })
   ativo: boolean;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_empresa_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

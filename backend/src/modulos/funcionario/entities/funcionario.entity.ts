@@ -1,5 +1,4 @@
 import {
-  BeforeInsert,
   Column,
   Entity,
   Index,
@@ -11,11 +10,11 @@ import { Cargo } from '../enums/cargo.enum';
 import { FuncionarioStatus } from '../enums/funcionario-status.enum';
 import { Empresa } from '../../empresa/entities/empresa.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
-import * as bcrypt from 'bcrypt';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('funcionarios')
 @Index('idx_funcionario_email_tenant', ['email', 'tenantId'], { unique: true })
-export class Funcionario {
+export class Funcionario extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -69,13 +68,4 @@ export class Funcionario {
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_funcionario_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
-
-  //@BeforeInsert()
-  //async hashPassword() {
-  // this.senha = await bcrypt.hash(this.senha, 10);
-  //} --->>>>>  comentei para testes
 }

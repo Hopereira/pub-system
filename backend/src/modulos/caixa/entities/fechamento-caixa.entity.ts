@@ -11,9 +11,10 @@ import {
 import { AberturaCaixa, StatusCaixa } from './abertura-caixa.entity';
 import { TurnoFuncionario } from '../../turno/entities/turno-funcionario.entity';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('fechamentos_caixa')
-export class FechamentoCaixa {
+export class FechamentoCaixa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -139,8 +140,4 @@ export class FechamentoCaixa {
   @CreateDateColumn()
   criadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_fechamento_caixa_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

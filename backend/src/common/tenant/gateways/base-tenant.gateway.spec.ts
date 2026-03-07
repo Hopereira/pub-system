@@ -39,7 +39,7 @@ describe('BaseTenantGateway', () => {
 
   beforeEach(async () => {
     mockJwtService = {
-      decode: jest.fn(),
+      verify: jest.fn(),
     } as any;
 
     mockServer = {
@@ -69,42 +69,51 @@ describe('BaseTenantGateway', () => {
   });
 
   describe('extractTenantId', () => {
-    it('deve extrair tenant_id do JWT no auth', () => {
+    it('deve extrair tenant_id do JWT verificado no auth', () => {
       mockSocket.handshake.auth = { token: 'jwt-token' };
-      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_A_ID });
+      mockJwtService.verify.mockReturnValue({ tenantId: TENANT_A_ID });
 
       const result = gateway.testExtractTenantId(mockSocket);
 
       expect(result).toBe(TENANT_A_ID);
-      expect(mockJwtService.decode).toHaveBeenCalledWith('jwt-token');
+      expect(mockJwtService.verify).toHaveBeenCalledWith('jwt-token');
     });
 
-    it('deve extrair tenant_id do header Authorization', () => {
+    it('deve extrair tenant_id do header Authorization via JWT verify', () => {
       mockSocket.handshake.headers = { authorization: 'Bearer jwt-token' };
-      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_B_ID });
+      mockJwtService.verify.mockReturnValue({ tenantId: TENANT_B_ID });
 
       const result = gateway.testExtractTenantId(mockSocket);
 
       expect(result).toBe(TENANT_B_ID);
     });
 
-    it('deve extrair tenant_id do query param como fallback', () => {
+    it('deve rejeitar query param tenantId (não confiável)', () => {
       mockSocket.handshake.query = { tenantId: TENANT_A_ID };
 
       const result = gateway.testExtractTenantId(mockSocket);
 
-      expect(result).toBe(TENANT_A_ID);
+      expect(result).toBeNull();
     });
 
-    it('deve extrair tenant_id do header x-tenant-id como fallback', () => {
+    it('deve rejeitar header x-tenant-id (não confiável)', () => {
       mockSocket.handshake.headers = { 'x-tenant-id': TENANT_B_ID };
 
       const result = gateway.testExtractTenantId(mockSocket);
 
-      expect(result).toBe(TENANT_B_ID);
+      expect(result).toBeNull();
     });
 
     it('deve retornar null se não encontrar tenant_id', () => {
+      const result = gateway.testExtractTenantId(mockSocket);
+
+      expect(result).toBeNull();
+    });
+
+    it('deve retornar null se JWT verify falhar (token inválido)', () => {
+      mockSocket.handshake.auth = { token: 'invalid-token' };
+      mockJwtService.verify.mockImplementation(() => { throw new Error('invalid token'); });
+
       const result = gateway.testExtractTenantId(mockSocket);
 
       expect(result).toBeNull();
@@ -114,8 +123,7 @@ describe('BaseTenantGateway', () => {
   describe('joinTenantRoom', () => {
     it('deve adicionar cliente ao room do tenant', () => {
       mockSocket.handshake.auth = { token: 'jwt-token' };
-      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_A_ID });
-
+      mockJwtService.verify.mockReturnValue({ tenantId: TENANT_A_ID });
       const result = gateway.testJoinTenantRoom(mockSocket);
 
       expect(result).toBe(TENANT_A_ID);
@@ -157,7 +165,7 @@ describe('BaseTenantGateway', () => {
     it('cliente do Tenant A não deve receber eventos do Tenant B', () => {
       // Simula cliente do Tenant A conectado
       mockSocket.handshake.auth = { token: 'jwt-token-a' };
-      mockJwtService.decode.mockReturnValue({ tenantId: TENANT_A_ID });
+      mockJwtService.verify.mockReturnValue({ tenantId: TENANT_A_ID });
       gateway.testJoinTenantRoom(mockSocket);
 
       // Emite evento para Tenant B

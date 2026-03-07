@@ -10,9 +10,10 @@ import {
 import { AberturaCaixa } from './abertura-caixa.entity';
 import { TurnoFuncionario } from '../../turno/entities/turno-funcionario.entity';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('sangrias')
-export class Sangria {
+export class Sangria extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -63,8 +64,4 @@ export class Sangria {
   @CreateDateColumn()
   criadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_sangria_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

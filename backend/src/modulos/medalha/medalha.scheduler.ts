@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { MedalhaService } from '../medalha/medalha.service';
+import { Tenant } from '../../common/tenant/entities/tenant.entity';
 
 @Injectable()
 export class MedalhaScheduler {
@@ -17,18 +18,31 @@ export class MedalhaScheduler {
   constructor(
     @InjectRepository(Funcionario)
     private funcionarioRepository: Repository<Funcionario>,
+    @InjectRepository(Tenant)
+    private tenantRepository: Repository<Tenant>,
     private medalhaService: MedalhaService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async verificarMedalhasGarcons() {
     try {
-      // Buscar todos os garçons ativos
-      const garcons = await this.funcionarioRepository.find({
-        where: {
-          cargo: Cargo.GARCOM,
-        },
+      // Buscar tenants ativos para processar isoladamente
+      const tenants = await this.tenantRepository.find({
+        where: { status: 'ATIVO' as any },
+        select: ['id'],
       });
+
+      // Buscar garçons por tenant (isolamento multi-tenant)
+      const garcons: Funcionario[] = [];
+      for (const tenant of tenants) {
+        const garconsTenant = await this.funcionarioRepository.find({
+          where: {
+            cargo: Cargo.GARCOM,
+            tenantId: tenant.id,
+          },
+        });
+        garcons.push(...garconsTenant);
+      }
 
       // ✅ Reset contador de erros após sucesso
       if (this.errosConsecutivos > 0) {

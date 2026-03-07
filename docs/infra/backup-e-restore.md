@@ -8,8 +8,8 @@ Exporta o banco completo em formato custom (`-F c`) para restauracao posterior.
 mkdir -p ~/backups
 
 docker exec pub-postgres pg_dump \
-  -U pubuser \
-  -d pubsystem \
+  -U $POSTGRES_USER \
+  -d $POSTGRES_DB \
   -F c \
   -f /tmp/pubsystem.dump
 
@@ -30,7 +30,7 @@ crontab -e
 Adicionar linha para backup diario as 03h:
 
 ```
-0 3 * * * /usr/bin/docker exec pub-postgres pg_dump -U pubuser -d pubsystem -F c > /home/ubuntu/backups/pubsystem-$(date +\%Y\%m\%d).dump 2>> /home/ubuntu/backups/backup.log
+0 3 * * * /usr/bin/docker exec pub-postgres pg_dump -U $POSTGRES_USER -d $POSTGRES_DB -F c > /home/ubuntu/backups/pubsystem-$(date +\%Y\%m\%d).dump 2>> /home/ubuntu/backups/backup.log
 ```
 
 Verificar se o cron esta ativo:
@@ -46,8 +46,8 @@ Copiar o arquivo `.dump` para a VM e executar:
 
 ```bash
 docker exec -i pub-postgres pg_restore \
-  -U pubuser \
-  -d pubsystem \
+  -U $POSTGRES_USER \
+  -d $POSTGRES_DB \
   --clean \
   --if-exists \
   < ~/backups/pubsystem-20260301.dump
@@ -63,13 +63,13 @@ Se o banco precisar ser recriado do zero:
 
 ```bash
 # Dropar e recriar banco
-docker exec pub-postgres dropdb -U pubuser pubsystem
-docker exec pub-postgres createdb -U pubuser pubsystem
+docker exec pub-postgres dropdb -U $POSTGRES_USER $POSTGRES_DB
+docker exec pub-postgres createdb -U $POSTGRES_USER $POSTGRES_DB
 
 # Restaurar
 docker exec -i pub-postgres pg_restore \
-  -U pubuser \
-  -d pubsystem \
+  -U $POSTGRES_USER \
+  -d $POSTGRES_DB \
   < ~/backups/pubsystem-20260301.dump
 ```
 
@@ -96,8 +96,8 @@ Testar restore em ambiente separado mensalmente:
 # Criar container temporario para teste
 docker run --rm -d \
   --name pg-test \
-  -e POSTGRES_USER=pubuser \
-  -e POSTGRES_PASSWORD=test123 \
+  -e POSTGRES_USER=testuser \
+  -e POSTGRES_PASSWORD=changeme \
   -e POSTGRES_DB=pubsystem_test \
   postgres:17-alpine
 
@@ -106,12 +106,12 @@ sleep 5
 
 # Restaurar backup
 docker exec -i pg-test pg_restore \
-  -U pubuser \
+  -U testuser \
   -d pubsystem_test \
   < ~/backups/pubsystem-latest.dump
 
 # Verificar tabelas
-docker exec pg-test psql -U pubuser -d pubsystem_test -c '\dt'
+docker exec pg-test psql -U testuser -d pubsystem_test -c '\dt'
 
 # Remover container de teste
 docker stop pg-test

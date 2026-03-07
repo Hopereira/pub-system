@@ -13,15 +13,16 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('clientes')
-export class Cliente {
+@Index('idx_cliente_cpf_tenant', ['cpf', 'tenantId'], { unique: true })
+export class Cliente extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // ✅ CORREÇÃO DBA: Índice para busca por CPF
   @Index('idx_cliente_cpf')
-  @Column({ unique: true, length: 14 })
+  @Column({ length: 14 })
   cpf: string;
 
   @Column()
@@ -48,11 +49,6 @@ export class Cliente {
   @ManyToOne(() => PontoEntrega, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'ponto_entrega_id' })
   pontoEntrega?: PontoEntrega;
-
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_cliente_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 
   @OneToMany(() => Comanda, (comanda) => comanda.cliente)
   comandas: Comanda[];

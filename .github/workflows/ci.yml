@@ -22,7 +22,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: testpass
@@ -166,12 +166,10 @@ jobs:
           
           # Deploy via SSH
           ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
-            cd /home/ubuntu/pub-system/backend
+            cd ~/pub-system
             git pull origin main
-            npm ci --legacy-peer-deps
-            npm run build
-            npm run typeorm:migration:run
-            pm2 restart pub-backend || pm2 start dist/main.js --name pub-backend
+            ./scripts/backup.sh
+            docker compose -f docker-compose.micro.yml up -d --build --force-recreate
           ENDSSH
           
           # Limpar chave
@@ -200,10 +198,8 @@ jobs:
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
           
           ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
-            cd /home/ubuntu/pub-system/backend
-            git checkout HEAD~1
-            npm run build
-            pm2 restart pub-backend
+            cd ~/pub-system
+            ./scripts/rollback.sh --force
           ENDSSH
           
           rm -f ~/.ssh/deploy_key

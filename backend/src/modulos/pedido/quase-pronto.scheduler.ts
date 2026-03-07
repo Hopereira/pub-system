@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, IsNull } from 'typeorm';
+import { Repository, LessThan, IsNull, Not } from 'typeorm';
 import { ItemPedido } from '../pedido/entities/item-pedido.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
 import { PedidosGateway } from '../pedido/pedidos.gateway';
-import Decimal from 'decimal.js';
+import { Tenant } from '../../common/tenant/entities/tenant.entity';
 
 /**
  * Serviço responsável por marcar itens como QUASE_PRONTO
@@ -31,6 +31,8 @@ export class QuaseProntoScheduler {
   constructor(
     @InjectRepository(ItemPedido)
     private readonly itemPedidoRepository: Repository<ItemPedido>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
     private readonly pedidosGateway: PedidosGateway,
   ) {}
 
@@ -40,16 +42,27 @@ export class QuaseProntoScheduler {
   @Cron('*/15 * * * * *') // A cada 15 segundos
   async verificarItensQuaseProntos(): Promise<void> {
     try {
-      // Busca itens EM_PREPARO que ainda não foram marcados como quase prontos
-      const itensEmPreparo = await this.itemPedidoRepository.find({
-        where: {
-          status: PedidoStatus.EM_PREPARO,
-          quaseProntoEm: IsNull() as any,
-          iniciadoEm: LessThan(new Date()) as any,
-        },
-        relations: ['produto', 'pedido', 'pedido.comanda'],
-        take: 50, // Limita para não sobrecarregar
+      // Busca tenants ativos para processar isoladamente
+      const tenants = await this.tenantRepository.find({
+        where: { status: 'ATIVO' as any },
+        select: ['id'],
       });
+
+      // Busca itens EM_PREPARO por tenant (isolamento multi-tenant)
+      const itensEmPreparo: ItemPedido[] = [];
+      for (const tenant of tenants) {
+        const itensTenant = await this.itemPedidoRepository.find({
+          where: {
+            status: PedidoStatus.EM_PREPARO,
+            quaseProntoEm: IsNull() as any,
+            iniciadoEm: LessThan(new Date()) as any,
+            tenantId: tenant.id,
+          },
+          relations: ['produto', 'pedido', 'pedido.comanda'],
+          take: 50,
+        });
+        itensEmPreparo.push(...itensTenant);
+      }
 
       // ✅ Reset contador de erros após sucesso
       if (this.errosConsecutivos > 0) {
@@ -72,6 +85,7 @@ export class QuaseProntoScheduler {
         // Calcula tempo médio de preparo do produto
         const tempoMedioPreparo = await this.calcularTempoMedioPreparo(
           item.produto.id,
+          item.tenantId,
         );
 
         // Tempo decorrido desde início do preparo (em minutos)
@@ -125,11 +139,12 @@ export class QuaseProntoScheduler {
   /**
    * Calcula o tempo médio de preparo de um produto baseado no histórico
    */
-  private async calcularTempoMedioPreparo(produtoId: string): Promise<number> {
+  private async calcularTempoMedioPreparo(produtoId: string, tenantId: string): Promise<number> {
     const resultado = await this.itemPedidoRepository
       .createQueryBuilder('item')
       .select('AVG(item.tempo_preparo_minutos)', 'media')
       .where('item.produtoId = :produtoId', { produtoId })
+      .andWhere('item.tenant_id = :tenantId', { tenantId })
       .andWhere('item.tempo_preparo_minutos IS NOT NULL')
       .andWhere('item.status IN (:...status)', {
         status: [

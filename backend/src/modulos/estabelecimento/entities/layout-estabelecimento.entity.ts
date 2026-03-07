@@ -9,9 +9,10 @@ import {
   Index,
 } from 'typeorm';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('layouts_estabelecimento')
-export class LayoutEstabelecimento {
+export class LayoutEstabelecimento extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -40,8 +41,4 @@ export class LayoutEstabelecimento {
   @UpdateDateColumn()
   atualizadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_layout_estabelecimento_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

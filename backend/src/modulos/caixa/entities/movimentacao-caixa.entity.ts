@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { AberturaCaixa } from './abertura-caixa.entity';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 export enum TipoMovimentacao {
   ABERTURA = 'ABERTURA',
@@ -28,7 +29,7 @@ export enum FormaPagamento {
 }
 
 @Entity('movimentacoes_caixa')
-export class MovimentacaoCaixa {
+export class MovimentacaoCaixa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -86,8 +87,4 @@ export class MovimentacaoCaixa {
   @CreateDateColumn()
   criadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_movimentacao_caixa_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

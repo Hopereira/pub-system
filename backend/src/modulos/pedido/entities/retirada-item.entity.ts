@@ -10,13 +10,14 @@ import {
 import { ItemPedido } from './item-pedido.entity';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { Ambiente } from '../../ambiente/entities/ambiente.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 /**
  * Entidade para registrar histórico de retiradas de itens
  * Permite rastrear múltiplas retiradas do mesmo item (ex: item de múltiplos ambientes)
  */
 @Entity('retiradas_itens')
-export class RetiradaItem {
+export class RetiradaItem extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -63,8 +64,4 @@ export class RetiradaItem {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_retirada_item_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }

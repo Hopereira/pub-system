@@ -2,14 +2,14 @@ import { Ambiente } from '../../ambiente/entities/ambiente.entity';
 import {
   Column,
   Entity,
-  Index,
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('produtos')
-export class Produto {
+export class Produto extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -30,11 +30,6 @@ export class Produto {
 
   @Column({ type: 'boolean', default: true })
   ativo: boolean;
-
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_produto_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 
   @ManyToOne(() => Ambiente, (ambiente) => ambiente.produtos)
   @JoinColumn({ name: 'ambienteId' })

@@ -148,32 +148,22 @@ import { PlanModule } from './modulos/plan/plan.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: process.env.DB_SYNC === 'true',
-        // SSL obrigatório para Neon Cloud
+        synchronize: false,
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
           : false,
-        // ✅ CORREÇÃO: Configurações otimizadas para Neon Cloud
-        // Neon suspende instâncias ociosas e fecha conexões após ~5 minutos
         extra: {
-          // Connection pool - menor para Neon (tier gratuito tem limite de 100)
-          max: 5, // Reduzido para evitar esgotar conexões do Neon
-          min: 1, // Mínimo de 1 conexão
-          // ✅ CRÍTICO: Timeouts curtos para detectar conexões mortas rapidamente
-          idleTimeoutMillis: 10000, // 10s - fecha conexões ociosas antes do Neon
-          connectionTimeoutMillis: 15000, // 15s - tempo para conectar (Neon pode demorar ao "acordar")
-          // ✅ Keepalive mais agressivo para manter conexões vivas
+          max: 10,
+          min: 2,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 10000,
           keepAlive: true,
-          keepAliveInitialDelayMillis: 5000, // Inicia keepalive após 5s
-          // ✅ Identificação da aplicação (ajuda Neon a rastrear)
+          keepAliveInitialDelayMillis: 5000,
           application_name: 'pub-system-backend',
-          // ✅ Reconexão automática quando Neon termina conexão
-          allowExitOnIdle: false, // Não encerra o pool quando ocioso
+          allowExitOnIdle: false,
         },
-        // ✅ Retry mais agressivo para quando Neon está "acordando"
-        retryAttempts: 10, // Aumentado para dar tempo do Neon acordar
-        retryDelay: 5000, // 5 segundos entre tentativas
-        // Logging
+        retryAttempts: 5,
+        retryDelay: 3000,
         logging: process.env.DB_LOGGING === 'true' ? ['error', 'warn', 'query'] : ['error', 'warn'],
       }),
     }),

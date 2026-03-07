@@ -9,11 +9,12 @@ import {
 } from 'typeorm';
 import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { Evento } from '../../evento/entities/evento.entity';
+import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('turnos_funcionario')
 // ✅ CORREÇÃO DBA: Índice composto para busca de turno ativo por funcionário
 @Index('idx_turno_funcionario_ativo', ['funcionarioId', 'ativo'])
-export class TurnoFuncionario {
+export class TurnoFuncionario extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -50,8 +51,4 @@ export class TurnoFuncionario {
   @CreateDateColumn()
   criadoEm: Date;
 
-  // ✅ Multi-tenancy: tenant_id para isolamento de dados
-  @Index('idx_turno_funcionario_tenant_id')
-  @Column({ type: 'uuid', nullable: true, name: 'tenant_id' })
-  tenantId: string;
 }
