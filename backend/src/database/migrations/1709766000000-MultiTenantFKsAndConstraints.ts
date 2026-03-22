@@ -62,7 +62,7 @@ export class MultiTenantFKsAndConstraints1709766000000 implements MigrationInter
           'Tenant Padrão',
           'default',
           'ATIVO',
-          'BASICO',
+          'BASIC',
           '{}'::jsonb
         )
         RETURNING id
