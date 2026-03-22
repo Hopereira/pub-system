@@ -148,7 +148,8 @@ import { PlanModule } from './modulos/plan/plan.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: configService.get<string>('NODE_ENV') !== 'production'
+          && configService.get<string>('DB_SYNC') === 'true',
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
           : false,

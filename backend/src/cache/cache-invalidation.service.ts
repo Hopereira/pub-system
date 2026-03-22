@@ -80,10 +80,11 @@ export class CacheInvalidationService {
    */
   async invalidatePattern(pattern: string): Promise<number> {
     try {
-      const store = this.cacheManager.store as any;
+      const stores = (this.cacheManager as any).stores;
+      const store = stores?.[0] || (this.cacheManager as any).store;
       
       // Obter todas as chaves que correspondem ao padrão
-      const keys = await store.keys(pattern);
+      const keys = typeof store?.keys === 'function' ? await store.keys(pattern) : [];
       
       if (!keys || keys.length === 0) {
         this.logger.debug(`🔍 Nenhuma chave encontrada para o padrão: ${pattern}`);
@@ -204,7 +205,11 @@ export class CacheInvalidationService {
    */
   async clearAll(): Promise<void> {
     this.logger.warn('⚠️ LIMPANDO TODO O CACHE!');
-    await this.cacheManager.reset();
+    const stores = (this.cacheManager as any).stores;
+    const store = stores?.[0] || (this.cacheManager as any).store;
+    if (typeof store?.clear === 'function') {
+      await store.clear();
+    }
     this.logger.log('✅ Cache completamente limpo');
   }
 }
