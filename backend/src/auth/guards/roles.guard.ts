@@ -22,7 +22,10 @@ export class RolesGuard implements CanActivate {
     // 2. Pega os dados do usuário do "crachá" (token JWT)
     const { user } = context.switchToHttp().getRequest();
 
-    // 3. Verifica se o cargo do usuário está na lista de cargos permitidos
-    return requiredRoles.some((role) => user.cargo?.includes(role));
+    // 3. SUPER_ADMIN passa por todas as verificações de role de tenant
+    if (user.cargo === Cargo.SUPER_ADMIN) return true;
+
+    // 4. Comparação exata (não substring)
+    return requiredRoles.some((role) => user.cargo === role);
   }
 }

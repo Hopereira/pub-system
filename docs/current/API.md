@@ -30,8 +30,8 @@
 
 | Método | Rota | Auth | Rate Limit | Descrição |
 |--------|------|------|-----------|-----------|
-| POST | `/auth/login` | 🔓 | ThrottleLogin (5/min) | Login → `{ access_token, refresh_token }` |
-| POST | `/auth/refresh` | 🔓 | ThrottleStrict (3/min) | Renovar access token |
+| POST | `/auth/login` | 🔓 | ThrottleLogin (5/min) | Login → `{ access_token }` (refresh_token em cookie httpOnly `path=/auth`) |
+| POST | `/auth/refresh` | 🔓 | ThrottleAPI (30/min) | Renovar access token (lê refresh_token do cookie httpOnly) |
 | POST | `/auth/logout` | 🔒 | ThrottleAPI | Logout + revogar refresh token |
 | POST | `/auth/logout-all` | 🔒 | ThrottleStrict | Revogar todas as sessões |
 | GET | `/auth/sessions` | 🔒 | ThrottleAPI | Listar sessões ativas |

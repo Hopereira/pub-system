@@ -1,5 +1,7 @@
 # Arquitetura do Backend
 
+**Atualizado em:** 2026-03-22
+
 ## Stack
 
 | Tecnologia | Versao | Funcao |

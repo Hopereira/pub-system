@@ -15,7 +15,7 @@
 | `DB_USER` | ✅ | `postgres` | Usuário do banco |
 | `DB_PASSWORD` | ✅ | — | Senha do banco |
 | `DB_DATABASE` | ✅ | `pub_system_db` | Nome do banco |
-| `DB_SSL` | Prod | `false` | Ativar SSL (obrigatório para Neon Cloud) |
+| `DB_SSL` | Prod | `false` | Ativar SSL para conexoes externas ao banco. Em prod (Docker local) nao necessario. |
 | `DATABASE_URL` | Docker | — | Injetada pelo docker-compose: `postgresql://user:pass@db:5432/dbname` |
 
 ### Container PostgreSQL
@@ -62,7 +62,7 @@
 | Variável | Obrigatória | Padrão | Descrição |
 |----------|-------------|--------|-----------|
 | `ENABLE_SETUP` | Não | `false` | Habilita `POST /setup/super-admin`. Só ativar para criar primeiro Super Admin. |
-| `SETUP_TOKEN` | Não | — | Token obrigatório no body quando ENABLE_SETUP=true |
+| `SETUP_TOKEN` | **Sim** (se ENABLE_SETUP=true) | — | Token obrigatório no body quando ENABLE_SETUP=true. Ausente → 500 no boot. |
 
 ---
 

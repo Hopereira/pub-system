@@ -15,7 +15,7 @@
 | [API.md](./API.md) | Mapa completo de ~130 endpoints com auth/roles |
 | [REGRAS_NEGOCIO.md](./REGRAS_NEGOCIO.md) | Fluxos operacionais, regras de domínio |
 | [SEGURANCA.md](./SEGURANCA.md) | Auth, JWT, refresh tokens, rate-limit, audit, multi-tenant isolation |
-| [DEPLOY.md](./DEPLOY.md) | Deploy produção (Vercel + Oracle + Neon + Cloudflare) |
+| [../deploy/production-deploy.md](../deploy/production-deploy.md) | Deploy produção (Vercel + Oracle + Docker + Cloudflare) |
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Erros comuns e soluções |
 
 ---

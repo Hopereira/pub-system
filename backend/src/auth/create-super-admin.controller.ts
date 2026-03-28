@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Funcionario } from '../modulos/funcionario/entities/funcionario.entity';
 import { Cargo } from '../modulos/funcionario/enums/cargo.enum';
 import { FuncionarioStatus } from '../modulos/funcionario/enums/funcionario-status.enum';
@@ -44,18 +44,24 @@ export class CreateSuperAdminController {
       throw new NotFoundException();
     }
 
-    // Valida setup token se configurado
+    // SETUP_TOKEN é obrigatório — sem ele, bloqueia mesmo com ENABLE_SETUP=true
     const expectedToken = process.env.SETUP_TOKEN;
-    if (expectedToken && body.setup_token !== expectedToken) {
+    if (!expectedToken) {
+      this.logger.error(
+        '🚫 SETUP_TOKEN não configurado — endpoint /setup/super-admin bloqueado por segurança',
+      );
+      throw new NotFoundException();
+    }
+    if (body.setup_token !== expectedToken) {
       this.logger.warn(`🚫 Setup token inválido em /setup/super-admin`);
       throw new ForbiddenException('Setup token inválido');
     }
 
     const { email, senha, nome } = body;
 
-    // Verificar se já existe
+    // Verificar se já existe como SUPER_ADMIN (sem tenant)
     const existing = await this.funcionarioRepository.findOne({
-      where: { email },
+      where: { email, tenantId: IsNull() },
     });
 
     if (existing) {

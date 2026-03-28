@@ -9,7 +9,10 @@ import {
   Headers,
   UseGuards,
   UnauthorizedException,
+  Res,
+  Req,
 } from '@nestjs/common';
+import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
@@ -37,6 +40,7 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Ip() ipAddress: string,
+    @Res({ passthrough: true }) res: Response,
     @Headers('user-agent') userAgent?: string,
     @Headers('host') host?: string,
     @Headers('x-tenant-id') headerTenantId?: string,
@@ -57,7 +61,20 @@ export class AuthController {
     }
 
     // 3. Gerar tokens com tenantId obrigatório
-    return this.authService.login(user, tenantId, ipAddress, userAgent);
+    const result = await this.authService.login(user, tenantId, ipAddress, userAgent);
+
+    // 4. Setar refresh_token como httpOnly cookie
+    res.cookie('refresh_token', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/auth',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // 5. Remover refresh_token do body retornado
+    const { refresh_token, ...publicData } = result;
+    return publicData;
   }
 
   @ThrottleAPI()
@@ -69,10 +86,38 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Refresh token inválido ou expirado.' })
   async refresh(
-    @Body('refresh_token') refreshToken: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body('refresh_token') bodyRefreshToken: string,
     @Ip() ipAddress: string,
+    @Headers('host') host?: string,
+    @Headers('x-tenant-id') headerTenantId?: string,
+    @Headers('x-tenant-slug') headerTenantSlug?: string,
   ) {
-    return this.refreshTokenService.refreshAccessToken(refreshToken, ipAddress);
+    const refreshToken = req.cookies?.['refresh_token'] ?? bodyRefreshToken;
+
+    // Resolver tenant para validacao cross-tenant (SUPER_ADMIN nao tem tenant — try/catch)
+    let tenantId: string | undefined;
+    try {
+      tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId, headerTenantSlug);
+    } catch {
+      tenantId = undefined;
+    }
+
+    const result = await this.refreshTokenService.refreshAccessToken(refreshToken, ipAddress, tenantId);
+
+    if (result.refresh_token) {
+      res.cookie('refresh_token', result.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/auth',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+
+    const { refresh_token, ...publicData } = result;
+    return publicData;
   }
 
   @ThrottleAPI()
@@ -82,11 +127,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Fazer logout e revogar refresh token' })
   @ApiResponse({ status: 200, description: 'Logout realizado com sucesso.' })
   async logout(
-    @Body('refresh_token') refreshToken: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @CurrentUser() user: any,
     @Ip() ipAddress: string,
   ) {
+    const refreshToken = req.cookies?.['refresh_token'];
     await this.authService.logout(refreshToken, ipAddress, user);
+    res.clearCookie('refresh_token', { path: '/auth' });
     return { message: 'Logout realizado com sucesso' };
   }
 
