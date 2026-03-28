@@ -95,13 +95,22 @@ export class AuthController {
     @Headers('x-tenant-slug') headerTenantSlug?: string,
   ) {
     const refreshToken = req.cookies?.['refresh_token'] ?? bodyRefreshToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token nao fornecido');
+    }
 
-    // Resolver tenant para validacao cross-tenant (SUPER_ADMIN nao tem tenant — try/catch)
+    // Resolver tenant para validacao cross-tenant
+    // Hint explicito (x-tenant-id / x-tenant-slug) deve ser resolvivel — falha propaga (evita bypass)
+    // Sem hint explicito (SUPER_ADMIN via localhost/IP) — tenta host, falha silenciosa e ok
     let tenantId: string | undefined;
-    try {
+    if (headerTenantId || headerTenantSlug) {
       tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId, headerTenantSlug);
-    } catch {
-      tenantId = undefined;
+    } else {
+      try {
+        tenantId = await this.authService.resolveTenantFromRequest(host, undefined, undefined);
+      } catch {
+        tenantId = undefined;
+      }
     }
 
     const result = await this.refreshTokenService.refreshAccessToken(refreshToken, ipAddress, tenantId);

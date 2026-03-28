@@ -62,7 +62,7 @@
 | Variável | Obrigatória | Padrão | Descrição |
 |----------|-------------|--------|-----------|
 | `ENABLE_SETUP` | Não | `false` | Habilita `POST /setup/super-admin`. Só ativar para criar primeiro Super Admin. |
-| `SETUP_TOKEN` | **Sim** (se ENABLE_SETUP=true) | — | Token obrigatório no body quando ENABLE_SETUP=true. Ausente → 500 no boot. |
+| `SETUP_TOKEN` | **Sim** (se ENABLE_SETUP=true) | — | Token obrigatório no body quando ENABLE_SETUP=true. Se ausente, o endpoint retorna 404 (app inicia normalmente). |
 
 ---
 
