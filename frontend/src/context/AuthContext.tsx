@@ -22,11 +22,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     try {
+      // TODO: Migrar para memória (useRef no AuthContext)
+      // e passar token via header de API calls diretas do Context
       const storedToken = localStorage.getItem('authToken');
       if (storedToken) {
-        const decodedUser: User = jwtDecode(storedToken);
-        setUser(decodedUser);
-        setToken(storedToken);
+        const decoded = jwtDecode<User & { exp?: number }>(storedToken);
+
+        // Verificar expiração antes de aceitar o token
+        const isExpired = decoded.exp
+          ? Date.now() / 1000 > decoded.exp
+          : false;
+
+        if (isExpired) {
+          // Token expirado — limpar e deixar o interceptor tentar refresh
+          localStorage.removeItem('authToken');
+          document.cookie = 'authSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          // Não setar user — deixa isLoading = false sem user
+        } else {
+          setUser(decoded);
+          setToken(storedToken);
+        }
       }
     } catch (error) {
       console.error("Failed to decode token from localStorage", error);
@@ -70,11 +85,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const decodedUser: User = jwtDecode(access_token);
     const newEmpresaId = decodedUser.empresaId || null;
 
+    // TODO: Migrar para memória (useRef no AuthContext)
+    // e passar token via header de API calls diretas do Context
     localStorage.setItem('authToken', access_token);
+    // Sinaliza presença de sessão para o middleware via cookie simples
+    document.cookie = 'authSession=1; path=/; SameSite=Lax';
     
     // Se mudou de tenant, força reload completo para limpar todo o cache/estado
     if (oldEmpresaId && newEmpresaId && oldEmpresaId !== newEmpresaId) {
-      console.log('[Auth] Troca de tenant detectada, forçando reload completo');
       // Não atualiza estado React - vai dar reload de qualquer forma
       window.dispatchEvent(new CustomEvent('authTokenChanged', { detail: { hasToken: true } }));
       
@@ -98,6 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     localStorage.removeItem('authToken');
+    document.cookie = 'authSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     setUser(null);
     setToken(null);
     

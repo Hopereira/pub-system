@@ -30,7 +30,7 @@ docker compose restart redis
 
 ### Erro de memória no frontend
 **Sintoma:** `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`  
-**Causa:** Next.js 15 com Turbopack consome muita memória.  
+**Causa:** Next.js 16 com Turbopack consome muita memória.  
 **Solução:** Já configurado no `docker-compose.yml`:
 ```yaml
 environment:
@@ -201,7 +201,7 @@ docker compose exec backend npm run typeorm:migration:run
 **Sintoma:** `https://api.pubsystem.com.br` timeout.  
 **Checklist:**
 1. VM está rodando? `ssh` na Oracle VM
-2. Processo Node.js ativo? `pm2 status` ou `systemctl status pub-system`
+2. Container Docker ativo? `docker ps` ou `docker compose -f docker-compose.micro.yml ps`
 3. Nginx rodando? `sudo systemctl status nginx`
 4. Porta 80 aberta? Verificar Security List da Oracle Cloud e iptables
 5. Cloudflare proxy ativo? Verificar nuvem laranja no DNS
@@ -211,7 +211,7 @@ docker compose exec backend npm run typeorm:migration:run
 **Causa:** Cloudflare SSL configurado como "Full" mas servidor não tem certificado.  
 **Solução:** Usar modo **Flexível** no Cloudflare (SSL/TLS → Overview → Flexible).
 
-### Neon connection timeout
+### PostgreSQL connection timeout
 **Sintoma:** `Error: Connection terminated unexpectedly`  
-**Causa:** Neon Free Tier suspende banco após inatividade.  
-**Solução:** O TypeORM já tem retry configurado em `app.module.ts`. Se persistir, acessar dashboard do Neon para verificar status do projeto.
+**Causa:** Container `pub-postgres` parado ou sem memória.  
+**Solução:** `docker ps` para verificar status. `docker compose -f docker-compose.micro.yml restart` se necessário.

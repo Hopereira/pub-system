@@ -217,14 +217,15 @@ backend/src/
 
 Ordem de inicializacao real:
 
-1. `app.use(helmet())` — headers de seguranca
-2. `app.enableCors()` — origens: FRONTEND_URL, localhost:3001, pubsystem.com.br, *.pubsystem.com.br
-3. `app.use(cookieParser())` — parsing de cookies (refresh token)
-4. `app.useGlobalPipes(ValidationPipe)` — whitelist, forbidNonWhitelisted, transform
-5. `app.useGlobalInterceptors(TimeoutInterceptor)` — timeout 30s
-6. `app.useGlobalFilters(AllExceptionsFilter)` — error handling global
-7. Swagger setup (apenas NODE_ENV !== production)
-8. `app.listen(3000)`
+1. `app.use(helmet())` — headers de seguranca (CSP condicional em prod)
+2. `app.use(cookieParser())` — parsing de cookies (refresh token)
+3. `app.useGlobalInterceptors(LoggingInterceptor)` — logging estruturado de requisicoes
+4. `app.useGlobalFilters(AllExceptionsFilter)` — error handling global
+5. `app.enableCors()` — origens: FRONTEND_URL, localhost:3001, pubsystem.com.br, *.pubsystem.com.br
+6. `app.use(json({ limit: '10mb' }))` — limite de payload JSON
+7. `app.useGlobalPipes(ValidationPipe)` — whitelist, forbidNonWhitelisted, transform
+8. Swagger setup (apenas NODE_ENV !== production)
+9. `app.listen(3000)`
 
 ### 4.3 Guards Globais (app.module.ts)
 
@@ -254,7 +255,7 @@ Executam em TODA requisicao, nesta ordem:
 | `typeorm` | ^0.3.27 | **Em devDependencies** — bug |
 | `pg` | ^8.11.3 | |
 | `socket.io` | ^4.7.4 | |
-| `cache-manager` | ^5.7.6 | |
+| `cache-manager` | ^7.x | Atualizado — PR #272 |
 | `cache-manager-redis-yet` | ^5.1.5 | Instalado, nao usado em prod |
 | `helmet` | ^8.1.0 | |
 | `winston` | ^3.19.0 | |
@@ -755,7 +756,7 @@ Endpoints de consulta: listar, por entidade, por usuario, relatorio, estatistica
 | Migration tenant_id NOT NULL nao executada | CRITICO | Pendente |
 | tenant_id nullable em 24 tabelas | CRITICO | Pendente |
 | Schedulers sem filtro tenant (cross-tenant data) | CRITICO | Pendente |
-| RefreshToken validation pula check cross-tenant | ALTO | Pendente |
+| RefreshToken validation pula check cross-tenant | ALTO | **Corrigido 2026-03-28** |
 | WebSocket aceita conexao sem JWT verificado | ALTO | Pendente |
 
 ---
@@ -889,7 +890,6 @@ Cypress libs instaladas no Dockerfile dev mas projeto usa Playwright (+500MB des
 |-----------|----------|
 | `DEPLOY_HIBRIDO.md` | Credenciais expostas + arquitetura obsoleta (Neon + Tunnel) |
 | `GUIA_RAPIDO_SERVIDORES.md` | Credenciais expostas + info contradictoria |
-| `docs/current/DEPLOY.md` | PM2 vs Docker, Neon vs PG local |
-| `docs/current/ARQUITETURA.md` | NestJS 10 (real: mix 10/11), PG 15 (real: 17), Next.js 15 (real: 16) |
+| `docs/current/ARQUITETURA.md` | **Corrigido 2026-03-28** — versoes atualizadas |
 | `docs/current/SETUP_LOCAL.md` | Usa `docker compose -f infra/docker-compose.yml` (incorreto) |
 | `README.md` | Usa `docker compose -f infra/docker-compose.yml` (incorreto), Next.js 15 (real: 16) |

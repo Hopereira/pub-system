@@ -1,6 +1,6 @@
 # Segurança — Pub System
 
-**Última atualização:** 2026-02-11  
+**Última atualização:** 2026-03-22  
 **Fonte da verdade:** `backend/src/main.ts`, `backend/src/auth/`, `backend/src/app.module.ts`  
 **Status:** Ativo
 
@@ -15,10 +15,11 @@
 ```
 1. POST /auth/login { email, senha }
 2. Backend valida credenciais (bcrypt)
-3. Retorna { access_token } no body + refresh_token em httpOnly cookie
-4. Frontend armazena access_token em memória (variável JS)
-5. Axios interceptor adiciona Bearer token em todas requisições
-6. Refresh automático via POST /auth/refresh (cookie enviado automaticamente)
+3. Retorna `{ access_token, expires_in, tenant_id, user }` no body — `refresh_token` **não** é exposto no body
+4. `refresh_token` setado como **httpOnly cookie** (`path=/auth`, `SameSite=Lax`, `Secure` em prod, `maxAge=7d`)
+5. Frontend armazena `access_token` em `localStorage` (TODO: migrar para memória — `useRef` no `AuthContext`)
+6. Axios interceptor adiciona Bearer token em todas requisições
+7. Refresh automático via POST /auth/refresh — cookie enviado automaticamente pelo browser
 ```
 
 ### Access Token
@@ -29,11 +30,14 @@
 ### Refresh Token
 - **Fonte:** `backend/src/auth/refresh-token.service.ts`
 - Armazenado no banco (entidade `RefreshToken`)
-- Enviado ao client via **httpOnly cookie** (`Path=/auth`, `SameSite=Lax/None`, `Secure` em prod)
+- Setado pelo backend via `Set-Cookie` (`path=/auth`, `SameSite=Lax`, `Secure` em prod, `maxAge=7d`)
+- **Nunca exposto no body da resposta**
+- Lido pelo backend via `req.cookies['refresh_token']` nos endpoints `/auth/refresh` e `/auth/logout`
+- Limpo via `res.clearCookie()` no logout
 - Permite renovar access token sem re-login
 - Revogável individualmente ou em massa
 - Rotação automática quando `ROTATE_REFRESH_TOKEN=true`
-- Aceita fallback via body para backward compatibility
+- Aceita fallback via body (`@Body('refresh_token')`) para backward compatibility
 
 ### Endpoints de Sessão
 | Endpoint | Descrição |
@@ -63,7 +67,7 @@
 
 | Guard | Uso | Descrição |
 |-------|-----|-----------|
-| `RolesGuard` | `@UseGuards(RolesGuard)` | Verifica `@Roles(Cargo.ADMIN, ...)` |
+| `RolesGuard` | `@UseGuards(RolesGuard)` | Verifica `@Roles(Cargo.ADMIN, ...)` com comparação **estrita** (`===`). `SUPER_ADMIN` tem bypass explícito. |
 | `FeatureGuard` | `@UseGuards(FeatureGuard)` | Verifica `@RequireFeature(Feature.X)` |
 
 ### Decorators
@@ -135,18 +139,37 @@ Retorna headers `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Type`
 
 ## 4. Headers de Segurança (Helmet)
 
-**Fonte:** `backend/src/main.ts:23-28`
+**Fonte:** `backend/src/main.ts:23-47`
 
 ```typescript
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: isProduction
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+            connectSrc: ["'self'", 'https://api.pubsystem.com.br', 'wss://api.pubsystem.com.br'],
+            frameSrc: ["'none'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+          },
+        }
+      : false, // Desabilita CSP em dev para Swagger
     crossOriginEmbedderPolicy: false,
+    hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    noSniff: true,
+    xssFilter: true,
   }),
 );
 ```
 
-Headers aplicados: X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, etc.
+CSP ativa **apenas em produção** com directives completas. Em dev desabilitada para permitir Swagger.
+Headers aplicados: X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security (prod), Referrer-Policy, X-Content-Type-Options, X-XSS-Protection.
 
 ---
 
@@ -269,8 +292,9 @@ O módulo de auditoria registra automaticamente:
 
 ### ✅ RESOLVIDO: Endpoint /setup/super-admin
 **Arquivo:** `backend/src/auth/create-super-admin.controller.ts`  
-**Solução:** Protegido com `ENABLE_SETUP=true` (env var) + `SETUP_TOKEN` (token no body).  
-Retorna 404 quando `ENABLE_SETUP` não está ativo.
+**Solução:** Protegido com `ENABLE_SETUP=true` (env var) + `SETUP_TOKEN` **obrigatório** (token no body).  
+Retorna 404 quando `ENABLE_SETUP` não está ativo **ou quando `SETUP_TOKEN` não estiver configurado**.  
+A busca de usuário existente filtra por `tenantId: IsNull()` — evita escalada cross-tenant.
 
 ### ✅ RESOLVIDO: TenantRateLimitGuard
 **Solução:** Guard já estava registrado corretamente dentro do `TenantModule`.  
@@ -278,3 +302,21 @@ O código comentado no `app.module.ts` era uma duplicata que causava erro de DI 
 
 ### ⚠️ Pendente: SSH key no histórico git
 A chave foi removida do HEAD mas ainda existe no histórico. Executar `bfg --delete-files ssh-key-2025-12-11.key` e `git push --force`.
+
+---
+
+## 11. Correções Aplicadas — 2026-03-22
+
+Correções aplicadas após relatório de auditoria de segurança do Auth System (2026-03-22):
+
+| # | Severidade | Arquivo(s) | Descrição |
+|---|-----------|-----------|----------|
+| 1 | 🔴 CRÍTICO | `auth.controller.ts` | `refresh_token` agora é setado como httpOnly cookie no login. Body não expõe mais o token. |
+| 2 | 🔴 CRÍTICO | `refresh-token.service.ts` | Resposta de `/auth/refresh` padronizada para snake_case (`access_token`) igual ao `/auth/login`. |
+| 3 | 🔴 CRÍTICO | `auth.controller.ts` | Logout e Refresh leem o token do cookie httpOnly. Cookie é limpo via `clearCookie` no logout. |
+| 4 | 🔴 CRÍTICO | `create-super-admin.controller.ts` | `SETUP_TOKEN` agora é obrigatório quando `ENABLE_SETUP=true`. `findOne` filtra por `tenantId: IsNull()`. |
+| 5 | 🟡 MÉDIO | `roles.guard.ts` | `RolesGuard` usa comparação exata (`===`) em vez de `String.includes()`. `SUPER_ADMIN` tem bypass explícito. |
+| 6 | 🟡 MÉDIO | `AuthContext.tsx` | Verifica campo `exp` do JWT na inicialização — tokens expirados são descartados antes de setar o estado. |
+| 7 | 🟡 MÉDIO | `middleware.ts`, `AuthContext.tsx` | Middleware protege `/dashboard/*`: redireciona para `/login` se cookie `authSession` estiver ausente. Cookie gerenciado pelo `AuthContext` no login/logout. |
+
+**Relatório completo:** Auditoria de segurança Auth System — 2026-03-22.

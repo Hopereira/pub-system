@@ -3,7 +3,17 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  
+
+  // Proteção básica de rotas autenticadas
+  if (url.pathname.startsWith('/dashboard')) {
+    const authSession = request.cookies.get('authSession');
+    // Nota: só verifica presença do cookie, não valida JWT (sem acesso ao secret no Edge)
+    // A validação real do token ocorre no AuthContext e nas chamadas à API
+    if (!authSession) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
+
   // Tentar pegar o host original do header X-Original-Host (enviado pelo Cloudflare Worker)
   // ou usar o host padrão
   const originalHost = request.headers.get('x-original-host') || 
@@ -75,5 +85,6 @@ export const config = {
     '/',
     '/t/:path*',
     '/login',
+    '/dashboard/:path*',
   ],
 };

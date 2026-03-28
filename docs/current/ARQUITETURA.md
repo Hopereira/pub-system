@@ -1,6 +1,6 @@
 # Arquitetura do Pub System
 
-**Última atualização:** 2026-02-11  
+**Última atualização:** 2026-03-22  
 **Fonte da verdade:** `backend/src/app.module.ts`, `docker-compose.yml`, `frontend/src/app/`  
 **Status:** Ativo
 
@@ -11,7 +11,7 @@
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   FRONTEND      │     │   BACKEND        │     │   BANCO         │
-│   Next.js 15    │────▶│   NestJS 10      │────▶│   PostgreSQL 15 │
+│   Next.js 16    │────▶│   NestJS v10/v11 │────▶│   PostgreSQL 15 │
 │   :3001         │     │   :3000          │     │   :5432         │
 └─────────────────┘     └────────┬─────────┘     └─────────────────┘
         │                        │
@@ -31,13 +31,13 @@
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │   VERCEL        │     │   CLOUDFLARE     │     │   ORACLE VM     │
 │   Frontend      │────▶│   SSL + CDN      │────▶│   Backend+Nginx │
-│   Next.js 15    │     │   Flexível       │     │   NestJS :3000  │
+│   Next.js 16    │     │   Flexível       │     │   NestJS :3000  │
 └─────────────────┘     └──────────────────┘     └────────┬────────┘
                                                           │
                                                  ┌────────┴────────┐
-                                                 │   NEON          │
-                                                 │   PostgreSQL    │
-                                                 │   sa-east-1     │
+                                                 │   PostgreSQL 17 │
+                                                 │   Docker local  │
+                                                 │   Oracle VM     │
                                                  └─────────────────┘
 ```
 
@@ -48,24 +48,24 @@
 ### Backend
 | Tecnologia | Versão | Uso |
 |-----------|--------|-----|
-| NestJS | 10 | Framework principal |
+| NestJS | @nestjs/common@10 / @nestjs/core@11 | Framework principal |
 | TypeScript | 5.1.3 | Linguagem |
-| TypeORM | 0.3.17 | ORM |
-| PostgreSQL | 15 | Banco de dados |
+| TypeORM | 0.3.27 | ORM |
+| PostgreSQL | 15 (dev) / 17 (prod) | Banco de dados |
 | Socket.IO | 4.7.4 | WebSocket (tempo real) |
-| Redis | 7 (alpine) | Cache (cache-manager-redis-yet) |
+| Redis | 7 (alpine) | Cache — apenas desenvolvimento |
 | Passport.js | — | Autenticação JWT |
 | Swagger | — | Documentação API |
 | Helmet | — | Headers de segurança |
 | Winston | — | Logging estruturado |
-| Google Cloud Storage | 7.17.1 | Upload de imagens |
+| Google Cloud Storage | 7.19.0 | Upload de imagens |
 | Joi | — | Validação de env vars |
 | class-validator | — | Validação de DTOs |
 
 ### Frontend
 | Tecnologia | Versão | Uso |
 |-----------|--------|-----|
-| Next.js | 15.5.2 | Framework (App Router + Turbopack) |
+| Next.js | 16.1.6 | Framework (App Router + Turbopack) |
 | React | 19.1.0 | UI |
 | TypeScript | — | Linguagem |
 | Tailwind CSS | 4 | Estilização |
@@ -82,7 +82,7 @@
 | Docker + Docker Compose | Desenvolvimento local | — |
 | Vercel (Hobby) | Frontend produção | Gratuito |
 | Oracle Cloud (Always Free) | Backend produção | Gratuito |
-| Neon (Free Tier) | PostgreSQL produção | Gratuito |
+| PostgreSQL 17 (Docker local) | Banco produção na Oracle VM | Gratuito |
 | Cloudflare (Free) | DNS + SSL + CDN | Gratuito |
 | Registro.br | Domínio pubsystem.com.br | ~R$40/ano |
 
@@ -290,7 +290,7 @@ Ambos herdam `BaseTenantGateway` — isolamento por room `tenant_{tenantId}`.
 **Fonte:** `frontend/src/app/`, `frontend/src/middleware.ts`
 
 ### Stack
-Next.js 15 (App Router + Turbopack), React 19, Tailwind CSS 4, shadcn/ui, Socket.IO Client, React Hook Form + Zod, Axios.
+Next.js 16 (App Router + Turbopack), React 19, Tailwind CSS 4, shadcn/ui, Socket.IO Client, React Hook Form + Zod, Axios.
 
 ### Rotas principais
 | Rota | Auth | Descrição |
@@ -306,7 +306,15 @@ Next.js 15 (App Router + Turbopack), React 19, Tailwind CSS 4, shadcn/ui, Socket
 | `/dashboard/relatorios` | ADMIN | Analytics |
 | `/dashboard/super-admin/*` | SUPER_ADMIN | Gestão plataforma |
 
-### Middleware Multi-Tenant
+### Middleware (`frontend/src/middleware.ts`)
+
+**Proteção de rotas autenticadas:**
+- Matcher inclui `/dashboard/:path*`
+- Verifica cookie `authSession` (não httpOnly, gerenciado pelo `AuthContext`)
+- Redireciona para `/login` se o cookie estiver ausente
+- **Nota:** verifica apenas presença do cookie — validação real do JWT ocorre no `AuthContext` e nas chamadas à API
+
+**Roteamento multi-tenant:**
 Detecta subdomínio e reescreve para `/t/[slug]`:
 ```
 casarao-pub.pubsystem.com.br/ → /t/casarao-pub

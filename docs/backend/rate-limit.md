@@ -8,9 +8,9 @@ O rate limiting e aplicado globalmente via `ThrottlerModule` do NestJS, configur
 
 | Camada | Janela | Limite | Finalidade |
 |--------|--------|--------|------------|
-| short | 1 segundo | 30 req | Protecao contra burst |
-| medium | 10 segundos | 200 req | Protecao contra abuso moderado |
-| long | 1 minuto | 1000 req | Limite geral por minuto |
+| short | 1 segundo | 3 req | Protecao contra burst |
+| medium | 10 segundos | 20 req | Protecao contra abuso moderado |
+| long | 1 minuto | 100 req | Limite geral por minuto |
 
 ### Guard
 

@@ -56,6 +56,7 @@ api.interceptors.request.use(
     (config as any).metadata = { startTime: Date.now() };
     
     if (!isServer) {
+      // TODO: Migrar para memória (ler do AuthContext via ref compartilhado)
       const token = localStorage.getItem('authToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -139,9 +140,9 @@ api.interceptors.response.use(
               {},
               { withCredentials: true },
             );
-            const newToken = refreshRes.data.access_token;
+            const newToken = refreshRes.data.access_token || refreshRes.data.accessToken;
 
-            // Atualiza localStorage e state
+            // TODO: Migrar para memória (notificar AuthContext via ref compartilhado)
             localStorage.setItem('authToken', newToken);
             window.dispatchEvent(new CustomEvent('authTokenRefreshed', { detail: { token: newToken } }));
 

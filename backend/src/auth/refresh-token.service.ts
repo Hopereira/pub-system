@@ -110,7 +110,7 @@ export class RefreshTokenService {
     token: string,
     ipAddress: string,
     tenantId?: string,
-  ): Promise<{ accessToken: string; refreshToken?: string; tenantId?: string }> {
+  ): Promise<{ access_token: string; refresh_token?: string; tenant_id?: string }> {
     const refreshToken = await this.validateRefreshToken(token, tenantId);
 
     const payload = {
@@ -148,9 +148,9 @@ export class RefreshTokenService {
       );
 
       return {
-        accessToken,
-        refreshToken: newRefreshToken.token,
-        tenantId: refreshToken.tenantId,
+        access_token: accessToken,
+        refresh_token: newRefreshToken.token,
+        tenant_id: refreshToken.tenantId,
       };
     }
 
@@ -159,7 +159,7 @@ export class RefreshTokenService {
       `${refreshToken.tenantId ? ` [tenant: ${refreshToken.tenantId}]` : ''}`,
     );
 
-    return { accessToken, tenantId: refreshToken.tenantId };
+    return { access_token: accessToken, tenant_id: refreshToken.tenantId };
   }
 
   /**
@@ -229,14 +229,17 @@ export class RefreshTokenService {
    * Remove refresh tokens expirados (executar periodicamente)
    */
   async cleanupExpiredTokens(): Promise<number> {
-    const result = await this.refreshTokenRepository.delete({
-      expiresAt: LessThan(new Date()),
-    });
+    const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const count = result.affected || 0;
-    
+    const [expiredResult, revokedResult] = await Promise.all([
+      this.refreshTokenRepository.delete({ expiresAt: LessThan(new Date()) }),
+      this.refreshTokenRepository.delete({ revoked: true, revokedAt: LessThan(cutoff24h) }),
+    ]);
+
+    const count = (expiredResult.affected || 0) + (revokedResult.affected || 0);
+
     if (count > 0) {
-      this.logger.log(`🧹 ${count} refresh tokens expirados removidos`);
+      this.logger.log(`🧹 ${count} refresh tokens removidos (expirados ou revogados >24h)`);
     }
 
     return count;
