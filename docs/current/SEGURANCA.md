@@ -87,7 +87,7 @@
 |------|--------|-----------|
 | `SUPER_ADMIN` | Plataforma | Gestão de tenants, planos, métricas globais |
 | `ADMIN` | Tenant | Acesso total ao estabelecimento |
-| `GERENTE` | Tenant | No enum mas não usado em controllers |
+| GERENTE | Tenant | Supervisão operacional. Relatórios, pedidos, comandas. Implementado em 9 controllers. |
 | `CAIXA` | Tenant | Terminal de caixa, comandas |
 | `GARCOM` | Tenant | Pedidos, entregas |
 | `COZINHEIRO` | Tenant | Preparo de pedidos |
