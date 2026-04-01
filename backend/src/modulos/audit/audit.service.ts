@@ -41,18 +41,28 @@ export class AuditService {
   /**
    * Cria um registro de auditoria
    */
-  async log(dto: CreateAuditLogDto): Promise<AuditLog> {
+  async log(dto: CreateAuditLogDto): Promise<AuditLog | null> {
     try {
       // Obter tenantId do DTO, do funcionário ou usar um valor padrão
       const tenantId = dto.tenantId || dto.funcionario?.tenantId || null;
       
-      const auditLog = this.auditLogRepository.create({
-        ...dto,
+      // Usar rawRepository para evitar dependência do TenantContext (ex: durante login)
+      const auditLog = this.auditLogRepository.rawRepository.create({
         funcionarioEmail: dto.funcionario?.email || dto.funcionarioEmail,
+        action: dto.action,
+        entityName: dto.entityName,
+        entityId: dto.entityId,
+        oldData: dto.oldData,
+        newData: dto.newData,
+        ipAddress: dto.ipAddress,
+        userAgent: dto.userAgent,
+        endpoint: dto.endpoint,
+        method: dto.method,
+        description: dto.description,
         tenantId,
-      });
+      } as any);
 
-      const saved = await this.auditLogRepository.save(auditLog);
+      const saved = await this.auditLogRepository.rawRepository.save(auditLog) as unknown as AuditLog;
 
       this.logger.debug(
         `📝 Auditoria: ${dto.action} em ${dto.entityName} por ${dto.funcionarioEmail || 'Sistema'}`,
@@ -60,8 +70,9 @@ export class AuditService {
 
       return saved;
     } catch (error) {
-      this.logger.error('❌ Erro ao registrar auditoria:', error);
-      throw error;
+      // Auditoria NUNCA deve bloquear operações críticas (login, etc.)
+      this.logger.error(`❌ Erro ao registrar auditoria (não-bloqueante): ${error.message}`);
+      return null;
     }
   }
 
