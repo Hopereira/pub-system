@@ -65,7 +65,7 @@ export class TenantResolverService {
 
     let empresa = await this.empresaRepository.findOne({
       where: { slug: normalizedSlug },
-      select: ['id', 'slug', 'nomeFantasia', 'ativo'],
+      select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
     });
 
     // Se não encontrou, tentar remover sufixo numérico (ex: casarao-pub-423 -> casarao-pub)
@@ -75,7 +75,7 @@ export class TenantResolverService {
         this.logger.debug(`🔍 Tentando slug sem sufixo numérico: ${slugWithoutSuffix}`);
         empresa = await this.empresaRepository.findOne({
           where: { slug: slugWithoutSuffix },
-          select: ['id', 'slug', 'nomeFantasia', 'ativo'],
+          select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
         });
       }
     }
@@ -94,8 +94,10 @@ export class TenantResolverService {
       );
     }
 
+    // Usar tenantId da empresa (o ID real do tenant), não o ID da empresa
+    const tenantId = (empresa as any).tenantId || empresa.id;
     const resolved: ResolvedTenant = {
-      id: createTenantId(empresa.id),
+      id: createTenantId(tenantId),
       slug: empresa.slug,
       nomeFantasia: empresa.nomeFantasia,
       ativo: empresa.ativo,
@@ -103,7 +105,7 @@ export class TenantResolverService {
 
     // Salvar no cache
     this.setCache(`slug:${normalizedSlug}`, resolved);
-    this.setCache(`id:${empresa.id}`, resolved);
+    this.setCache(`id:${tenantId}`, resolved);
 
     this.logger.log(`✅ Tenant resolvido: ${resolved.nomeFantasia} (${resolved.id})`);
     return resolved;
