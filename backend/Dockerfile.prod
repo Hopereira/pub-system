@@ -48,8 +48,8 @@ RUN npm ci --only=production --legacy-peer-deps && \
 # Copia APENAS a pasta dist compilada (sem TypeScript!)
 COPY --from=builder /app/dist ./dist
 
-# Copia pasta public se existir
-COPY --from=builder /app/public ./public 2>/dev/null || true
+# Copia pasta public (criada no builder)
+COPY --from=builder /app/public ./public
 
 # Define variáveis de ambiente
 ENV NODE_ENV=production
