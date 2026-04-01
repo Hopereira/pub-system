@@ -148,7 +148,7 @@ import { PlanModule } from './modulos/plan/plan.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: false, // Sempre false em produção - usar migrations
+        synchronize: configService.get<string>('DB_SYNC') === 'true', // Usar DB_SYNC=true APENAS no primeiro deploy para criar tabelas
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
           : false,
