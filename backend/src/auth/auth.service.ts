@@ -31,9 +31,13 @@ export class AuthService {
    * OBRIGATÓRIO - falha se não conseguir resolver.
    */
   async resolveTenantFromRequest(host?: string, headerTenantId?: string, headerTenantSlug?: string): Promise<string> {
-    // 1. Tentar header x-tenant-id (ID direto)
+    const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+    // 1. Tentar header x-tenant-id (UUID direto ou slug)
     if (headerTenantId) {
-      const tenant = await this.tenantResolver.resolveById(headerTenantId);
+      const tenant = isUuid(headerTenantId)
+        ? await this.tenantResolver.resolveById(headerTenantId)
+        : await this.tenantResolver.resolveBySlug(headerTenantId);
       if (tenant) return tenant.id;
     }
 

@@ -117,6 +117,13 @@ export class TenantResolverService {
    * @throws ForbiddenException se tenant não encontrado ou inativo
    */
   async resolveById(id: string): Promise<ResolvedTenant> {
+    // Validar formato UUID antes de fazer query (evita erro PostgreSQL)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (!isUuid) {
+      this.logger.warn(`⚠️ resolveById chamado com valor não-UUID: ${id}, tentando como slug`);
+      return this.resolveBySlug(id);
+    }
+
     // Verificar cache
     const cached = this.getFromCache(`id:${id}`);
     if (cached) {
