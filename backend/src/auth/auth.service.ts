@@ -1,10 +1,11 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { FuncionarioService } from 'src/modulos/funcionario/funcionario.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { AuditService } from '../modulos/audit/audit.service';
 import { AuditAction } from '../modulos/audit/entities/audit-log.entity';
 import { TenantResolverService } from '../common/tenant/tenant-resolver.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -24,6 +25,7 @@ export class AuthService {
     private refreshTokenService: RefreshTokenService,
     private auditService: AuditService,
     private tenantResolver: TenantResolverService,
+    @Optional() private tenantContext: TenantContextService,
   ) {}
 
   /**
@@ -59,6 +61,19 @@ export class AuthService {
     throw new UnauthorizedException(
       'Não foi possível identificar o estabelecimento. Acesse pelo endereço correto.',
     );
+  }
+
+  /**
+   * Seta o tenant resolvido no contexto da requisição
+   */
+  setTenantInContext(tenantId: string, nome?: string): void {
+    try {
+      if (this.tenantContext && !this.tenantContext.hasTenant()) {
+        this.tenantContext.setTenantId(tenantId, nome || 'Login');
+      }
+    } catch {
+      // Ignorar se já estiver setado
+    }
   }
 
   /**

@@ -51,6 +51,9 @@ export class AuthController {
     // 1. Resolver tenant OBRIGATORIAMENTE antes do login
     const tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId, headerTenantSlug);
 
+    // 1.5. Setar tenant no contexto para que repositórios tenant-aware funcionem
+    this.authService.setTenantInContext(tenantId);
+
     // 2. Validar credenciais DENTRO do tenant
     const user = await this.authService.validateUser(
       loginDto.email,
