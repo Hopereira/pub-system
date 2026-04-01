@@ -20,9 +20,11 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ThrottleLogin, ThrottleStrict, ThrottleAPI } from '../common/decorators/throttle.decorator';
+import { SkipTenantGuard } from '../common/tenant/guards/tenant.guard';
 
 @ApiTags('Autenticação')
 @Controller('auth')
+@SkipTenantGuard()
 export class AuthController {
   constructor(
     private authService: AuthService,
