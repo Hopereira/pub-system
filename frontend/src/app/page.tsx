@@ -149,7 +149,7 @@ export default function LandingPage() {
       case 'BASIC': return 'Assinar Basic';
       case 'STANDARD': return 'Assinar Standard';
       case 'PRO': return 'Assinar Pro';
-      case 'ENTERPRISE': return 'Falar com Vendas';
+      case 'ENTERPRISE': return 'Assinar Enterprise';
       default: return 'Assinar';
     }
   };
@@ -399,15 +399,16 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                  <button 
-                    className={`w-full py-3 rounded-xl font-semibold transition ${
+                  <Link
+                    href={`/primeiro-acesso?plano=${plan.code.toLowerCase()}`}
+                    className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center ${
                       plan.isPopular
                         ? 'bg-amber-500 hover:bg-amber-600 text-black'
                         : themeClasses.button
                     }`}
                   >
                     {getCTA(plan.code)}
-                  </button>
+                  </Link>
                 </div>
               ))}
             </div>
