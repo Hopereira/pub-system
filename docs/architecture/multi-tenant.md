@@ -305,14 +305,22 @@ SUPER_ADMIN bypassa TenantGuard e FeatureGuard.
 
 ## 12. Vulnerabilidades Conhecidas e Status
 
-| # | Vulnerabilidade | Severidade | Status |
-|---|----------------|-----------|--------|
-| V1 | tenant_id nullable em produção | Crítico | ⚠️ Migration criada, NÃO executada |
-| V2 | Schedulers com queries cross-tenant | Crítico | ⚠️ Pendente correção |
-| V3 | WebSocket aceita tenantId via query param | Crítico | ⚠️ Pendente correção |
-| V4 | POST /auth/refresh não valida tenant | Alto | ⚠️ Pendente correção |
-| V5 | RefreshToken.tenantId opcional | Alto | ⚠️ Pendente correção |
-| V6 | empresaId legado em 2 entidades | Médio | ⚠️ Pendente remoção |
-| V7 | resolveById com fallback empresaId | Médio | ⚠️ Pendente remoção |
+**Última revisão de código:** 2026-04-02
 
-Detalhes completos: `docs/audits/multi-tenant-audit.md`
+| # | Vulnerabilidade | Severidade | Status | Verificado em |
+|---|----------------|-----------|--------|--------------|
+| V1 | `tenant_id` nullable em 26 entidades operacionais | Crítico | ⚠️ Migration pendente | `*.entity.ts` — `nullable: true` ainda presente. `DB_SYNC=false` em prod, risco mitigado pelo `BaseTenantRepository` que preenche `tenantId` automaticamente no `save()`. |
+| V2 | Schedulers com queries cross-tenant | Crítico | ✅ Corrigido | `quase-pronto.scheduler.ts` e `medalha.scheduler.ts` iteram por tenant e filtram `tenantId: tenant.id` em cada query. |
+| V3 | WebSocket aceita `tenantId` via query param sem verificar JWT | Crítico | ✅ Corrigido | `base-tenant.gateway.ts` só aceita `tenantId` de JWT verificado. Query param e header `x-tenant-id` são explicitamente rejeitados. Sem JWT válido → cliente desconectado. |
+| V4 | `POST /auth/refresh` não valida tenant | Alto | ✅ Corrigido | `auth.controller.ts` resolve `tenantId` e passa para `refreshAccessToken()`. Cross-tenant lança `403 Forbidden`. Confirmado em teste de produção (2026-04-02). |
+| V5 | `RefreshToken.tenantId` opcional | Alto | ✅ Aceitável (design) | `tenantId?: string` é intencional: SUPER_ADMIN tem `tenantId = null`. A validação de isolamento em `validateRefreshToken()` só é aplicada quando `tenantId` está presente nos dois lados. |
+| V6 | `empresaId` legado em 2 entidades | Médio | ⚠️ Pendente remoção | Presente em `funcionario.entity.ts` e `ponto-entrega.entity.ts`. `super-admin.service.ts` usa como fallback em queries. Escopo restrito ao SUPER_ADMIN, sem risco de cross-tenant entre tenants normais. |
+| V7 | `super-admin.service.ts` com fallback `empresaId` | Médio | ⚠️ Pendente limpeza | 4 queries em `super-admin.service.ts` usam `empresaId` como fallback para compatibilidade com dados legados. Acessível apenas por SUPER_ADMIN. |
+
+### Notas
+
+- **V2, V3, V4** foram corrigidas em sessões anteriores de desenvolvimento; o código em produção já contém as correções.
+- **V5** foi reclassificada: não é vulnerabilidade, é requisito de design para suporte ao SUPER_ADMIN com `tenantId = null`.
+- **V1, V6, V7** permanecem pendentes mas com risco controlado em produção.
+
+Detalhes originais: `docs/audits/multi-tenant-audit.md`
