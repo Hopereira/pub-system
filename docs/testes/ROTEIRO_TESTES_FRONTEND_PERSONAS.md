@@ -11,13 +11,15 @@
 
 | Persona | Email | Senha | Tenant |
 |---------|-------|-------|--------|
-| SUPER_ADMIN | superadmin@pubsystem.com.br | super123 | — (sem tenant) |
-| ADMIN | admin@admin.com | (a definir) | pub-demo |
-| GERENTE | (a criar) | (a definir) | pub-demo |
-| GARCOM | (a criar) | (a definir) | pub-demo |
-| CAIXA | (a criar) | (a definir) | pub-demo |
-| COZINHEIRO | (a criar) | (a definir) | pub-demo |
+| SUPER_ADMIN | `$TEST_SUPERADMIN_EMAIL` | `$TEST_SUPERADMIN_PASS` | — (sem tenant) |
+| ADMIN | `$TEST_ADMIN_EMAIL` | `$TEST_ADMIN_PASS` | pub-demo |
+| GERENTE | `$TEST_GERENTE_EMAIL` | `$TEST_GERENTE_PASS` | pub-demo |
+| GARCOM | `$TEST_GARCOM_EMAIL` | `$TEST_GARCOM_PASS` | pub-demo |
+| CAIXA | `$TEST_CAIXA_EMAIL` | `$TEST_CAIXA_PASS` | pub-demo |
+| COZINHEIRO | `$TEST_COZINHEIRO_EMAIL` | `$TEST_COZINHEIRO_PASS` | pub-demo |
 | CLIENTE | — | — | público |
+
+> **Segurança:** credenciais reais nunca devem ser commitadas. Use variáveis de ambiente ou um gerenciador de segredos (ex: 1Password, Bitwarden) para compartilhar com o time.
 
 ---
 
