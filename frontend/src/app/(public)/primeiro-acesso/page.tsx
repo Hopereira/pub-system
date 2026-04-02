@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise: 'Enterprise — R$ 199/mês',
 };
 
-export default function PrimeiroAcessoPage() {
+function PrimeiroAcessoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planoSelecionado = (searchParams.get('plano') || 'free').toLowerCase();
@@ -317,5 +317,13 @@ export default function PrimeiroAcessoPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PrimeiroAcessoPage() {
+  return (
+    <Suspense fallback={null}>
+      <PrimeiroAcessoForm />
+    </Suspense>
   );
 }
