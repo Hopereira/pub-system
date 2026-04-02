@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +10,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, AlertCircle, Sparkles, Beer } from 'lucide-react';
 
-export default function PrimeiroAcessoPage() {
+const PLAN_LABELS: Record<string, string> = {
+  free: 'Free — Grátis',
+  basic: 'Basic — R$ 49/mês',
+  standard: 'Standard',
+  pro: 'Pro — R$ 99/mês',
+  enterprise: 'Enterprise — R$ 199/mês',
+};
+
+function PrimeiroAcessoForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const planoSelecionado = (searchParams.get('plano') || 'free').toLowerCase();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     nomeEstabelecimento: '',
@@ -74,6 +84,7 @@ export default function PrimeiroAcessoPage() {
           nomeAdmin: formData.nome,
           emailAdmin: formData.email,
           senhaAdmin: formData.senha,
+          plano: planoSelecionado.toUpperCase(),
         })
       });
 
@@ -127,6 +138,12 @@ export default function PrimeiroAcessoPage() {
           <CardDescription className="text-base">
             Cadastre seu estabelecimento e comece a usar.
           </CardDescription>
+          {planoSelecionado !== 'free' && (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-full text-sm font-medium text-amber-800">
+              <Sparkles className="h-3.5 w-3.5" />
+              Plano selecionado: {PLAN_LABELS[planoSelecionado] || planoSelecionado}
+            </div>
+          )}
           <Alert className="bg-amber-50 border-amber-200">
             <CheckCircle2 className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-900 font-medium">
@@ -300,5 +317,13 @@ export default function PrimeiroAcessoPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PrimeiroAcessoPage() {
+  return (
+    <Suspense fallback={null}>
+      <PrimeiroAcessoForm />
+    </Suspense>
   );
 }

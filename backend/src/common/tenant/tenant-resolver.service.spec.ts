@@ -61,7 +61,7 @@ describe('TenantResolverService', () => {
 
       expect(empresaRepository.findOne).toHaveBeenCalledWith({
         where: { slug: 'bar-do-ze' },
-        select: ['id', 'slug', 'nomeFantasia', 'ativo'],
+        select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
       });
     });
 
