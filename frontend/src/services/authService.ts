@@ -26,9 +26,9 @@ const extractTenantSlug = (): string | null => {
   return null;
 };
 
-export const login = async (email: string, senha: string) => {
+export const login = async (email: string, senha: string, explicitTenantSlug?: string) => {
   try {
-    const tenantSlug = extractTenantSlug();
+    const tenantSlug = explicitTenantSlug || extractTenantSlug();
     
     const response = await publicApi.post('/auth/login', {
       email,

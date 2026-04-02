@@ -57,11 +57,10 @@ export default function TenantLoginPage() {
       localStorage.setItem('tenant_slug', slug);
       if (tenant) localStorage.setItem('tenant_id', tenant.id);
       
-      // Usar o authLogin do contexto para atualizar o estado corretamente
-      await authLogin({ email, senha });
+      // Passa o slug diretamente — não depende de extração do hostname
+      await authLogin({ email, senha, tenantSlug: slug });
 
       toast.success('Login realizado com sucesso!');
-      // Redireciona para /dashboard que já tem todas as páginas funcionando
       router.push('/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Erro ao fazer login');

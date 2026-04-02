@@ -21,6 +21,7 @@ export interface User {
 export interface LoginCredentials {
   email: string;
   senha: string;
+  tenantSlug?: string;
 }
 
 // Resposta do login
