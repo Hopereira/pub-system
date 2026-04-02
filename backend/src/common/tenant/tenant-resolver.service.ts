@@ -63,18 +63,21 @@ export class TenantResolverService {
 
     this.logger.debug(`🔍 Buscando tenant por slug: ${normalizedSlug}`);
 
-    let empresa = await this.empresaRepository.findOne({
-      where: { slug: normalizedSlug },
-    });
+    const findBySlug = (s: string) =>
+      this.empresaRepository
+        .createQueryBuilder('empresa')
+        .addSelect('empresa.tenant_id')
+        .where('empresa.slug = :slug', { slug: s })
+        .getOne();
+
+    let empresa = await findBySlug(normalizedSlug);
 
     // Se não encontrou, tentar remover sufixo numérico (ex: casarao-pub-423 -> casarao-pub)
     if (!empresa) {
       const slugWithoutSuffix = normalizedSlug.replace(/-\d+$/, '');
       if (slugWithoutSuffix !== normalizedSlug) {
         this.logger.debug(`🔍 Tentando slug sem sufixo numérico: ${slugWithoutSuffix}`);
-        empresa = await this.empresaRepository.findOne({
-          where: { slug: slugWithoutSuffix },
-        });
+        empresa = await findBySlug(slugWithoutSuffix);
       }
     }
 
