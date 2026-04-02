@@ -14,7 +14,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    if (!payload.tenantId) {
+    // SUPER_ADMIN não pertence a nenhum tenant (tenantId pode ser null)
+    if (!payload.tenantId && payload.cargo !== 'SUPER_ADMIN') {
       throw new UnauthorizedException('Token inválido: tenantId ausente');
     }
     return {
@@ -22,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email,
       cargo: payload.cargo,
       nome: payload.nome,
-      tenantId: payload.tenantId,
+      tenantId: payload.tenantId || null,
       ambienteId: payload.ambienteId,
     };
   }

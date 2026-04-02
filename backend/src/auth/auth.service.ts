@@ -64,6 +64,31 @@ export class AuthService {
   }
 
   /**
+   * Tenta resolver tenant, retorna null se não encontrar (para super admin)
+   */
+  async resolveTenantFromRequestOptional(host?: string, headerTenantId?: string, headerTenantSlug?: string): Promise<string | null> {
+    try {
+      return await this.resolveTenantFromRequest(host, headerTenantId, headerTenantSlug);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Valida super admin (sem tenant). Busca por email com tenantId IS NULL.
+   */
+  async validateSuperAdmin(email: string, pass: string, ipAddress?: string): Promise<any> {
+    const user = await this.funcionarioService.findSuperAdminByEmail(email);
+    if (user && (await bcrypt.compare(pass, user.senha))) {
+      const { senha, ...result } = user;
+      this.logger.log(`Autenticação SUPER_ADMIN bem-sucedida: ${email}`);
+      return result;
+    }
+    this.logger.warn(`Falha na autenticação SUPER_ADMIN: ${email}`);
+    return null;
+  }
+
+  /**
    * Seta o tenant resolvido no contexto da requisição
    */
   setTenantInContext(tenantId: string, nome?: string): void {
@@ -114,9 +139,9 @@ export class AuthService {
 
   /**
    * Gera JWT e refresh token para o usuário autenticado.
-   * tenantId é OBRIGATÓRIO e vem do subdomain (já validado).
+   * tenantId é OBRIGATÓRIO para tenants normais, null para SUPER_ADMIN (escopo plataforma).
    */
-  async login(user: any, tenantId: string, ipAddress: string, userAgent?: string) {
+  async login(user: any, tenantId: string | null, ipAddress: string, userAgent?: string) {
     const payload = {
       id: user.id,
       sub: user.id,
@@ -125,7 +150,7 @@ export class AuthService {
       cargo: user.cargo,
       role: user.cargo,
       ambienteId: user.ambienteId,
-      tenantId, // OBRIGATÓRIO - sem fallback
+      tenantId: tenantId || null,
     };
 
     const accessToken = this.jwtService.sign(payload, {

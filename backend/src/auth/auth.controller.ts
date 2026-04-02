@@ -48,25 +48,36 @@ export class AuthController {
     @Headers('x-tenant-id') headerTenantId?: string,
     @Headers('x-tenant-slug') headerTenantSlug?: string,
   ) {
-    // 1. Resolver tenant OBRIGATORIAMENTE antes do login
-    const tenantId = await this.authService.resolveTenantFromRequest(host, headerTenantId, headerTenantSlug);
+    // 1. Tentar resolver tenant (pode ser null para super admin)
+    const tenantId = await this.authService.resolveTenantFromRequestOptional(host, headerTenantId, headerTenantSlug);
 
-    // 1.5. Setar tenant no contexto para que repositórios tenant-aware funcionem
-    this.authService.setTenantInContext(tenantId);
+    let user: any;
 
-    // 2. Validar credenciais DENTRO do tenant
-    const user = await this.authService.validateUser(
-      loginDto.email,
-      loginDto.senha,
-      tenantId,
-      ipAddress,
-    );
-    if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas');
+    if (tenantId) {
+      // Fluxo normal: login com tenant
+      this.authService.setTenantInContext(tenantId);
+      user = await this.authService.validateUser(
+        loginDto.email,
+        loginDto.senha,
+        tenantId,
+        ipAddress,
+      );
+    } else {
+      // Fluxo super admin: login sem tenant
+      user = await this.authService.validateSuperAdmin(
+        loginDto.email,
+        loginDto.senha,
+        ipAddress,
+      );
     }
 
-    // 3. Gerar tokens com tenantId obrigatório
-    const result = await this.authService.login(user, tenantId, ipAddress, userAgent);
+    if (!user) {
+      throw new UnauthorizedException('Credenciais inválidas. Verifique seu email e senha.');
+    }
+
+    // Gerar tokens (tenantId pode ser null para super admin)
+    const effectiveTenantId = tenantId || user.tenantId || null;
+    const result = await this.authService.login(user, effectiveTenantId, ipAddress, userAgent);
 
     // 4. Setar refresh_token como httpOnly cookie
     res.cookie('refresh_token', result.refresh_token, {

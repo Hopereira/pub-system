@@ -150,6 +150,19 @@ export class FuncionarioService implements OnModuleInit {
     return this.funcionarioRepository.findByEmailAndTenantForAuth(email, tenantId);
   }
 
+  /**
+   * Busca SUPER_ADMIN por email (tenantId IS NULL).
+   */
+  findSuperAdminByEmail(email: string): Promise<Funcionario | null> {
+    return this.funcionarioRepository.rawRepository
+      .createQueryBuilder('funcionario')
+      .where('funcionario.email = :email', { email })
+      .andWhere('funcionario.tenant_id IS NULL')
+      .andWhere('funcionario.cargo = :cargo', { cargo: Cargo.SUPER_ADMIN })
+      .addSelect('funcionario.senha')
+      .getOne();
+  }
+
   async update(
     id: string,
     updateFuncionarioDto: UpdateFuncionarioDto,
