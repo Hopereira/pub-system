@@ -65,7 +65,6 @@ export class TenantResolverService {
 
     let empresa = await this.empresaRepository.findOne({
       where: { slug: normalizedSlug },
-      select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
     });
 
     // Se não encontrou, tentar remover sufixo numérico (ex: casarao-pub-423 -> casarao-pub)
@@ -75,7 +74,6 @@ export class TenantResolverService {
         this.logger.debug(`🔍 Tentando slug sem sufixo numérico: ${slugWithoutSuffix}`);
         empresa = await this.empresaRepository.findOne({
           where: { slug: slugWithoutSuffix },
-          select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
         });
       }
     }
