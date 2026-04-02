@@ -136,6 +136,11 @@ import { PlanModule } from './modulos/plan/plan.module';
         ttl: 60000, // 1 minuto
         limit: 1000, // 1000 requisições por minuto (dev)
       },
+      {
+        name: 'login',
+        ttl: 900000, // 15 minutos
+        limit: 5, // 5 tentativas por 15 minutos
+      },
     ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
