@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Logger,
+  SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TenantContextService } from '../tenant-context.service';
@@ -12,16 +13,7 @@ import { TenantContextService } from '../tenant-context.service';
  * Decorator para marcar rotas que não precisam de validação de tenant
  */
 export const SKIP_TENANT_GUARD = 'skipTenantGuard';
-export const SkipTenantGuard = () => {
-  return (target: any, key?: string, descriptor?: PropertyDescriptor) => {
-    if (descriptor) {
-      Reflect.defineMetadata(SKIP_TENANT_GUARD, true, descriptor.value);
-      return descriptor;
-    }
-    Reflect.defineMetadata(SKIP_TENANT_GUARD, true, target);
-    return target;
-  };
-};
+export const SkipTenantGuard = () => SetMetadata(SKIP_TENANT_GUARD, true);
 
 /**
  * TenantGuard - Bloqueio de Acesso Cross-Tenant
@@ -81,6 +73,11 @@ export class TenantGuard implements CanActivate {
 
     const contextTenantId = this.tenantContext.getTenantId();
     const userTenantId = user.tenantId;
+
+    // SUPER_ADMIN não tem tenantId — tem acesso global, não bloquear
+    if (user.cargo === 'SUPER_ADMIN') {
+      return true;
+    }
 
     // BLOQUEIO: Usuário sem tenant NÃO pode acessar recursos de nenhum tenant
     if (!userTenantId) {

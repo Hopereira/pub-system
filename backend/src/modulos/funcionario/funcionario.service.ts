@@ -31,7 +31,7 @@ export class FuncionarioService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const contador = await this.funcionarioRepository.count();
+    const contador = await this.funcionarioRepository.rawRepository.count();
     if (contador === 0) {
       const tenantId = this.configService.get<string>('DEFAULT_TENANT_ID');
       if (!tenantId) {
@@ -63,7 +63,7 @@ export class FuncionarioService implements OnModuleInit {
    * Verifica se é o primeiro acesso (não há usuários no sistema)
    */
   async isFirstAccess(): Promise<boolean> {
-    const count = await this.funcionarioRepository.count();
+    const count = await this.funcionarioRepository.rawRepository.count();
     return count === 0;
   }
 
@@ -75,7 +75,7 @@ export class FuncionarioService implements OnModuleInit {
     createFuncionarioDto: CreateFuncionarioDto,
   ): Promise<Funcionario> {
     // Verifica se já existe algum usuário
-    const contador = await this.funcionarioRepository.count();
+    const contador = await this.funcionarioRepository.rawRepository.count();
 
     if (contador > 0) {
       this.logger.warn(
