@@ -67,11 +67,11 @@ export class PontoEntrega extends TenantAwareEntity {
   @JoinColumn({ name: 'ambiente_preparo_id' })
   ambientePreparo: Ambiente;
 
-  // Relação: Empresa
-  @Column({ name: 'empresa_id', type: 'uuid' })
+  // Relação: Empresa (legado — substituído por tenant_id via TenantAwareEntity)
+  @Column({ name: 'empresa_id', type: 'uuid', nullable: true })
   empresaId: string;
 
-  @ManyToOne(() => Empresa, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Empresa, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;
 
