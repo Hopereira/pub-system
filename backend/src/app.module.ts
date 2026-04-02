@@ -153,7 +153,7 @@ import { PlanModule } from './modulos/plan/plan.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: configService.get<string>('DB_SYNC') === 'true', // Usar DB_SYNC=true APENAS no primeiro deploy para criar tabelas
+        synchronize: false, // NUNCA ativar em produção — usar migrations
         ssl: configService.get<string>('DB_SSL') === 'true' 
           ? { rejectUnauthorized: false } 
           : false,
@@ -210,7 +210,7 @@ import { PlanModule } from './modulos/plan/plan.module';
     // TenantRateLimitGuard é registrado como APP_GUARD dentro do TenantModule
     // (onde tem acesso correto a CACHE_MANAGER e TenantContextService via DI)
     RateLimitMonitorService,
-    // ✅ Monitor de conexão com banco de dados (útil para Neon Cloud)
+    // Monitor de conexão com banco de dados
     DatabaseConnectionMonitor,
   ],
 })
