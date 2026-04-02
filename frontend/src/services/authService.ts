@@ -18,8 +18,9 @@ const extractTenantSlug = (): string | null => {
   
   // Produção: extrair primeiro segmento do subdomínio
   // Ex: casarao-pub-423.pubsystem.com.br -> casarao-pub-423
+  const RESERVED = ['www', 'api', 'app', 'admin', 'mail', 'smtp'];
   const parts = hostname.split('.');
-  if (parts.length >= 3) {
+  if (parts.length >= 3 && !RESERVED.includes(parts[0])) {
     return parts[0]; // Primeiro segmento é o slug do tenant
   }
   
