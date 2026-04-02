@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('authTokenRefreshed', handleRefreshed);
   }, []);
 
-  const login = async ({ email, senha }: LoginCredentials) => {
+  const login = async ({ email, senha, tenantSlug }: LoginCredentials) => {
     // Verifica se está trocando de tenant (empresaId diferente)
     const oldToken = localStorage.getItem('authToken');
     let oldEmpresaId: string | null = null;
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    const { access_token } = await apiLogin(email, senha);
+    const { access_token } = await apiLogin(email, senha, tenantSlug);
     const decodedUser: User = jwtDecode(access_token);
     const newEmpresaId = decodedUser.empresaId || null;
 
