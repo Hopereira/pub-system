@@ -202,10 +202,10 @@ export class SuperAdminService {
         .andWhere('comanda.status = :status', { status: 'ABERTA' })
         .getCount();
 
-      // Funcionários ativos deste tenant - usar empresaId
+      // Funcionários ativos deste tenant
       const funcionariosAtivos = await this.funcionarioRepository
         .createQueryBuilder('funcionario')
-        .where('funcionario.empresaId = :tenantId', { tenantId: tenant.id })
+        .where('(funcionario.tenantId = :tenantId OR funcionario.empresaId = :tenantId)', { tenantId: tenant.id })
         .andWhere('funcionario.status = :status', { status: 'ATIVO' })
         .getCount();
 

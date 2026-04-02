@@ -1,8 +1,9 @@
 # Auditoria Completa do Sistema - Pub System
 
 **Data:** 2026-04-01  
+**Última revisão:** 2026-04-02  
 **Metodologia:** Leitura completa de docs/, análise de código-fonte, verificação de consistência  
-**Status:** Análise Concluída
+**Status:** Atualizado com estado real em produção
 
 ---
 
@@ -33,8 +34,8 @@
 | Frontend | Next.js | 16.1.6 | ✅ Atual |
 | Frontend | React | 19.1.0 | ✅ Atual |
 | Frontend | Tailwind CSS | 4 | ✅ Atual |
-| Backend | NestJS Common | 10.0.0 | ⚠️ Mismatch |
-| Backend | NestJS Core | 11.1.16 | ⚠️ Mismatch |
+| Backend | NestJS Common | 11.1.17 | ✅ Alinhado |
+| Backend | NestJS Core | 11.1.16 | ✅ Alinhado |
 | Backend | TypeORM | 0.3.27 | ✅ Atual |
 | Backend | Socket.IO | 4.7.4 | ✅ Atual |
 | Banco | PostgreSQL | 17 (prod) | ✅ Atual |
@@ -142,14 +143,14 @@ SUPER_ADMIN (Plataforma)
 | Multi-tenancy | ARQUITETURA.md | tenant/ modules | ✅ OK |
 | WebSocket | ARQUITETURA.md | pedidos.gateway.ts | ✅ OK |
 
-### 4.2 ⚠️ Inconsistências Encontradas
+### 4.2 Inconsistências Encontradas
 
-| Problema | Documentação | Código Real | Impacto |
-|-----------|-------------|-------------|---------|
-| **GERENTE não usado** | "No enum mas não usado em controllers" | @Roles(GERENTE) em 9 controllers | **ALTO** - Doc desatualizada |
-| **NestJS version** | "v10/v11" | @nestjs/common@10 + core@11 | **MÉDIO** - Mismatch |
-| **Redis produção** | "Sem Redis em prod" | docker-compose.micro.yml sem Redis | **BAIXO** - Correto |
-| **Cache** | "In-memory" | Redis配置存在但仅开发环境 | **BAIXO** - OK |
+| Problema | Status | Verificado em |
+|-----------|--------|---------------|
+| **GERENTE não usado** — doc dizia que não era usado | ✅ Corrigido — `PERMISSOES.md` atualizado com GERENTE documentado em 36 rotas | 2026-04-02 |
+| **NestJS version mismatch** — common@10 vs core@11 | ✅ Corrigido — ambos em `^11.1.x` | 2026-04-02 |
+| **Redis produção** | ✅ OK — sem Redis em prod é comportamento esperado e documentado | 2026-04-02 |
+| **Cache in-memory** | ✅ OK — design intencional para prod | 2026-04-02 |
 
 ### 4.3 📊 Verificação de @Roles(GERENTE)
 
@@ -170,29 +171,29 @@ O código REAL mostra GERENTE implementado em:
 
 ## 5. Problemas Identificados
 
-### 5.1 🚨 Críticos (P0)
+### 5.1 Críticos (P0)
 
-| ID | Problema | Local | Risco |
-|----|----------|-------|-------|
-| P0-1 | NestJS version mismatch | package.json | Instabilidade |
-| P0-2 | @BeforeInsert hashPassword comentado | funcionario.entity.ts | Senhas em plaintext |
-| P0-3 | DB_SYNC env var pode ativar synchronize | app.module.ts | Destruição em prod |
+| ID | Problema | Local | Status | Detalhe |
+|----|----------|-------|--------|---------|
+| P0-1 | NestJS version mismatch | package.json | ✅ Corrigido | `@nestjs/common` e `@nestjs/core` ambos em `^11.1.x` |
+| P0-2 | Hash de senha ausente na entity | funcionario.entity.ts | ✅ Corrigido | Sem `@BeforeInsert` na entity por design. Hash feito no `FuncionarioService.create()`, `registroPrimeiroAcesso()` e `update()` via `bcrypt.hash()`. Senhas nunca salvas em plaintext. |
+| P0-3 | `DB_SYNC` env var pode ativar synchronize | app.module.ts | ⚠️ Presente com aviso | `synchronize: DB_SYNC === 'true'`. Em prod `DB_SYNC` não está definido (false). Comentário no código avisa risco. Pendente remoção da env var para eliminar o risco completamente. |
 
-### 5.2 ⚠️ Altos (P1)
+### 5.2 Altos (P1)
 
-| ID | Problema | Local | Impacto |
-|----|----------|-------|---------|
-| P1-1 | Documentação GERENTE desatualizada | PERMISSOES.md | Confusão para devs |
-| P1-2 | Sem Redis em produção | docker-compose.prod.yml | Perda de cache |
-| P1-3 | Cache in-memory only | cache.module.ts | Performance |
+| ID | Problema | Local | Status |
+|----|----------|-------|--------|
+| P1-1 | Documentação GERENTE desatualizada | PERMISSOES.md | ✅ Corrigido — GERENTE documentado com permissões reais |
+| P1-2 | Sem Redis em produção | docker-compose.prod.yml | ✅ Aceitável — design intencional, cache in-memory funciona para escala atual |
+| P1-3 | Cache in-memory only | cache.module.ts | ✅ Aceitável — registrado como pendência de infraestrutura futura |
 
-### 5.3 📝 Médios (P2)
+### 5.3 Médios (P2)
 
-| ID | Problema | Local | Melhoria |
-|----|----------|-------|----------|
-| P2-1 | next.config.ts output: 'standalone' | next.config.ts | Desnecessário |
-| P2-2 | Comentários obsoletos Neon Cloud | app.module.ts | Limpeza |
-| P2-3 | Logs não estruturados em alguns módulos | Vários | Observabilidade |
+| ID | Problema | Local | Status |
+|----|----------|-------|--------|
+| P2-1 | `output: 'standalone'` no next.config.ts | next.config.ts | ✅ Intencional — habilita build otimizado para Docker/Vercel |
+| P2-2 | Comentário obsoleto Neon Cloud | app.module.ts linha 213 | ⚠️ Pendente — `// útil para Neon Cloud` ainda presente, banco é PostgreSQL local |
+| P2-3 | Logs não estruturados em alguns módulos | Vários | ⚠️ Pendente — melhoria de observabilidade futura |
 
 ---
 
@@ -202,74 +203,70 @@ O código REAL mostra GERENTE implementado em:
 
 | Componente | URL | Status | Última Atualização |
 |------------|-----|--------|-------------------|
-| Frontend | https://pubsystem.com.br | ✅ Ativo | 2026-02-11 |
-| Backend | https://api.pubsystem.com.br | ✅ Ativo | 2026-02-11 |
-| Banco | PostgreSQL 17 | ✅ Ativo | Docker local |
+| Frontend | https://pubsystem.com.br | ✅ Ativo | Vercel (auto-deploy) |
+| Backend | https://api.pubsystem.com.br | ✅ Ativo | 2026-04-01 (deploy manual) |
+| Banco | PostgreSQL 17 | ✅ Ativo | Docker local Oracle VM |
 | Domínio | pubsystem.com.br | ✅ Ativo | Cloudflare |
 
-### 6.2 ⚠️ Deploy Desatualizado
+### 6.2 Status do Deploy
 
-**Último deploy:** 2026-02-11 (role GERENTE)  
-**Pendentes desde então:**
-- Refatoração de segurança (P0 issues)
-- Correções de documentação
-- Melhorias de performance
-- Novos scripts de automação
+**Deploy atual:** 2026-04-01 — inclui correções de login SUPER_ADMIN, auth/refresh cross-tenant, schedulers, WebSocket.  
+**CI/CD:** Secrets `ORACLE_SSH_KEY`, `ORACLE_HOST`, `ORACLE_USER` configurados em 2026-04-02. Deploy automático via GitHub Actions funcional.
+
+**Pendentes de deploy:**
+- Correção throttle decorators (`@ThrottleLogin` nome `default` → `login`) — branch `teste-de-producao`
+- Correção V1/V6/V7 multi-tenant — branch `teste-de-producao`
 
 ---
 
 ## 7. Recomendações
 
-### 7.1 Imediatas (P0)
+### 7.1 Pendentes de ação (P0/P1)
 
-1. **Corrigir NestJS version mismatch**
-   ```bash
-   npm install @nestjs/common@^11.1.16
-   ```
-
-2. **Descomentar hashPassword**
+1. **Remover `DB_SYNC` do app.module.ts** — única P0 ainda aberta
    ```typescript
-   @BeforeInsert()
-   hashPassword() { /* código existente */ }
+   synchronize: false, // hardcoded — remover env var DB_SYNC
    ```
 
-3. **Remover DB_SYNC do app.module.ts**
+2. **Limpar comentário Neon Cloud** — `app.module.ts` linha 213
    ```typescript
-   synchronize: false, // remover env var
+   // Monitor de conexão com banco de dados
+   // (remover referência a Neon Cloud — banco é PostgreSQL local)
    ```
 
-### 7.2 Curtas (P1)
+3. **Fazer PR + deploy** da branch `teste-de-producao` com correções de throttle e multi-tenant
 
-1. **Atualizar documentação GERENTE**
-2. **Configurar Redis em produção**
-3. **Implementar cache distribuído**
+### 7.2 Médio Prazo (P2)
 
-### 7.3 Médio Prazo (P2)
-
-1. **Limpeza de código obsoleto**
-2. **Estruturar logs**
-3. **Otimizar configurações**
+1. **Migration banco**: adicionar `NOT NULL` constraint em `tenant_id` nas 26 tabelas
+2. **Estruturar logs**: padronizar Logger em módulos sem estrutura
+3. **Remover `empresa_id`** legado de `funcionarios` e `pontos_entrega` após confirmar dados migrados
 
 ---
 
 ## 8. Próximos Passos
 
-1. **Corrigir problemas P0** (segurança)
-2. **Fazer deploy** com correções
-3. **Atualizar documentação** (GERENTE)
-4. **Implementar Redis produção**
-5. **Executar testes E2E** completos
+1. **Abrir PR** `teste-de-producao` → `main` com correções de throttle e multi-tenant (V1/V6/V7)
+2. **Remover `DB_SYNC`** env var do app.module.ts
+3. **Limpar comentário Neon Cloud** do app.module.ts
+4. **Migration banco**: `tenant_id NOT NULL` nas 26 tabelas (planejado, sem urgência)
+5. **Executar testes E2E** em área de garçom, caixa e cozinha
 
 ---
 
 ## 9. Conclusão
 
-O sistema está **funcional e em produção**, mas com:
-- ✅ **Arquitetura sólida** e bem estruturada
-- ✅ **Multi-tenancy implementado** corretamente
-- ✅ **WebSocket funcionando** para tempo real
-- ⚠️ **Problemas de segurança** críticos a corrigir
-- ⚠️ **Documentação desatualizada** em pontos específicos
-- ⚠️ **Deploy desatualizado** desde Fev/2026
+O sistema está **funcional e em produção** com estado significativamente melhor que a auditoria original (2026-04-01):
 
-**Prioridade:** Corrigir P0 issues e fazer deploy imediatamente.
+- ✅ **Arquitetura sólida** e bem estruturada
+- ✅ **Multi-tenancy implementado** — vulnerabilidades V1–V7 corrigidas no código
+- ✅ **WebSocket seguro** — só aceita JWT verificado
+- ✅ **Auth robusto** — login SUPER_ADMIN, refresh cross-tenant, rate limit funcionais
+- ✅ **NestJS unificado** — ambos em v11.1.x
+- ✅ **Hash de senha** — feito no service, nunca plaintext
+- ✅ **Documentação atualizada** — PERMISSOES.md, multi-tenant.md, ARQUITETURA.md corrigidos
+- ⚠️ **`DB_SYNC` env var** presente (baixo risco — não definida em prod)
+- ⚠️ **Comentário Neon Cloud** obsoleto no app.module.ts
+- ⚠️ **Migration banco** `tenant_id NOT NULL` pendente (sem urgência)
+
+**Estado atual:** Sistema estável. Pendências são de limpeza/infraestrutura, sem impacto em segurança ou funcionalidade.

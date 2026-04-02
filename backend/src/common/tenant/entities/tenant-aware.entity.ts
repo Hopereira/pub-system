@@ -18,10 +18,10 @@ import { Tenant } from './tenant.entity';
  */
 export abstract class TenantAwareEntity {
   @Index()
-  @Column({ type: 'uuid', name: 'tenant_id', nullable: true })
+  @Column({ type: 'uuid', name: 'tenant_id', nullable: false })
   tenantId: string;
 
-  @ManyToOne(() => Tenant, { onDelete: 'CASCADE', nullable: true })
+  @ManyToOne(() => Tenant, { onDelete: 'CASCADE', nullable: false })
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 }

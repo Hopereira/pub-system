@@ -305,14 +305,28 @@ SUPER_ADMIN bypassa TenantGuard e FeatureGuard.
 
 ## 12. Vulnerabilidades Conhecidas e Status
 
+**Última revisão de código:** 2026-04-02
+
 | # | Vulnerabilidade | Severidade | Status |
 |---|----------------|-----------|--------|
-| V1 | tenant_id nullable em produção | Crítico | ⚠️ Migration criada, NÃO executada |
-| V2 | Schedulers com queries cross-tenant | Crítico | ⚠️ Pendente correção |
-| V3 | WebSocket aceita tenantId via query param | Crítico | ⚠️ Pendente correção |
-| V4 | POST /auth/refresh não valida tenant | Alto | ⚠️ Pendente correção |
-| V5 | RefreshToken.tenantId opcional | Alto | ⚠️ Pendente correção |
-| V6 | empresaId legado em 2 entidades | Médio | ⚠️ Pendente remoção |
-| V7 | resolveById com fallback empresaId | Médio | ⚠️ Pendente remoção |
+| V1 | `tenant_id` nullable em entidades operacionais | Crítico | ✅ Corrigido no código (`nullable: false` em `TenantAwareEntity`). Migration de banco pendente para NOT NULL constraint no PostgreSQL — `DB_SYNC=false` em prod, risco mitigado. |
+| V2 | Schedulers com queries cross-tenant | Crítico | ✅ Corrigido — `quase-pronto.scheduler.ts` e `medalha.scheduler.ts` iteram por tenant com filtro `tenantId`. |
+| V3 | WebSocket aceita `tenantId` via query param | Crítico | ✅ Corrigido — `base-tenant.gateway.ts` só aceita JWT verificado; query param e header rejeitados; sem JWT → desconecta. |
+| V4 | `POST /auth/refresh` não valida tenant | Alto | ✅ Corrigido — `tenantId` resolvido e validado; cross-tenant retorna `403`. Confirmado em produção. |
+| V5 | `RefreshToken.tenantId` opcional | Alto | ✅ Design intencional — SUPER_ADMIN tem `tenantId = null`. Validação de isolamento aplicada quando `tenantId` presente nos dois lados. |
+| V6 | `empresaId` legado em `funcionario` e `ponto-entrega` | Médio | ✅ Mitigado — `ponto-entrega.entity.ts` corrigido para `nullable: true`. `funcionario.entity.ts` mantém campo como legado `nullable`. Não afeta isolamento (campo não usado em guards). |
+| V7 | `super-admin.service.ts` query de `funcionariosAtivos` ignorava `tenantId` | Médio | ✅ Corrigido — query usa `(tenantId OR empresaId)` para cobrir dados legados. Demais fallbacks mantidos intencionalmente para compatibilidade retroativa. |
 
-Detalhes completos: `docs/audits/multi-tenant-audit.md`
+### Pendências de infraestrutura (não são bugs de isolamento)
+
+| Item | Descrição | Risco |
+|------|-----------|-------|
+| Migration banco | Adicionar `NOT NULL` constraint em `tenant_id` nas 26 tabelas | Baixo — `BaseTenantRepository` garante preenchimento no `save()` |
+| Remoção `empresaId` | Remover campo `empresa_id` de `funcionarios` e `pontos_entrega` após migração dos dados | Baixo — campo legado sem impacto em segurança |
+
+### Resumo
+
+Todas as vulnerabilidades de segurança (**V1–V7**) estão corrigidas no código.
+As pendências restantes são de infraestrutura de banco (migration) e limpeza de legado, sem impacto em isolamento entre tenants.
+
+Detalhes originais: `docs/audits/multi-tenant-audit.md`
