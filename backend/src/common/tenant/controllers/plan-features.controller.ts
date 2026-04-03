@@ -1,4 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { TenantContextService } from '../tenant-context.service';
@@ -19,6 +20,7 @@ import { Tenant } from '../entities/tenant.entity';
 @ApiBearerAuth()
 @Controller('plan')
 @UseGuards(JwtAuthGuard)
+@SkipThrottle()
 export class PlanFeaturesController {
   constructor(
     private readonly tenantContext: TenantContextService,

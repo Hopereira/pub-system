@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { SuperAdminService } from '../services/super-admin.service';
 import { TenantProvisioningService, CreateTenantDto } from '../services/tenant-provisioning.service';
+import { SkipThrottle } from '@nestjs/throttler';
 import { SkipTenantGuard } from '../guards/tenant.guard';
 import { SkipRateLimit } from '../guards/tenant-rate-limit.guard';
 
@@ -33,6 +34,7 @@ import { SkipRateLimit } from '../guards/tenant-rate-limit.guard';
 @UseGuards(JwtAuthGuard)
 @SkipTenantGuard()
 @SkipRateLimit()
+@SkipThrottle()
 export class SuperAdminController {
   constructor(
     private readonly superAdminService: SuperAdminService,
