@@ -26,7 +26,7 @@ Depurar e corrigir falhas de login persistentes no sistema multi-tenant:
 
 ### Bug 1 — `hop@hop.com` retornava 401 (tenant UUID errado)
 
-**Sintoma:** Login falhava com "Credenciais inválidas" mesmo com senha `123456` correta.
+**Sintoma:** Login falhava com "Credenciais inválidas" mesmo com credenciais corretas.
 
 **Root Cause:** `TenantResolverService.resolveBySlug()` usava `findOne` com cláusula `select` explícita que não carregava a propriedade `tenantId` herdada de `TenantAwareEntity` (TypeORM não popula campos herdados quando `select` é restritivo). O fallback `empresa.id` retornava o UUID da tabela `empresas` (`a367b711-...`) em vez do `tenantId` correto na tabela `tenants` (`aa25828b-...`).
 

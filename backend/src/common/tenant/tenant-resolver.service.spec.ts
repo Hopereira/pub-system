@@ -17,7 +17,16 @@ describe('TenantResolverService', () => {
     ativo: true,
   };
 
+  let mockQueryBuilder: any;
+
   beforeEach(async () => {
+    mockQueryBuilder = {
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TenantResolverService,
@@ -25,6 +34,7 @@ describe('TenantResolverService', () => {
           provide: getRepositoryToken(Empresa),
           useValue: {
             findOne: jest.fn(),
+            createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
           },
         },
         {
@@ -38,14 +48,14 @@ describe('TenantResolverService', () => {
 
     service = module.get<TenantResolverService>(TenantResolverService);
     empresaRepository = module.get(getRepositoryToken(Empresa));
-    
+
     // Limpar cache entre testes
     service.clearCache();
   });
 
   describe('resolveBySlug', () => {
     it('deve resolver tenant por slug', async () => {
-      empresaRepository.findOne.mockResolvedValue(mockEmpresa as Empresa);
+      mockQueryBuilder.getOne.mockResolvedValue(mockEmpresa as Empresa);
 
       const result = await service.resolveBySlug('bar-do-ze');
 
@@ -55,18 +65,18 @@ describe('TenantResolverService', () => {
     });
 
     it('deve normalizar slug para lowercase', async () => {
-      empresaRepository.findOne.mockResolvedValue(mockEmpresa as Empresa);
+      mockQueryBuilder.getOne.mockResolvedValue(mockEmpresa as Empresa);
 
       await service.resolveBySlug('BAR-DO-ZE');
 
-      expect(empresaRepository.findOne).toHaveBeenCalledWith({
-        where: { slug: 'bar-do-ze' },
-        select: ['id', 'slug', 'nomeFantasia', 'ativo', 'tenantId'],
-      });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'empresa.slug = :slug',
+        { slug: 'bar-do-ze' },
+      );
     });
 
     it('deve lançar NotFoundException se tenant não encontrado', async () => {
-      empresaRepository.findOne.mockResolvedValue(null);
+      mockQueryBuilder.getOne.mockResolvedValue(null);
 
       await expect(service.resolveBySlug('inexistente')).rejects.toThrow(
         NotFoundException
@@ -74,7 +84,7 @@ describe('TenantResolverService', () => {
     });
 
     it('deve lançar NotFoundException se tenant inativo', async () => {
-      empresaRepository.findOne.mockResolvedValue({
+      mockQueryBuilder.getOne.mockResolvedValue({
         ...mockEmpresa,
         ativo: false,
       } as Empresa);
@@ -85,13 +95,13 @@ describe('TenantResolverService', () => {
     });
 
     it('deve usar cache na segunda chamada', async () => {
-      empresaRepository.findOne.mockResolvedValue(mockEmpresa as Empresa);
+      mockQueryBuilder.getOne.mockResolvedValue(mockEmpresa as Empresa);
 
       await service.resolveBySlug('bar-do-ze');
       await service.resolveBySlug('bar-do-ze');
 
-      // Deve chamar o banco apenas uma vez
-      expect(empresaRepository.findOne).toHaveBeenCalledTimes(1);
+      // Deve chamar o banco apenas uma vez (segunda chamada usa cache)
+      expect(empresaRepository.createQueryBuilder).toHaveBeenCalledTimes(1);
     });
   });
 
