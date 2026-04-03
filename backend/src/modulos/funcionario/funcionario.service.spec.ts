@@ -19,6 +19,10 @@ describe('FuncionarioService', () => {
   let funcionarioRepository: any;
   let configService: any;
 
+  const mockRawRepository = {
+    count: jest.fn(),
+  };
+
   const mockFuncionarioRepository = {
     create: jest.fn(),
     save: jest.fn(),
@@ -27,6 +31,7 @@ describe('FuncionarioService', () => {
     preload: jest.fn(),
     remove: jest.fn(),
     count: jest.fn(),
+    rawRepository: mockRawRepository,
     createQueryBuilder: jest.fn(),
     findAtivos: jest.fn(),
     findByEmail: jest.fn(),
@@ -99,7 +104,7 @@ describe('FuncionarioService', () => {
   // ============================================
   describe('onModuleInit', () => {
     it('deve criar admin padrão se não existir funcionários', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(0);
+      mockRawRepository.count.mockResolvedValue(0);
       mockConfigService.get.mockImplementation((key: string) => {
         if (key === 'ADMIN_SENHA') return 'admin123';
         if (key === 'ADMIN_EMAIL') return 'admin@admin.com';
@@ -111,17 +116,17 @@ describe('FuncionarioService', () => {
 
       await service.onModuleInit();
 
-      expect(mockFuncionarioRepository.count).toHaveBeenCalled();
+      expect(mockRawRepository.count).toHaveBeenCalled();
       expect(mockFuncionarioRepository.create).toHaveBeenCalled();
       expect(mockFuncionarioRepository.save).toHaveBeenCalled();
     });
 
     it('não deve criar admin se já existir funcionários', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(5);
+      mockRawRepository.count.mockResolvedValue(5);
 
       await service.onModuleInit();
 
-      expect(mockFuncionarioRepository.count).toHaveBeenCalled();
+      expect(mockRawRepository.count).toHaveBeenCalled();
       expect(mockFuncionarioRepository.create).not.toHaveBeenCalled();
     });
   });
@@ -131,7 +136,7 @@ describe('FuncionarioService', () => {
   // ============================================
   describe('isFirstAccess', () => {
     it('deve retornar true se não houver usuários', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(0);
+      mockRawRepository.count.mockResolvedValue(0);
 
       const result = await service.isFirstAccess();
 
@@ -139,7 +144,7 @@ describe('FuncionarioService', () => {
     });
 
     it('deve retornar false se houver usuários', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(3);
+      mockRawRepository.count.mockResolvedValue(3);
 
       const result = await service.isFirstAccess();
 
@@ -159,7 +164,7 @@ describe('FuncionarioService', () => {
     };
 
     it('deve criar primeiro usuário como ADMIN', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(0);
+      mockRawRepository.count.mockResolvedValue(0);
       mockFuncionarioRepository.create.mockReturnValue({
         ...createDto,
         cargo: Cargo.ADMIN,
@@ -178,7 +183,7 @@ describe('FuncionarioService', () => {
     });
 
     it('deve lançar ForbiddenException se já existir usuário', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(1);
+      mockRawRepository.count.mockResolvedValue(1);
 
       await expect(service.registroPrimeiroAcesso(createDto)).rejects.toThrow(
         ForbiddenException,
@@ -186,7 +191,7 @@ describe('FuncionarioService', () => {
     });
 
     it('deve lançar ConflictException se email já existir', async () => {
-      mockFuncionarioRepository.count.mockResolvedValue(0);
+      mockRawRepository.count.mockResolvedValue(0);
       mockFuncionarioRepository.create.mockReturnValue(createDto);
       mockFuncionarioRepository.save.mockRejectedValue({ code: '23505' });
 
