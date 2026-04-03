@@ -182,24 +182,24 @@ describe('TenantResolverService', () => {
 
   describe('cache', () => {
     it('deve invalidar cache corretamente', async () => {
-      empresaRepository.findOne.mockResolvedValue(mockEmpresa as Empresa);
+      mockQueryBuilder.getOne.mockResolvedValue(mockEmpresa as Empresa);
 
       await service.resolveBySlug('bar-do-ze');
       service.invalidateCache(mockEmpresa.id!, mockEmpresa.slug);
       await service.resolveBySlug('bar-do-ze');
 
       // Deve chamar o banco duas vezes (cache foi invalidado)
-      expect(empresaRepository.findOne).toHaveBeenCalledTimes(2);
+      expect(empresaRepository.createQueryBuilder).toHaveBeenCalledTimes(2);
     });
 
     it('deve limpar todo o cache', async () => {
-      empresaRepository.findOne.mockResolvedValue(mockEmpresa as Empresa);
+      mockQueryBuilder.getOne.mockResolvedValue(mockEmpresa as Empresa);
 
       await service.resolveBySlug('bar-do-ze');
       service.clearCache();
       await service.resolveBySlug('bar-do-ze');
 
-      expect(empresaRepository.findOne).toHaveBeenCalledTimes(2);
+      expect(empresaRepository.createQueryBuilder).toHaveBeenCalledTimes(2);
     });
   });
 });
