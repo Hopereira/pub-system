@@ -139,7 +139,7 @@ import { PlanModule } from './modulos/plan/plan.module';
       {
         name: 'login',
         ttl: 900000, // 15 minutos
-        limit: 5, // 5 tentativas por 15 minutos
+        limit: 1000, // Global: sem bloqueio (endpoints específicos sobrescrevem via @ThrottleLogin)
       },
     ]),
     TypeOrmModule.forRootAsync({
