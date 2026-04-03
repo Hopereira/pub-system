@@ -16,6 +16,7 @@ import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { SuperAdminService } from '../services/super-admin.service';
 import { TenantProvisioningService, CreateTenantDto } from '../services/tenant-provisioning.service';
 import { SkipTenantGuard } from '../guards/tenant.guard';
+import { SkipRateLimit } from '../guards/tenant-rate-limit.guard';
 
 /**
  * SuperAdminController - Endpoints para gestão da plataforma
@@ -31,6 +32,7 @@ import { SkipTenantGuard } from '../guards/tenant.guard';
 @Controller('super-admin')
 @UseGuards(JwtAuthGuard)
 @SkipTenantGuard()
+@SkipRateLimit()
 export class SuperAdminController {
   constructor(
     private readonly superAdminService: SuperAdminService,

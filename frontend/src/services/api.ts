@@ -57,6 +57,8 @@ axiosRetry(api, {
   retries: 3, // Tentar até 3 vezes
   retryDelay: axiosRetry.exponentialDelay, // Delay exponencial (1s, 2s, 4s)
   retryCondition: (error) => {
+    // Nunca retentar 429 (rate limit) — agrava o problema
+    if (error.response?.status === 429) return false;
     // Retry apenas em erros de rede ou 5xx
     return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
            (error.response?.status ? error.response.status >= 500 : false);
