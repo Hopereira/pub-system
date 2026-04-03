@@ -53,6 +53,39 @@ export interface PlanInfo {
   tenantNome?: string;
 }
 
+// Cache de módulo: evita que Sidebar + MobileMenu façam 2 chamadas simultâneas
+let _planFeaturesCache: { data: PlanInfo; timestamp: number } | null = null;
+let _planFeaturesInflight: Promise<PlanInfo> | null = null;
+const PLAN_CACHE_TTL = 60000; // 60 segundos
+
+const PLAN_FALLBACK: PlanInfo = {
+  plano: 'FREE',
+  features: { pedidos: true, comandas: true, mesas: true, produtos: true, funcionarios: true },
+  limits: { maxMesas: 10, maxFuncionarios: 5, maxProdutos: 50, maxAmbientes: 3, maxEventos: 0, storageGB: 1 },
+  allFeatures: ['pedidos', 'comandas', 'mesas', 'produtos', 'funcionarios'],
+};
+
+async function fetchPlanFeatures(): Promise<PlanInfo> {
+  const now = Date.now();
+  if (_planFeaturesCache && (now - _planFeaturesCache.timestamp < PLAN_CACHE_TTL)) {
+    return _planFeaturesCache.data;
+  }
+  if (_planFeaturesInflight) {
+    return _planFeaturesInflight;
+  }
+  _planFeaturesInflight = api.get('/plan/features')
+    .then(res => {
+      _planFeaturesCache = { data: res.data, timestamp: Date.now() };
+      _planFeaturesInflight = null;
+      return res.data as PlanInfo;
+    })
+    .catch(err => {
+      _planFeaturesInflight = null;
+      throw err;
+    });
+  return _planFeaturesInflight;
+}
+
 /**
  * Hook para verificar features disponíveis no plano atual
  * 
@@ -64,8 +97,10 @@ export interface PlanInfo {
  * }
  */
 export function usePlanFeatures() {
-  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [planInfo, setPlanInfo] = useState<PlanInfo | null>(
+    _planFeaturesCache?.data ?? null // usa cache imediatamente se disponível
+  );
+  const [loading, setLoading] = useState(!_planFeaturesCache);
   const [error, setError] = useState<string | null>(null);
 
   // Carregar features do plano
@@ -73,30 +108,11 @@ export function usePlanFeatures() {
     const loadFeatures = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/plan/features');
-        setPlanInfo(response.data);
+        const data = await fetchPlanFeatures();
+        setPlanInfo(data);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Erro ao carregar plano');
-        // Fallback para plano FREE
-        setPlanInfo({
-          plano: 'FREE',
-          features: {
-            pedidos: true,
-            comandas: true,
-            mesas: true,
-            produtos: true,
-            funcionarios: true,
-          },
-          limits: {
-            maxMesas: 10,
-            maxFuncionarios: 5,
-            maxProdutos: 50,
-            maxAmbientes: 3,
-            maxEventos: 0,
-            storageGB: 1,
-          },
-          allFeatures: ['pedidos', 'comandas', 'mesas', 'produtos', 'funcionarios'],
-        });
+        setPlanInfo(PLAN_FALLBACK);
       } finally {
         setLoading(false);
       }

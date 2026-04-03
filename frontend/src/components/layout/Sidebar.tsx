@@ -10,13 +10,14 @@ import {
     Home, Users, UtensilsCrossed, BookOpen, ClipboardList, BarChart2,
     Settings, Building2, DoorOpen, ChefHat, Landmark, Presentation,
     Calendar, MapPin, Package, Map, QrCode, Search, Receipt, Calculator, User,
-    Crown, Shield // Ícones para Super Admin e features premium
+    Crown, Shield, Lock // Ícones para Super Admin e features premium
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { getAmbientes } from '@/services/ambienteService';
 import { Ambiente } from '@/types/ambiente';
 import { usePlanFeatures, Feature } from '@/hooks/usePlanFeatures';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface NavLink {
     href: string;
@@ -25,6 +26,69 @@ interface NavLink {
     roles: string[];
     feature?: Feature | string; // Feature requerida para mostrar o link
     premium?: boolean; // Indica se é feature premium (mostra badge)
+}
+
+/**
+ * Mapa: feature → plano mínimo + texto de trial
+ * Espelha PLAN_FEATURES do backend (plan-features.service.ts)
+ */
+const FEATURE_PLAN_INFO: Record<string, { minPlan: string; trialDias: number }> = {
+  [Feature.CLIENTES]:             { minPlan: 'Básico',     trialDias: 14 },
+  [Feature.AVALIACOES]:           { minPlan: 'Básico',     trialDias: 14 },
+  [Feature.EVENTOS]:              { minPlan: 'Básico',     trialDias: 14 },
+  [Feature.PONTOS_ENTREGA]:       { minPlan: 'Básico',     trialDias: 14 },
+  [Feature.ANALYTICS]:            { minPlan: 'Básico',     trialDias: 14 },
+  [Feature.RELATORIOS_AVANCADOS]: { minPlan: 'Pro',        trialDias: 7  },
+  [Feature.MEDALHAS]:             { minPlan: 'Pro',        trialDias: 7  },
+  [Feature.TURNOS]:               { minPlan: 'Pro',        trialDias: 7  },
+  [Feature.CAIXA_AVANCADO]:       { minPlan: 'Pro',        trialDias: 7  },
+  [Feature.API_EXTERNA]:          { minPlan: 'Enterprise', trialDias: 0  },
+  [Feature.WEBHOOKS]:             { minPlan: 'Enterprise', trialDias: 0  },
+  [Feature.WHITE_LABEL]:          { minPlan: 'Enterprise', trialDias: 0  },
+  [Feature.MULTI_UNIDADE]:        { minPlan: 'Enterprise', trialDias: 0  },
+  [Feature.SUPORTE_PRIORITARIO]:  { minPlan: 'Enterprise', trialDias: 0  },
+};
+
+/** Componente para links bloqueados pelo plano — opaco + tooltip de upgrade */
+function LockedNavLink({ link }: { link: NavLink }) {
+  const planInfo = link.feature ? FEATURE_PLAN_INFO[link.feature] : null;
+  const minPlan = planInfo?.minPlan ?? 'superior';
+  const trialDias = planInfo?.trialDias ?? 0;
+
+  return (
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger asChild>
+        <div
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-400 opacity-40 cursor-not-allowed select-none dark:text-gray-600"
+          aria-disabled="true"
+        >
+          <link.icon className="h-5 w-5 flex-shrink-0" />
+          <span className="flex-1 text-sm">{link.label}</span>
+          <Lock className="h-3 w-3 flex-shrink-0" />
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="right" className="bg-gray-900 text-white border-gray-700 max-w-[240px] p-3">
+        <div className="space-y-2">
+          <p className="font-semibold text-xs flex items-center gap-1">
+            🔒 Plano {minPlan} ou superior
+          </p>
+          <p className="text-xs text-gray-300 leading-relaxed">
+            <strong>{link.label}</strong> requer o plano {minPlan}.
+            {trialDias > 0 && (
+              <> Teste grátis por <strong>{trialDias} dias</strong> disponível.</>
+            )}
+            {trialDias === 0 && <> Entre em contato para acesso.</>}
+          </p>
+          <a
+            href="/dashboard/configuracoes/plano"
+            className="inline-block text-xs text-purple-300 hover:text-purple-200 underline underline-offset-2"
+          >
+            Ver planos e fazer upgrade →
+          </a>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 const baseNavLinks: NavLink[] = [
@@ -62,7 +126,7 @@ const baseNavLinks: NavLink[] = [
   { href: '/dashboard/admin/cardapio', label: 'Gerir Cardápio', icon: BookOpen, roles: ['ADMIN'] },
   { href: '/dashboard/admin/funcionarios', label: 'Funcionários', icon: Users, roles: ['ADMIN'] },
   { href: '/dashboard/admin/ambientes', label: 'Ambientes', icon: DoorOpen, roles: ['ADMIN'] },
-  { href: '/dashboard/admin/pontos-entrega', label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'] },
+  { href: '/dashboard/admin/pontos-entrega', label: 'Pontos de Entrega', icon: MapPin, roles: ['ADMIN'], feature: Feature.PONTOS_ENTREGA, premium: true },
   
   // --- Features BASIC+ (Eventos) ---
   { href: '/dashboard/admin/agenda-eventos', label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'], feature: Feature.EVENTOS, premium: true },
@@ -138,43 +202,45 @@ export function Sidebar() {
     return combinedLinks;
   }, [operationalLinks]);
 
-  // Filtrar por cargo E por feature do plano
-  const accessibleLinks = allLinks.filter(link => {
-    // Verificar cargo
-    if (!user?.cargo || !link.roles.includes(user.cargo)) {
-      return false;
-    }
-    // Verificar feature do plano (se especificada)
-    if (link.feature && !hasFeature(link.feature)) {
-      return false;
-    }
-    return true;
-  });
+  // Links visíveis para o cargo do usuário (role filter — não muda)
+  const roleLinks = allLinks.filter(link =>
+    user?.cargo && link.roles.includes(user.cargo)
+  );
 
   return (
     <aside className="hidden w-64 flex-shrink-0 border-r bg-white p-4 dark:bg-gray-800 md:block">
-      <nav className="flex flex-col gap-2">
-        {accessibleLinks.map(link => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={clsx(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-50',
-              {
-                'bg-gray-200 dark:bg-gray-700 font-bold': pathname === link.href,
-              }
-            )}
-          >
-            <link.icon className="h-5 w-5" />
-            <span className="flex-1">{link.label}</span>
-            {link.premium && (
-              <span title="Feature Premium">
-                <Crown className="h-3 w-3 text-yellow-500" />
-              </span>
-            )}
-          </Link>
-        ))}
-      </nav>
+      <TooltipProvider>
+        <nav className="flex flex-col gap-2">
+          {roleLinks.map(link => {
+            // Feature bloqueada pelo plano → link opaco com tooltip
+            const isLocked = !!link.feature && !hasFeature(link.feature);
+            if (isLocked) {
+              return <LockedNavLink key={link.href} link={link} />;
+            }
+            // Link normal acessível
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={clsx(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-gray-600 transition-all hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-50',
+                  {
+                    'bg-gray-200 dark:bg-gray-700 font-bold': pathname === link.href,
+                  }
+                )}
+              >
+                <link.icon className="h-5 w-5" />
+                <span className="flex-1">{link.label}</span>
+                {link.premium && (
+                  <span title="Feature Premium">
+                    <Crown className="h-3 w-3 text-yellow-500" />
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      </TooltipProvider>
     </aside>
   );
 }
