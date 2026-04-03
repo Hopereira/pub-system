@@ -46,7 +46,12 @@ export default function EmpresaPage() {
         const dadosEmpresa = await getEmpresa();
         if (dadosEmpresa) {
           setEmpresa(dadosEmpresa);
-          form.reset(dadosEmpresa);
+          form.reset({
+            ...dadosEmpresa,
+            cnpj: dadosEmpresa.cnpj ?? '',
+            endereco: dadosEmpresa.endereco ?? '',
+            telefone: dadosEmpresa.telefone ?? '',
+          });
         }
       } catch (error) {
         console.info("Nenhuma empresa encontrada para carregar. O formulário está em modo de criação.");
@@ -115,7 +120,7 @@ export default function EmpresaPage() {
             <FormField control={form.control} name="cnpj" render={({ field }) => (
               <FormItem>
                 <FormLabel>CNPJ</FormLabel>
-                <FormControl><Input placeholder="Apenas os 14 números" {...field} disabled={!!empresa} /></FormControl>
+                <FormControl><Input placeholder="Apenas os 14 números" {...field} disabled={!!empresa?.cnpj} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}/>
