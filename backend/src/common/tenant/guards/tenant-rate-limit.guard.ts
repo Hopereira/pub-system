@@ -29,30 +29,30 @@ export interface RateLimitConfig {
  */
 export const RATE_LIMITS: Record<TenantPlano | string, RateLimitConfig> = {
   [TenantPlano.FREE]: {
-    requestsPerMinute: 20,
-    requestsPerHour: 500,
-    burstLimit: 5,
+    requestsPerMinute: 60,
+    requestsPerHour: 1000,
+    burstLimit: 20,
   },
   [TenantPlano.BASIC]: {
-    requestsPerMinute: 60,
-    requestsPerHour: 2000,
-    burstLimit: 15,
+    requestsPerMinute: 120,
+    requestsPerHour: 3000,
+    burstLimit: 40,
   },
   [TenantPlano.PRO]: {
-    requestsPerMinute: 100,
-    requestsPerHour: 5000,
-    burstLimit: 30,
+    requestsPerMinute: 300,
+    requestsPerHour: 10000,
+    burstLimit: 80,
   },
   [TenantPlano.ENTERPRISE]: {
-    requestsPerMinute: 500,
-    requestsPerHour: 20000,
-    burstLimit: 100,
+    requestsPerMinute: 1000,
+    requestsPerHour: 50000,
+    burstLimit: 200,
   },
   // Fallback para tenants sem plano definido
   default: {
-    requestsPerMinute: 30,
-    requestsPerHour: 1000,
-    burstLimit: 10,
+    requestsPerMinute: 60,
+    requestsPerHour: 2000,
+    burstLimit: 20,
   },
 };
 
