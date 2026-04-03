@@ -13,6 +13,26 @@ const getApiBaseUrl = () => {
   return process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
 };
 
+/**
+ * Extrai o slug do tenant do subdomínio atual
+ * Ex: casarao-pub-423.pubsystem.com.br → casarao-pub-423
+ */
+const getTenantSlugFromHostname = (): string | null => {
+  if (isServer) return null;
+  
+  const hostname = window.location.hostname;
+  // Ignora localhost e domínios sem subdomínio
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return null;
+  
+  // Extrai subdomínio: casarao-pub-423.pubsystem.com.br → casarao-pub-423
+  const parts = hostname.split('.');
+  if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'api') {
+    return parts[0];
+  }
+  
+  return null;
+};
+
 // --- Instância 1: API Autenticada (para o admin) ---
 const api = axios.create({
   baseURL: getApiBaseUrl(),
@@ -60,6 +80,13 @@ api.interceptors.request.use(
       const token = localStorage.getItem('authToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Envia o slug do tenant via header para garantir resolução correta no backend
+      // (necessário porque api.pubsystem.com.br não tem subdomínio de tenant)
+      const tenantSlug = getTenantSlugFromHostname();
+      if (tenantSlug) {
+        config.headers['X-Tenant-Slug'] = tenantSlug;
       }
     }
     
@@ -201,26 +228,6 @@ export const publicApi = axios.create({
   baseURL: getApiBaseUrl(),
   timeout: 30000, // 30 segundos
 });
-
-/**
- * Extrai o slug do tenant do subdomínio atual
- * Ex: casarao-pub-423.pubsystem.com.br → casarao-pub-423
- */
-const getTenantSlugFromHostname = (): string | null => {
-  if (isServer) return null;
-  
-  const hostname = window.location.hostname;
-  // Ignora localhost e domínios sem subdomínio
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return null;
-  
-  // Extrai subdomínio: casarao-pub-423.pubsystem.com.br → casarao-pub-423
-  const parts = hostname.split('.');
-  if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'api') {
-    return parts[0];
-  }
-  
-  return null;
-};
 
 // Adiciona os mesmos interceptors de logging na API pública
 publicApi.interceptors.request.use(

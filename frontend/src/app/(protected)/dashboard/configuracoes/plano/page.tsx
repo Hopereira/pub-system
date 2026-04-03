@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { usePlanFeatures, Feature } from '@/hooks/usePlanFeatures';
+import { usePlanFeatures, Feature, invalidatePlanFeaturesCache } from '@/hooks/usePlanFeatures';
 import api from '@/services/api';
 import paymentService, { PaymentGateway, PaymentConfig } from '@/services/paymentService';
 import {
@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   CreditCard,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -104,6 +105,8 @@ export default function PlanUpgradePage() {
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | null>(null);
 
   useEffect(() => {
+    // Invalida o cache do plano para garantir dados frescos ao abrir a página
+    invalidatePlanFeaturesCache();
     loadComparison();
     loadGateways();
     
@@ -178,17 +181,25 @@ export default function PlanUpgradePage() {
     }
   };
 
+  // Plano atual: usa dado fresco do /plan/compare (não o hook que pode estar em cache)
+  const activePlan = comparison?.currentPlano || currentPlan || 'FREE';
+
   const getPlanOrder = (plan: string): number => {
     const order: Record<string, number> = { FREE: 0, BASIC: 1, PRO: 2, ENTERPRISE: 3 };
     return order[plan] ?? 0;
   };
 
   const canUpgrade = (targetPlan: string): boolean => {
-    return getPlanOrder(targetPlan) > getPlanOrder(currentPlan);
+    return getPlanOrder(targetPlan) > getPlanOrder(activePlan);
   };
 
   const canDowngrade = (targetPlan: string): boolean => {
-    return getPlanOrder(targetPlan) < getPlanOrder(currentPlan);
+    return getPlanOrder(targetPlan) < getPlanOrder(activePlan);
+  };
+
+  const handleRefresh = () => {
+    invalidatePlanFeaturesCache();
+    loadComparison();
   };
 
   if (loading || planLoading) {
@@ -203,13 +214,23 @@ export default function PlanUpgradePage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <Link 
-          href="/dashboard" 
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Voltar ao Dashboard
-        </Link>
+        <div className="flex items-center justify-between mb-4">
+          <Link 
+            href="/dashboard" 
+            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Voltar ao Dashboard
+          </Link>
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border hover:bg-gray-50 transition"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar plano
+          </button>
+        </div>
         
         <div className="flex items-center gap-3 mb-2">
           <Crown className="h-8 w-8 text-yellow-500" />
@@ -259,14 +280,14 @@ export default function PlanUpgradePage() {
           <div>
             <p className="text-purple-200 text-sm mb-1">Seu plano atual</p>
             <h2 className="text-2xl font-bold flex items-center gap-2">
-              {React.createElement(PLAN_ICONS[currentPlan] || Zap, { className: 'h-6 w-6' })}
-              {currentPlan}
+              {React.createElement(PLAN_ICONS[activePlan] || Zap, { className: 'h-6 w-6' })}
+              {activePlan}
             </h2>
-            <p className="text-purple-200 mt-1">{PLAN_DESCRIPTIONS[currentPlan]}</p>
+            <p className="text-purple-200 mt-1">{PLAN_DESCRIPTIONS[activePlan]}</p>
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold">
-              R$ {PLAN_PRICES[currentPlan]?.monthly || 0}
+              R$ {PLAN_PRICES[activePlan]?.monthly || 0}
               <span className="text-lg font-normal">/mês</span>
             </p>
             {planInfo?.limits && (

@@ -65,6 +65,12 @@ const PLAN_FALLBACK: PlanInfo = {
   allFeatures: ['pedidos', 'comandas', 'mesas', 'produtos', 'funcionarios'],
 };
 
+/** Invalida o cache do plano — use na página de plano para garantir dado fresco */
+export function invalidatePlanFeaturesCache(): void {
+  _planFeaturesCache = null;
+  _planFeaturesInflight = null;
+}
+
 async function fetchPlanFeatures(): Promise<PlanInfo> {
   const now = Date.now();
   if (_planFeaturesCache && (now - _planFeaturesCache.timestamp < PLAN_CACHE_TTL)) {
