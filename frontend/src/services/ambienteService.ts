@@ -6,9 +6,30 @@ import { Ambiente } from '@/types/ambiente';
 export type { Ambiente };
 export type AmbienteData = Ambiente;
 
+// Cache para evitar 429: Sidebar + MobileMenu + página chamam getAmbientes() simultaneamente
+let _ambientesCache: { data: Ambiente[]; timestamp: number } | null = null;
+let _ambientesInflight: Promise<Ambiente[]> | null = null;
+const AMBIENTES_CACHE_TTL = 30000; // 30 segundos
+
 export const getAmbientes = async (): Promise<Ambiente[]> => {
-  const response = await api.get<Ambiente[]>('/ambientes');
-  return response.data;
+  const now = Date.now();
+  if (_ambientesCache && (now - _ambientesCache.timestamp < AMBIENTES_CACHE_TTL)) {
+    return _ambientesCache.data;
+  }
+  if (_ambientesInflight) {
+    return _ambientesInflight;
+  }
+  _ambientesInflight = api.get<Ambiente[]>('/ambientes')
+    .then(res => {
+      _ambientesCache = { data: res.data, timestamp: Date.now() };
+      _ambientesInflight = null;
+      return res.data;
+    })
+    .catch(err => {
+      _ambientesInflight = null;
+      throw err;
+    });
+  return _ambientesInflight;
 };
 
 export const getAmbienteById = async (id: string, token?: string): Promise<Ambiente | null> => {
