@@ -15,6 +15,8 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: pub-postgres
+    networks:
+      - pub-network
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-pubuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
@@ -50,6 +52,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile.micro
     container_name: pub-backend
+    networks:
+      - pub-network
     ports:
       - "3000:3000"
     depends_on:
@@ -104,6 +108,8 @@ services:
   watchtower:
     image: containrrr/watchtower
     container_name: watchtower
+    networks:
+      - pub-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -118,3 +124,8 @@ services:
 
 volumes:
   pub_postgres_data:
+
+networks:
+  pub-network:
+    name: pub-network
+    driver: bridge
