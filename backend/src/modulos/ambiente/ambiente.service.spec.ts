@@ -91,6 +91,14 @@ describe('AmbienteService', () => {
     };
 
     it('deve criar ambiente com sucesso', async () => {
+      // Mock para queryBuilder da validação de duplicidade
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null), // Não existe duplicidade
+      };
+      mockAmbienteRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      
       mockAmbienteRepository.create.mockReturnValue(createDto);
       mockAmbienteRepository.save.mockResolvedValue({
         id: 'new-ambiente-uuid',
@@ -102,6 +110,26 @@ describe('AmbienteService', () => {
       expect(result).toBeDefined();
       expect(result.nome).toBe(createDto.nome);
       expect(mockAmbienteRepository.create).toHaveBeenCalledWith(createDto);
+    });
+
+    it('deve lançar ConflictException se nome já existe no mesmo tenant', async () => {
+      // Mock para queryBuilder que retorna ambiente existente
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockAmbiente), // Já existe
+      };
+      mockAmbienteRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        ConflictException
+      );
+
+      expect(mockAmbienteRepository.createQueryBuilder).toHaveBeenCalledWith('ambiente');
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'ambiente.nome = :nome',
+        { nome: createDto.nome }
+      );
     });
   });
 

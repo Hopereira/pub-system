@@ -61,6 +61,21 @@ export class AmbienteService {
     this.logger.log(`📝 Criando ambiente: ${createAmbienteDto.nome}`);
     
     try {
+      // Verificar se já existe ambiente com mesmo nome no mesmo tenant
+      const tenantId = this.getTenantId();
+      if (tenantId) {
+        const existing = await this.ambienteRepository
+          .createQueryBuilder('ambiente')
+          .where('ambiente.nome = :nome', { nome: createAmbienteDto.nome })
+          .andWhere('ambiente.tenantId = :tenantId', { tenantId })
+          .getOne();
+        
+        if (existing) {
+          this.logger.warn(`⚠️ Ambiente com nome "${createAmbienteDto.nome}" já existe no tenant ${tenantId}`);
+          throw new ConflictException(`Já existe um ambiente com o nome "${createAmbienteDto.nome}" neste estabelecimento.`);
+        }
+      }
+      
       // Criar entidade com tenant_id automático
       const ambiente = this.ambienteRepository.create(createAmbienteDto);
       this.logger.log(`📝 Ambiente criado em memória com tenantId: ${ambiente.tenantId}`);
