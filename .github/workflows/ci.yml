@@ -168,17 +168,18 @@ jobs:
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
           
           # Deploy via SSH
-          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 $SSH_USER@$SSH_HOST << 'ENDSSH'
+            set -e
             cd ~/pub-system
             git pull origin main
-            ./scripts/backup.sh
-            docker compose -f docker-compose.micro.yml up -d --build --force-recreate
+            docker compose -f docker-compose.micro.yml build backend
+            docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
           ENDSSH
           
           # Limpar chave
           rm -f ~/.ssh/deploy_key
           echo "✅ Backend deployed successfully"
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Verify deployment health
         run: |
