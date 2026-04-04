@@ -50,9 +50,21 @@ export const createAmbiente = async (data: Partial<Ambiente>): Promise<Ambiente>
 
 export const updateAmbiente = async (id: string, data: Partial<Ambiente>): Promise<Ambiente> => {
   const response = await api.put<Ambiente>(`/ambientes/${id}`, data);
+  // Limpar cache local para forçar atualização
+  _ambientesCache = null;
+  _ambientesInflight = null;
   return response.data;
 };
 
 export const deleteAmbiente = async (id: string): Promise<void> => {
   await api.delete(`/ambientes/${id}`);
+  // Limpar cache local para forçar atualização
+  _ambientesCache = null;
+  _ambientesInflight = null;
+};
+
+// Função para limpar cache manualmente (útil após update/delete)
+export const clearAmbientesCache = (): void => {
+  _ambientesCache = null;
+  _ambientesInflight = null;
 };

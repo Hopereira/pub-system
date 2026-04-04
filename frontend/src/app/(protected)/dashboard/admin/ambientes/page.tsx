@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 
-import { createAmbiente, deleteAmbiente, getAmbientes, updateAmbiente } from '@/services/ambienteService';
+import { createAmbiente, deleteAmbiente, getAmbientes, updateAmbiente, clearAmbientesCache } from '@/services/ambienteService';
 import { AmbienteData } from '@/services/ambienteService';
 
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -106,6 +106,7 @@ const AmbientesPage = () => {
         toast.success('Ambiente criado com sucesso!');
       }
       setIsFormDialogOpen(false);
+      clearAmbientesCache(); // Limpar cache para forçar atualização
       await carregarAmbientes();
     } catch (err) {
       toast.error(editingAmbiente ? 'Falha ao atualizar o ambiente.' : 'Falha ao criar o ambiente.');
@@ -116,6 +117,7 @@ const AmbientesPage = () => {
     try {
       await deleteAmbiente(id);
       toast.success("Ambiente apagado com sucesso!");
+      clearAmbientesCache(); // Limpar cache para forçar atualização
       await carregarAmbientes();
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Falha ao apagar o ambiente. Ele pode estar em uso.";
