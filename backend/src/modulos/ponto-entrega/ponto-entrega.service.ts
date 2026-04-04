@@ -29,23 +29,20 @@ export class PontoEntregaService {
   async create(createDto: CreatePontoEntregaDto): Promise<PontoEntrega> {
     this.logger.log(`📍 Criando ponto de entrega: ${createDto.nome}`);
 
-    // Obter empresaId do usuário autenticado
-    const empresaId = this.request?.user?.empresaId;
-    if (!empresaId) {
-      this.logger.error('❌ empresaId não encontrado no usuário autenticado');
+    // Verificar se o tenant está disponível (via tenantId no JWT ou contexto)
+    const tenantId = this.request?.user?.tenantId || this.request?.tenant?.id;
+    if (!tenantId) {
+      this.logger.error('❌ tenantId não encontrado no usuário autenticado');
       throw new BadRequestException('Empresa não identificada. Faça login novamente.');
     }
+    this.logger.log(`📍 Criando ponto para tenant: ${tenantId}`);
 
-    // O tenant_id é injetado automaticamente pelo BaseTenantRepository
-    // Mas precisamos adicionar o empresaId manualmente
-    const ponto = this.pontoEntregaRepository.create({
-      ...createDto,
-      empresaId,
-    });
+    // O tenant_id é injetado automaticamente pelo BaseTenantRepository via tenantId do JWT
+    const ponto = this.pontoEntregaRepository.create(createDto);
     const novoPonto = await this.pontoEntregaRepository.save(ponto);
 
     this.logger.log(
-      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id}) | empresaId: ${empresaId}`,
+      `✅ Ponto de entrega criado: ${novoPonto.nome} (ID: ${novoPonto.id}) | tenantId: ${tenantId}`,
     );
 
     return this.findOne(novoPonto.id);
