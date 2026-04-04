@@ -281,14 +281,20 @@ Cloudflare termina o SSL. A Oracle VM NAO precisa de certificado.
 
 **Total RAM: ~5GB+**
 
-### 4.3 Arquivos NAO usados (devem ser removidos)
+### 4.3 Arquivos Docker Compose — Fonte da Verdade
 
-| Arquivo | Motivo |
-|---------|--------|
-| `docker-compose.prod.yml` (raiz) | Frontend vai pro Vercel, nao Docker |
-| `infra/docker-compose.yml` | Duplicata exata da raiz |
-| `infra/docker-compose.prod.yml` | Duplicata divergente (PG 17 vs 15) |
-| `infra/docker-compose.micro.yml` | Duplicata divergente (sem Cloudflare vars) |
+**Arquivo unico de producao:** `docker-compose.micro.yml` (raiz do projeto)
+
+Arquivos removidos (eram duplicatas divergentes que causavam confusao):
+
+| Arquivo | Motivo da Remocao |
+|---------|-------------------|
+| `docker-compose.prod.yml` (raiz) | Frontend vai para Vercel, nao Docker — arquivo obsoleto |
+| `infra/docker-compose.yml` | Duplicata exata de `docker-compose.yml` (dev) |
+| `infra/docker-compose.prod.yml` | Duplicata divergente (usava `NEXT_PUBLIC_API_URL=http://backend:3000`) |
+| `infra/docker-compose.micro.yml` | Versao antiga: sem postgres, sem rede, sem variaveis Cloudflare |
+
+**REGRA:** Nunca criar arquivos docker-compose fora da raiz do projeto.
 
 ---
 
@@ -298,36 +304,75 @@ Cloudflare termina o SSL. A Oracle VM NAO precisa de certificado.
 
 | Job | Trigger | O que faz | Status |
 |-----|---------|-----------|--------|
-| **backend** | push/PR main | lint + build + migrations + tests | Funciona |
-| **frontend** | push/PR main | lint + build | Funciona |
-| **security** | apos backend+frontend | npm audit (cosmético) | Inutil (|| true) |
-| **deploy-staging** | push main | SSH → git pull → PM2 restart | **QUEBRADO** |
+| **backend** | push/PR main | lint + build + migrations + tests | ✅ Funciona |
+| **frontend** | push/PR main | lint + build | ✅ Funciona |
+| **security** | apos backend+frontend | npm audit (cosmético) | ⚠️ Inocuo (|| true) |
+| **deploy-staging** | push main | SSH → build backend → restart container | ✅ Funciona |
 
-### 5.2 Problema do Deploy
+### 5.2 Como o Deploy Funciona
 
-O job `deploy-staging` executa:
+O CI conecta na VM via SSH e executa:
 ```bash
-pm2 restart pub-backend || pm2 start dist/main.js --name pub-backend
-```
-
-Mas o servidor usa Docker. O correto seria:
-```bash
-docker compose -f docker-compose.micro.yml up -d --build
-```
-
-Alem disso, o path `dist/main.js` esta errado — o real e `dist/src/main.js`.
-
-### 5.3 Deploy Real (Manual)
-
-```bash
-# Na Oracle VM via SSH
+set -e
 cd ~/pub-system
 git pull origin main
-docker compose -f docker-compose.micro.yml up -d --build
-docker logs pub-backend -f  # verificar
+docker compose -f docker-compose.micro.yml build backend
+docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
 ```
 
-### 5.4 Deploy Frontend (Automatico)
+**Por que `--no-deps --force-recreate backend`?**
+Recria apenas o container `pub-backend` sem tocar no `pub-postgres` que ja esta rodando.
+Usar `--force-recreate` sem `--no-deps` causaria conflito de nome no postgres.
+
+### 5.3 Rede Docker — REGRA CRITICA
+
+**Problema historico (2026-04-04):** O deploy com `--no-deps` colocava o `pub-backend` numa
+rede Docker diferente do `pub-postgres`, causando erro `EAI_AGAIN postgres` (502 Bad Gateway).
+
+**Solucao aplicada:** `docker-compose.micro.yml` declara uma rede explícita `pub-network`
+com `name: pub-network` para todos os containers. Isso garante que mesmo apos rebuild
+parcial os containers sempre estejam na mesma rede.
+
+```yaml
+networks:
+  pub-network:
+    name: pub-network   # nome fixo, nao gerado pelo compose
+    driver: bridge
+```
+
+**REGRA:** Sempre declarar `networks` explicitamente em docker-compose de producao.
+Nunca confiar na rede `default` gerada automaticamente pelo compose.
+
+**Diagnostico rapido se backend retornar 502:**
+```bash
+# Verificar redes dos containers
+docker inspect pub-backend --format '{{json .NetworkSettings.Networks}}'
+docker inspect pub-postgres --format '{{json .NetworkSettings.Networks}}'
+
+# Correcao manual (se necessario)
+docker network connect pub-network pub-backend
+docker restart pub-backend
+```
+
+### 5.4 Deploy Real (Manual / Emergencia)
+
+```bash
+# Conectar na Oracle VM
+ssh -i ~/.ssh/oracle_key ubuntu@134.65.248.235
+
+# Rebuild e restart apenas do backend
+cd ~/pub-system
+git pull origin main
+docker compose -f docker-compose.micro.yml build backend
+docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
+
+# Verificar
+docker ps
+docker logs pub-backend --tail 50
+curl http://localhost:3000/health
+```
+
+### 5.5 Deploy Frontend (Automatico)
 
 Push para `main` → Vercel detecta e faz deploy automatico.
 
