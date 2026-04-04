@@ -60,7 +60,7 @@ describe('PontoEntregaService', () => {
         },
         {
           provide: REQUEST,
-          useValue: { tenantId: 'tenant-uuid', user: { empresaId: 'empresa-uuid-1' } },
+          useValue: { tenant: { id: 'tenant-uuid-1' }, user: { tenantId: 'tenant-uuid-1' } },
         },
       ],
     }).compile();
@@ -101,10 +101,7 @@ describe('PontoEntregaService', () => {
 
       expect(result).toBeDefined();
       expect(result.nome).toBe(createDto.nome);
-      expect(mockPontoEntregaRepository.create).toHaveBeenCalledWith({
-        ...createDto,
-        empresaId: 'empresa-uuid-1',
-      });
+      expect(mockPontoEntregaRepository.create).toHaveBeenCalledWith(createDto);
     });
   });
 
