@@ -163,8 +163,6 @@ Problema extra: `axiosRetry` retentava erros de rede em POST multipart — podia
 
 ---
 
----
-
 ## Bug 3 — Produto salvo mas não aparece na listagem (cache invalidation falha silenciosamente)
 
 **Situação:** Após criar produto com sucesso (POST 201), `GET /produtos` retornava 0 produtos da cache antiga.

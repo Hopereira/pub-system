@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { usePlanFeatures, Feature, invalidatePlanFeaturesCache } from '@/hooks/usePlanFeatures';
 import api from '@/services/api';
+import planService, { Plan } from '@/services/planService';
 import paymentService, { PaymentGateway, PaymentConfig } from '@/services/paymentService';
 import {
   Crown,
@@ -46,13 +47,6 @@ interface PlanComparison {
     upgradeFeatures: string[];
   }[];
 }
-
-const PLAN_PRICES: Record<string, { monthly: number; yearly: number }> = {
-  FREE: { monthly: 0, yearly: 0 },
-  BASIC: { monthly: 99, yearly: 990 },
-  PRO: { monthly: 199, yearly: 1990 },
-  ENTERPRISE: { monthly: 499, yearly: 4990 },
-};
 
 const PLAN_DESCRIPTIONS: Record<string, string> = {
   FREE: 'Ideal para testar a plataforma',
@@ -103,12 +97,14 @@ export default function PlanUpgradePage() {
   const [gateways, setGateways] = useState<PaymentConfig[]>([]);
   const [showGatewayModal, setShowGatewayModal] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failure' | null>(null);
+  const [plansData, setPlansData] = useState<Plan[]>([]);
 
   useEffect(() => {
     // Invalida o cache do plano para garantir dados frescos ao abrir a página
     invalidatePlanFeaturesCache();
     loadComparison();
     loadGateways();
+    loadPlansData();
     
     // Verificar status do pagamento na URL
     const status = searchParams.get('status');
@@ -116,6 +112,15 @@ export default function PlanUpgradePage() {
       setPaymentStatus(status);
     }
   }, [searchParams]);
+
+  const loadPlansData = async () => {
+    try {
+      const data = await planService.getPublicPlans();
+      setPlansData(data);
+    } catch (error) {
+      console.error('Erro ao carregar preços dos planos:', error);
+    }
+  };
 
   const loadComparison = async () => {
     try {
@@ -287,7 +292,7 @@ export default function PlanUpgradePage() {
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold">
-              R$ {PLAN_PRICES[activePlan]?.monthly || 0}
+              R$ {plansData.find(p => p.code === activePlan)?.priceMonthly ?? 0}
               <span className="text-lg font-normal">/mês</span>
             </p>
             {planInfo?.limits && (
@@ -331,9 +336,10 @@ export default function PlanUpgradePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {comparison?.planos.map((plan) => {
           const PlanIcon = PLAN_ICONS[plan.plano] || Zap;
-          const price = billingCycle === 'monthly' 
-            ? PLAN_PRICES[plan.plano]?.monthly 
-            : Math.round(PLAN_PRICES[plan.plano]?.yearly / 12);
+          const planDb = plansData.find(p => p.code === plan.plano);
+          const price = billingCycle === 'monthly'
+            ? (planDb?.priceMonthly ?? 0)
+            : Math.round((planDb?.priceYearly ?? 0) / 12);
           const isCurrentPlan = plan.isCurrent;
           const isPopular = plan.plano === 'PRO';
 
@@ -389,7 +395,7 @@ export default function PlanUpgradePage() {
                 </p>
                 {billingCycle === 'yearly' && price > 0 && (
                   <p className="text-sm text-green-600 mt-1">
-                    R$ {PLAN_PRICES[plan.plano]?.yearly}/ano
+                    R$ {plansData.find(p => p.code === plan.plano)?.priceYearly ?? 0}/ano
                   </p>
                 )}
               </div>
@@ -572,9 +578,9 @@ export default function PlanUpgradePage() {
 
             <p className="text-gray-600 mb-4">
               Upgrade para <strong>{selectedPlan}</strong> - R$ {
-                billingCycle === 'monthly' 
-                  ? PLAN_PRICES[selectedPlan || 'FREE']?.monthly 
-                  : Math.round(PLAN_PRICES[selectedPlan || 'FREE']?.yearly / 12)
+                billingCycle === 'monthly'
+                  ? (plansData.find(p => p.code === (selectedPlan || 'FREE'))?.priceMonthly ?? 0)
+                  : Math.round((plansData.find(p => p.code === (selectedPlan || 'FREE'))?.priceYearly ?? 0) / 12)
               }/mês
             </p>
 
