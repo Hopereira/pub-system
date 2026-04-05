@@ -163,6 +163,7 @@ Problema extra: `axiosRetry` retentava erros de rede em POST multipart — podia
 
 ---
 
+
 ---
 
 ## Bug 3 — Produto salvo mas não aparece na listagem (cache invalidation falha silenciosamente)
