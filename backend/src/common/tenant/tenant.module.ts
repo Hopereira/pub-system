@@ -24,6 +24,7 @@ import { Mesa } from '../../modulos/mesa/entities/mesa.entity';
 import { Funcionario } from '../../modulos/funcionario/entities/funcionario.entity';
 import { Pedido } from '../../modulos/pedido/entities/pedido.entity';
 import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
+import { Plan } from '../../modulos/plan/entities/plan.entity';
 
 /**
  * TenantModule - Módulo global para Multi-tenancy
@@ -41,7 +42,7 @@ import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario, Pedido, Comanda]),
+    TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario, Pedido, Comanda, Plan]),
     // JwtModule para decodificar tokens no TenantInterceptor
     JwtModule.registerAsync({
       imports: [ConfigModule],
