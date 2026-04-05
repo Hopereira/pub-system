@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import superAdminService, { PlatformMetrics } from '@/services/superAdminService';
+import planService, { Plan } from '@/services/planService';
 import {
   CreditCard,
   TrendingUp,
@@ -24,6 +25,7 @@ export default function PlanosPage() {
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   // Verificar se é SUPER_ADMIN
   useEffect(() => {
@@ -32,9 +34,18 @@ export default function PlanosPage() {
     }
   }, [user, router]);
 
+  // Mapeamento de ícones e cores por código de plano
+  const planoUiConfig: Record<string, { icon: any; cor: string }> = {
+    FREE: { icon: Users, cor: 'gray' },
+    BASIC: { icon: Zap, cor: 'blue' },
+    PRO: { icon: Star, cor: 'purple' },
+    ENTERPRISE: { icon: Crown, cor: 'amber' },
+  };
+
   // Carregar dados
   useEffect(() => {
     loadMetrics();
+    loadPlans();
   }, []);
 
   const loadMetrics = async () => {
@@ -50,36 +61,14 @@ export default function PlanosPage() {
     }
   };
 
-  const planoConfig = [
-    {
-      nome: 'FREE',
-      preco: 0,
-      icon: Users,
-      cor: 'gray',
-      features: ['Até 10 mesas', 'Comandas básicas', 'Relatórios simples'],
-    },
-    {
-      nome: 'BASIC',
-      preco: 99,
-      icon: Zap,
-      cor: 'blue',
-      features: ['Até 30 mesas', 'Eventos', 'Clientes', 'Suporte por email'],
-    },
-    {
-      nome: 'PRO',
-      preco: 199,
-      icon: Star,
-      cor: 'purple',
-      features: ['Mesas ilimitadas', 'Analytics avançado', 'Medalhas', 'Suporte prioritário'],
-    },
-    {
-      nome: 'ENTERPRISE',
-      preco: 499,
-      icon: Crown,
-      cor: 'amber',
-      features: ['Tudo do PRO', 'Multi-unidades', 'API dedicada', 'Gerente de conta'],
-    },
-  ];
+  const loadPlans = async () => {
+    try {
+      const data = await planService.getAll(false);
+      setPlans(data);
+    } catch (err) {
+      console.error('Erro ao carregar planos:', err);
+    }
+  };
 
   if (loading) {
     return (
@@ -137,26 +126,27 @@ export default function PlanosPage() {
 
       {/* Distribuição por Plano */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {planoConfig.map((plano) => {
-          const count = metrics?.tenantsByPlano?.[plano.nome] || 0;
-          const receita = count * plano.preco;
-          const Icon = plano.icon;
-          
+        {plans.map((plano) => {
+          const count = metrics?.tenantsByPlano?.[plano.code] || 0;
+          const receita = count * Number(plano.priceMonthly);
+          const ui = planoUiConfig[plano.code] || { icon: Star, cor: 'gray' };
+          const Icon = ui.icon;
+
           return (
             <div
-              key={plano.nome}
+              key={plano.code}
               className="bg-white dark:bg-gray-800 rounded-xl border p-6 space-y-4"
             >
               <div className="flex items-center justify-between">
-                <div className={`p-3 rounded-lg bg-${plano.cor}-100 dark:bg-${plano.cor}-900/30`}>
-                  <Icon className={`h-6 w-6 text-${plano.cor}-600`} />
+                <div className={`p-3 rounded-lg bg-${ui.cor}-100 dark:bg-${ui.cor}-900/30`}>
+                  <Icon className={`h-6 w-6 text-${ui.cor}-600`} />
                 </div>
                 <span className="text-2xl font-bold">{count}</span>
               </div>
               <div>
-                <h3 className="font-semibold text-lg">{plano.nome}</h3>
+                <h3 className="font-semibold text-lg">{plano.name}</h3>
                 <p className="text-sm text-gray-500">
-                  R$ {plano.preco}/mês por tenant
+                  R$ {Number(plano.priceMonthly).toFixed(0)}/mês por tenant
                 </p>
               </div>
               <div className="pt-4 border-t">
@@ -166,8 +156,8 @@ export default function PlanosPage() {
                 </p>
               </div>
               <ul className="text-xs text-gray-500 space-y-1">
-                {plano.features.map((f, i) => (
-                  <li key={i}>• {f}</li>
+                {plano.features.slice(0, 4).map((f) => (
+                  <li key={f}>• {f}</li>
                 ))}
               </ul>
             </div>
@@ -218,20 +208,21 @@ export default function PlanosPage() {
       <div className="bg-white dark:bg-gray-800 rounded-xl border p-6">
         <h3 className="font-semibold text-lg mb-4">Taxa de Conversão por Plano</h3>
         <div className="space-y-4">
-          {planoConfig.map((plano) => {
-            const count = metrics?.tenantsByPlano?.[plano.nome] || 0;
+          {plans.map((plano) => {
+            const count = metrics?.tenantsByPlano?.[plano.code] || 0;
             const total = metrics?.totalTenants || 1;
             const percentage = ((count / total) * 100).toFixed(1);
-            
+            const ui = planoUiConfig[plano.code] || { icon: Star, cor: 'gray' };
+
             return (
-              <div key={plano.nome} className="space-y-2">
+              <div key={plano.code} className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>{plano.nome}</span>
+                  <span>{plano.name}</span>
                   <span>{percentage}% ({count} tenants)</span>
                 </div>
                 <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className={`h-full bg-${plano.cor}-500 rounded-full transition-all`}
+                    className={`h-full bg-${ui.cor}-500 rounded-full transition-all`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
