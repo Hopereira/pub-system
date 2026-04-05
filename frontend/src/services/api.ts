@@ -36,7 +36,7 @@ const getTenantSlugFromHostname = (): string | null => {
 // --- Instância 1: API Autenticada (para o admin) ---
 const api = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 30000, // 30 segundos
+  timeout: 60000, // 60 segundos (uploads com imagem via GCS podem levar ~20s na Oracle VM)
   withCredentials: true, // Envia httpOnly cookies (refresh_token)
 });
 
@@ -59,6 +59,13 @@ axiosRetry(api, {
   retryCondition: (error) => {
     // Nunca retentar 429 (rate limit) — agrava o problema
     if (error.response?.status === 429) return false;
+    // Nunca retentar POST/PATCH com multipart/form-data — operações não idempotentes
+    // (evita criar produto duplicado quando o upload GCS é lento e o cliente dá timeout)
+    const method = error.config?.method?.toUpperCase();
+    const contentType = error.config?.headers?.['Content-Type'] as string | undefined;
+    if ((method === 'POST' || method === 'PATCH') && contentType?.includes('multipart/form-data')) {
+      return false;
+    }
     // Retry apenas em erros de rede ou 5xx
     return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
            (error.response?.status ? error.response.status >= 500 : false);
@@ -228,7 +235,7 @@ export default api;
 // --- Instância 2: API Pública (para o cliente) ---
 export const publicApi = axios.create({
   baseURL: getApiBaseUrl(),
-  timeout: 30000, // 30 segundos
+  timeout: 60000, // 60 segundos
 });
 
 // Adiciona os mesmos interceptors de logging na API pública

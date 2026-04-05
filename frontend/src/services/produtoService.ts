@@ -71,6 +71,7 @@ export const createProduto = async (data: FormData): Promise<Produto> => {
   try {
     const response = await api.post('/produtos', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // 120s — upload de imagem para GCS pode levar ~20s na Oracle VM
     });
     return response.data;
   } catch (error) {
@@ -81,9 +82,9 @@ export const createProduto = async (data: FormData): Promise<Produto> => {
 
 export const updateProduto = async (id: string, data: FormData): Promise<Produto> => {
   try {
-    // Corrigido para usar PATCH e enviar FormData
     const response = await api.patch<Produto>(`/produtos/${id}`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000, // 120s — upload de imagem para GCS pode levar ~20s na Oracle VM
     });
     return response.data;
   } catch (error) {
