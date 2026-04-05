@@ -236,6 +236,25 @@ cd ~/pub-system
 docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
 ```
 
+### POST /pontos-entrega retorna 500 — "empresa_id violates not-null constraint"
+**Sintoma:** `POST /pontos-entrega` retorna 500; log mostra `null value in column "empresa_id" ... violates not-null constraint`  
+**Causa:** Coluna legado `empresa_id` em `pontos_entrega` foi criada com `NOT NULL` numa versão antiga do banco, antes da migração para multi-tenant. A entity define `nullable: true` mas a migration nunca foi aplicada.  
+**Diagnóstico:**
+```bash
+docker exec pub-postgres psql -U pubuser -d pubsystem -c '\d pontos_entrega'
+# Se empresa_id aparecer com "not null" → constraint não foi removida
+```
+**Solução (banco de produção já corrigido em 2026-04-05):**
+```bash
+docker exec pub-postgres psql -U pubuser -d pubsystem -c \
+  'ALTER TABLE pontos_entrega ALTER COLUMN empresa_id DROP NOT NULL'
+```
+Se regredir (ex: novo ambiente), rodar as migrations:
+```bash
+docker compose -f docker-compose.micro.yml exec backend npm run typeorm:migration:run
+```
+Ver `docs/sessions/2026-04-05/RELATORIO_SESSAO.md` para diagnóstico completo.
+
 ### Backend conecta mas banco parece vazio ("relation X does not exist")
 **Sintoma:** `QueryFailedError: relation "ambientes" does not exist` nos logs  
 **Causa:** Container postgres foi recriado apontando para volume errado (`pub_postgres_data` vazio).  
