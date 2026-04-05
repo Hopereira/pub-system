@@ -1,6 +1,6 @@
 # Troubleshooting — Pub System
 
-**Última atualização:** 2026-02-11  
+**Última atualização:** 2026-04-04  
 **Fonte da verdade:** `docs/troubleshooting/`, experiência de desenvolvimento  
 **Status:** Ativo
 
@@ -11,13 +11,29 @@
 ### Backend não inicia — "Connection refused" ao banco
 **Sintoma:** `Error: connect ECONNREFUSED 127.0.0.1:5432`  
 **Causa:** Container `db` ainda não está healthy.  
-**Solução:**
+**Solução (desenvolvimento):**
 ```bash
 docker compose ps          # Verificar status
 docker compose logs db     # Ver logs do PostgreSQL
 docker compose restart db  # Reiniciar se necessário
 ```
 Aguarde até `db` mostrar `(healthy)`.
+
+### Backend não inicia — "EAI_AGAIN postgres" (produção)
+**Sintoma:** `Error: getaddrinfo EAI_AGAIN postgres` nos logs do backend  
+**Causa:** Container `pub-backend` está numa rede Docker diferente do `pub-postgres`.  
+Isso acontece quando o backend é recriado com `--no-deps` e os containers ficam em redes distintas.  
+**Diagnóstico:**
+```bash
+docker network inspect pub-network 2>&1 | grep -A2 'Name'
+# Se pub-postgres não aparecer → está na rede errada
+```
+**Solução:**
+```bash
+docker network connect pub-network pub-postgres
+docker restart pub-backend
+```
+Ver detalhes completos em `docs/sessions/2026-04-04/DOCKER_REDE_DIAGNOSTICO.md`.
 
 ### Backend não conecta ao Redis
 **Sintoma:** `Error: connect ECONNREFUSED redis:6379`  
@@ -156,7 +172,7 @@ docker compose exec backend npm run typeorm:migration:run
 **Sintoma:** Após login, todas requisições retornam 403 ou "tenant not found".  
 **Causa:** TenantGuard não consegue resolver o tenant do usuário.  
 **Solução:**
-1. Verificar que o usuário tem `empresaId` ou `tenantId` no JWT
+1. Verificar que o usuário tem `tenantId` no JWT (campo correto — não `empresaId` que é legado)
 2. Usar endpoint de debug: `GET /ambientes/debug/tenant-info`
 3. Verificar que o tenant está com status ATIVO
 
@@ -214,4 +230,28 @@ docker compose exec backend npm run typeorm:migration:run
 ### PostgreSQL connection timeout
 **Sintoma:** `Error: Connection terminated unexpectedly`  
 **Causa:** Container `pub-postgres` parado ou sem memória.  
-**Solução:** `docker ps` para verificar status. `docker compose -f docker-compose.micro.yml restart` se necessário.
+**Solução:** `docker ps` para verificar status. Reiniciar apenas o backend sem tocar no postgres:
+```bash
+cd ~/pub-system
+docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
+```
+
+### Backend conecta mas banco parece vazio ("relation X does not exist")
+**Sintoma:** `QueryFailedError: relation "ambientes" does not exist` nos logs  
+**Causa:** Container postgres foi recriado apontando para volume errado (`pub_postgres_data` vazio).  
+Os dados reais de produção estão em `infra_postgres_data`.  
+**Diagnóstico:**
+```bash
+docker exec pub-postgres psql -U pubuser -d pubsystem -c '\dt'
+# Se retornar "Did not find any relations" → volume errado
+```
+**Solução:**
+```bash
+docker stop pub-postgres && docker rm pub-postgres
+docker run -d --name pub-postgres \
+  --network pub-network --network-alias postgres \
+  -e POSTGRES_USER=pubuser -e POSTGRES_PASSWORD=<senha> -e POSTGRES_DB=pubsystem \
+  -v infra_postgres_data:/var/lib/postgresql/data \
+  -p 5432:5432 --restart unless-stopped \
+  postgres:17-alpine
+```
