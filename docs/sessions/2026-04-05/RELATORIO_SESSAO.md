@@ -137,6 +137,32 @@ public async up(queryRunner: QueryRunner): Promise<void> {
 
 ---
 
+---
+
+## Bug 2 — POST /produtos timeout (ECONNABORTED) — produto criado mas tela exibia erro
+
+**Situação:** Ao criar produto com imagem, frontend mostrava "Falha ao criar o produto". O produto era criado com sucesso.
+
+### Diagnóstico
+```
+POST /produtos | Tempo: 21996ms | Status: 201 ✅
+GcsStorageService: Upload bem-sucedido | URL: https://storage.googleapis.com/...
+```
+O backend respondia **201 em ~22s**. O frontend tinha timeout de **30s** e descartava a resposta antes de recebê-la (`ECONNABORTED`). O upload para Google Cloud Storage demora ~20s na Oracle VM E2.1.Micro.
+
+Problema extra: `axiosRetry` retentava erros de rede em POST multipart — podia criar o produto múltiplas vezes (duplicatas).
+
+### Correções Aplicadas
+
+| Arquivo | Mudança |
+|---------|---------|
+| `frontend/src/services/api.ts` | Timeout global `30s → 60s`; retry desabilitado para POST/PATCH multipart |
+| `frontend/src/services/produtoService.ts` | Timeout explícito de `120s` em `createProduto` e `updateProduto` |
+
+**PR:** #286 — `fix/produto-upload-timeout`
+
+---
+
 ## 9. Padrão Identificado — Risco Residual
 
 O banco de produção foi criado antes da refatoração multi-tenant. Outras tabelas podem ter constraints legados desalinhados com as entities. Verificar `funcionarios.empresa_id` (já nullable — OK).
