@@ -192,6 +192,36 @@ docker restart pub-backend
 
 ---
 
+## Bug 4 — Preços de planos inconsistentes entre páginas (dados hardcoded no frontend)
+
+**Situação:** Informações de planos divergiam entre as telas. A página `/super-admin/planos/gestao` (fonte master) mostrava Basic R$49/Pro R$99/Enterprise R$199, enquanto outras páginas mostravam valores diferentes.
+
+### Diagnóstico
+
+| Página | Fonte | Valores exibidos |
+|--------|-------|-----------------|
+| `/super-admin/planos/gestao` | `GET /plans` (banco) ✅ | Corretos |
+| `/dashboard/configuracoes/plano` | `PLAN_PRICES` hardcoded ❌ | Basic R$99, Pro R$199, Enterprise R$499 |
+| `/super-admin/planos` (Faturamento) | `planoConfig` hardcoded ❌ | Basic R$99, Pro R$199, Enterprise R$499 |
+| Landing page | `GET /plans/public` (banco) ✅ | Corretos |
+
+### Root cause
+
+`PLAN_PRICES` e `planoConfig` eram constantes TypeScript no frontend com valores desatualizados. A página de gestão de planos (master) usava a API corretamente, mas as demais ignoravam o banco.
+
+### Correção Aplicada
+
+| Arquivo | Mudança |
+|---------|---------|
+| `frontend/src/app/(protected)/dashboard/configuracoes/plano/page.tsx` | Removido `PLAN_PRICES` hardcoded; adicionado `planService.getPublicPlans()` (`GET /plans/public`) |
+| `frontend/src/app/(protected)/super-admin/planos/page.tsx` | Removido `planoConfig` hardcoded; adicionado `planService.getAll()` (`GET /plans`) |
+
+**Regra estabelecida:** `/super-admin/planos/gestao` é a página master. Editar preços/limites/features lá reflete automaticamente em todas as outras páginas.
+
+**PR:** #288 — `fix/planos-precos-hardcoded`
+
+---
+
 ## 9. Padrão Identificado — Risco Residual
 
 O banco de produção foi criado antes da refatoração multi-tenant. Outras tabelas podem ter constraints legados desalinhados com as entities. Verificar `funcionarios.empresa_id` (já nullable — OK).
