@@ -6,6 +6,7 @@ import { Tenant, TenantStatus } from '../entities/tenant.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
 import { Pedido } from '../../../modulos/pedido/entities/pedido.entity';
 import { Comanda } from '../../../modulos/comanda/entities/comanda.entity';
+import { Plan } from '../../../modulos/plan/entities/plan.entity';
 
 /**
  * Métricas globais da plataforma
@@ -61,6 +62,8 @@ export class SuperAdminService {
     private readonly pedidoRepository: Repository<Pedido>,
     @InjectRepository(Comanda)
     private readonly comandaRepository: Repository<Comanda>,
+    @InjectRepository(Plan)
+    private readonly planRepository: Repository<Plan>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -121,14 +124,13 @@ export class SuperAdminService {
     // TODO: Implementar cálculo real via soma dos pedidos das comandas fechadas
     const faturamentoHoje = 0;
 
-    // MRR estimado (tenants ativos * valor médio do plano)
-    const planoValues: Record<string, number> = {
-      FREE: 0,
-      BASIC: 99,
-      PRO: 199,
-      ENTERPRISE: 499,
-    };
-    
+    // MRR calculado com preços reais do banco (tabela plans)
+    const plans = await this.planRepository.find({ where: { isActive: true } });
+    const planoValues: Record<string, number> = {};
+    for (const plan of plans) {
+      planoValues[plan.code] = Number(plan.priceMonthly);
+    }
+
     let mrr = 0;
     for (const [plano, count] of Object.entries(tenantsByPlano)) {
       mrr += (planoValues[plano] || 0) * count;
