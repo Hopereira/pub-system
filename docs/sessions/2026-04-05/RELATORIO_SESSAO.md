@@ -163,6 +163,38 @@ Problema extra: `axiosRetry` retentava erros de rede em POST multipart — podia
 
 ---
 
+
+---
+
+## Bug 3 — Produto salvo mas não aparece na listagem (cache invalidation falha silenciosamente)
+
+**Situação:** Após criar produto com sucesso (POST 201), `GET /produtos` retornava 0 produtos da cache antiga.
+
+### Diagnóstico
+```
+DEBUG [ProdutoService] 🎯 Cache HIT: produtos:6fa1447d-...:page:1:limit:100:sort:nome:ASC  ← cache antigo servido
+DEBUG [CacheInvalidationService] 🔍 Nenhuma chave encontrada para o padrão: produtos:6fa1447d-...:*
+```
+
+`store.keys('produtos:tenant:*')` do cache in-memory (`keyv`/`cache-manager`) **não suporta glob** — retornava array vazio. A invalidação falhava silenciosamente.
+
+### Correção Aplicada
+
+`backend/src/cache/cache-invalidation.service.ts` — `invalidatePattern()`:
+- Buscar **todas** as chaves com `store.keys('*')` (sem filtro)
+- Fazer match manual: `k.includes(prefix)` onde `prefix = pattern.slice(0, -2)` (remove o `:*`)
+- Funciona com cache in-memory e Redis (que suporta glob nativamente)
+
+Fix aplicado via patch direto no container (sem rebuild):
+```bash
+docker cp cache-invalidation.service.js pub-backend:/app/dist/src/cache/
+docker restart pub-backend
+```
+
+**PR:** #287 — `fix/cache-invalidation-pattern`
+
+---
+
 ## 9. Padrão Identificado — Risco Residual
 
 O banco de produção foi criado antes da refatoração multi-tenant. Outras tabelas podem ter constraints legados desalinhados com as entities. Verificar `funcionarios.empresa_id` (já nullable — OK).

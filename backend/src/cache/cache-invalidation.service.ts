@@ -82,18 +82,36 @@ export class CacheInvalidationService {
     try {
       const stores = (this.cacheManager as any).stores;
       const store = stores?.[0] || (this.cacheManager as any).store;
-      
-      // Obter todas as chaves que correspondem ao padrão
-      const keys = typeof store?.keys === 'function' ? await store.keys(pattern) : [];
-      
-      if (!keys || keys.length === 0) {
+
+      // cache-manager in-memory (keyv) não suporta glob no keys().
+      // Estratégia: buscar todas as chaves sem filtro e fazer match manual.
+      let allKeys: string[] = [];
+      if (typeof store?.keys === 'function') {
+        // Tentar sem argumento (retorna todas) e com wildcard (Redis suporta)
+        try {
+          const result = await store.keys('*');
+          allKeys = Array.isArray(result) ? result : [];
+        } catch {
+          try {
+            const result = await store.keys();
+            allKeys = Array.isArray(result) ? result : [];
+          } catch {
+            allKeys = [];
+          }
+        }
+      }
+
+      // Converter glob simples (prefixo:*) em prefixo para match com startsWith/includes
+      const prefix = pattern.endsWith(':*') ? pattern.slice(0, -2) : pattern.replace(/\*/g, '');
+      const matchingKeys = allKeys.filter((k) => k.includes(prefix));
+
+      if (matchingKeys.length === 0) {
         this.logger.debug(`🔍 Nenhuma chave encontrada para o padrão: ${pattern}`);
         return 0;
       }
 
-      // Deletar todas as chaves encontradas
       let deletedCount = 0;
-      for (const key of keys) {
+      for (const key of matchingKeys) {
         await this.cacheManager.del(key);
         this.logger.debug(`🗑️ Cache invalidado: ${key}`);
         deletedCount++;
