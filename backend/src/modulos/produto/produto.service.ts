@@ -83,7 +83,7 @@ export class ProdutoService {
     const savedProduto = await this.produtoRepository.save(produto);
     
     // Invalidar cache após criar produto
-    await this.cacheInvalidationService.invalidateProdutos();
+    await this.invalidateProductCache();
     
     return savedProduto;
   }
@@ -139,7 +139,7 @@ export class ProdutoService {
     const updatedProduto = await this.produtoRepository.save(produto);
     
     // Invalidar cache após atualizar produto
-    await this.cacheInvalidationService.invalidateProdutos();
+    await this.invalidateProductCache();
     
     return updatedProduto;
   }
@@ -169,7 +169,7 @@ export class ProdutoService {
     const removedProduto = await this.produtoRepository.save(produto);
     
     // Invalidar cache após remover produto
-    await this.cacheInvalidationService.invalidateProdutos();
+    await this.invalidateProductCache();
     
     return removedProduto;
   }
@@ -239,13 +239,27 @@ export class ProdutoService {
     return produtos;
   }
 
-  // Método privado para invalidar cache de produtos usando CacheInvalidationService
+  // Método privado para invalidar cache de produtos
+  // cache-manager v7 (keyv) não suporta keys() — deleta chaves exatas conhecidas
   private async invalidateProductCache(): Promise<void> {
-    try {
-      await this.cacheInvalidationService.invalidateProdutos();
-    } catch (error) {
-      this.logger.warn(`⚠️ Erro ao invalidar cache: ${error.message}`);
+    const tenantId = this.getTenantId();
+    if (!tenantId) {
+      this.logger.warn('⚠️ Sem tenantId — cache de produtos não invalidado');
+      return;
     }
+    // Chaves usadas pelo frontend (limit=100 é o padrão do produtoService.ts)
+    const keysToDelete = [
+      `produtos:${tenantId}:page:1:limit:100:sort:nome:ASC`,
+      `produtos:${tenantId}:page:1:limit:20:sort:nome:ASC`,
+      `produtos:${tenantId}:page:1:limit:50:sort:nome:ASC`,
+      `produtos:${tenantId}:all:ativos`,
+    ];
+    let deleted = 0;
+    for (const key of keysToDelete) {
+      await this.cacheManager.del(key);
+      deleted++;
+    }
+    this.logger.log(`🗑️ Cache de produtos invalidado: ${deleted} chaves removidas (tenant: ${tenantId})`);
   }
 
   async findOne(id: string): Promise<Produto> {
