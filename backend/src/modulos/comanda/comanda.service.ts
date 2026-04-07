@@ -739,7 +739,11 @@ export class ComandaService {
     comandaId: string,
     dto: { mesaId?: string | null; pontoEntregaId?: string | null },
   ): Promise<Comanda> {
-    const comanda = await this.findOne(comandaId);
+    const comanda = await this.comandaRepository.rawRepository.findOne({
+      where: { id: comandaId },
+      relations: ['mesa', 'pontoEntrega'],
+    });
+    if (!comanda) throw new NotFoundException(`Comanda "${comandaId}" não encontrada.`);
 
     if (comanda.status !== ComandaStatus.ABERTA) {
       throw new BadRequestException(
@@ -749,7 +753,7 @@ export class ComandaService {
 
     // Se for mesa
     if (dto.mesaId) {
-      const mesa = await this.mesaRepository.findOne({
+      const mesa = await this.mesaRepository.rawRepository.findOne({
         where: { id: dto.mesaId },
       });
       if (!mesa) {
@@ -766,7 +770,7 @@ export class ComandaService {
     }
     // Se for ponto de entrega
     else if (dto.pontoEntregaId) {
-      const ponto = await this.pontoEntregaRepository.findOne({
+      const ponto = await this.pontoEntregaRepository.rawRepository.findOne({
         where: { id: dto.pontoEntregaId },
       });
       if (!ponto) {
@@ -794,7 +798,7 @@ export class ComandaService {
       this.logger.log(`🔄 Comanda ${comandaId} sem local definido`);
     }
 
-    const comandaAtualizada = await this.comandaRepository.save(comanda);
+    const comandaAtualizada = await this.comandaRepository.rawRepository.save(comanda);
     this.pedidosGateway.emitComandaAtualizada(comandaAtualizada);
 
     return comandaAtualizada;
@@ -804,7 +808,11 @@ export class ComandaService {
     comandaId: string,
     dto: UpdatePontoEntregaComandaDto,
   ): Promise<Comanda> {
-    const comanda = await this.findOne(comandaId);
+    const comanda = await this.comandaRepository.rawRepository.findOne({
+      where: { id: comandaId },
+      relations: ['pontoEntrega'],
+    });
+    if (!comanda) throw new NotFoundException(`Comanda "${comandaId}" não encontrada.`);
 
     if (comanda.status !== ComandaStatus.ABERTA) {
       throw new BadRequestException(
@@ -827,7 +835,7 @@ export class ComandaService {
       // Não bloqueia, apenas alerta
     }
 
-    const novoPonto = await this.pontoEntregaRepository.findOne({
+    const novoPonto = await this.pontoEntregaRepository.rawRepository.findOne({
       where: { id: dto.pontoEntregaId },
     });
 
@@ -846,7 +854,7 @@ export class ComandaService {
     comanda.pontoEntrega = novoPonto;
     comanda.pontoEntregaId = dto.pontoEntregaId;
 
-    const comandaAtualizada = await this.comandaRepository.save(comanda);
+    const comandaAtualizada = await this.comandaRepository.rawRepository.save(comanda);
 
     this.logger.log(
       `🔄 Ponto de entrega alterado: Comanda ${comandaId} → ${novoPonto.nome}`,
@@ -858,6 +866,9 @@ export class ComandaService {
       `📡 Evento 'comanda_atualizada' emitido para comanda ${comandaId}`,
     );
 
-    return this.findOne(comandaId);
+    return this.comandaRepository.rawRepository.findOne({
+      where: { id: comandaId },
+      relations: ['pontoEntrega', 'mesa', 'cliente', 'pedidos', 'pedidos.itens'],
+    });
   }
 }
