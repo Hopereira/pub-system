@@ -128,7 +128,21 @@ export class ComandaService {
     }
 
     // Obter tenantId do contexto ANTES da transação (imutável durante a request)
-    const tenantId = this.getTenantId();
+    let tenantId = this.getTenantId();
+
+    // Fallback para rotas públicas: resolver tenantId a partir da paginaEvento
+    // O TenantInterceptor pode não resolver o slug quando a request vem de domínio externo
+    if (!tenantId && paginaEventoId) {
+      const paginaRaw = await this.paginaEventoRepository.rawRepository.findOne({
+        where: { id: paginaEventoId },
+        select: ['tenantId'],
+      });
+      if (paginaRaw?.tenantId) {
+        tenantId = paginaRaw.tenantId;
+        this.logger.debug(`🏢 tenantId resolvido via paginaEvento: ${tenantId}`);
+      }
+    }
+
     if (!tenantId) {
       throw new BadRequestException('Tenant não identificado. Impossível criar comanda.');
     }
