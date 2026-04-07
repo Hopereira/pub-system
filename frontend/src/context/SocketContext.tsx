@@ -65,6 +65,13 @@ export function SocketProvider({ children }: SocketProviderProps) {
       },
     });
 
+    // ✅ Atualiza o token antes de cada tentativa de reconexão
+    // Necessário pois socket.io não atualiza auth automaticamente em reconnects
+    newSocket.io.on('reconnect_attempt', () => {
+      const freshToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      newSocket.auth = { token: freshToken };
+    });
+
     newSocket.on('connect', () => {
       console.log('✅ [SocketContext] WebSocket conectado!', { socketId: newSocket.id, hasToken: !!token });
       logger.log('✅ WebSocket conectado', {
@@ -124,6 +131,20 @@ export function SocketProvider({ children }: SocketProviderProps) {
   useEffect(() => {
     socketRef.current = createConnection();
 
+    // ✅ Se conectou sem token mas há um token no localStorage (reload de página
+    // com usuário já logado), reconectar com o token correto após breve delay
+    // O delay permite que o AuthContext termine de ler o token do localStorage
+    const initialTokenCheck = setTimeout(() => {
+      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const socketConnectedWithToken = socketRef.current?.auth && (socketRef.current.auth as any).token;
+      if (currentToken && !socketConnectedWithToken) {
+        logger.log('🔄 Token encontrado após mount, reconectando WebSocket com autenticação', {
+          module: 'SocketContext',
+        });
+        setTokenVersion((v) => v + 1);
+      }
+    }, 500);
+
     // ✅ Escuta mudanças no localStorage (login/logout em outras abas)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'authToken') {
@@ -147,6 +168,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // Cleanup ao desmontar
     return () => {
+      clearTimeout(initialTokenCheck);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('authTokenChanged', handleAuthTokenChanged);
       if (socketRef.current) {
