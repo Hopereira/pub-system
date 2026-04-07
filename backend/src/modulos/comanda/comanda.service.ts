@@ -536,7 +536,24 @@ export class ComandaService {
   }
 
   async findPublicOne(id: string) {
-    const comanda = await this.findOne(id);
+    const comanda = await this.comandaRepository.rawRepository.findOne({
+      where: { id },
+      relations: [
+        'mesa',
+        'cliente',
+        'paginaEvento',
+        'pontoEntrega',
+        'pontoEntrega.mesaProxima',
+        'pontoEntrega.ambientePreparo',
+        'agregados',
+        'pedidos',
+        'pedidos.itens',
+        'pedidos.itens.produto',
+        'pedidos.itens.ambienteRetirada',
+      ],
+      order: { agregados: { ordem: 'ASC' } },
+    });
+    if (!comanda) throw new NotFoundException(`Comanda "${id}" não encontrada.`);
 
     // Simplificamos o retorno dos itens para o frontend não se confundir
     const pedidosSimplificados = comanda.pedidos.map((p) => ({
