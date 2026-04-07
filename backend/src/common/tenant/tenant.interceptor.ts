@@ -84,12 +84,17 @@ export class TenantInterceptor implements NestInterceptor {
           );
         }
 
-        // Definir contexto do tenant
-        this.tenantContext?.setTenantId?.(tenant.id, tenant.nomeFantasia);
-        
-        // Adicionar informações ao request para uso posterior
+        // Sempre popular request.tenant ANTES de setTenantId (garante UUID disponível
+        // mesmo que TenantContextService falhe ou já esteja bloqueado)
         request.tenant = tenant;
         request.tenantSource = source;
+
+        // Definir contexto do tenant (pode falhar se já bloqueado, não é crítico)
+        try {
+          this.tenantContext?.setTenantId?.(tenant.id, tenant.nomeFantasia);
+        } catch {
+          // TenantContextService já bloqueado — request.tenant.id é a fonte autoritativa
+        }
 
         this.logger?.debug?.(
           `🏢 Tenant definido via ${source}: ${tenant.nomeFantasia} (${tenant.id})`

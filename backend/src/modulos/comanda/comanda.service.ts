@@ -88,7 +88,10 @@ export class ComandaService {
     }
     const userTenantId = this.request?.user?.tenantId;
     if (userTenantId) return userTenantId;
-    return this.request?.headers?.['x-tenant-id'] || null;
+    // Usar o tenant já resolvido pelo TenantInterceptor (UUID garantido)
+    // NUNCA usar headers['x-tenant-id'] diretamente — pode conter slug em vez de UUID
+    if (this.request?.tenant?.id) return this.request.tenant.id;
+    return null;
   }
 
   /**
@@ -154,8 +157,9 @@ export class ComandaService {
 
         let cliente: Cliente | null = null;
         if (clienteId) {
+          // Busca sem filtro de tenant: clientes criados via rota pública têm tenantId = null
           cliente = await transactionalEntityManager.findOne(Cliente, {
-            where: { id: clienteId, tenantId },
+            where: { id: clienteId },
           });
           if (!cliente)
             throw new NotFoundException(
