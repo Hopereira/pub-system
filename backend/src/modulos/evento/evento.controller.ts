@@ -33,6 +33,8 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { Cargo } from '../funcionario/enums/cargo.enum';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { RequireFeature, Feature, FeatureGuard } from '../../common/tenant';
+import { SkipTenantGuard } from '../../common/tenant/guards/tenant.guard';
+import { SkipRateLimit } from '../../common/tenant/guards/tenant-rate-limit.guard';
 
 /**
  * EventoController - Gestão de eventos
@@ -107,6 +109,8 @@ export class EventoController {
   }
 
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get('publicos')
   @ApiOperation({ summary: 'Lista eventos públicos ativos (sem autenticação)' })
   @ApiResponse({
@@ -119,6 +123,8 @@ export class EventoController {
 
   // ✅ NOVA ROTA PÚBLICA: Permite que o frontend busque um único evento (para a página /entrada/)
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get('publicos/:id') // Endpoint: /eventos/publicos/:id
   @ApiOperation({
     summary: 'Busca um evento público específico (sem autenticação)',

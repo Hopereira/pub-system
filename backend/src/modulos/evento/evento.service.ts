@@ -49,15 +49,15 @@ export class EventoService {
   }
 
   findAllPublic(): Promise<Evento[]> {
-    return this.eventoRepository.find({
-      where: { ativo: true } as any,
+    return this.eventoRepository.rawRepository.find({
+      where: { ativo: true },
       relations: ['paginaEvento'],
-      order: { dataEvento: 'ASC' } as any,
+      order: { dataEvento: 'ASC' },
     });
   }
 
   async findOne(id: string): Promise<Evento> {
-    const evento = await this.eventoRepository.findOne({
+    const evento = await this.eventoRepository.rawRepository.findOne({
       where: { id },
       relations: ['paginaEvento'],
     });
