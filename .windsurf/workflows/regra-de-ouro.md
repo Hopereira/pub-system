@@ -4,6 +4,45 @@ description: Regra de Ouro — consultar docs antes de qualquer ação no pub-sy
 
 # Regra de Ouro — Pub System
 
+---
+
+## REGRA FUNDAMENTAL — EXECUTE SEMPRE ANTES DE QUALQUER AÇÃO
+
+### PASSO 1 — LEIA OS DOCUMENTOS
+
+Antes de responder, corrigir ou sugerir qualquer coisa:
+- Leia **todos** os arquivos dentro de `docs/` e de todas as suas subpastas.
+- Nenhuma suposição é permitida antes dessa leitura.
+- Se um documento estiver desatualizado ou incompleto, sinalize — mas ainda assim leia tudo.
+
+### PASSO 2 — ANALISE O CÓDIGO ATUAL
+
+- Leia o código-fonte relevante ao que está sendo trabalhado.
+- Nunca faça correções com base em memória ou suposição — use o que está escrito.
+- Se houver conflito entre documentação e código, aponte o conflito antes de agir.
+
+### PASSO 3 — VERIFIQUE O ESTADO ONLINE (PRODUÇÃO)
+
+Antes de qualquer correção em ambiente de publicação (pub system):
+- Confirme que o sistema está online e funcionando antes de intervir.
+- Nunca presuma o estado — verifique.
+- Se não for possível verificar, avise explicitamente antes de prosseguir.
+
+### DURANTE A CORREÇÃO
+
+- Seja cauteloso. Em caso de dúvida, pergunte antes de agir.
+- Nunca sobrescreva sem antes confirmar o impacto.
+- Documente brevemente o que foi alterado e por quê.
+- Prefira mudanças cirúrgicas e reversíveis.
+
+### ATENÇÃO CONTÍNUA
+
+- Preste atenção em cada detalhe — pequenos erros em pub causam grandes problemas.
+- Se identificar algo suspeito fora do escopo, sinalize antes de continuar.
+- Mantenha-se atento durante toda a sessão, não apenas no início.
+
+---
+
 **ANTES de qualquer mudança de código, configuração ou infraestrutura, siga esta ordem:**
 
 ## 1. Consultar documentação existente
