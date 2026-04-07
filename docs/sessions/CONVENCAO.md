@@ -70,4 +70,5 @@ O que ainda está pendente.
 | 2026-04-01 | `docs/2026-04-01/RELATORIO_SUPER_ADMIN_LOGIN.md` | Fix login SUPER_ADMIN (tenantId null, bypass TenantGuard) |
 | 2026-04-02 | `docs/2026-04-02/RELATORIO_SESSAO.md` | Fix login hop@hop.com (UUID errado), Fix Super Admin logout automático |
 | 2026-04-04 | `docs/sessions/2026-04-04/RELATORIO_SESSAO.md` | Fix 502 Bad Gateway — rede Docker e volume postgres |
-| 2026-04-05 | `docs/sessions/2026-04-05/RELATORIO_SESSAO.md` | Fix 500 em POST /pontos-entrega — empresa_id NOT NULL no banco |
+| 2026-04-05 | `docs/sessions/2026-04-05/RELATORIO_SESSAO.md` | Bug1: POST /pontos-entrega 500 (empresa_id NOT NULL); Bug2: POST /produtos timeout GCS; Bug3: cache invalidation glob; Bug4: preços de planos hardcoded |
+| 2026-04-07 | `docs/sessions/2026-04-07/RELATORIO_SESSAO.md` | Fix MRR hardcoded no backend (super-admin.service.ts); Fix CVE-2025-66478/55183/55184 next 16.1.7→16.2.2 |
