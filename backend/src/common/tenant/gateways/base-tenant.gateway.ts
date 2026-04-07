@@ -55,9 +55,10 @@ export abstract class BaseTenantGateway {
       this.logger.log(`🏢 Cliente ${client.id} entrou no room: ${roomName}`);
       return tenantId;
     } else {
-      this.logger.warn(`🚫 Cliente ${client.id} conectou sem tenant_id — desconectando`);
-      client.emit('error', { message: 'Tenant não identificado' });
-      client.disconnect(true);
+      // Clientes públicos (sem JWT) são permitidos mas sem room de tenant.
+      // Eles podem entrar em rooms de comanda específicos via join_comanda.
+      this.logger.log(`👤 Cliente público ${client.id} conectado sem tenant (acesso público permitido)`);
+      client.data.tenantId = null;
       return null;
     }
   }

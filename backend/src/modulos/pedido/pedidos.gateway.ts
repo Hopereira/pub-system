@@ -63,13 +63,12 @@ export class PedidosGateway
    */
   @SubscribeMessage('join_comanda')
   handleJoinComanda(client: Socket, comandaId: string) {
+    // ✅ Clientes públicos (sem tenant) usam room comanda_{comandaId}
+    // Clientes autenticados usam room comanda_{tenantId}_{comandaId} para isolamento
     const clientTenantId = client.data.tenantId;
-    if (!clientTenantId) {
-      this.logger.warn(`🚫 Cliente ${client.id} sem tenant tentou join_comanda`);
-      return { success: false, error: 'Tenant não identificado' };
-    }
-    // Room inclui tenantId para isolamento: comanda_{tenantId}_{comandaId}
-    const roomName = `comanda_${clientTenantId}_${comandaId}`;
+    const roomName = clientTenantId
+      ? `comanda_${clientTenantId}_${comandaId}`
+      : `comanda_${comandaId}`;
     client.join(roomName);
     this.logger.log(`Cliente ${client.id} entrou no room: ${roomName}`);
     return { success: true, room: roomName };
@@ -81,7 +80,9 @@ export class PedidosGateway
   @SubscribeMessage('leave_comanda')
   handleLeaveComanda(client: Socket, comandaId: string) {
     const clientTenantId = client.data.tenantId;
-    const roomName = `comanda_${clientTenantId}_${comandaId}`;
+    const roomName = clientTenantId
+      ? `comanda_${clientTenantId}_${comandaId}`
+      : `comanda_${comandaId}`;
     client.leave(roomName);
     this.logger.log(`Cliente ${client.id} saiu do room: ${roomName}`);
     return { success: true, room: roomName };
