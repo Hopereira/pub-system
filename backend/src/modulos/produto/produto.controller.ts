@@ -131,7 +131,7 @@ export class ProdutoController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Lista de produtos para cardápio retornada.' })
   findCardapioPublic(@Query() paginationDto: PaginationDto) {
-    return this.produtoService.findAll(paginationDto);
+    return this.produtoService.findAllPublic(paginationDto);
   }
 
   @Get()

@@ -174,6 +174,22 @@ export class ProdutoService {
     return removedProduto;
   }
 
+  // ✅ Rota pública: sem filtro de tenant, usa rawRepository
+  async findAllPublic(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
+    const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
+
+    const [data, total] = await this.produtoRepository.rawRepository.findAndCount({
+      where: { ativo: true },
+      relations: ['ambiente'],
+      order: { [sortBy]: sortOrder } as any,
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    this.logger.log(`📋 [PUBLIC] Listando produtos | Página: ${page}/${Math.ceil(total / limit)} | Total: ${total}`);
+    return createPaginatedResponse(data, total, page, limit);
+  }
+
   // ✅ ATUALIZADO: findAll com paginação e cache (rota pública - sem filtro de tenant)
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Produto>> {
     const { page = 1, limit = 20, sortBy = 'nome', sortOrder = 'ASC' } = paginationDto || {};
