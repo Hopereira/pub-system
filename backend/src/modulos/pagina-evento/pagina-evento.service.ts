@@ -89,6 +89,22 @@ export class PaginaEventoService {
    * Retorna nulo se nenhuma for encontrada.
    */
   async findAtiva(): Promise<PaginaEvento | null> {
-    return this.paginaEventoRepository.findOne({ where: { ativa: true } });
+    return this.paginaEventoRepository.findOne({ where: { ativa: true } as any });
+  }
+
+  /**
+   * Busca uma página de evento por ID SEM filtro de tenant.
+   * Usado em rotas públicas (QR Code) onde não há contexto de tenant.
+   */
+  async findOnePublic(id: string): Promise<PaginaEvento> {
+    const paginaEvento = await this.paginaEventoRepository.rawRepository.findOne({
+      where: { id },
+    });
+    if (!paginaEvento) {
+      throw new NotFoundException(
+        `Página de Evento com ID "${id}" não encontrada.`,
+      );
+    }
+    return paginaEvento;
   }
 }
