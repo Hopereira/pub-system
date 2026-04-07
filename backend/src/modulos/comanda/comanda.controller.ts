@@ -226,12 +226,13 @@ export class ComandaController {
   }
 
   @Public()
+  @SkipTenantGuard()
+  @SkipRateLimit()
   @Get(':id/agregados')
   @ApiOperation({ summary: 'Listar agregados (acompanhantes) da comanda' })
   @ApiResponse({ status: 200, description: 'Lista de agregados retornada' })
   @ApiResponse({ status: 404, description: 'Comanda não encontrada' })
-  async getAgregados(@Param('id', ParseUUIDPipe) id: string) {
-    const comanda = await this.comandaService.findOne(id);
-    return comanda.agregados || [];
+  getAgregados(@Param('id', ParseUUIDPipe) id: string) {
+    return this.comandaService.findAgregadosPublic(id);
   }
 }

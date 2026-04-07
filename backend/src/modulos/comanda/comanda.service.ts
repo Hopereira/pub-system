@@ -490,7 +490,7 @@ export class ComandaService {
 
     if (isCpf) {
       // Busca por CPF - retorna a comanda ABERTA mais recente
-      comanda = await this.comandaRepository.findOne({
+      comanda = await this.comandaRepository.rawRepository.findOne({
         where: {
           cliente: { cpf: cpfNumeros },
           status: ComandaStatus.ABERTA,
@@ -500,7 +500,7 @@ export class ComandaService {
       });
     } else if (isUuid) {
       // Busca por ID da comanda (UUID)
-      comanda = await this.comandaRepository.findOne({
+      comanda = await this.comandaRepository.rawRepository.findOne({
         where: {
           id: searchTerm,
           status: ComandaStatus.ABERTA,
@@ -533,6 +533,15 @@ export class ComandaService {
         ? { id: comanda.pontoEntrega.id, nome: comanda.pontoEntrega.nome }
         : null,
     };
+  }
+
+  async findAgregadosPublic(id: string) {
+    const comanda = await this.comandaRepository.rawRepository.findOne({
+      where: { id },
+      relations: ['agregados'],
+    });
+    if (!comanda) throw new NotFoundException(`Comanda "${id}" não encontrada.`);
+    return comanda.agregados || [];
   }
 
   async findPublicOne(id: string) {
