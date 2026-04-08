@@ -45,6 +45,17 @@ export function SocketProvider({ children }: SocketProviderProps) {
     
     // ✅ Obtém o token JWT para enviar no handshake
     const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+
+    // ✅ Não conectar em páginas públicas sem JWT — o useComandaSubscription
+    // cria seu próprio socket para páginas de cliente público.
+    // Sem este guard, o SocketContext global tentaria conectar sem token e
+    // seria desconectado pelo backend (io server disconnect).
+    if (!token) {
+      logger.log('⏭️ SocketContext: sem token JWT, pulando conexão WebSocket global (página pública)', {
+        module: 'SocketContext',
+      });
+      return null;
+    }
     
     logger.log('🔌 Iniciando conexão WebSocket única', {
       module: 'SocketContext',
@@ -103,7 +114,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       });
     });
 
-    return newSocket;
+    return newSocket as Socket;
   }, []);
 
   // ✅ Função para reconectar com novo token
@@ -137,7 +148,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
     const initialTokenCheck = setTimeout(() => {
       const currentToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
       const socketConnectedWithToken = socketRef.current?.auth && (socketRef.current.auth as any).token;
-      if (currentToken && !socketConnectedWithToken) {
+      // Só reconecta se há token E o socket atual não tem token (evita loop em páginas públicas)
+      if (currentToken && !socketConnectedWithToken && !socketRef.current?.connected) {
         logger.log('🔄 Token encontrado após mount, reconectando WebSocket com autenticação', {
           module: 'SocketContext',
         });
