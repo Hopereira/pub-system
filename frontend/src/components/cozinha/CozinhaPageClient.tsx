@@ -32,6 +32,7 @@ interface CozinhaPageClientProps {
 export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: CozinhaPageClientProps) {
   const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [todosPedidos, setTodosPedidos] = useState<Pedido[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [ambienteSelecionado, setAmbienteSelecionado] = useState<string | null>(initialAmbienteId || null);
@@ -55,6 +56,9 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
         if (!ambienteSelecionado && ambientesPreparo.length > 0) {
           setAmbienteSelecionado(ambientesPreparo[0].id);
         }
+        // Carrega todos os pedidos em background
+        const todosPedidosData = await getPedidos();
+        setTodosPedidos(todosPedidosData);
       } catch (error) {
         toast.error('Erro ao carregar ambientes');
       }
@@ -64,12 +68,15 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
 
   const metricasPorAmbiente = useMemo(() => {
     const metricas: Record<string, { aguardando: number; emPreparo: number; prontos: number; tempoMedioEspera: number }> = {};
+    // Usa todosPedidos para métricas dos cards (todos os ambientes)
+    // Se não carregou ainda, usa pedidos do ambiente atual como fallback
+    const fonte = todosPedidos.length > 0 ? todosPedidos : pedidos;
     ambientes.forEach(ambiente => {
-      const itensPorAmbiente = pedidos.flatMap(p => p.itens.filter(item => item.produto?.ambiente?.id === ambiente.id));
+      const itensPorAmbiente = fonte.flatMap(p => p.itens.filter(item => item.produto?.ambiente?.id === ambiente.id));
       const aguardando = itensPorAmbiente.filter(i => i.status === 'FEITO').length;
       const emPreparo = itensPorAmbiente.filter(i => i.status === 'EM_PREPARO').length;
       const prontos = itensPorAmbiente.filter(i => i.status === 'PRONTO').length;
-      const itensAguardando = pedidos.filter(p => p.itens.some(item => item.produto?.ambiente?.id === ambiente.id && (item.status === 'FEITO' || item.status === 'EM_PREPARO')));
+      const itensAguardando = fonte.filter(p => p.itens.some(item => item.produto?.ambiente?.id === ambiente.id && (item.status === 'FEITO' || item.status === 'EM_PREPARO')));
       let tempoMedioEspera = 0;
       if (itensAguardando.length > 0) {
         const agora = new Date().getTime();
@@ -79,14 +86,20 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
       metricas[ambiente.id] = { aguardando, emPreparo, prontos, tempoMedioEspera };
     });
     return metricas;
-  }, [ambientes, pedidos]);
+  }, [ambientes, pedidos, todosPedidos]);
 
   useEffect(() => {
+    if (!ambienteSelecionado) return;
     const fetchPedidos = async () => {
       setIsLoading(true);
       try {
-        const data = await getPedidos();
+        const data = await getPedidos({ ambienteId: ambienteSelecionado });
         setPedidos(data);
+        // Atualiza todosPedidos mesclando com o novo lote
+        setTodosPedidos(prev => {
+          const outros = prev.filter(p => !p.itens.some(i => i.produto?.ambiente?.id === ambienteSelecionado));
+          return [...outros, ...data];
+        });
       } catch (error) {
         toast.error('Erro ao carregar pedidos');
       } finally {
@@ -94,7 +107,7 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
       }
     };
     fetchPedidos();
-  }, []);
+  }, [ambienteSelecionado]);
 
   // ✅ CORREÇÃO: Escuta eventos via SocketContext (que tem o token JWT)
   // Eventos são emitidos para o room do tenant, então precisamos usar o SocketContext
@@ -109,12 +122,14 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
     const handleNovoPedido = (novoPedido: Pedido) => {
       console.log('🆕 [CozinhaPage] Novo pedido recebido:', novoPedido.id);
       setPedidos(prev => [novoPedido, ...prev.filter(p => p.id !== novoPedido.id)]);
+      setTodosPedidos(prev => [novoPedido, ...prev.filter(p => p.id !== novoPedido.id)]);
     };
     
     // Handler para status atualizado
     const handleStatusAtualizado = (pedidoAtualizado: Pedido) => {
       console.log('🔄 [CozinhaPage] Status atualizado:', pedidoAtualizado.id);
       setPedidos(prev => prev.map(p => p.id === pedidoAtualizado.id ? pedidoAtualizado : p));
+      setTodosPedidos(prev => prev.map(p => p.id === pedidoAtualizado.id ? pedidoAtualizado : p));
     };
 
     // Inscreve nos eventos via SocketContext
@@ -136,16 +151,16 @@ export default function CozinhaPageClient({ ambienteId: initialAmbienteId }: Coz
   useEffect(() => {
     if (novoPedidoRecebido) {
       console.log('📨 [CozinhaPage] novoPedidoRecebido do hook:', novoPedidoRecebido.id);
-      setPedidos(prev => {
+      const updater = (prev: Pedido[]) => {
         const existe = prev.find(p => p.id === novoPedidoRecebido.id);
         if (existe) {
-          // Atualiza pedido existente
           return prev.map(p => p.id === novoPedidoRecebido.id ? novoPedidoRecebido : p);
         } else {
-          // Adiciona novo pedido
           return [novoPedidoRecebido, ...prev];
         }
-      });
+      };
+      setPedidos(updater);
+      setTodosPedidos(updater);
     }
   }, [novoPedidoRecebido]);
 
