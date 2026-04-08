@@ -19,6 +19,18 @@ import { TenantContextService } from '../common/tenant/tenant-context.service';
 export class CacheInvalidationService {
   private readonly logger = new Logger(CacheInvalidationService.name);
 
+  // Rastreia todas as chaves criadas para permitir invalidação por padrão
+  // (keyv in-memory não suporta store.keys())
+  private static readonly trackedKeys = new Set<string>();
+
+  static trackKey(key: string): void {
+    CacheInvalidationService.trackedKeys.add(key);
+  }
+
+  static removeKey(key: string): void {
+    CacheInvalidationService.trackedKeys.delete(key);
+  }
+
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @Optional() private readonly tenantContext?: TenantContextService,
@@ -80,39 +92,23 @@ export class CacheInvalidationService {
    */
   async invalidatePattern(pattern: string): Promise<number> {
     try {
-      const stores = (this.cacheManager as any).stores;
-      const store = stores?.[0] || (this.cacheManager as any).store;
-
-      // cache-manager in-memory (keyv) não suporta glob no keys().
-      // Estratégia: buscar todas as chaves sem filtro e fazer match manual.
-      let allKeys: string[] = [];
-      if (typeof store?.keys === 'function') {
-        // Tentar sem argumento (retorna todas) e com wildcard (Redis suporta)
-        try {
-          const result = await store.keys('*');
-          allKeys = Array.isArray(result) ? result : [];
-        } catch {
-          try {
-            const result = await store.keys();
-            allKeys = Array.isArray(result) ? result : [];
-          } catch {
-            allKeys = [];
-          }
-        }
-      }
-
-      // Converter glob simples (prefixo:*) em prefixo para match com startsWith/includes
+      // Converter glob simples (prefixo:*) em prefixo para match
       const prefix = pattern.endsWith(':*') ? pattern.slice(0, -2) : pattern.replace(/\*/g, '');
-      const matchingKeys = allKeys.filter((k) => k.includes(prefix));
+
+      // Usa o Set estático de chaves rastreadas (keyv in-memory não suporta store.keys())
+      const matchingKeys = Array.from(CacheInvalidationService.trackedKeys).filter((k) =>
+        k.includes(prefix),
+      );
 
       if (matchingKeys.length === 0) {
-        this.logger.debug(`🔍 Nenhuma chave encontrada para o padrão: ${pattern}`);
+        this.logger.debug(`🔍 Nenhuma chave rastreada para o padrão: ${pattern}`);
         return 0;
       }
 
       let deletedCount = 0;
       for (const key of matchingKeys) {
         await this.cacheManager.del(key);
+        CacheInvalidationService.trackedKeys.delete(key);
         this.logger.debug(`🗑️ Cache invalidado: ${key}`);
         deletedCount++;
       }

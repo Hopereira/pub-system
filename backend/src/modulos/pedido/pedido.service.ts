@@ -450,6 +450,7 @@ export class PedidoService {
     // Armazenar no cache por 2 minutos (apenas se tenant disponível)
     if (cacheKey) {
       await this.cacheManager.set(cacheKey, pedidosFiltrados, 120000);
+      CacheInvalidationService.trackKey(cacheKey);
     }
 
     return pedidosFiltrados;
