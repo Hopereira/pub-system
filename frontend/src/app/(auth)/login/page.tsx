@@ -61,11 +61,13 @@ export default function LoginPage() {
           const decodedPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
           const decodedUser = JSON.parse(decodedPayload);
           const cargo = decodedUser.cargo || decodedUser.role;
+          const ambienteId = decodedUser.ambienteId;
           
           console.log('[Login] Cargo detectado:', cargo);
+          console.log('[Login] AmbienteId:', ambienteId);
           console.log('[Login] Payload completo:', decodedUser);
           
-          // Redireciona baseado no cargo (estritamente)
+          // Redireciona baseado no cargo e ambienteId
           switch (cargo) {
             case 'SUPER_ADMIN':
               router.push('/super-admin');
@@ -84,10 +86,14 @@ export default function LoginPage() {
               break;
             case 'COZINHA':
             case 'COZINHEIRO':
-              router.push('/cozinha');
-              break;
             case 'BARTENDER':
-              router.push('/cozinha');
+              // Se tem ambienteId, vai direto para o painel operacional
+              if (ambienteId) {
+                router.push(`/dashboard/operacional/${ambienteId}`);
+              } else {
+                // Fallback para seletor de ambiente
+                router.push('/cozinha');
+              }
               break;
             default:
               console.warn('[Login] Cargo não reconhecido:', cargo, 'redirecionando para /dashboard');
