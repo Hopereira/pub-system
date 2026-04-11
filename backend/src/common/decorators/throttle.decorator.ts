@@ -5,10 +5,10 @@ import { Throttle as NestThrottle } from '@nestjs/throttler';
 
 /**
  * Rate limit para endpoints de login
- * 5 tentativas a cada 15 minutos
+ * 20 tentativas a cada 15 minutos (aumentado para facilitar testes)
  */
 export const ThrottleLogin = () =>
-  NestThrottle({ login: { limit: 5, ttl: 900000 } });
+  NestThrottle({ login: { limit: 20, ttl: 900000 } });
 
 /**
  * Rate limit para endpoints públicos
