@@ -63,9 +63,9 @@ export default function LoginPage() {
           const cargo = decodedUser.cargo || decodedUser.role;
           
           console.log('[Login] Cargo detectado:', cargo);
-          console.log('[Login] Payload decodificado:', decodedUser);
+          console.log('[Login] Payload completo:', decodedUser);
           
-          // Redireciona baseado no cargo
+          // Redireciona baseado no cargo (estritamente)
           switch (cargo) {
             case 'SUPER_ADMIN':
               router.push('/super-admin');
@@ -74,6 +74,8 @@ export default function LoginPage() {
               router.push('/garcom');
               break;
             case 'ADMIN':
+              router.push('/dashboard');
+              break;
             case 'GERENTE':
               router.push('/dashboard');
               break;
@@ -84,8 +86,12 @@ export default function LoginPage() {
             case 'COZINHEIRO':
               router.push('/cozinha');
               break;
+            case 'BARTENDER':
+              router.push('/cozinha');
+              break;
             default:
-              router.push('/');
+              console.warn('[Login] Cargo não reconhecido:', cargo, 'redirecionando para /dashboard');
+              router.push('/dashboard');
           }
         } catch (decodeErr) {
           console.error('Erro ao decodificar token:', decodeErr);
