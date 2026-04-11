@@ -50,23 +50,28 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Faz login e obtém o usuário
-      await login({ email, senha: password });
+      // Faz login e obtém o usuário do backend
+      const loginResponse = await login({ email, senha: password });
       
-      // Decodifica o token para obter o cargo
+      console.log('=== LOGIN DEBUG v3 - BACKEND RESPONSE ===');
+      console.log('[Login] Response completa:', loginResponse);
+      console.log('[Login] User do backend:', loginResponse.user);
+      
+      // Usa o cargo retornado pelo BACKEND (fonte confiável)
+      const cargo = loginResponse.user?.cargo;
+      
+      // Decodifica o token APENAS para pegar o ambienteId
       const token = localStorage.getItem('authToken');
+      let ambienteId = null;
       if (token && token.includes('.')) {
         try {
           const base64Payload = token.split('.')[1];
           const decodedPayload = atob(base64Payload.replace(/-/g, '+').replace(/_/g, '/'));
           const decodedUser = JSON.parse(decodedPayload);
-          const cargo = decodedUser.cargo || decodedUser.role;
-          const ambienteId = decodedUser.ambienteId;
+          ambienteId = decodedUser.ambienteId;
           
-          console.log('=== LOGIN DEBUG v2 ===');
-          console.log('[Login] Cargo detectado:', cargo);
-          console.log('[Login] AmbienteId:', ambienteId);
-          console.log('[Login] Payload completo:', decodedUser);
+          console.log('[Login] Cargo do BACKEND:', cargo);
+          console.log('[Login] AmbienteId do JWT:', ambienteId);
           
           // Redireciona baseado no cargo e ambienteId
           switch (cargo) {

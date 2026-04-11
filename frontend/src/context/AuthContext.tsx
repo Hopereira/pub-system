@@ -8,7 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<any>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -81,7 +81,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    const { access_token } = await apiLogin(email, senha, tenantSlug);
+    const loginResponse = await apiLogin(email, senha, tenantSlug);
+    const { access_token } = loginResponse;
     const decodedUser: User = jwtDecode(access_token);
     const newEmpresaId = decodedUser.empresaId || null;
 
@@ -98,7 +99,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Força reload completo para limpar todo cache e estado React
       window.location.reload();
-      return;
+      return loginResponse;
     }
     
     setUser(decodedUser);
@@ -106,6 +107,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Dispara evento customizado para reconectar WebSocket na mesma aba
     window.dispatchEvent(new CustomEvent('authTokenChanged', { detail: { hasToken: true } }));
+    
+    // Retorna a resposta completa para que o componente possa acessar user.cargo
+    return loginResponse;
   };
 
   const logout = async () => {
