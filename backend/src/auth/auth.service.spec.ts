@@ -5,6 +5,7 @@ import { FuncionarioService } from '../modulos/funcionario/funcionario.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { AuditService } from '../modulos/audit/audit.service';
 import { TenantResolverService } from '../common/tenant/tenant-resolver.service';
+import { TenantContextService } from '../common/tenant/tenant-context.service';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt');
@@ -37,6 +38,11 @@ describe('AuthService', () => {
     resolveById: jest.fn(),
     resolveBySlug: jest.fn(),
     extractSlugFromHostname: jest.fn(),
+  };
+
+  const mockTenantContextService = {
+    hasTenant: jest.fn().mockReturnValue(false),
+    setTenantId: jest.fn(),
   };
 
   // Mock data
@@ -73,6 +79,10 @@ describe('AuthService', () => {
         {
           provide: TenantResolverService,
           useValue: mockTenantResolverService,
+        },
+        {
+          provide: TenantContextService,
+          useValue: mockTenantContextService,
         },
       ],
     }).compile();
