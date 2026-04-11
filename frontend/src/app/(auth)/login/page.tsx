@@ -63,6 +63,7 @@ export default function LoginPage() {
           const cargo = decodedUser.cargo || decodedUser.role;
           const ambienteId = decodedUser.ambienteId;
           
+          console.log('=== LOGIN DEBUG v2 ===');
           console.log('[Login] Cargo detectado:', cargo);
           console.log('[Login] AmbienteId:', ambienteId);
           console.log('[Login] Payload completo:', decodedUser);
@@ -70,18 +71,23 @@ export default function LoginPage() {
           // Redireciona baseado no cargo e ambienteId
           switch (cargo) {
             case 'SUPER_ADMIN':
+              console.log('[Login] Redirecionando SUPER_ADMIN para /super-admin');
               router.push('/super-admin');
               break;
             case 'GARCOM':
+              console.log('[Login] Redirecionando GARCOM para /garcom');
               router.push('/garcom');
               break;
             case 'ADMIN':
+              console.log('[Login] Redirecionando ADMIN para /dashboard');
               router.push('/dashboard');
               break;
             case 'GERENTE':
+              console.log('[Login] Redirecionando GERENTE para /dashboard');
               router.push('/dashboard');
               break;
             case 'CAIXA':
+              console.log('[Login] Redirecionando CAIXA para /caixa');
               router.push('/caixa');
               break;
             case 'COZINHA':
@@ -89,9 +95,11 @@ export default function LoginPage() {
             case 'BARTENDER':
               // Se tem ambienteId, vai direto para o painel operacional
               if (ambienteId) {
-                router.push(`/dashboard/operacional/${ambienteId}`);
+                const targetUrl = `/dashboard/operacional/${ambienteId}`;
+                console.log(`[Login] Redirecionando ${cargo} COM ambienteId para:`, targetUrl);
+                router.push(targetUrl);
               } else {
-                // Fallback para seletor de ambiente
+                console.log(`[Login] Redirecionando ${cargo} SEM ambienteId para /cozinha`);
                 router.push('/cozinha');
               }
               break;
