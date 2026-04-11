@@ -255,6 +255,26 @@ docker compose -f docker-compose.micro.yml exec backend npm run typeorm:migratio
 ```
 Ver `docs/sessions/2026-04-05/RELATORIO_SESSAO.md` para diagnóstico completo.
 
+### POST /comandas retorna 400 — "Tenant não identificado" em evento sem PaginaEvento
+
+**Sintoma:** Página `/entrada/{eventoId}` retorna `POST /comandas → 400` ao preencher o formulário. Log do backend: `Tenant não identificado. Impossível criar comanda.`
+
+**Causa:** O evento não tem uma `PaginaEvento` vinculada. O frontend cria um objeto virtual com `id: ''` que é convertido para `paginaEventoId: undefined`. O backend tem fallback via `paginaEventoId` (fix 2026-04-08) mas não tinha fallback via `eventoId`.
+
+**Fix (aplicado em 2026-04-11):** `comanda.service.ts` agora tem fallback secundário:
+```typescript
+if (!tenantId && eventoId) {
+  const eventoRaw = await this.eventoRepository.rawRepository.findOne({
+    where: { id: eventoId }, select: ['tenantId'],
+  });
+  if (eventoRaw?.tenantId) tenantId = eventoRaw.tenantId;
+}
+```
+Se regredir: verificar se o fallback de `eventoId` está presente no `comanda.service.ts` (linhas ~146-156).  
+Ver `docs/sessions/2026-04-11/11-04-2026RELATORIO.md` Bug #5.
+
+---
+
 ### Backend conecta mas banco parece vazio ("relation X does not exist")
 **Sintoma:** `QueryFailedError: relation "ambientes" does not exist` nos logs  
 **Causa:** Container postgres foi recriado apontando para volume errado (`pub_postgres_data` vazio).  
