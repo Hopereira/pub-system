@@ -102,11 +102,10 @@ export default function LoginPage() {
               if (ambienteId) {
                 const targetUrl = `/dashboard/operacional/${ambienteId}`;
                 console.log(`[Login] Redirecionando ${cargo} COM ambienteId para:`, targetUrl);
-                console.log('[Login] Usando window.location.href para forçar navegação');
-                window.location.href = targetUrl;
+                router.replace(targetUrl);
               } else {
                 console.log(`[Login] Redirecionando ${cargo} SEM ambienteId para /cozinha`);
-                window.location.href = '/cozinha';
+                router.replace('/cozinha');
               }
               break;
             default:
