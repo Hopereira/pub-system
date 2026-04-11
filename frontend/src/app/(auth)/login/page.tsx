@@ -84,11 +84,11 @@ export default function LoginPage() {
               break;
             case 'GERENTE':
               console.log('[Login] Redirecionando GERENTE para /dashboard');
-              router.push('/dashboard');
+              router.replace('/dashboard');
               break;
             case 'CAIXA':
               console.log('[Login] Redirecionando CAIXA para /caixa');
-              router.push('/caixa');
+              router.replace('/caixa');
               break;
             case 'COZINHA':
             case 'COZINHEIRO':
@@ -97,15 +97,16 @@ export default function LoginPage() {
               if (ambienteId) {
                 const targetUrl = `/dashboard/operacional/${ambienteId}`;
                 console.log(`[Login] Redirecionando ${cargo} COM ambienteId para:`, targetUrl);
-                router.push(targetUrl);
+                console.log('[Login] Usando window.location.href para forçar navegação');
+                window.location.href = targetUrl;
               } else {
                 console.log(`[Login] Redirecionando ${cargo} SEM ambienteId para /cozinha`);
-                router.push('/cozinha');
+                window.location.href = '/cozinha';
               }
               break;
             default:
               console.warn('[Login] Cargo não reconhecido:', cargo, 'redirecionando para /dashboard');
-              router.push('/dashboard');
+              router.replace('/dashboard');
           }
         } catch (decodeErr) {
           console.error('Erro ao decodificar token:', decodeErr);
