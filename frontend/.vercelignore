@@ -1,0 +1,4 @@
+# Ignorar cache local
+.next/
+node_modules/
+.turbo/
