@@ -143,6 +143,18 @@ export class ComandaService {
       }
     }
 
+    // Fallback secundário: resolver tenantId via eventoId (quando evento não tem paginaEvento)
+    if (!tenantId && eventoId) {
+      const eventoRaw = await this.eventoRepository.rawRepository.findOne({
+        where: { id: eventoId },
+        select: ['tenantId'],
+      });
+      if (eventoRaw?.tenantId) {
+        tenantId = eventoRaw.tenantId;
+        this.logger.debug(`🏢 tenantId resolvido via evento: ${tenantId}`);
+      }
+    }
+
     if (!tenantId) {
       throw new BadRequestException('Tenant não identificado. Impossível criar comanda.');
     }
