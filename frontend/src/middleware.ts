@@ -28,13 +28,16 @@ export function middleware(request: NextRequest) {
     'www.pubsystem.com.br',
     'pub-system.vercel.app',
   ];
+  
+  // Verificar se é um domínio de preview do Vercel (pub-system-*.vercel.app)
+  const isVercelPreview = originalHost.includes('.vercel.app');
 
-  // Verificar se é um host excluído
+  // Verificar se é um host excluído ou preview do Vercel
   const isExcluded = excludedHosts.some(h => 
     originalHost === h || originalHost.startsWith(`${h}:`)
   );
 
-  if (isExcluded) {
+  if (isExcluded || isVercelPreview) {
     return NextResponse.next();
   }
 
