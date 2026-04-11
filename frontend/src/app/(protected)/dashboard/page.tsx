@@ -39,6 +39,28 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
+  // Redirecionar COZINHEIRO/BARTENDER para painel operacional
+  useEffect(() => {
+    if (!user) return;
+    const cargoOperacional = ['COZINHEIRO', 'COZINHA', 'BARTENDER'];
+    if (cargoOperacional.includes(user.cargo)) {
+      const ambienteId = (user as any).ambienteId;
+      if (ambienteId) {
+        router.replace(`/dashboard/operacional/${ambienteId}`);
+      } else {
+        router.replace('/cozinha');
+      }
+    }
+    // Redirecionar GARCOM para /garcom
+    if (user.cargo === 'GARCOM') {
+      router.replace('/garcom');
+    }
+    // Redirecionar CAIXA para /caixa
+    if (user.cargo === 'CAIXA') {
+      router.replace('/caixa');
+    }
+  }, [user, router]);
+
   const [metricas, setMetricas] = useState({
     vendasDia: 0,
     vendasTrend: 0,
