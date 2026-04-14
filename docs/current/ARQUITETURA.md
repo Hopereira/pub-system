@@ -1,6 +1,6 @@
 # Arquitetura do Pub System
 
-**Última atualização:** 2026-03-22  
+**Última atualização:** 2026-04-14  
 **Fonte da verdade:** `backend/src/app.module.ts`, `docker-compose.yml`, `frontend/src/app/`  
 **Status:** Ativo
 
@@ -22,6 +22,7 @@
                         │   REDIS 7        │
                         │   Cache          │
                         │   :6379          │
+                        │  (DEV ONLY)      │
                         └──────────────────┘
 ```
 
@@ -65,7 +66,7 @@
 ### Frontend
 | Tecnologia | Versão | Uso |
 |-----------|--------|-----|
-| Next.js | 16.1.6 | Framework (App Router + Turbopack) |
+| Next.js | 16.2.2 | Framework (App Router + Turbopack) — atualizado CVE-2025-66478 |
 | React | 19.1.0 | UI |
 | TypeScript | — | Linguagem |
 | Tailwind CSS | 4 | Estilização |
@@ -121,7 +122,7 @@ O sistema é composto por 20 módulos NestJS organizados em `src/modulos/` e `sr
 | Módulo | Localização | Descrição |
 |--------|------------|-----------|
 | `auth` | `src/auth/` | JWT, refresh tokens, sessões |
-| `cache` | `src/cache/` | Redis cache com invalidação |
+| `cache` | `src/cache/` | Cache com invalidação — keyv in-memory (prod) / Redis (dev) |
 | `common/tenant` | `src/common/tenant/` | Multi-tenancy completo |
 | `common/logger` | `src/common/logger/` | Winston logging |
 | `health` | `src/health/` | Health check (Terminus) |
@@ -298,13 +299,17 @@ Next.js 16 (App Router + Turbopack), React 19, Tailwind CSS 4, shadcn/ui, Socket
 | `/` | Pública | Login |
 | `/comanda/[id]` | Pública | QR Code comanda |
 | `/cardapio` | Pública | Cardápio público |
-| `/dashboard` | JWT | Dashboard principal |
-| `/dashboard/operacional/caixa` | ADMIN/CAIXA | Terminal de caixa |
+| `/entrada/[eventoId]` | Pública | Formulário de entrada em evento (cria comanda pública) |
+| `/portal-cliente/[comandaId]` | Pública | Hub do cliente pós-entrada |
+| `/recuperar-comanda` | Pública | Recuperar comanda por código/CPF |
+| `/dashboard` | JWT | Dashboard principal (ADMIN/GERENTE) |
+| `/caixa` | CAIXA | Terminal de caixa |
+| `/garcom` | GARCOM | Interface do garçom |
 | `/dashboard/operacional/[ambienteId]` | COZINHEIRO/BARTENDER | Painel Kanban preparo |
 | `/dashboard/comandas` | ADMIN/CAIXA | Gestão comandas |
 | `/dashboard/cardapio` | ADMIN | Gestão produtos |
 | `/dashboard/relatorios` | ADMIN | Analytics |
-| `/dashboard/super-admin/*` | SUPER_ADMIN | Gestão plataforma |
+| `/super-admin` | SUPER_ADMIN | Gestão plataforma |
 
 ### Middleware (`frontend/src/middleware.ts`)
 
@@ -319,6 +324,8 @@ Detecta subdomínio e reescreve para `/t/[slug]`:
 ```
 casarao-pub.pubsystem.com.br/ → /t/casarao-pub
 ```
+
+**Hosts ignorados (sem rewrite):** `localhost`, `*.pubsystem.com.br`, `*.vercel.app` (incluindo previews do Vercel — fix 2026-04-11).
 
 ### Services
 Cada módulo backend tem um service correspondente em `frontend/src/services/` usando Axios com interceptor JWT automático.

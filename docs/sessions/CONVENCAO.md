@@ -1,6 +1,6 @@
 # Convenção de Sessões — Pub System
 
-**Última atualização:** 2026-04-05
+**Última atualização:** 2026-04-14
 
 ---
 
@@ -72,3 +72,5 @@ O que ainda está pendente.
 | 2026-04-04 | `docs/sessions/2026-04-04/RELATORIO_SESSAO.md` | Fix 502 Bad Gateway — rede Docker e volume postgres |
 | 2026-04-05 | `docs/sessions/2026-04-05/RELATORIO_SESSAO.md` | Bug1: POST /pontos-entrega 500 (empresa_id NOT NULL); Bug2: POST /produtos timeout GCS; Bug3: cache invalidation glob; Bug4: preços de planos hardcoded |
 | 2026-04-07 | `docs/sessions/2026-04-07/RELATORIO_SESSAO.md` | Fix MRR hardcoded no backend (super-admin.service.ts); Fix CVE-2025-66478/55183/55184 next 16.1.7→16.2.2 |
+| 2026-04-08 | `docs/sessions/2026-04-08/RELATORIO.md` | Fix cache invalidatePattern (keyv sem suporte a keys()); Fix CozinhaPageClient não recarregava pedidos ao trocar de aba de ambiente |
+| 2026-04-11 | `docs/sessions/2026-04-11/RELATORIO_SESSAO.md` | Fix redirecionamento pós-login por cargo (COZINHEIRO/BARTENDER→operacional); Fix POST /comandas 400 em evento sem PaginaEvento (fallback tenantId via eventoId) |
