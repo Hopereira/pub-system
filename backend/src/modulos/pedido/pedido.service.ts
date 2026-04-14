@@ -198,6 +198,11 @@ export class PedidoService {
 
     // Invalidar cache após criar pedido
     await this.cacheInvalidationService.invalidatePedidos();
+    // Fallback explícito: usa tenantId da comanda para garantir invalidação em rotas públicas
+    // (PedidoService.getTenantId() não verifica request.tenant.id, podendo retornar null)
+    if (comanda.tenantId) {
+      await this.cacheInvalidationService.invalidatePattern(`pedidos:${comanda.tenantId}:*`);
+    }
 
     this.pedidosGateway.emitNovoPedido(pedidoCompleto);
 

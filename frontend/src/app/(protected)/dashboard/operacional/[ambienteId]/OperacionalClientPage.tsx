@@ -77,6 +77,15 @@ export function OperacionalClientPage({ ambienteId }: { ambienteId: string }) {
   // Recarrega dados quando recebe novo pedido via WebSocket
   useEffect(() => {
     if (novoPedidoRecebido) {
+      // Atualiza estado diretamente (sem depender do cache)
+      setPedidos(prev => {
+        const existe = prev.find(p => p.id === novoPedidoRecebido.id);
+        if (existe) {
+          return prev.map(p => p.id === novoPedidoRecebido.id ? novoPedidoRecebido : p);
+        }
+        return [novoPedidoRecebido, ...prev];
+      });
+      // Re-fetch em background para consistência total
       fetchDados();
     }
   }, [novoPedidoRecebido]);
