@@ -159,6 +159,12 @@ export class ComandaService {
       throw new BadRequestException('Tenant não identificado. Impossível criar comanda.');
     }
 
+    // Sincronizar tenant resolvido via fallback com request.tenant
+    // Garante que BaseTenantRepository.getTenantId() funcione em findOne() após a transação
+    if (this.request && !this.request.tenant?.id) {
+      this.request.tenant = { id: tenantId };
+    }
+
     // ✅ USAR TRANSAÇÃO COM LOCK PESSIMISTA PARA EVITAR RACE CONDITION
     // IMPORTANTE: Todas as queries dentro da transação DEVEM filtrar por tenantId
     // pois transactionalEntityManager bypassa BaseTenantRepository
