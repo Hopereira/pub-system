@@ -173,8 +173,16 @@ jobs:
             set -e
             cd ~/pub-system
             git pull origin main
-            docker compose -f docker-compose.micro.yml build backend
-            docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
+            # Liberar espaço antes de buildar
+            docker system prune -f --volumes 2>/dev/null || true
+            # Compatibilidade docker compose / docker-compose
+            if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            else
+              COMPOSE="docker-compose"
+            fi
+            $COMPOSE -f docker-compose.micro.yml build backend
+            $COMPOSE -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
           ENDSSH
           
           # Limpar chave
@@ -204,7 +212,7 @@ jobs:
           
           ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
             cd ~/pub-system
-            ./scripts/rollback.sh --force
+            bash scripts/rollback.sh --force
           ENDSSH
           
           rm -f ~/.ssh/deploy_key
