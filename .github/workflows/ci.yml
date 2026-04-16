@@ -83,11 +83,9 @@ jobs:
 
       - name: Unit tests
         run: npm test -- --passWithNoTests
-        continue-on-error: true
 
       - name: E2E tests
         run: npm run test:e2e -- --passWithNoTests
-        continue-on-error: true
 
   # ============================================
   # JOB 2: Frontend - Lint, Build
@@ -193,9 +191,9 @@ jobs:
       - name: Verify deployment health
         run: |
           echo "🔍 Checking deployment health..."
-          sleep 10
-          curl -f https://api.pubsystem.com.br/health || echo "⚠️ Health check failed"
-        continue-on-error: true
+          sleep 15
+          curl -f https://api.pubsystem.com.br/health
+        continue-on-error: false
 
       - name: Rollback on failure
         if: failure()
