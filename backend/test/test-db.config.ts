@@ -1,9 +1,8 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import * as path from 'path';
 
 /**
  * Configuração de banco de dados para testes E2E
- * Usa PostgreSQL com configuração simplificada
+ * Usa PostgreSQL — tabelas criadas pelo schema:sync do CI antes dos testes
  */
 export const testDbConfig: TypeOrmModuleOptions = {
   type: 'postgres',
@@ -12,8 +11,7 @@ export const testDbConfig: TypeOrmModuleOptions = {
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'pub_system_test',
-  entities: [path.join(__dirname, '..', 'src', '**', '*.entity.{ts,js}')],
-  synchronize: true, // Auto-cria tabelas para testes
+  synchronize: false,
   logging: false,
   ssl: false,
 };
