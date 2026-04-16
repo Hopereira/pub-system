@@ -160,28 +160,29 @@ jobs:
           SSH_USER: ${{ secrets.ORACLE_USER }}
         run: |
           echo "🚀 Deploying backend to staging..."
-          # Criar arquivo de chave SSH temporário
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          
-          # Adicionar host conhecido
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
-          
-          # Deploy via SSH
-          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=30 $SSH_USER@$SSH_HOST << 'ENDSSH'
+
+          # Liberar espaço no servidor antes de enviar arquivos
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $SSH_USER@$SSH_HOST \
+            "docker system prune -af --volumes 2>/dev/null || true; \
+             find /var/lib/docker/containers -name '*.log' -exec truncate -s 0 {} \; 2>/dev/null || true; \
+             df -h / || true"
+
+          # Sincronizar código via rsync (sem depender de git no servidor)
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            . $SSH_USER@$SSH_HOST:~/pub-system/
+
+          # Buildar e reiniciar container
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << 'ENDSSH'
             set -e
             cd ~/pub-system
-            git pull origin main
-            # Liberar espaço antes de buildar
-            docker system prune -af --volumes 2>/dev/null || true
-            docker image prune -af 2>/dev/null || true
-            # Limpar logs Docker que crescem sem limite
-            find /var/lib/docker/containers -name "*.log" -exec truncate -s 0 {} \; 2>/dev/null || true
-            # Limpar npm cache se existir
-            npm cache clean --force 2>/dev/null || true
-            df -h / || true
-            # Compatibilidade docker compose / docker-compose
             if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
               COMPOSE="docker compose"
             else
@@ -190,8 +191,7 @@ jobs:
             $COMPOSE -f docker-compose.micro.yml build backend
             $COMPOSE -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
           ENDSSH
-          
-          # Limpar chave
+
           rm -f ~/.ssh/deploy_key
           echo "✅ Backend deployed successfully"
         continue-on-error: false
