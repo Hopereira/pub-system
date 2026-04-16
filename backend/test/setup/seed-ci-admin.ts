@@ -6,7 +6,6 @@
  */
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import * as path from 'path';
 
 async function main() {
   const ds = new DataSource({
@@ -25,6 +24,8 @@ async function main() {
   const senha = process.env.CI_ADMIN_PASSWORD || 'admin123';
   const hash = await bcrypt.hash(senha, 10);
 
+  // SUPER_ADMIN não pertence a nenhum tenant (tenant_id = NULL)
+  // Requer migration AllowNullTenantInFuncionarios aplicada antes
   await ds.query(`
     INSERT INTO funcionarios (id, nome, email, senha, cargo, status, tenant_id)
     VALUES (
@@ -39,7 +40,7 @@ async function main() {
     ON CONFLICT DO NOTHING
   `, [email, hash]);
 
-  console.log(`✅ CI admin seed: ${email}`);
+  console.log(`✅ CI admin seed: ${email} (SUPER_ADMIN, sem tenant)`);
   await ds.destroy();
 }
 
