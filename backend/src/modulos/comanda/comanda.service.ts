@@ -337,7 +337,7 @@ export class ComandaService {
   }
 
   async findAll(paginationDto?: PaginationDto): Promise<PaginatedResponse<Comanda>> {
-    const { page = 1, limit = 20, sortBy = 'criadoEm', sortOrder = 'DESC' } = paginationDto || {};
+    const { page = 1, limit = 20, sortBy = 'dataAbertura', sortOrder = 'DESC' } = paginationDto || {};
     const cacheKey = this.getCacheKey(`page:${page}:limit:${limit}:sort:${sortBy}:${sortOrder}`);
 
     // Tentar buscar do cache (apenas se tenant disponível)

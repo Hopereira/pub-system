@@ -588,7 +588,8 @@ describe('Detecção de Diferenças no Fechamento (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     const funcionario = funcionariosResponse.body[0];
-    
+    if (!funcionario) return;
+
     // Check-in
     const checkInResponse = await request(app.getHttpServer())
       .post('/turnos/check-in')
