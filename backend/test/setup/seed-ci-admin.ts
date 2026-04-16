@@ -16,25 +16,34 @@ async function main() {
     password: process.env.DB_PASSWORD || 'testpass',
     database: process.env.DB_DATABASE || 'pub_system_test',
     ssl: false,
-    synchronize: true,
-    entities: [require('path').join(__dirname, '../../src/**/*.entity.{ts,js}')],
   });
 
   await ds.initialize();
 
   const email = process.env.CI_ADMIN_EMAIL || 'admin@admin.com';
   const senha = process.env.CI_ADMIN_PASSWORD || 'admin123';
+  console.log(`🔧 Seed: email=${email}, senha=${senha.substring(0, 3)}***`);
+
   const hash = await bcrypt.hash(senha, 10);
 
-  // SUPER_ADMIN não pertence a nenhum tenant (tenant_id = NULL).
-  // TenantAwareEntity agora define nullable:true — sem necessidade de manipular constraints.
+  // Verificar se tabela existe
+  const tableCheck = await ds.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'funcionarios'
+    ) AS exists
+  `);
+  console.log(`🔧 Tabela funcionarios existe: ${tableCheck[0].exists}`);
+
+  // SUPER_ADMIN não pertence a nenhum tenant (tenant_id = NULL)
   await ds.query(`
     INSERT INTO funcionarios (id, nome, email, senha, cargo, status, tenant_id)
     VALUES (gen_random_uuid(), 'Admin CI', $1, $2, 'SUPER_ADMIN', 'ATIVO', NULL)
-    ON CONFLICT DO NOTHING
   `, [email, hash]);
 
-  console.log(`✅ CI admin seed: ${email} (SUPER_ADMIN, sem tenant)`);
+  const check = await ds.query(`SELECT id, email, cargo FROM funcionarios WHERE email = $1`, [email]);
+  console.log(`✅ CI admin seed: ${JSON.stringify(check[0])}`);
+  console.log(`✅ Admin inserido com sucesso. tenant_id=NULL, cargo=SUPER_ADMIN`);
   await ds.destroy();
 }
 

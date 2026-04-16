@@ -86,9 +86,6 @@ jobs:
       - name: Unit tests
         run: npm test -- --passWithNoTests
 
-      - name: Seed CI admin
-        run: npx ts-node -r tsconfig-paths/register test/setup/seed-ci-admin.ts
-
       - name: E2E tests
         run: npm run test:e2e -- --passWithNoTests
 

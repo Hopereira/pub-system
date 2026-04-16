@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { DataSource } from 'typeorm';
+import { seedSuperAdmin } from './setup/seed-super-admin';
 
 const ADMIN_EMAIL = process.env.CI_ADMIN_EMAIL || 'admin@admin.com';
 const ADMIN_PASSWORD = process.env.CI_ADMIN_PASSWORD || 'admin123';
@@ -35,6 +36,9 @@ describe('Pedido (e2e)', () => {
     await app.init();
 
     dataSource = moduleFixture.get<DataSource>(DataSource);
+
+    // Seed SUPER_ADMIN após app.init() (synchronize:true já criou as tabelas)
+    await seedSuperAdmin(dataSource, ADMIN_EMAIL, ADMIN_PASSWORD);
 
     // Login como admin
     const adminLoginResponse = await request(app.getHttpServer())

@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { DataSource } from 'typeorm';
+import { seedSuperAdmin } from './setup/seed-super-admin';
 
 // Configurar variáveis de ambiente para teste
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'substitua-por-um-segredo-forte-e-aleatorio-em-producao';
@@ -66,6 +67,9 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
 
     await app.init();
     dataSource = moduleFixture.get<DataSource>(DataSource);
+
+    // Seed SUPER_ADMIN após app.init() (synchronize:true já criou as tabelas)
+    await seedSuperAdmin(dataSource, ADMIN_EMAIL, ADMIN_PASSWORD);
 
     // ========================================
     // SETUP: Autenticação dos usuários

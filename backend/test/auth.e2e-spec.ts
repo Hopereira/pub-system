@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import * as cookieParser from 'cookie-parser';
+import { DataSource } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
 
 /**
@@ -31,7 +33,17 @@ describe('Auth (e2e)', () => {
       }),
     );
     await app.init();
-  }, 30000);
+
+    // Seed SUPER_ADMIN após app.init() — synchronize:true já criou as tabelas
+    const ds = app.get(DataSource);
+    const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+    await ds.query(`DELETE FROM funcionarios WHERE email = $1 AND tenant_id IS NULL`, [ADMIN_EMAIL]);
+    await ds.query(
+      `INSERT INTO funcionarios (id, nome, email, senha, cargo, status, tenant_id)
+       VALUES (gen_random_uuid(), 'Admin CI', $1, $2, 'SUPER_ADMIN', 'ATIVO', NULL)`,
+      [ADMIN_EMAIL, hash],
+    );
+  }, 60000);
 
   afterAll(async () => {
     await app.close();
