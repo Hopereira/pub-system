@@ -75,11 +75,16 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
     // SETUP: Criar fixture de dados via SQL
     // ========================================
     // Limpar dados de teste anteriores
-    await dataSource.query(`DELETE FROM funcionarios WHERE email = 'caixa-e2e@fluxo.com'`).catch(() => {});
-    await dataSource.query(`DELETE FROM produtos WHERE nome = 'Produto E2E Fluxo'`).catch(() => {});
-    await dataSource.query(`DELETE FROM mesas WHERE numero = 99 AND tenant_id IN (SELECT id FROM tenants WHERE slug = 'fluxo-e2e')`).catch(() => {});
-    await dataSource.query(`DELETE FROM ambientes WHERE nome = 'Ambiente E2E' AND tenant_id IN (SELECT id FROM tenants WHERE slug = 'fluxo-e2e')`).catch(() => {});
-    await dataSource.query(`DELETE FROM tenants WHERE slug = 'fluxo-e2e'`).catch(() => {});
+    const oldTenant = await dataSource.query(`SELECT id FROM tenants WHERE slug = 'fluxo-e2e' LIMIT 1`).catch(() => []);
+    if (oldTenant.length > 0) {
+      const oldId = oldTenant[0].id;
+      await dataSource.query(`DELETE FROM refresh_tokens WHERE tenant_id = $1`, [oldId]).catch(() => {});
+      await dataSource.query(`DELETE FROM funcionarios WHERE tenant_id = $1`, [oldId]).catch(() => {});
+      await dataSource.query(`DELETE FROM produtos WHERE tenant_id = $1`, [oldId]).catch(() => {});
+      await dataSource.query(`DELETE FROM mesas WHERE tenant_id = $1`, [oldId]).catch(() => {});
+      await dataSource.query(`DELETE FROM ambientes WHERE tenant_id = $1`, [oldId]).catch(() => {});
+      await dataSource.query(`DELETE FROM tenants WHERE id = $1`, [oldId]).catch(() => {});
+    }
 
     // Criar tenant de teste
     const tenantRes = await dataSource.query(
@@ -111,14 +116,25 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
     // Criar funcionário caixa para o tenant
     const bcrypt = await import('bcrypt');
     const senhaHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
-    const funcRes = await dataSource.query(
-      `INSERT INTO funcionarios (nome, email, senha, cargo, status, tenant_id)
-       VALUES ('Caixa E2E', 'caixa-e2e@fluxo.com', $1, 'ADMIN', 'ATIVO', $2)
-       ON CONFLICT (email) DO UPDATE SET senha = EXCLUDED.senha, tenant_id = $2
-       RETURNING id`,
-      [senhaHash, testTenantId]
+    const existingFunc = await dataSource.query(
+      `SELECT id FROM funcionarios WHERE email = 'caixa-e2e@fluxo.com' AND tenant_id = $1 LIMIT 1`,
+      [testTenantId]
     );
-    const caixaFuncId = funcRes[0].id;
+    let caixaFuncId: string;
+    if (existingFunc.length > 0) {
+      await dataSource.query(
+        `UPDATE funcionarios SET senha = $1, cargo = 'ADMIN', status = 'ATIVO' WHERE email = 'caixa-e2e@fluxo.com' AND tenant_id = $2`,
+        [senhaHash, testTenantId]
+      );
+      caixaFuncId = existingFunc[0].id;
+    } else {
+      const funcRes = await dataSource.query(
+        `INSERT INTO funcionarios (nome, email, senha, cargo, status, tenant_id)
+         VALUES ('Caixa E2E', 'caixa-e2e@fluxo.com', $1, 'ADMIN', 'ATIVO', $2) RETURNING id`,
+        [senhaHash, testTenantId]
+      );
+      caixaFuncId = funcRes[0].id;
+    }
 
     // ========================================
     // SETUP: Autenticação
