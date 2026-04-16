@@ -92,7 +92,12 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
       // Se for slug, ignorar - o TenantInterceptor deveria ter resolvido
     }
 
-    // 5. Se nenhuma fonte encontrada, verificar se request existe
+    // 5. SUPER_ADMIN não tem tenant — retorna null sem lançar exceção
+    if (this.request?.user?.cargo === 'SUPER_ADMIN') {
+      return null as unknown as TenantId;
+    }
+
+    // 6. Se nenhuma fonte encontrada, verificar se request existe
     if (!this.request) {
       throw new ForbiddenException(
         'Request não disponível. Verifique se o repositório está com scope REQUEST.'
@@ -131,6 +136,12 @@ export abstract class BaseTenantRepository<T extends TenantAwareEntity> {
     options?: O,
   ): O {
     const tenantId = this.getTenantId();
+
+    // SUPER_ADMIN tem acesso global — não filtrar por tenant
+    if (tenantId === null || tenantId === undefined) {
+      return (options ?? {}) as O;
+    }
+
     const tenantWhere = { tenantId } as unknown as FindOptionsWhere<T>;
 
     if (!options) {
