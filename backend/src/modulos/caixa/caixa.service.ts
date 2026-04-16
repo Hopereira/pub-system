@@ -393,7 +393,7 @@ export class CaixaService {
   ): Promise<AberturaCaixa | null> {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(turnoFuncionarioId)) {
-      throw new NotFoundException('Caixa não encontrado');
+      return null;
     }
     return await this.aberturaRepository.findOne({
       where: {

@@ -8,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CaixaService } from './caixa.service';
@@ -119,7 +120,9 @@ export class CaixaController {
   ) {
     if (turnoId) {
       // Busca por turno específico
-      return await this.caixaService.getCaixaAberto(turnoId);
+      const caixa = await this.caixaService.getCaixaAberto(turnoId);
+      if (!caixa) throw new NotFoundException('Caixa não encontrado');
+      return caixa;
     } else if (funcionarioId) {
       // Busca por funcionário específico (isolamento de caixas)
       return await this.caixaService.getCaixaAbertoPorFuncionario(
