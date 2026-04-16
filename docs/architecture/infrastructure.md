@@ -307,8 +307,8 @@ Arquivos removidos (eram duplicatas divergentes que causavam confusao):
 |-----|---------|-----------|--------|
 | **backend** | push/PR main | lint + build + migrations + tests | ✅ Funciona |
 | **frontend** | push/PR main | lint + build | ✅ Funciona |
-| **security** | apos backend+frontend | npm audit (cosmético) | ⚠️ Inocuo (|| true) |
-| **deploy-staging** | push main | SSH → `docker compose build backend` → `up --no-deps --force-recreate backend` | ✅ Corrigido 2026-04-04 |
+| **security** | apos backend+frontend | npm audit `--audit-level=critical` | ⚠️ Inocuo (`|| true`) — 5 low residuais em `@google-cloud/storage` |
+| **deploy-staging** | push main | SSH → build → recreate → health check | ✅ Testes e health check bloqueiam deploy (2026-04-16) |
 
 ### 5.2 Como o Deploy Funciona
 
@@ -383,20 +383,22 @@ Push para `main` → Vercel detecta e faz deploy automatico.
 
 ### 6.1 Backend (backend/package.json)
 
-| Pacote | Versao | Problema |
-|--------|--------|----------|
-| `@nestjs/common` | ^10.0.0 | **MISMATCH** — core e v11 |
-| `@nestjs/core` | ^11.1.16 | OK |
-| `typeorm` | ^0.3.27 | **Em devDeps** — falha em prod build |
-| `pg` | ^8.11.3 | OK |
-| `socket.io` | ^4.7.4 | OK |
-| `redis` | ^4.6.10 | OK (mas nao usado em prod) |
+| Pacote | Versao | Status |
+|--------|--------|--------|
+| `@nestjs/common` | ^11.1.17 | ✅ Corrigido (era @10, sessao 2026-04-04) |
+| `@nestjs/core` | ^11.1.18 | ✅ OK |
+| `typeorm` | ^0.3.27 | ✅ Corrigido (movido de devDeps para deps) |
+| `pg` | ^8.11.3 | ✅ OK |
+| `socket.io` | ^4.7.4 | ✅ OK |
+| `redis` | ^4.6.10 | ✅ OK (instalado, nao usado em prod) |
+| `minimatch` (transitiva) | ^9.0.5 | ✅ Override adicionado (sessao 2026-04-16) |
+| `tar` (transitiva) | ^7.4.3 | ✅ Override adicionado (sessao 2026-04-16) |
 
 ### 6.2 Frontend (frontend/package.json)
 
 | Pacote | Versao | Status |
 |--------|--------|--------|
-| `next` | ^16.1.6 | OK |
+| `next` | 16.2.3 | ✅ OK (atualizado sessao 2026-04-07, fix CVE-2025-66478) |
 | `react` | 19.1.0 | OK |
 | `tailwindcss` | ^4 | OK |
 | `@playwright/test` | ^1.57.0 | OK |

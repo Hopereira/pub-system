@@ -26,8 +26,8 @@ Pub System e um SaaS multi-tenant para gestao de bares, pubs e restaurantes. Per
 
 | Camada | Tecnologia Real |
 |--------|----------------|
-| Frontend | Next.js 16.1.6, React 19.1.0, Tailwind CSS 4, shadcn/ui, Radix UI |
-| Backend | NestJS (mix @nestjs/common@10 + @nestjs/core@11), TypeORM 0.3.27 |
+| Frontend | Next.js 16.2.3, React 19.1.0, Tailwind CSS 4, shadcn/ui, Radix UI |
+| Backend | NestJS (@nestjs/common@11.1.17 + @nestjs/core@11.1.18), TypeORM 0.3.27 (dependencies) |
 | Banco | PostgreSQL 17 (Docker container) |
 | Tempo real | Socket.IO 4.7.4 |
 | Cache (dev) | Redis 7 Alpine |
