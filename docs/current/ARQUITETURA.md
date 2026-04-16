@@ -49,7 +49,7 @@
 ### Backend
 | Tecnologia | Versão | Uso |
 |-----------|--------|-----|
-| NestJS | @nestjs/common@10 / @nestjs/core@11 | Framework principal |
+| NestJS | @nestjs/common@11 / @nestjs/core@11 | Framework principal |
 | TypeScript | 5.1.3 | Linguagem |
 | TypeORM | 0.3.27 | ORM |
 | PostgreSQL | 15 (dev) / 17 (prod) | Banco de dados |

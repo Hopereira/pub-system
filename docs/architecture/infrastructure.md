@@ -1,7 +1,7 @@
 # Infraestrutura — Pub System
 
-**Versao:** 1.0
-**Atualizado:** 2026-03-06
+**Versao:** 1.1
+**Atualizado:** 2026-04-16
 **Fonte da verdade:** Este documento substitui DEPLOY_HIBRIDO.md, GUIA_RAPIDO_SERVIDORES.md
 **Auditoria:** `docs/audits/infrastructure-audit.md`
 
@@ -262,10 +262,11 @@ Cloudflare termina o SSL. A Oracle VM NAO precisa de certificado.
 
 | Servico | Imagem | RAM | Funcao |
 |---------|--------|-----|--------|
+| **postgres** | postgres:17-alpine | 256MB | PostgreSQL 17 (banco local) |
 | backend | Dockerfile.micro | 512MB | API NestJS |
 | watchtower | containrrr/watchtower | 64MB | Auto-update 24h |
 
-**Total RAM: ~576MB** (de 1GB disponivel)
+**Total RAM: ~832MB** (de 1GB disponivel)
 
 ### 4.2 Arquivo ATIVO para desenvolvimento
 
@@ -307,7 +308,7 @@ Arquivos removidos (eram duplicatas divergentes que causavam confusao):
 | **backend** | push/PR main | lint + build + migrations + tests | ✅ Funciona |
 | **frontend** | push/PR main | lint + build | ✅ Funciona |
 | **security** | apos backend+frontend | npm audit (cosmético) | ⚠️ Inocuo (|| true) |
-| **deploy-staging** | push main | SSH → build backend → restart container | ✅ Funciona |
+| **deploy-staging** | push main | SSH → `docker compose build backend` → `up --no-deps --force-recreate backend` | ✅ Corrigido 2026-04-04 |
 
 ### 5.2 Como o Deploy Funciona
 

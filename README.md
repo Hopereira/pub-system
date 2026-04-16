@@ -7,28 +7,27 @@ Sistema de gestao para bares, pubs e restaurantes. Multi-tenant, tempo real via 
 ```mermaid
 graph LR
     USER[Usuario] --> CF[Cloudflare]
-    CF --> VERCEL[Vercel - Next.js 15]
+    CF --> VERCEL[Vercel - Next.js 16]
     CF --> NGINX[Nginx - VM Oracle]
-    NGINX --> BACKEND[pub-backend - NestJS 10]
+    NGINX --> BACKEND[pub-backend - NestJS 11]
     BACKEND --> DB[pub-postgres - PostgreSQL 17]
 ```
 
 | Camada | Tecnologia | Hospedagem |
 |--------|-----------|------------|
-| Frontend | Next.js 15, React 19, Tailwind 4, shadcn/ui | Vercel |
-| Backend | NestJS 10, TypeORM, Socket.IO, JWT | Docker na VM Oracle |
+| Frontend | Next.js 16.2.3, React 19, Tailwind 4, shadcn/ui | Vercel |
+| Backend | NestJS 11, TypeORM, Socket.IO, JWT | Docker na VM Oracle |
 | Banco | PostgreSQL 17 | Docker na VM Oracle |
 | DNS/SSL | Cloudflare + Nginx | VM Oracle (host) |
 
 ## Estrutura do Repositorio
 
 ```
-backend/       Codigo NestJS (17 modulos)
-frontend/      Next.js 15 (App Router)
-infra/         docker-compose.yml, docker-compose.prod.yml, docker-compose.micro.yml
+backend/       Codigo NestJS (20 modulos)
+frontend/      Next.js 16 (App Router)
 scripts/       Scripts SQL, deploy, manutencao
 docs/          Documentacao tecnica e operacional
-nginx/         Configuracao Nginx para wildcard subdomains
+nginx/         Configuracao Nginx (template — config real no servidor)
 tests/         Testes de carga
 ```
 
@@ -39,7 +38,7 @@ git clone https://github.com/SEU_USUARIO/pub-system.git
 cd pub-system
 cp .env.example .env
 # editar .env com suas configuracoes
-docker compose -f infra/docker-compose.yml up -d
+docker compose up -d
 ```
 
 Acessos apos subir:
@@ -83,7 +82,8 @@ Referencia completa em `.env.example`.
 ssh -i ~/.ssh/oracle_key ubuntu@<IP>
 cd ~/pub-system
 git pull origin main
-docker compose --env-file .env -f infra/docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.micro.yml build backend
+docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
 ```
 
 Guia completo: [docs/infra/deploy-vm.md](docs/infra/deploy-vm.md)
@@ -117,7 +117,7 @@ Guia completo: [docs/infra/backup-e-restore.md](docs/infra/backup-e-restore.md)
 1. Cliente acessa `pubsystem.com.br` (Cloudflare -> Vercel)
 2. Frontend faz requisicoes para `api.pubsystem.com.br` (Cloudflare -> Nginx -> pub-backend)
 3. Backend autentica via JWT e identifica o tenant (`tenantId` obrigatorio)
-4. Dados filtrados por `tenant_id` (NOT NULL, FK) sao retornados do PostgreSQL
+4. Dados filtrados por `tenant_id` sao retornados do PostgreSQL
 5. Atualizacoes em tempo real via WebSocket (pedidos, status, notificacoes)
 6. Healthcheck em `GET /health` usado por Docker e Nginx
 
@@ -157,7 +157,7 @@ Guia completo: [docs/infra/backup-e-restore.md](docs/infra/backup-e-restore.md)
 | [docs/operacao/comandos-uteis.md](docs/operacao/comandos-uteis.md) | SSH, Docker, banco, Nginx, atualizacao, monitoramento |
 | [docs/operacao/troubleshooting.md](docs/operacao/troubleshooting.md) | Diagnostico de problemas comuns em producao |
 
-Documentos historicos de sprints e sessoes anteriores estao em `docs/historico/`.
+Documentos de sessoes anteriores estao em `docs/sessions/`.
 
 ## Licenca
 

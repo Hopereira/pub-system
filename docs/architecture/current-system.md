@@ -1,6 +1,6 @@
 # Documentacao Real do Sistema — Pub System
 
-**Data:** 2026-03-06
+**Data:** 2026-04-16 (atualizado; original: 2026-03-06)
 **Metodo:** Leitura completa do repositorio (backend, frontend, infra, docs, CI/CD)
 **Regra:** Documenta APENAS o que existe no codigo. Nenhuma informacao inventada.
 **Status:** FONTE DA VERDADE
@@ -242,8 +242,8 @@ Executam em TODA requisicao, nesta ordem:
 
 | Pacote | Versao | Nota |
 |--------|--------|------|
-| `@nestjs/common` | ^10.0.0 | **MISMATCH** — deveria ser v11 |
-| `@nestjs/core` | ^11.1.16 | |
+| `@nestjs/common` | ^11.1.17 | ✅ Corrigido — alinhado com core v11 |
+| `@nestjs/core` | ^11.1.18 | |
 | `@nestjs/platform-express` | ^11.1.16 | |
 | `@nestjs/platform-socket.io` | ^11.1.16 | |
 | `@nestjs/typeorm` | ^11.0.0 | |
@@ -252,7 +252,7 @@ Executam em TODA requisicao, nesta ordem:
 | `@nestjs/swagger` | ^11.2.6 | |
 | `@nestjs/terminus` | ^11.0.0 | |
 | `@nestjs/throttler` | ^6.5.0 | |
-| `typeorm` | ^0.3.27 | **Em devDependencies** — bug |
+| `typeorm` | ^0.3.27 | ✅ Corrigido — em `dependencies` |
 | `pg` | ^8.11.3 | |
 | `socket.io` | ^4.7.4 | |
 | `cache-manager` | ^7.x | Atualizado — PR #272 |
@@ -317,7 +317,7 @@ Requer `DEFAULT_TENANT_ID` no .env.
 
 | Pacote | Versao |
 |--------|--------|
-| `next` | ^16.1.6 |
+| `next` | 16.2.3 | Atualizado (fix CVE-2025-66478, sessao 2026-04-07) |
 | `react` | 19.1.0 |
 | `tailwindcss` | ^4 |
 | `@radix-ui/*` | Varias (dialog, dropdown, tabs, etc.) |
@@ -670,24 +670,22 @@ Documentacao completa: `docs/deploy/production-deploy.md`.
 | backend | push/PR main | **Funciona** — lint + build + migrations + tests |
 | frontend | push/PR main | **Funciona** — lint + build |
 | security | apos backend+frontend | **Inutil** — `npm audit || true` sempre passa |
-| deploy-staging | push main | **QUEBRADO** — usa PM2, servidor usa Docker |
+| deploy-staging | push main | **CORRIGIDO** (2026-04-04) — usa Docker, sem PM2 |
 
-### 10.2 Problema do Deploy CI
+### 10.2 Deploy CI (Corrigido)
 
 O job `deploy-staging` executa via SSH:
 ```bash
-pm2 restart pub-backend || pm2 start dist/main.js --name pub-backend
+docker compose -f docker-compose.micro.yml build backend
+docker compose -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
 ```
 
-Problemas:
-1. Servidor usa Docker, nao PM2
-2. Path `dist/main.js` errado — real e `dist/src/main.js`
-3. `continue-on-error: true` esconde falhas
+Corrigido na sessao 2026-04-04: removido PM2, usando Docker com `--no-deps --force-recreate backend`.
 
 ### 10.3 Deploy Real
 
 Frontend: automatico via Vercel Git Integration.
-Backend: manual via SSH + `scripts/deploy.sh`.
+Backend: automatico via GitHub Actions (SSH + Docker) ou manual via SSH.
 
 ---
 
@@ -789,8 +787,8 @@ Cypress libs instaladas no Dockerfile dev mas projeto usa Playwright (+500MB des
 | # | Problema | Onde |
 |---|---------|------|
 | 1 | Credenciais expostas no Git history | DEPLOY_HIBRIDO.md, GUIA_RAPIDO_SERVIDORES.md |
-| 2 | CI/CD deploy quebrado (PM2 vs Docker) | .github/workflows/ci.yml |
-| 3 | NestJS version mismatch (v10 vs v11) | backend/package.json |
+| 2 | ~~CI/CD deploy quebrado (PM2 vs Docker)~~ | ✅ Corrigido 2026-04-04 |
+| 3 | ~~NestJS version mismatch (v10 vs v11)~~ | ✅ Corrigido — ambos v11 |
 | 4 | tenant_id nullable em 24 tabelas | Todas entities |
 | 5 | Zero FKs de tenant_id → tenants | Banco de dados |
 | 6 | Migration NOT NULL nao executada | migrations_backup/ |
@@ -802,8 +800,8 @@ Cypress libs instaladas no Dockerfile dev mas projeto usa Playwright (+500MB des
 | # | Problema | Onde |
 |---|---------|------|
 | 9 | SSH key no historico Git | Historico git |
-| 10 | 6 docker-compose duplicados e divergentes | raiz + infra/ |
-| 11 | typeorm em devDependencies | backend/package.json |
+| 10 | ~~6 docker-compose duplicados e divergentes~~ | ✅ `infra/` e `docker-compose.prod.yml` removidos |
+| 11 | ~~typeorm em devDependencies~~ | ✅ Corrigido — em `dependencies` |
 | 12 | RefreshToken pula validacao cross-tenant | refresh-token.service.ts |
 | 13 | WebSocket aceita conexao sem JWT | base-tenant.gateway.ts |
 | 14 | Cliente.cpf UNIQUE global (deveria ser [cpf, tenant_id]) | cliente.entity.ts |
@@ -826,7 +824,7 @@ Cypress libs instaladas no Dockerfile dev mas projeto usa Playwright (+500MB des
 | 26 | npm audit || true (cosmético) | ci.yml |
 | 27 | 9+ scripts duplicados raiz vs scripts/ | Raiz + scripts/ |
 | 28 | Docs de deploy contraditorios | DEPLOY_HIBRIDO.md, DEPLOY.md, GUIA_RAPIDO |
-| 29 | start:prod path incorreto (dist/main vs dist/src/main) | backend/package.json |
+| 29 | ~~start:prod path incorreto (dist/main vs dist/src/main)~~ | ✅ Corrigido — path correto `dist/src/main` |
 
 ---
 
