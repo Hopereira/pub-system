@@ -172,33 +172,46 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
 
+          # Opções SSH comuns (keepalive para evitar Broken pipe)
+          SSH_OPTS="-i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=20"
+
           # Liberar espaço no servidor (SEM --volumes para não derrubar postgres)
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST \
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
             "docker image prune -af 2>/dev/null || true; \
              find /var/lib/docker/containers -name '*.log' -exec truncate -s 0 {} \; 2>/dev/null || true; \
              df -h / || true"
 
-          # Enviar imagem já compilada para o servidor (sem build na VM)
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            /tmp/pub-backend.tar.gz $SSH_USER@$SSH_HOST:/tmp/pub-backend.tar.gz
-
-          # Enviar docker-compose atualizado via bundle git
+          # Enviar bundle git para atualizar o código
           git bundle create /tmp/repo.bundle HEAD main
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            /tmp/repo.bundle $SSH_USER@$SSH_HOST:/tmp/repo.bundle
-
-          # Carregar imagem e reiniciar container no servidor
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST \
+          scp $SSH_OPTS /tmp/repo.bundle $SSH_USER@$SSH_HOST:/tmp/repo.bundle
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
             "cd ~/pub-system && \
              git fetch /tmp/repo.bundle main:main 2>/dev/null || true && \
              git reset --hard main && \
              rm -f /tmp/repo.bundle && \
-             echo '📦 Carregando imagem Docker...' && \
-             docker load < /tmp/pub-backend.tar.gz && \
-             rm -f /tmp/pub-backend.tar.gz && \
-             if docker compose version &>/dev/null 2>&1; then COMPOSE='docker compose'; else COMPOSE='docker-compose'; fi && \
-             \$COMPOSE -f docker-compose.micro.yml up -d --no-deps --force-recreate backend && \
-             echo '✅ Backend atualizado'"
+             echo '✅ Código atualizado'"
+
+          # Enviar imagem via pipe direto (sem arquivo intermediário no servidor)
+          echo "📦 Enviando imagem Docker via pipe..."
+          cat /tmp/pub-backend.tar.gz | ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
+            "gunzip | docker load && echo '✅ Imagem carregada'"
+
+          # Reiniciar apenas o container backend (sem tocar no postgres)
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
+            "docker kill pub-backend 2>/dev/null; docker rm pub-backend 2>/dev/null; \
+             docker network inspect pub-network &>/dev/null || docker network create pub-network; \
+             docker network connect --alias postgres pub-network pub-postgres 2>/dev/null || true; \
+             docker run -d --name pub-backend \
+               --network pub-network \
+               -p 3000:3000 \
+               --env-file ~/pub-system/.env \
+               -e NODE_ENV=production \
+               -e NODE_OPTIONS=--max-old-space-size=384 \
+               -e DB_HOST=postgres \
+               -v ~/pub-system/gcs-credentials.json:/app/gcs-credentials.json:ro \
+               --restart unless-stopped \
+               pub-backend:latest && \
+             echo '✅ Backend reiniciado'"
 
           rm -f ~/.ssh/deploy_key
           echo "✅ Backend deployed successfully"
