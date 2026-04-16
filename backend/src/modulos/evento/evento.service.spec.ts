@@ -26,6 +26,11 @@ describe('EventoService', () => {
     findByIdComPaginaEvento: jest.fn(),
     findByIdPublic: jest.fn(),
     count: jest.fn(),
+    rawRepository: {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      save: jest.fn(),
+    },
   };
 
   const mockPaginaEventoRepository = {
@@ -178,12 +183,12 @@ describe('EventoService', () => {
   // ============================================
   describe('findAllPublic', () => {
     it('deve retornar apenas eventos ativos', async () => {
-      mockEventoRepository.find.mockResolvedValue([mockEvento]);
+      mockEventoRepository.rawRepository.find.mockResolvedValue([mockEvento]);
 
       const result = await service.findAllPublic();
 
       expect(result).toHaveLength(1);
-      expect(mockEventoRepository.find).toHaveBeenCalledWith({
+      expect(mockEventoRepository.rawRepository.find).toHaveBeenCalledWith({
         where: { ativo: true },
         relations: ['paginaEvento'],
         order: { dataEvento: 'ASC' },
@@ -196,7 +201,7 @@ describe('EventoService', () => {
   // ============================================
   describe('findOne', () => {
     it('deve retornar evento por ID', async () => {
-      mockEventoRepository.findOne.mockResolvedValue(mockEvento);
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue(mockEvento);
 
       const result = await service.findOne(mockEvento.id);
 
@@ -205,7 +210,7 @@ describe('EventoService', () => {
     });
 
     it('deve lançar NotFoundException se evento não existir', async () => {
-      mockEventoRepository.findOne.mockResolvedValue(null);
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne('id-invalido')).rejects.toThrow(
         NotFoundException,
@@ -301,7 +306,7 @@ describe('EventoService', () => {
     } as Express.Multer.File;
 
     it('deve fazer upload de imagem', async () => {
-      mockEventoRepository.findOne.mockResolvedValue({ ...mockEvento, urlImagem: null });
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue({ ...mockEvento, urlImagem: null });
       mockStorageService.uploadFile.mockResolvedValue('https://storage.com/eventos/nova-imagem.jpg');
       mockEventoRepository.save.mockResolvedValue({
         ...mockEvento,
@@ -319,7 +324,7 @@ describe('EventoService', () => {
         ...mockEvento,
         urlImagem: 'https://storage.com/eventos/imagem-antiga.jpg',
       };
-      mockEventoRepository.findOne.mockResolvedValue(eventoComImagem);
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue(eventoComImagem);
       mockStorageService.deleteFile.mockResolvedValue(undefined);
       mockStorageService.uploadFile.mockResolvedValue('https://storage.com/eventos/nova-imagem.jpg');
       mockEventoRepository.save.mockResolvedValue({
@@ -339,7 +344,7 @@ describe('EventoService', () => {
         ...mockEvento,
         urlImagem: 'https://storage.com/eventos/imagem-antiga.jpg',
       };
-      mockEventoRepository.findOne.mockResolvedValue(eventoComImagem);
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue(eventoComImagem);
       mockStorageService.deleteFile.mockRejectedValue(new Error('Falha ao apagar'));
       mockStorageService.uploadFile.mockResolvedValue('https://storage.com/eventos/nova-imagem.jpg');
       mockEventoRepository.save.mockResolvedValue({
@@ -358,7 +363,7 @@ describe('EventoService', () => {
   // ============================================
   describe('remove', () => {
     it('deve remover evento', async () => {
-      mockEventoRepository.findOne.mockResolvedValue(mockEvento);
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue(mockEvento);
       mockEventoRepository.remove.mockResolvedValue(mockEvento);
 
       await service.remove(mockEvento.id);
@@ -367,7 +372,7 @@ describe('EventoService', () => {
     });
 
     it('deve lançar NotFoundException se evento não existir', async () => {
-      mockEventoRepository.findOne.mockResolvedValue(null);
+      mockEventoRepository.rawRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove('id-invalido')).rejects.toThrow(
         NotFoundException,

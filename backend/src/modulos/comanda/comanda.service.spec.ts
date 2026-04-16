@@ -53,11 +53,23 @@ describe('ComandaService', () => {
     manager: {
       transaction: jest.fn((cb) => cb(mockTransactionManager)),
     },
+    rawRepository: {
+      findOne: jest.fn(),
+      find: jest.fn(),
+      save: jest.fn(),
+      manager: {
+        transaction: jest.fn((cb) => cb(mockTransactionManager)),
+      },
+    },
   };
 
   const mockMesaRepository = {
     findOne: jest.fn(),
     save: jest.fn(),
+    rawRepository: {
+      findOne: jest.fn(),
+      save: jest.fn(),
+    },
   };
 
   const mockClienteRepository = {
@@ -82,6 +94,10 @@ describe('ComandaService', () => {
 
   const mockPontoEntregaRepository = {
     findOne: jest.fn(),
+    rawRepository: {
+      findOne: jest.fn(),
+      save: jest.fn(),
+    },
   };
 
   const mockComandaAgregadoRepository = {
@@ -612,12 +628,12 @@ describe('ComandaService', () => {
   // ============================================
   describe('updateLocal', () => {
     it('deve vincular comanda a uma mesa', async () => {
-      mockComandaRepository.findOne.mockResolvedValue({
+      mockComandaRepository.rawRepository.findOne.mockResolvedValue({
         ...mockComanda,
         status: ComandaStatus.ABERTA,
       });
-      mockMesaRepository.findOne.mockResolvedValue(mockMesa);
-      mockComandaRepository.save.mockResolvedValue({
+      mockMesaRepository.rawRepository.findOne.mockResolvedValue(mockMesa);
+      mockComandaRepository.rawRepository.save.mockResolvedValue({
         ...mockComanda,
         mesa: mockMesa,
         pontoEntrega: null,
@@ -632,12 +648,12 @@ describe('ComandaService', () => {
     });
 
     it('deve vincular comanda a um ponto de entrega', async () => {
-      mockComandaRepository.findOne.mockResolvedValue({
+      mockComandaRepository.rawRepository.findOne.mockResolvedValue({
         ...mockComanda,
         status: ComandaStatus.ABERTA,
       });
-      mockPontoEntregaRepository.findOne.mockResolvedValue(mockPontoEntrega);
-      mockComandaRepository.save.mockResolvedValue({
+      mockPontoEntregaRepository.rawRepository.findOne.mockResolvedValue(mockPontoEntrega);
+      mockComandaRepository.rawRepository.save.mockResolvedValue({
         ...mockComanda,
         mesa: null,
         pontoEntrega: mockPontoEntrega,
@@ -651,7 +667,7 @@ describe('ComandaService', () => {
     });
 
     it('deve lançar erro se comanda não estiver aberta', async () => {
-      mockComandaRepository.findOne.mockResolvedValue({
+      mockComandaRepository.rawRepository.findOne.mockResolvedValue({
         ...mockComanda,
         status: ComandaStatus.FECHADA,
       });
@@ -665,11 +681,11 @@ describe('ComandaService', () => {
     });
 
     it('deve lançar erro se ponto de entrega estiver desativado', async () => {
-      mockComandaRepository.findOne.mockResolvedValue({
+      mockComandaRepository.rawRepository.findOne.mockResolvedValue({
         ...mockComanda,
         status: ComandaStatus.ABERTA,
       });
-      mockPontoEntregaRepository.findOne.mockResolvedValue({
+      mockPontoEntregaRepository.rawRepository.findOne.mockResolvedValue({
         ...mockPontoEntrega,
         ativo: false,
       });
