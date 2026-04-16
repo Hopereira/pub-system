@@ -165,9 +165,10 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
 
-          # Liberar espaço no servidor antes de enviar arquivos
+          # Liberar espaço no servidor (SEM --volumes para não derrubar postgres)
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $SSH_USER@$SSH_HOST \
-            "docker system prune -af --volumes 2>/dev/null || true; \
+            "docker image prune -af 2>/dev/null || true; \
+             docker builder prune -af 2>/dev/null || true; \
              find /var/lib/docker/containers -name '*.log' -exec truncate -s 0 {} \; 2>/dev/null || true; \
              df -h / || true"
 
@@ -176,22 +177,40 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             /tmp/repo.bundle $SSH_USER@$SSH_HOST:/tmp/repo.bundle
 
-          # Atualizar repo e buildar no servidor
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << 'ENDSSH'
-            set -e
-            cd ~/pub-system
-            # Atualizar código via bundle (sem precisar de credenciais GitHub)
-            git fetch /tmp/repo.bundle main:main 2>/dev/null || true
-            git reset --hard main
-            rm -f /tmp/repo.bundle
-            if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
-              COMPOSE="docker compose"
-            else
-              COMPOSE="docker-compose"
+          # Atualizar código via bundle
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST \
+            "cd ~/pub-system && \
+             git fetch /tmp/repo.bundle main:main 2>/dev/null || true && \
+             git reset --hard main && \
+             rm -f /tmp/repo.bundle && \
+             echo '✅ Código atualizado'"
+
+          # Iniciar build em background (evita Broken pipe no npm install longo)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST \
+            "cd ~/pub-system && \
+             if docker compose version &>/dev/null 2>&1; then COMPOSE='docker compose'; else COMPOSE='docker-compose'; fi && \
+             nohup bash -c \"\$COMPOSE -f docker-compose.micro.yml build backend >> /tmp/deploy-build.log 2>&1 && \
+             \$COMPOSE -f docker-compose.micro.yml up -d --no-deps --force-recreate backend >> /tmp/deploy-build.log 2>&1 && \
+             echo DEPLOY_OK >> /tmp/deploy-build.log || echo DEPLOY_FAIL >> /tmp/deploy-build.log\" &
+             echo \$! > /tmp/deploy.pid && echo '🔨 Build iniciado em background'"
+
+          # Aguardar conclusão (polling a cada 30s, max 15min)
+          echo "⏳ Aguardando build..."
+          for i in $(seq 1 30); do
+            sleep 30
+            RESULT=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST \
+              "tail -1 /tmp/deploy-build.log 2>/dev/null || echo PENDING")
+            echo "[$i/30] Status: $RESULT"
+            if echo "$RESULT" | grep -q "DEPLOY_OK"; then
+              echo "✅ Deploy concluído com sucesso!"
+              break
             fi
-            $COMPOSE -f docker-compose.micro.yml build backend
-            $COMPOSE -f docker-compose.micro.yml up -d --no-deps --force-recreate backend
-          ENDSSH
+            if echo "$RESULT" | grep -q "DEPLOY_FAIL"; then
+              echo "❌ Deploy falhou!"
+              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST "cat /tmp/deploy-build.log | tail -30"
+              exit 1
+            fi
+          done
 
           rm -f ~/.ssh/deploy_key
           echo "✅ Backend deployed successfully"
