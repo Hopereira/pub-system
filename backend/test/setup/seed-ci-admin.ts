@@ -16,6 +16,8 @@ async function main() {
     password: process.env.DB_PASSWORD || 'testpass',
     database: process.env.DB_DATABASE || 'pub_system_test',
     ssl: false,
+    synchronize: true,
+    entities: [require('path').join(__dirname, '../../src/**/*.entity.{ts,js}')],
   });
 
   await ds.initialize();
