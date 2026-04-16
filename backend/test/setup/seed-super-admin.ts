@@ -11,10 +11,10 @@ export async function seedSuperAdmin(
   senha: string,
 ): Promise<void> {
   const hash = await bcrypt.hash(senha, 10);
-  await ds.query(`DELETE FROM funcionarios WHERE email = $1 AND tenant_id IS NULL`, [email]);
   await ds.query(
     `INSERT INTO funcionarios (id, nome, email, senha, cargo, status, tenant_id)
-     VALUES (gen_random_uuid(), 'Admin CI', $1, $2, 'SUPER_ADMIN', 'ATIVO', NULL)`,
+     VALUES (gen_random_uuid(), 'Admin CI', $1, $2, 'SUPER_ADMIN', 'ATIVO', NULL)
+     ON CONFLICT (email) DO UPDATE SET senha = EXCLUDED.senha, cargo = 'SUPER_ADMIN', status = 'ATIVO', tenant_id = NULL`,
     [email, hash],
   );
 }

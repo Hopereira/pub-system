@@ -79,8 +79,13 @@ export class PlanService implements OnModuleInit {
     ];
 
     for (const planData of defaultPlans) {
-      const plan = this.planRepository.create(planData);
-      await this.planRepository.save(plan);
+      await this.planRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Plan)
+        .values(planData)
+        .orIgnore()
+        .execute();
     }
 
     this.logger.log('✅ Planos padrão criados com sucesso');

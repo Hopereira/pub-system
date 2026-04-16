@@ -29,11 +29,10 @@ export class PaginationDto {
 
   @ApiPropertyOptional({
     description: 'Campo para ordenação',
-    default: 'nome',
   })
   @IsOptional()
   @IsString()
-  sortBy?: string = 'nome';
+  sortBy?: string;
 
   @ApiPropertyOptional({
     description: 'Direção da ordenação',

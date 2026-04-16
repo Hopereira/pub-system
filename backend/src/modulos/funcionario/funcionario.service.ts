@@ -113,6 +113,9 @@ export class FuncionarioService implements OnModuleInit {
   async create(
     createFuncionarioDto: CreateFuncionarioDto,
   ): Promise<Funcionario> {
+    if ((createFuncionarioDto as any).cargo === Cargo.SUPER_ADMIN) {
+      throw new ForbiddenException('Não é permitido criar usuários com cargo SUPER_ADMIN.');
+    }
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
       ...createFuncionarioDto,
