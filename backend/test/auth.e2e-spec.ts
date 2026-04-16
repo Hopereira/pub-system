@@ -10,6 +10,9 @@ import { AppModule } from '../src/app.module';
  * Requer banco PostgreSQL e Redis rodando.
  * Env vars: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE, JWT_SECRET, REDIS_HOST
  */
+const ADMIN_EMAIL = process.env.CI_ADMIN_EMAIL || 'admin@admin.com';
+const ADMIN_PASSWORD = process.env.CI_ADMIN_PASSWORD || 'admin123';
+
 describe('Auth (e2e)', () => {
   let app: INestApplication;
 
@@ -38,13 +41,13 @@ describe('Auth (e2e)', () => {
     it('deve retornar access_token e set-cookie com refresh_token', async () => {
       const res = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@admin.com', senha: 'admin123' })
+        .send({ email: ADMIN_EMAIL, senha: ADMIN_PASSWORD })
         .expect(201);
 
       expect(res.body.access_token).toBeDefined();
       expect(res.body.expires_in).toBe(3600);
       expect(res.body.user).toBeDefined();
-      expect(res.body.user.email).toBe('admin@admin.com');
+      expect(res.body.user.email).toBe(ADMIN_EMAIL);
 
       // refresh_token deve estar no cookie httpOnly, não no body
       const cookies = res.headers['set-cookie'];
@@ -60,7 +63,7 @@ describe('Auth (e2e)', () => {
     it('deve rejeitar credenciais inválidas', async () => {
       await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@admin.com', senha: 'senhaerrada' })
+        .send({ email: ADMIN_EMAIL, senha: 'senhaerrada' })
         .expect(401);
     });
 
@@ -77,7 +80,7 @@ describe('Auth (e2e)', () => {
       // Login primeiro
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@admin.com', senha: 'admin123' });
+        .send({ email: ADMIN_EMAIL, senha: ADMIN_PASSWORD });
 
       const cookies = loginRes.headers['set-cookie'];
 
@@ -103,7 +106,7 @@ describe('Auth (e2e)', () => {
       // Login
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@admin.com', senha: 'admin123' });
+        .send({ email: ADMIN_EMAIL, senha: ADMIN_PASSWORD });
 
       const token = loginRes.body.access_token;
       const cookies = loginRes.headers['set-cookie'];
@@ -138,7 +141,7 @@ describe('Auth (e2e)', () => {
     it('deve listar sessões ativas', async () => {
       const loginRes = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'admin@admin.com', senha: 'admin123' });
+        .send({ email: ADMIN_EMAIL, senha: ADMIN_PASSWORD });
 
       const token = loginRes.body.access_token;
 

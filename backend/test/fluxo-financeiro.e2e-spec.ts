@@ -13,6 +13,9 @@ process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'admin';
 process.env.DB_DATABASE = process.env.DB_DATABASE || 'pub_system_db';
 process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
+const ADMIN_EMAIL = process.env.CI_ADMIN_EMAIL || 'admin@admin.com';
+const ADMIN_PASSWORD = process.env.CI_ADMIN_PASSWORD || 'admin123';
+
 /**
  * TESTE E2E: FLUXO FINANCEIRO COMPLETO
  * 
@@ -71,7 +74,7 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
     // Login como ADMIN
     const adminLogin = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ email: 'admin@admin.com', senha: 'admin123' });
+      .send({ email: ADMIN_EMAIL, senha: ADMIN_PASSWORD });
     
     if (adminLogin.status !== 201 && adminLogin.status !== 200) {
       console.error('❌ Falha no login admin:', adminLogin.status, adminLogin.body);
@@ -509,7 +512,7 @@ describe('Detecção de Diferenças no Fechamento (e2e)', () => {
     // Login
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ email: 'admin@admin.com', senha: 'admin123' });
+      .send({ email: ADMIN_EMAIL, senha: ADMIN_PASSWORD });
     adminToken = loginResponse.body.access_token;
   });
 

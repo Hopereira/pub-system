@@ -4,6 +4,9 @@ import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { DataSource } from 'typeorm';
 
+const ADMIN_EMAIL = process.env.CI_ADMIN_EMAIL || 'admin@admin.com';
+const ADMIN_PASSWORD = process.env.CI_ADMIN_PASSWORD || 'admin123';
+
 describe('Pedido (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
@@ -37,8 +40,8 @@ describe('Pedido (e2e)', () => {
     const adminLoginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({
-        email: 'admin@admin.com',
-        senha: 'admin123',
+        email: ADMIN_EMAIL,
+        senha: ADMIN_PASSWORD,
       });
 
     authToken = adminLoginResponse.body.access_token;

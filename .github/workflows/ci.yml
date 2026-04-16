@@ -55,6 +55,8 @@ jobs:
       FRONTEND_URL: http://localhost:3001
       REDIS_HOST: localhost
       REDIS_PORT: 6379
+      CI_ADMIN_EMAIL: admin@admin.com
+      CI_ADMIN_PASSWORD: ${{ secrets.CI_ADMIN_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v5
@@ -83,6 +85,9 @@ jobs:
 
       - name: Unit tests
         run: npm test -- --passWithNoTests
+
+      - name: Seed CI admin
+        run: npx ts-node -r tsconfig-paths/register test/setup/seed-ci-admin.ts
 
       - name: E2E tests
         run: npm run test:e2e -- --passWithNoTests
