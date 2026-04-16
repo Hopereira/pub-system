@@ -266,6 +266,12 @@ Se você ver QUALQUER UM destes padrões, PARE e confirme com o time:
 🛑 **"Código tem query SQL raw"**
 → Verificar: por que não usar TypeORM? Segurança?
 
+🛑 **"Vou fazer upgrade para vX.Y / versão maior existe"**
+→ SEMPRE verificar antes: `npm view <pacote> versions --json | ConvertFrom-Json | Select-Object -Last 10`
+→ Nunca assumir que major version existe sem confirmar no npm
+→ Nunca gerar prompt de upgrade sem verificar disponibilidade real
+→ Lição aprendida: @google-cloud/storage v8 não existe (2026-04-16)
+
 ---
 
 ## 📋 CHECKLIST FINAL (PÓS-CÓDIGO)
