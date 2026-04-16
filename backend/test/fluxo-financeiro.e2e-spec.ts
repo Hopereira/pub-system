@@ -103,7 +103,7 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
 
     // Criar produto
     const produtoRes = await dataSource.query(
-      `INSERT INTO produtos (nome, preco, ativo, tenant_id) VALUES ('Produto E2E Fluxo', 25.50, true, $1) RETURNING id`,
+      `INSERT INTO produtos (nome, preco, categoria, ativo, tenant_id) VALUES ('Produto E2E Fluxo', 25.50, 'Bebidas', true, $1) RETURNING id`,
       [testTenantId]
     );
     produtoId = produtoRes[0].id;

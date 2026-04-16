@@ -391,6 +391,10 @@ export class CaixaService {
   async getCaixaAberto(
     turnoFuncionarioId: string,
   ): Promise<AberturaCaixa | null> {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(turnoFuncionarioId)) {
+      throw new NotFoundException('Caixa não encontrado');
+    }
     return await this.aberturaRepository.findOne({
       where: {
         turnoFuncionarioId,
@@ -459,6 +463,10 @@ export class CaixaService {
    * Busca resumo do caixa
    */
   async getResumoCaixa(aberturaCaixaId: string) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(aberturaCaixaId)) {
+      throw new NotFoundException('Caixa não encontrado');
+    }
     const abertura = await this.aberturaRepository.findOne({
       where: { id: aberturaCaixaId },
     });
