@@ -71,8 +71,8 @@ describe('Pedido (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-  });
+    if (app) await app.close();
+  }, 30000);
 
   // ============================================
   // TESTES: POST /pedidos

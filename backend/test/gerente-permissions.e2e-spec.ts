@@ -55,8 +55,8 @@ describe('GERENTE Permissions (e2e)', () => {
 
   afterAll(async () => {
     await cleanupTestData();
-    await app.close();
-  });
+    if (app) await app.close();
+  }, 30000);
 
   async function cleanupTestData() {
     try {

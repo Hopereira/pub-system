@@ -62,15 +62,16 @@ describe('Caixa (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Limpar dados de teste
-    if (dataSource) {
-      await dataSource.query('DELETE FROM sangrias WHERE abertura_caixa_id = $1', [aberturaCaixaId]);
-      await dataSource.query('DELETE FROM movimentacoes_caixa WHERE abertura_caixa_id = $1', [aberturaCaixaId]);
-      await dataSource.query('DELETE FROM fechamentos_caixa WHERE abertura_caixa_id = $1', [aberturaCaixaId]);
-      await dataSource.query('DELETE FROM aberturas_caixa WHERE id = $1', [aberturaCaixaId]);
+    if (dataSource && dataSource.isInitialized && aberturaCaixaId) {
+      try {
+        await dataSource.query('DELETE FROM sangrias WHERE abertura_caixa_id = $1', [aberturaCaixaId]);
+        await dataSource.query('DELETE FROM movimentacoes_caixa WHERE abertura_caixa_id = $1', [aberturaCaixaId]);
+        await dataSource.query('DELETE FROM fechamentos_caixa WHERE abertura_caixa_id = $1', [aberturaCaixaId]);
+        await dataSource.query('DELETE FROM aberturas_caixa WHERE id = $1', [aberturaCaixaId]);
+      } catch { /* ignorar erros de limpeza */ }
     }
-    await app.close();
-  });
+    if (app) await app.close();
+  }, 30000);
 
   describe('POST /caixa/abertura', () => {
     it('deve abrir um caixa com valor inicial', () => {

@@ -46,8 +46,8 @@ describe('Auth (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
-    await app.close();
-  });
+    if (app) await app.close();
+  }, 30000);
 
   describe('POST /auth/login', () => {
     it('deve retornar access_token e set-cookie com refresh_token', async () => {

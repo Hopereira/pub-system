@@ -119,8 +119,8 @@ describe('Fluxo Financeiro Completo (e2e)', () => {
         console.error('Erro na limpeza:', error);
       }
     }
-    await app.close();
-  });
+    if (app) await app.close();
+  }, 30000);
 
   // ========================================
   // FASE 1: PREPARAÇÃO DO AMBIENTE
@@ -521,8 +521,8 @@ describe('Detecção de Diferenças no Fechamento (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-  });
+    if (app) await app.close();
+  }, 30000);
 
   it('Deve detectar diferença quando valor informado é maior que esperado', async () => {
     // Este teste valida que o sistema registra a diferença
