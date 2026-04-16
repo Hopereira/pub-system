@@ -174,7 +174,13 @@ jobs:
             cd ~/pub-system
             git pull origin main
             # Liberar espaço antes de buildar
-            docker system prune -f --volumes 2>/dev/null || true
+            docker system prune -af --volumes 2>/dev/null || true
+            docker image prune -af 2>/dev/null || true
+            # Limpar logs Docker que crescem sem limite
+            find /var/lib/docker/containers -name "*.log" -exec truncate -s 0 {} \; 2>/dev/null || true
+            # Limpar npm cache se existir
+            npm cache clean --force 2>/dev/null || true
+            df -h / || true
             # Compatibilidade docker compose / docker-compose
             if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
               COMPOSE="docker compose"
