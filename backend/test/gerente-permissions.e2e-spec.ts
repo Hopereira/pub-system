@@ -45,9 +45,10 @@ describe('GERENTE Permissions (e2e)', () => {
     const adminData = await createTestUser('admin-test@test.com', 'ADMIN', tenantId);
     adminId = adminData.id;
 
-    // Login como ADMIN
+    // Login como ADMIN (passar x-tenant-id para AuthController usar validateUser)
     const adminLoginRes = await request(app.getHttpServer())
       .post('/auth/login')
+      .set('x-tenant-id', tenantId)
       .send({ email: 'admin-test@test.com', senha: 'Test@123' });
     
     adminToken = adminLoginRes.body.access_token;
@@ -105,9 +106,10 @@ describe('GERENTE Permissions (e2e)', () => {
       expect(res.body.cargo).toBe('GERENTE');
       gerenteId = res.body.id;
 
-      // Login como GERENTE
+      // Login como GERENTE (passar x-tenant-id)
       const gerenteLoginRes = await request(app.getHttpServer())
         .post('/auth/login')
+        .set('x-tenant-id', tenantId)
         .send({ email: 'gerente-test@test.com', senha: 'Test@123' });
       
       gerenteToken = gerenteLoginRes.body.access_token;
