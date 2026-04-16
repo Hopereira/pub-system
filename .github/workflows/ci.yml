@@ -171,18 +171,19 @@ jobs:
              find /var/lib/docker/containers -name '*.log' -exec truncate -s 0 {} \; 2>/dev/null || true; \
              df -h / || true"
 
-          # Sincronizar código via rsync (sem depender de git no servidor)
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='dist' \
-            . $SSH_USER@$SSH_HOST:~/pub-system/
+          # Criar bundle git e enviar para o servidor
+          git bundle create /tmp/repo.bundle HEAD main
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            /tmp/repo.bundle $SSH_USER@$SSH_HOST:/tmp/repo.bundle
 
-          # Buildar e reiniciar container
+          # Atualizar repo e buildar no servidor
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $SSH_USER@$SSH_HOST << 'ENDSSH'
             set -e
             cd ~/pub-system
+            # Atualizar código via bundle (sem precisar de credenciais GitHub)
+            git fetch /tmp/repo.bundle main:main 2>/dev/null || true
+            git reset --hard main
+            rm -f /tmp/repo.bundle
             if command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1; then
               COMPOSE="docker compose"
             else
