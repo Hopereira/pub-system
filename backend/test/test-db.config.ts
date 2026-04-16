@@ -14,7 +14,6 @@ export const testDbConfig: TypeOrmModuleOptions = {
   database: process.env.DB_DATABASE || 'pub_system_test',
   entities: [path.join(__dirname, '..', 'src', '**', '*.entity.{ts,js}')],
   synchronize: true, // Auto-cria tabelas para testes
-  dropSchema: true, // Limpa antes de cada teste
   logging: false,
   ssl: false,
 };
