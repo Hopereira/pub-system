@@ -113,6 +113,14 @@ Extraídas de `docs/sessions/2026-04-04/` e `docs/architecture/infrastructure.md
 3. **Volume do banco:** `infra_postgres_data` com `external: true`. Nunca apagar sem backup.
 4. **Deploy parcial:** Usar `--no-deps --force-recreate backend`. Nunca recriar o postgres no deploy automático.
 5. **CI/CD:** Nunca usar `continue-on-error: true` no step de deploy.
+6. **Build Docker:** A VM Oracle tem 1GB RAM — `docker build` com `npm install` mata o Docker daemon por OOM. **Nunca fazer build na VM.** Build SEMPRE no runner do CI (7GB RAM), enviar imagem via `docker save | gzip | ssh ... gunzip | docker load`.
+7. **`docker system prune`:** NUNCA usar `--volumes` em produção — derruba o postgres. Usar apenas `docker image prune -af` + `docker builder prune -af`.
+8. **Rede Docker corrompida:** Se backend não alcança postgres (`EHOSTUNREACH`), recriar a rede: `docker network rm pub-network && docker network create pub-network && docker network connect --alias postgres pub-network pub-postgres`. O alias `postgres` é obrigatório (o container se chama `pub-postgres`, não `postgres`).
+9. **`gcs-credentials.json`:** Deve ser um **arquivo** em `~/pub-system/gcs-credentials.json`. Se virar diretório (bug de rsync/bundle), o backend não sobe. Recriar com `sudo rm -rf` + `echo '{}' > gcs-credentials.json`.
+10. **Git no servidor:** O servidor Oracle **não tem acesso ao GitHub** (sem credenciais SSH). Nunca usar `git pull` no deploy. Usar `git bundle` criado no runner e enviado via `scp`.
+11. **SSH Broken Pipe:** Operações longas via SSH (docker load, npm install) quebram com `client_loop: send disconnect`. Sempre usar `-o ServerAliveInterval=30 -o ServerAliveCountMax=20`.
+12. **`.env` na VM:** O arquivo `~/pub-system/.env` **não está no git** e deve existir na VM. Se sumir, recriar a partir das variáveis do container: `docker inspect pub-backend --format '{{range .Config.Env}}{{println .}}{{end}}'`.
+13. **Disco da VM:** Monitorar uso. Build cache Docker cresce sem limite. Limpar periodicamente: `docker builder prune -af`. Logs journald limitados a 200MB: `journalctl --vacuum-size=200M`.
 
 ## Regras de Multi-Tenant
 

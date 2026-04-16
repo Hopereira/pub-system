@@ -76,6 +76,11 @@ Rastreie o código COMPLETO para a funcionalidade:
   - [ ] Secrets expostos em logs?
   - [ ] Health checks?
   - [ ] Volumes persistentes?
+  - [ ] `.env` existe em `~/pub-system/.env` na VM? (não está no git)
+  - [ ] `gcs-credentials.json` é arquivo (não diretório)?
+  - [ ] Disco da VM abaixo de 80%? (`df -h /`)
+  - [ ] Build Docker acontece no CI runner, não na VM?
+  - [ ] Rede `pub-network` com alias `postgres` para o container `pub-postgres`?
 
 ---
 
@@ -125,7 +130,7 @@ Antes de tocar em código, verifique se a mudança afeta estas áreas de RISCO:
 
 Antes de refatorar, confirme se a documentação está correta vs código real:
 
-**Status da documentação (atualizado 2026-04-16):**
+**Status da documentação (atualizado 2026-04-16 — sessão deploy infra):**
 
 | Documento | Status |
 |-----------|--------|
@@ -133,7 +138,8 @@ Antes de refatorar, confirme se a documentação está correta vs código real:
 | `docs/architecture/current-system.md` | ✅ Atualizado (2026-04-16) |
 | `docs/architecture/infrastructure.md` | ✅ Atualizado (2026-04-16) |
 | `docs/current/ARQUITETURA.md` | ✅ Atualizado (2026-04-16) |
-| `docs/sessions/2026-04-16/` | ✅ Auditoria completa |
+| `docs/sessions/2026-04-16/` | ✅ Auditoria completa + sessão deploy infra |
+| `regra-de-ouro.md` | ✅ Atualizado com regras 6-13 (2026-04-16) |
 
 **Padrões atuais confirmados:**
 
@@ -259,6 +265,8 @@ Se você ver QUALQUER UM destes padrões, PARE e confirme com o time:
 
 🛑 **"Vou mudar variável de ambiente"**
 → Verificar: documentado em `ENV_VARS.md`? Secrets no `.env` da VM?
+→ O `.env` da VM NÃO está no git — qualquer recriação do servidor perde o arquivo
+→ Backup: `docker inspect pub-backend --format '{{range .Config.Env}}{{println .}}{{end}}'`
 
 🛑 **"Vou mexer em WebSocket ou Cache"**
 → Verificar: testes de multi-tenant funcionam?
@@ -266,11 +274,22 @@ Se você ver QUALQUER UM destes padrões, PARE e confirme com o time:
 🛑 **"Código tem query SQL raw"**
 → Verificar: por que não usar TypeORM? Segurança?
 
+🛑 **"Vou fazer deploy / mexer no CI"**
+→ NUNCA fazer `docker build` na VM Oracle (1GB RAM = OOM kill)
+→ NUNCA usar `docker system prune --volumes` em produção
+→ NUNCA usar `git pull` no servidor (sem credenciais GitHub)
+→ SEMPRE usar `ServerAliveInterval=30` em SSH para operações longas
+→ Verificar disco antes: `df -h /` — manter abaixo de 80%
+
+🛑 **"Backend não conecta no banco" / `EHOSTUNREACH`"**
+→ Verificar alias da rede: `docker inspect pub-postgres` tem alias `postgres`?
+→ Se não: `docker network connect --alias postgres pub-network pub-postgres`
+→ Se rede corrompida: recriar com `docker network rm pub-network && docker network create pub-network`
+
 🛑 **"Vou fazer upgrade para vX.Y / versão maior existe"**
 → SEMPRE verificar antes: `npm view <pacote> versions --json | ConvertFrom-Json | Select-Object -Last 10`
 → Nunca assumir que major version existe sem confirmar no npm
 → Nunca gerar prompt de upgrade sem verificar disponibilidade real
-→ Lição aprendida: @google-cloud/storage v8 não existe (2026-04-16)
 
 ---
 
