@@ -69,8 +69,8 @@ describe('GERENTE Permissions (e2e)', () => {
 
   async function createTestTenant(): Promise<string> {
     const result = await dataSource.query(`
-      INSERT INTO tenants (nome, slug, plano, ativo)
-      VALUES ('Test Tenant E2E', 'test-tenant-e2e', 'PRO', true)
+      INSERT INTO tenants (nome, slug, plano, status)
+      VALUES ('Test Tenant E2E', 'test-tenant-e2e', 'PRO', 'ATIVO')
       RETURNING id
     `);
     return result[0].id;
