@@ -9,12 +9,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { IsString, IsEmail, MinLength, IsOptional, Matches } from 'class-validator';
+import { IsString, IsEmail, MinLength, IsOptional, Matches, IsEnum } from 'class-validator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantProvisioningService } from '../services/tenant-provisioning.service';
 import { SkipTenantGuard } from '../guards/tenant.guard';
-import { Tenant } from '../entities/tenant.entity';
+import { Tenant, TenantPlano } from '../entities/tenant.entity';
 
 /**
  * DTO para registro público de novo pub
@@ -49,6 +49,10 @@ export class PublicRegistrationDto {
   @IsString()
   @IsOptional()
   cnpj?: string;
+
+  @IsEnum(TenantPlano)
+  @IsOptional()
+  plano?: TenantPlano;
 }
 
 /**
@@ -127,6 +131,7 @@ export class PublicRegistrationController {
       nome: dto.nomeEstabelecimento,
       slug,
       cnpj: dto.cnpj,
+      plano: dto.plano,
       nomeFantasia: dto.nomeEstabelecimento,
       telefone: dto.telefone,
       email: dto.emailAdmin,
