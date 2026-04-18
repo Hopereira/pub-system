@@ -43,7 +43,7 @@ USER nestjs
 
 # Configurações de memória otimizadas
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=384 --optimize-for-size"
+ENV NODE_OPTIONS="--max-old-space-size=384"
 
 EXPOSE 3000
 
