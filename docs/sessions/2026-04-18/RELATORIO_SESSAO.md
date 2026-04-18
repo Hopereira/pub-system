@@ -103,6 +103,40 @@ O workflow de deploy `.github/workflows/ci.yml` tinha dois problemas:
 
 ---
 
+## Bug 4 — PATCH /empresa retorna 500 por CNPJ duplicado entre tenants
+
+### Diagnóstico
+
+`PATCH /empresa/:id` retornava 500 com:
+```
+duplicate key value violates unique constraint "UQ_f5ed71aeb4ef47f95df5f8830b8"
+```
+
+A constraint `UQ_f5ed71aeb4ef47f95df5f8830b8` corresponde ao campo `cnpj` na tabela `empresas` com `UNIQUE` **global** (sem tenant). Dois tenants com o mesmo CNPJ (ex: franquia, testes) geram colisão. Além disso, o `update()` do `EmpresaService` não tratava o erro `23505`, deixando vazar como 500 em vez de 409.
+
+Este problema já havia sido identificado na auditoria de 2026-04-16 (item #6: `Cliente.cpf UNIQUE global`) — o mesmo padrão existia para `Empresa.cnpj`.
+
+### Arquivos Modificados
+
+| Arquivo | Mudança | Justificativa |
+|---------|---------|---------------|
+| `backend/src/modulos/empresa/entities/empresa.entity.ts` | Removido `unique: true` do campo `cnpj` | CNPJ não deve ser único globalmente entre tenants |
+| `backend/src/modulos/empresa/empresa.service.ts` | Adicionado try/catch com `ConflictException` no `update()` | Paridade com o `create()` que já tratava esse erro |
+| `backend/src/database/migrations/1745000000000-RemoveUniqueCnpjFromEmpresas.ts` | Migration para `DROP CONSTRAINT UQ_f5ed71aeb4ef47f95df5f8830b8` | Sincronizar banco com a entidade atualizada |
+
+### Resolução em Produção
+
+Constraint removida diretamente no banco via:
+```sql
+ALTER TABLE "empresas" DROP CONSTRAINT IF EXISTS "UQ_f5ed71aeb4ef47f95df5f8830b8";
+```
+
+### Commits
+
+- `fix(empresa): cnpj nao deve ser UNIQUE global entre tenants`
+
+---
+
 ## Estado Final
 
 | Item | Status |
@@ -111,6 +145,7 @@ O workflow de deploy `.github/workflows/ci.yml` tinha dois problemas:
 | POST /registro (Bad Request 400) | ✅ Corrigido |
 | Redirect pós-registro para subdomínio | ✅ Corrigido (aguarda deploy frontend) |
 | PATCH /funcionarios/upload-foto (500) | ✅ Corrigido (credenciais GCS configuradas) |
+| PATCH /empresa (500 duplicate key cnpj) | ✅ Corrigido (constraint removida + 409 tratado) |
 | CI/CD Broken pipe + heredoc | ✅ Corrigido |
 | Disco do servidor Oracle | ✅ Expandido de 47 GB para 150 GB |
 
