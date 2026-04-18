@@ -95,11 +95,17 @@ function PrimeiroAcessoForm() {
 
       const result = await response.json();
       toast.success('🎉 Pub registrado com sucesso!');
-      toast.info(`Acesse: ${result.dados?.urlAcesso || 'pubsystem.com.br'}`);
-      
-      // Aguarda 2 segundos para o usuário ver a mensagem
+
+      const urlLogin = result.dados?.urlLogin;
+      toast.info(`Redirecionando para ${urlLogin || 'seu painel'}...`);
+
+      // Redireciona para o subdomínio do tenant criado (ex: hopbar.pubsystem.com.br)
       setTimeout(() => {
-        router.push('/login');
+        if (urlLogin) {
+          window.location.href = urlLogin;
+        } else {
+          router.push('/login');
+        }
       }, 2000);
     } catch (error: any) {
       console.error('Erro ao criar conta:', error);

@@ -148,8 +148,8 @@ export class PublicRegistrationController {
       message: 'Pub registrado com sucesso! Você já pode fazer login.',
       dados: {
         slug: result.tenant.slug,
-        urlAcesso: `https://www.pubsystem.com.br/t/${result.tenant.slug}`,
-        urlLogin: `https://www.pubsystem.com.br/t/${result.tenant.slug}`,
+        urlAcesso: `https://${result.tenant.slug}.pubsystem.com.br`,
+        urlLogin: `https://${result.tenant.slug}.pubsystem.com.br`,
         email: result.credenciais.email,
         plano: result.tenant.plano,
         ambientesCriados: result.ambientes.map(a => a.nome),
