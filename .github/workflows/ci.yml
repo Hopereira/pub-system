@@ -191,10 +191,11 @@ jobs:
              rm -f /tmp/repo.bundle && \
              echo '✅ Código atualizado'"
 
-          # Enviar imagem via pipe direto (sem arquivo intermediário no servidor)
-          echo "📦 Enviando imagem Docker via pipe..."
-          cat /tmp/pub-backend.tar.gz | ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
-            "gunzip | docker load && echo '✅ Imagem carregada'"
+          # Enviar imagem via scp (mais robusto que pipe SSH para arquivos grandes)
+          echo "📦 Enviando imagem Docker via scp..."
+          scp $SSH_OPTS /tmp/pub-backend.tar.gz $SSH_USER@$SSH_HOST:/tmp/pub-backend.tar.gz
+          ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
+            "gunzip -c /tmp/pub-backend.tar.gz | docker load && rm -f /tmp/pub-backend.tar.gz && echo '✅ Imagem carregada'"
 
           # Reiniciar apenas o container backend (sem tocar no postgres)
           ssh $SSH_OPTS $SSH_USER@$SSH_HOST \
@@ -237,10 +238,8 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
           
-          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << 'ENDSSH'
-            cd ~/pub-system
-            bash scripts/rollback.sh --force
-          ENDSSH
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=10 $SSH_USER@$SSH_HOST \
+            "cd ~/pub-system && bash scripts/rollback.sh --force"
           
           rm -f ~/.ssh/deploy_key
           echo "✅ Rollback completed"
