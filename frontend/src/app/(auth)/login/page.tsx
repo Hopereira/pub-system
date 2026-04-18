@@ -61,7 +61,7 @@ export default function LoginPage() {
       const cargo = loginResponse.user?.cargo;
       
       // Decodifica o token APENAS para pegar o ambienteId
-      const token = localStorage.getItem('authToken');
+      const token = sessionStorage.getItem('authToken');
       let ambienteId = null;
       if (token && token.includes('.')) {
         try {

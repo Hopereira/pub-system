@@ -86,7 +86,7 @@ api.interceptors.request.use(
     
     if (!isServer) {
       // TODO: Migrar para memória (ler do AuthContext via ref compartilhado)
-      const token = localStorage.getItem('authToken');
+      const token = sessionStorage.getItem('authToken');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -179,7 +179,7 @@ api.interceptors.response.use(
             const newToken = refreshRes.data.access_token || refreshRes.data.accessToken;
 
             // TODO: Migrar para memória (notificar AuthContext via ref compartilhado)
-            localStorage.setItem('authToken', newToken);
+            sessionStorage.setItem('authToken', newToken);
             window.dispatchEvent(new CustomEvent('authTokenRefreshed', { detail: { token: newToken } }));
 
             processQueue(null, newToken);
@@ -190,7 +190,7 @@ api.interceptors.response.use(
           } catch (refreshError) {
             processQueue(refreshError, null);
             logger.warn('Refresh token expirado — redirecionando para login', { module: 'API' });
-            localStorage.removeItem('authToken');
+            sessionStorage.removeItem('authToken');
             window.location.href = '/login';
             return Promise.reject(refreshError);
           } finally {
@@ -201,7 +201,7 @@ api.interceptors.response.use(
         // Fallback: se é rota de auth ou já tentou retry
         logger.warn('Sessão expirada - Token inválido', { module: 'API' });
         if (!isServer) {
-          localStorage.removeItem('authToken');
+          sessionStorage.removeItem('authToken');
           window.location.href = '/login';
         }
       } else if (error.response.status === 403) {
