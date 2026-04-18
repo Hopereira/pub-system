@@ -220,9 +220,17 @@ jobs:
 
       - name: Verify deployment health
         run: |
-          echo "🔍 Checking deployment health..."
-          sleep 15
-          curl -f https://api.pubsystem.com.br/health
+          echo "🔍 Checking deployment health (aguardando até 90s)..."
+          for i in $(seq 1 9); do
+            sleep 10
+            echo "Tentativa $i/9..."
+            if curl -sf https://api.pubsystem.com.br/health; then
+              echo "✅ Health check OK"
+              exit 0
+            fi
+          done
+          echo "❌ Health check falhou após 90s"
+          exit 1
         continue-on-error: false
 
       - name: Rollback on failure
