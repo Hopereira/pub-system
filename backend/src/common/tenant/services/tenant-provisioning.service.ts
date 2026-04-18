@@ -94,6 +94,22 @@ export class TenantProvisioningService {
       throw new ConflictException(`Slug "${dto.slug}" já está em uso`);
     }
 
+    // Verificar se já existe tenant ATIVO/TRIAL com o mesmo CNPJ
+    if (dto.cnpj) {
+      const existingCnpj = await this.tenantRepository.findOne({
+        where: [
+          { cnpj: dto.cnpj, status: TenantStatus.ATIVO },
+          { cnpj: dto.cnpj, status: TenantStatus.TRIAL },
+          { cnpj: dto.cnpj, status: TenantStatus.SUSPENSO },
+        ],
+      });
+      if (existingCnpj) {
+        throw new ConflictException(
+          `Já existe um estabelecimento ativo com o CNPJ "${dto.cnpj}". Se você encerrou a conta anterior, entre em contato com o suporte.`,
+        );
+      }
+    }
+
     // Verificar se email do admin já existe
     const existingAdmin = await this.funcionarioRepository.findOne({
       where: { email: dto.adminEmail },
