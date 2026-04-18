@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // TODO: Migrar para memória (useRef no AuthContext)
       // e passar token via header de API calls diretas do Context
-      const storedToken = localStorage.getItem('authToken');
+      const storedToken = sessionStorage.getItem('authToken');
       if (storedToken) {
         const decoded = jwtDecode<User & { exp?: number }>(storedToken);
 
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (isExpired) {
           // Token expirado — limpar e deixar o interceptor tentar refresh
-          localStorage.removeItem('authToken');
+          sessionStorage.removeItem('authToken');
           document.cookie = 'authSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
           // Não setar user — deixa isLoading = false sem user
         } else {
@@ -44,8 +44,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error) {
-      console.error("Failed to decode token from localStorage", error);
-      localStorage.removeItem('authToken');
+      console.error("Failed to decode token from sessionStorage", error);
+      sessionStorage.removeItem('authToken');
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async ({ email, senha, tenantSlug }: LoginCredentials) => {
     // Verifica se está trocando de tenant (empresaId diferente)
-    const oldToken = localStorage.getItem('authToken');
+    const oldToken = sessionStorage.getItem('authToken');
     let oldEmpresaId: string | null = null;
     
     if (oldToken) {
@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // TODO: Migrar para memória (useRef no AuthContext)
     // e passar token via header de API calls diretas do Context
-    localStorage.setItem('authToken', access_token);
+    sessionStorage.setItem('authToken', access_token);
     // Sinaliza presença de sessão para o middleware via cookie simples
     document.cookie = 'authSession=1; path=/; SameSite=Lax';
     
@@ -114,12 +114,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     // Revoga refresh token no backend e limpa httpOnly cookie
-    const currentToken = token || localStorage.getItem('authToken');
+    const currentToken = token || sessionStorage.getItem('authToken');
     if (currentToken) {
       await logoutApi(currentToken);
     }
 
-    localStorage.removeItem('authToken');
+    sessionStorage.removeItem('authToken');
     document.cookie = 'authSession=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     setUser(null);
     setToken(null);

@@ -44,7 +44,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
     // ✅ Obtém o token JWT para enviar no handshake
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    const token = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
 
     // ✅ Não conectar em páginas públicas sem JWT — o useComandaSubscription
     // cria seu próprio socket para páginas de cliente público.
@@ -79,7 +79,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     // ✅ Atualiza o token antes de cada tentativa de reconexão
     // Necessário pois socket.io não atualiza auth automaticamente em reconnects
     newSocket.io.on('reconnect_attempt', () => {
-      const freshToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const freshToken = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
       newSocket.auth = { token: freshToken };
     });
 
@@ -146,7 +146,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     // com usuário já logado), reconectar com o token correto após breve delay
     // O delay permite que o AuthContext termine de ler o token do localStorage
     const initialTokenCheck = setTimeout(() => {
-      const currentToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const currentToken = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
       const socketConnectedWithToken = socketRef.current?.auth && (socketRef.current.auth as any).token;
       // Só reconecta se há token E o socket atual não tem token (evita loop em páginas públicas)
       if (currentToken && !socketConnectedWithToken && !socketRef.current?.connected) {
