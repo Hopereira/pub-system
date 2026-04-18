@@ -26,8 +26,8 @@ export class AvaliacaoService {
   async create(createAvaliacaoDto: CreateAvaliacaoDto): Promise<Avaliacao> {
     const { comandaId, nota, comentario } = createAvaliacaoDto;
 
-    // Busca a comanda com todas as relações necessárias
-    const comanda = await this.comandaRepository.findOne({
+    // Busca a comanda sem filtro de tenant (rota pública — cliente não tem JWT)
+    const comanda = await this.comandaRepository.rawRepository.findOne({
       where: { id: comandaId },
       relations: [
         'cliente',
@@ -48,10 +48,8 @@ export class AvaliacaoService {
       );
     }
 
-    // Verifica se já existe avaliação para esta comanda
-    const avaliacaoExistente = await this.avaliacaoRepository.findOne({
-      where: { comandaId },
-    });
+    // Verifica se já existe avaliação para esta comanda (sem filtro de tenant)
+    const avaliacaoExistente = await this.avaliacaoRepository.findByComandaIdPublic(comandaId);
 
     if (avaliacaoExistente) {
       throw new BadRequestException('Esta comanda já foi avaliada');
@@ -74,17 +72,18 @@ export class AvaliacaoService {
         return total + valorPedido;
       }, 0) || 0;
 
-    // Cria a avaliação
-    const avaliacao = this.avaliacaoRepository.create({
-      comandaId,
-      clienteId: comanda.cliente?.id,
-      nota,
-      comentario: comentario || null,
-      tempoEstadia,
-      valorGasto,
-    });
-
-    const avaliacaoSalva = await this.avaliacaoRepository.save(avaliacao);
+    // Cria a avaliação usando o tenantId da comanda (rota pública)
+    const avaliacaoSalva = await this.avaliacaoRepository.createPublic(
+      {
+        comandaId,
+        clienteId: comanda.cliente?.id,
+        nota,
+        comentario: comentario || null,
+        tempoEstadia,
+        valorGasto,
+      },
+      comanda.tenantId,
+    );
 
     this.logger.log(
       `⭐ Nova avaliação | Nota: ${nota}/5 | Comanda: ${comandaId.slice(0, 8)} | Cliente: ${comanda.cliente?.nome || 'Anônimo'}`,
