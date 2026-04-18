@@ -58,6 +58,15 @@ export class EmpresaService {
       throw new NotFoundException(`Empresa com ID "${id}" não encontrada para este tenant.`);
     }
 
-    return this.empresaRepository.save(empresa);
+    try {
+      return await this.empresaRepository.save(empresa);
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException(
+          'Uma empresa com este CNPJ já está cadastrada.',
+        );
+      }
+      throw error;
+    }
   }
 }

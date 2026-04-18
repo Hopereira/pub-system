@@ -6,7 +6,7 @@ export class Empresa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   cnpj: string;
 
   @Column()
