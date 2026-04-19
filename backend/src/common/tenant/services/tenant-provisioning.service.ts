@@ -7,6 +7,7 @@ import { Ambiente } from '../../../modulos/ambiente/entities/ambiente.entity';
 import { Mesa, MesaStatus } from '../../../modulos/mesa/entities/mesa.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
 import * as bcrypt from 'bcrypt';
+import { PlanFeaturesService } from './plan-features.service';
 
 /**
  * DTO para criação de novo tenant
@@ -54,8 +55,8 @@ export interface ProvisioningResult {
  * O que é criado:
  * 1. Registro na tabela tenants
  * 2. Empresa vinculada ao tenant
- * 3. Ambientes padrão (Cozinha, Salão, Bar)
- * 4. 10 mesas iniciais no Salão
+ * 3. Ambientes padrão (respeitando o limite maxAmbientes do plano)
+ * 4. Mesas iniciais no Salão (respeitando o limite maxMesas do plano)
  * 5. Usuário ADMIN inicial
  */
 @Injectable()
@@ -74,6 +75,7 @@ export class TenantProvisioningService {
     @InjectRepository(Funcionario)
     private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly dataSource: DataSource,
+    private readonly planFeaturesService: PlanFeaturesService,
   ) {}
 
   /**
@@ -124,22 +126,28 @@ export class TenantProvisioningService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Criar Tenant
+      // 1. Criar Tenant (sem config hardcoded — limites vêm da tabela `plans`)
+      const plano = dto.plano || TenantPlano.FREE;
       const tenant = queryRunner.manager.create(Tenant, {
         nome: dto.nome,
         slug: dto.slug,
         cnpj: dto.cnpj,
         status: TenantStatus.TRIAL,
-        plano: dto.plano || TenantPlano.FREE,
-        config: {
-          maxMesas: 10,
-          maxFuncionarios: 5,
-          maxProdutos: 50,
-          features: ['pedidos', 'comandas', 'mesas'],
-        },
+        plano,
+        config: {},
       });
       await queryRunner.manager.save(tenant);
-      this.logger.log(`✅ Tenant criado: ${tenant.id}`);
+      this.logger.log(`✅ Tenant criado: ${tenant.id} (plano: ${plano})`);
+
+      // Buscar limites do plano (banco, com fallback para PLAN_LIMITS hardcoded)
+      const planLimits = await this.planFeaturesService.getLimitsFromDb(plano);
+      const allowedAmbientes =
+        planLimits.maxAmbientes === -1 ? Infinity : planLimits.maxAmbientes;
+      const allowedMesas =
+        planLimits.maxMesas === -1 ? Infinity : planLimits.maxMesas;
+      this.logger.log(
+        `📊 Limites do plano ${plano}: ambientes=${planLimits.maxAmbientes}, mesas=${planLimits.maxMesas}`,
+      );
 
       // 2. Criar Empresa
       const empresa = queryRunner.manager.create(Empresa, {
@@ -156,12 +164,13 @@ export class TenantProvisioningService {
       await queryRunner.manager.save(empresa);
       this.logger.log(`✅ Empresa criada: ${empresa.id}`);
 
-      // 3. Criar Ambientes Padrão
+      // 3. Criar Ambientes Padrão (respeitando limite do plano)
+      // Salão é prioritário porque é onde as mesas ficam.
       const ambientesConfig = [
-        { nome: 'Cozinha', descricao: 'Área de preparo de alimentos', cor: '#FF6B6B' },
         { nome: 'Salão', descricao: 'Área principal de atendimento', cor: '#4ECDC4' },
+        { nome: 'Cozinha', descricao: 'Área de preparo de alimentos', cor: '#FF6B6B' },
         { nome: 'Bar', descricao: 'Área de bebidas', cor: '#45B7D1' },
-      ];
+      ].slice(0, allowedAmbientes);
 
       const ambientes: Ambiente[] = [];
       for (const config of ambientesConfig) {
@@ -174,23 +183,31 @@ export class TenantProvisioningService {
         await queryRunner.manager.save(ambiente);
         ambientes.push(ambiente);
       }
-      this.logger.log(`✅ ${ambientes.length} ambientes criados`);
+      this.logger.log(
+        `✅ ${ambientes.length} ambiente(s) criado(s) (limite do plano: ${planLimits.maxAmbientes})`,
+      );
 
-      // 4. Criar Mesas Iniciais (10 mesas no Salão)
-      const salao = ambientes.find(a => a.nome === 'Salão');
+      // 4. Criar Mesas Iniciais no Salão (respeitando limite do plano)
+      const salao = ambientes.find((a) => a.nome === 'Salão');
       const mesas: Mesa[] = [];
-      
-      for (let i = 1; i <= 10; i++) {
-        const mesa = queryRunner.manager.create(Mesa, {
-          numero: i,
-          status: MesaStatus.LIVRE,
-          ambiente: salao,
-          tenantId: tenant.id,
-        } as any);
-        await queryRunner.manager.save(mesa);
-        mesas.push(mesa);
+
+      if (salao) {
+        // Default sugerido = 10, mas limitado ao máximo do plano
+        const mesasACriar = Math.min(10, allowedMesas);
+        for (let i = 1; i <= mesasACriar; i++) {
+          const mesa = queryRunner.manager.create(Mesa, {
+            numero: i,
+            status: MesaStatus.LIVRE,
+            ambiente: salao,
+            tenantId: tenant.id,
+          } as any);
+          await queryRunner.manager.save(mesa);
+          mesas.push(mesa);
+        }
       }
-      this.logger.log(`✅ ${mesas.length} mesas criadas`);
+      this.logger.log(
+        `✅ ${mesas.length} mesa(s) criada(s) (limite do plano: ${planLimits.maxMesas})`,
+      );
 
       // 5. Criar Usuário ADMIN
       const senhaHash = await bcrypt.hash(dto.adminSenha, 10);
