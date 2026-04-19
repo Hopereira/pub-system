@@ -27,10 +27,12 @@ import { Pedido } from "@/types/pedido";
 import { logger } from "@/lib/logger";
 import { socket } from "@/lib/socket";
 import { toast } from "sonner";
+import usePlanFeatures, { Feature } from "@/hooks/usePlanFeatures";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { hasFeature, loading: planLoading } = usePlanFeatures();
 
   // Redirecionar SUPER_ADMIN para /super-admin
   useEffect(() => {
@@ -85,12 +87,11 @@ export default function DashboardPage() {
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
         
+        const relatorioFallback = { resumo: { valorTotal: 0, tempoMedioPreparo: 0 }, produtosMaisVendidos: [] };
         const [relatorio, comandas, mesas, pedidos, estatisticasSatisfacao] = await Promise.all([
-          getRelatorioGeral({
-            dataInicio: hoje,
-            dataFim: new Date(),
-            limite: 5,
-          }),
+          hasFeature(Feature.ANALYTICS)
+            ? getRelatorioGeral({ dataInicio: hoje, dataFim: new Date(), limite: 5 }).catch(() => relatorioFallback)
+            : Promise.resolve(relatorioFallback),
           getComandasAbertas(),
           getMesas(),
           getPedidos(),
@@ -150,7 +151,7 @@ export default function DashboardPage() {
       }
     };
 
-    loadDashboardData();
+    if (!planLoading) loadDashboardData();
 
     // Atualiza a cada 30 segundos
     const interval = setInterval(loadDashboardData, 30000);
@@ -183,7 +184,7 @@ export default function DashboardPage() {
       socket.off('comanda_aberta');
       socket.off('comanda_fechada');
     };
-  }, []);
+  }, [planLoading, hasFeature]);
 
   const mesasPercentual = ((metricas.mesasOcupadas / metricas.totalMesas) * 100).toFixed(0);
   const mesasStatus = 
