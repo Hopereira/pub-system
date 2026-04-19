@@ -267,6 +267,56 @@ export class PlanFeaturesService {
   }
 
   /**
+   * Busca as features do plano a partir do banco (tabela plans).
+   * Fallback para PLAN_FEATURES hardcoded se o plano não existir no banco.
+   */
+  async getFeaturesFromDb(planoCode: string): Promise<Feature[]> {
+    try {
+      const plan = await this.planRepository.findOne({
+        where: { code: planoCode.toUpperCase(), isActive: true },
+        select: ['features'],
+      });
+      if (plan?.features && plan.features.length > 0) {
+        return plan.features as Feature[];
+      }
+    } catch (err) {
+      this.logger.warn(`Falha ao buscar features do banco para plano ${planoCode}: ${err.message}`);
+    }
+    return PLAN_FEATURES[planoCode as TenantPlano] || PLAN_FEATURES[TenantPlano.FREE];
+  }
+
+  /**
+   * Verifica se o plano tem acesso a uma feature usando dados do banco.
+   * Fallback para PLAN_FEATURES hardcoded se o plano não existir no banco.
+   */
+  async hasFeatureFromDb(planoCode: string, feature: Feature): Promise<boolean> {
+    const features = await this.getFeaturesFromDb(planoCode);
+    return features.includes(feature);
+  }
+
+  /**
+   * Retorna informações completas do plano para o frontend, usando dados do banco.
+   * Features e limites vêm da tabela plans (editável pelo SUPER_ADMIN).
+   * Fallback para hardcoded se o plano não existir no banco.
+   */
+  async getPlanInfoFromDb(planoCode: string) {
+    const features = await this.getFeaturesFromDb(planoCode);
+    const limits = await this.getLimitsFromDb(planoCode);
+
+    const featureFlags: Record<string, boolean> = {};
+    Object.values(Feature).forEach((f) => {
+      featureFlags[f] = features.includes(f);
+    });
+
+    return {
+      plano: planoCode,
+      features: featureFlags,
+      limits,
+      allFeatures: features,
+    };
+  }
+
+  /**
    * Busca os limites do plano a partir do banco (tabela plans).
    * Fallback para PLAN_LIMITS hardcoded se o plano não existir no banco.
    */

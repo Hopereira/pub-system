@@ -41,7 +41,7 @@ export class PlanFeaturesController {
     if (!tenantId) {
       // SUPER_ADMIN ou sem tenant - retornar plano ENTERPRISE como fallback
       return {
-        ...this.planFeaturesService.getPlanInfo('ENTERPRISE'),
+        ...(await this.planFeaturesService.getPlanInfoFromDb('ENTERPRISE')),
         tenantId: null,
         tenantNome: 'Super Admin',
         customLimits: {},
@@ -55,15 +55,13 @@ export class PlanFeaturesController {
     });
 
     if (!tenant) {
-      return this.planFeaturesService.getPlanInfo('FREE');
+      return this.planFeaturesService.getPlanInfoFromDb('FREE');
     }
 
-    const planInfo = this.planFeaturesService.getPlanInfo(tenant.plano);
-    const dbLimits = await this.planFeaturesService.getLimitsFromDb(tenant.plano);
+    const planInfo = await this.planFeaturesService.getPlanInfoFromDb(tenant.plano);
 
     return {
       ...planInfo,
-      limits: dbLimits,
       tenantId: tenant.id,
       tenantNome: tenant.nome,
       customLimits: tenant.config || {},

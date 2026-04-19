@@ -137,9 +137,10 @@ export class FeatureGuard implements CanActivate {
       throw new ForbiddenException('Tenant não encontrado');
     }
 
-    // Verificar cada feature requerida
+    // Verificar cada feature requerida (usando features do banco de dados)
     for (const feature of requiredFeatures) {
-      if (!this.planFeaturesService.hasFeature(tenant.plano, feature)) {
+      const allowed = await this.planFeaturesService.hasFeatureFromDb(tenant.plano, feature);
+      if (!allowed) {
         this.logger.warn(
           `🚫 Feature "${feature}" bloqueada para tenant "${tenant.nome}" (plano: ${tenant.plano})`,
         );
