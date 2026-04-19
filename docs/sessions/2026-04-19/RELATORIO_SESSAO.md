@@ -1,7 +1,7 @@
 # Relatório de Sessão — 2026-04-19
 
 **Data:** 19 de Abril de 2026  
-**Status final:** ✅ (Parcial)
+**Status final:** ✅
 
 ---
 
@@ -143,6 +143,44 @@ hasFeature(Feature.AVALIACOES)
   : Promise.resolve({ mediaSatisfacao: 0, totalAvaliacoes: 0, ... })
 ```
 
+### 4.6 Backend — TenantProvisioningService (`backend/src/common/tenant/services/tenant-provisioning.service.ts`)
+
+**Alteração:** Respeitar os limites do plano no provisionamento inicial de tenant (antes criava 3 ambientes e 10 mesas fixos, ignorando plano FREE que permite apenas 1 ambiente e 5 mesas).
+
+```typescript
+// Injeção de PlanFeaturesService
+constructor(..., private readonly planFeaturesService: PlanFeaturesService) {}
+
+// Buscar limites do banco após criar tenant
+const planLimits = await this.planFeaturesService.getLimitsFromDb(plano);
+const allowedAmbientes = planLimits.maxAmbientes === -1 ? Infinity : planLimits.maxAmbientes;
+const allowedMesas = planLimits.maxMesas === -1 ? Infinity : planLimits.maxMesas;
+
+// Ambientes: Salão priorizado, slice pelo limite
+const ambientesConfig = [
+  { nome: 'Salão', ... },   // prioridade (mesas ficam aqui)
+  { nome: 'Cozinha', ... },
+  { nome: 'Bar', ... },
+].slice(0, allowedAmbientes);
+
+// Mesas: Math.min(default 10, limite do plano)
+const mesasACriar = Math.min(10, allowedMesas);
+```
+
+**Resultado para cada plano:**
+
+| Plano | Ambientes criados | Mesas criadas |
+|-------|-------------------|---------------|
+| FREE  | 1 (Salão)         | 5             |
+| BASIC | 3 (Salão, Cozinha, Bar) | 10      |
+| PRO/ENTERPRISE | 3 (todos) | 10           |
+
+Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios: 5, ...`). Limites agora vêm exclusivamente da tabela `plans`.
+
+### 4.7 Documentação — Script de Diagnóstico (`docs/operacao/diagnostico-limites-tenants.md`)
+
+**Criado:** Script SQL para identificar tenants existentes que excedem limites do plano, com procedimento recomendado (upgrade, remoção manual verificando histórico, ou manter).
+
 ---
 
 ## 5. Testes Realizados
@@ -154,6 +192,7 @@ hasFeature(Feature.AVALIACOES)
 | Teste de frontend pós-deploy (bar-do-ze) | ✅ Sidebar mostra cadeados corretamente |
 | Teste de API `/plan/features` | ✅ Retorna features do FREE corretamente |
 | Verificação de 403 em endpoints restritos | ✅ API bloqueia, frontend não chama mais |
+| Compilação TypeScript (`tsc --noEmit`) após fix de provisionamento | ✅ Sem erros |
 
 ---
 
@@ -184,21 +223,19 @@ hasFeature(Feature.AVALIACOES)
 
 ## 8. Risco Residual / Próximas Ações
 
-### 8.1 Problema Identificado (Não Resolvido)
+### 8.1 Resolvido Nesta Sessão
 
-**Tenant novo com dados excedendo limites do plano:**
-- Plano FREE permite: 5 mesas, 1 ambiente
-- Tenant de teste criado tinha: 10 mesas, 3 ambientes
+- ✅ Fix do `TenantProvisioningService` para respeitar limites do plano
+- ✅ Validação `requireLimitForTenant` já existia em `MesaService` e `AmbienteService`
+- ✅ Script de diagnóstico criado em `docs/operacao/diagnostico-limites-tenants.md`
 
-**Impacto:** Inconsistência nos dados de seed/criação de tenant.
-
-### 8.2 Próximas Ações
+### 8.2 Pendente (Operacional — não bloqueante)
 
 | Prioridade | Ação | Responsável |
 |------------|------|-------------|
-| Média | Revisar lógica de seed de tenants para respeitar limites do plano FREE | Pendente |
-| Média | Adicionar validação na criação de mesas/ambientes para não exceder limites | Pendente |
-| Baixa | Criar migração para ajustar tenants existentes que excedem limites | Pendente |
+| Média | Rodar Query 2 do diagnóstico em produção para listar tenants excedentes | SUPER_ADMIN |
+| Média | Decidir caso a caso: upgrade de plano ou remoção manual de recursos | SUPER_ADMIN |
+| Baixa | Deploy do fix de provisionamento na VM Oracle (próximo push para main) | CI/CD |
 
 ---
 
