@@ -95,14 +95,23 @@ export default function DashboardPage() {
           getComandasAbertas(),
           getMesas(),
           getPedidos(),
-          getEstatisticasDoDia().catch(() => ({
-            mediaSatisfacao: 0,
-            totalAvaliacoes: 0,
-            taxaSatisfacao: 0,
-            distribuicao: { nota1: 0, nota2: 0, nota3: 0, nota4: 0, nota5: 0 },
-            tempoMedioEstadia: 0,
-            valorMedioGasto: 0,
-          })),
+          hasFeature(Feature.AVALIACOES)
+            ? getEstatisticasDoDia().catch(() => ({
+                mediaSatisfacao: 0,
+                totalAvaliacoes: 0,
+                taxaSatisfacao: 0,
+                distribuicao: { nota1: 0, nota2: 0, nota3: 0, nota4: 0, nota5: 0 },
+                tempoMedioEstadia: 0,
+                valorMedioGasto: 0,
+              }))
+            : Promise.resolve({
+                mediaSatisfacao: 0,
+                totalAvaliacoes: 0,
+                taxaSatisfacao: 0,
+                distribuicao: { nota1: 0, nota2: 0, nota3: 0, nota4: 0, nota5: 0 },
+                tempoMedioEstadia: 0,
+                valorMedioGasto: 0,
+              }),
         ]);
 
         // Conta mesas ocupadas (com comanda aberta)
