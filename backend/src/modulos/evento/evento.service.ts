@@ -1,5 +1,5 @@
 // Caminho: backend/src/modulos/evento/evento.service.ts
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, Optional } from '@nestjs/common';
 import { CreateEventoDto } from './dto/create-evento.dto';
 import { UpdateEventoDto } from './dto/update-evento.dto';
 import { Evento } from './entities/evento.entity';
@@ -8,6 +8,8 @@ import { GcsStorageService } from '../../shared/storage/gcs-storage.service';
 import { Express } from 'express';
 import { EventoRepository } from './evento.repository';
 import { PaginaEventoRepository } from '../pagina-evento/pagina-evento.repository';
+import { PlanFeaturesService } from '../../common/tenant/services/plan-features.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 
 @Injectable()
 export class EventoService {
@@ -17,9 +19,18 @@ export class EventoService {
     private readonly eventoRepository: EventoRepository,
     private readonly paginaEventoRepository: PaginaEventoRepository,
     private readonly storageService: GcsStorageService,
+    @Optional() private readonly planFeaturesService?: PlanFeaturesService,
+    @Optional() private readonly tenantContext?: TenantContextService,
   ) {}
 
   async create(createEventoDto: CreateEventoDto): Promise<Evento> {
+    // Verificar limite do plano
+    const tenantId = this.tenantContext?.getTenantIdOrNull?.() ?? null;
+    if (tenantId && this.planFeaturesService) {
+      const currentCount = await this.eventoRepository.count();
+      await this.planFeaturesService.requireLimitForTenant(tenantId, 'maxEventos', currentCount);
+    }
+
     const { paginaEventoId, ...restoDoDto } = createEventoDto;
 
     let paginaEvento: PaginaEvento | null = null;

@@ -8,6 +8,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -19,6 +20,8 @@ import { Funcionario } from './entities/funcionario.entity';
 import { Cargo } from './enums/cargo.enum';
 import { GcsStorageService } from 'src/shared/storage/gcs-storage.service';
 import { FuncionarioRepository } from './funcionario.repository';
+import { PlanFeaturesService } from '../../common/tenant/services/plan-features.service';
+import { TenantContextService } from '../../common/tenant/tenant-context.service';
 
 @Injectable()
 export class FuncionarioService implements OnModuleInit {
@@ -28,6 +31,8 @@ export class FuncionarioService implements OnModuleInit {
     private readonly funcionarioRepository: FuncionarioRepository,
     private readonly configService: ConfigService,
     private readonly storageService: GcsStorageService,
+    @Optional() private readonly planFeaturesService?: PlanFeaturesService,
+    @Optional() private readonly tenantContext?: TenantContextService,
   ) {}
 
   async onModuleInit() {
@@ -116,6 +121,14 @@ export class FuncionarioService implements OnModuleInit {
     if ((createFuncionarioDto as any).cargo === Cargo.SUPER_ADMIN) {
       throw new ForbiddenException('Não é permitido criar usuários com cargo SUPER_ADMIN.');
     }
+
+    // Verificar limite do plano
+    const tenantId = this.tenantContext?.getTenantIdOrNull?.() ?? null;
+    if (tenantId && this.planFeaturesService) {
+      const currentCount = await this.funcionarioRepository.count();
+      await this.planFeaturesService.requireLimitForTenant(tenantId, 'maxFuncionarios', currentCount);
+    }
+
     const senhaHash = await bcrypt.hash(createFuncionarioDto.senha, 10);
     const novoFuncionario = this.funcionarioRepository.create({
       ...createFuncionarioDto,

@@ -1,5 +1,8 @@
 import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
-import { TenantPlano } from '../entities/tenant.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Tenant, TenantPlano } from '../entities/tenant.entity';
+import { Plan } from '../../../modulos/plan/entities/plan.entity';
 
 /**
  * Features disponíveis na plataforma
@@ -98,26 +101,26 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
  */
 export const PLAN_LIMITS: Record<TenantPlano, PlanLimits> = {
   [TenantPlano.FREE]: {
-    maxMesas: 10,
-    maxFuncionarios: 5,
-    maxProdutos: 50,
-    maxAmbientes: 3,
+    maxMesas: 5,
+    maxFuncionarios: 2,
+    maxProdutos: 30,
+    maxAmbientes: 1,
     maxEventos: 0,
     storageGB: 1,
   },
   [TenantPlano.BASIC]: {
-    maxMesas: 30,
-    maxFuncionarios: 15,
-    maxProdutos: 200,
-    maxAmbientes: 5,
+    maxMesas: 20,
+    maxFuncionarios: 10,
+    maxProdutos: 100,
+    maxAmbientes: 3,
     maxEventos: 5,
     storageGB: 5,
   },
   [TenantPlano.PRO]: {
-    maxMesas: 100,
-    maxFuncionarios: 50,
-    maxProdutos: 1000,
-    maxAmbientes: 10,
+    maxMesas: -1,
+    maxFuncionarios: -1,
+    maxProdutos: -1,
+    maxAmbientes: -1,
     maxEventos: 20,
     storageGB: 20,
   },
@@ -143,6 +146,13 @@ export const PLAN_LIMITS: Record<TenantPlano, PlanLimits> = {
 @Injectable()
 export class PlanFeaturesService {
   private readonly logger = new Logger(PlanFeaturesService.name);
+
+  constructor(
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(Plan)
+    private readonly planRepository: Repository<Plan>,
+  ) {}
 
   /**
    * Verifica se o plano tem acesso a uma feature
@@ -254,5 +264,78 @@ export class PlanFeaturesService {
     const targetFeatures = this.getFeatures(targetPlano);
     
     return targetFeatures.filter((f) => !currentFeatures.includes(f));
+  }
+
+  /**
+   * Busca os limites do plano a partir do banco (tabela plans).
+   * Fallback para PLAN_LIMITS hardcoded se o plano não existir no banco.
+   */
+  async getLimitsFromDb(planoCode: string): Promise<PlanLimits> {
+    try {
+      const plan = await this.planRepository.findOne({
+        where: { code: planoCode.toUpperCase(), isActive: true },
+        select: ['limits'],
+      });
+      if (plan?.limits) return plan.limits;
+    } catch (err) {
+      this.logger.warn(`Falha ao buscar limites do banco para plano ${planoCode}: ${err.message}`);
+    }
+    return PLAN_LIMITS[planoCode as TenantPlano] || PLAN_LIMITS[TenantPlano.FREE];
+  }
+
+  /**
+   * Resolve o plano do tenant e verifica se o limite foi atingido.
+   * Busca limites do banco (editáveis pelo SUPER_ADMIN).
+   * 
+   * @param tenantId - ID do tenant
+   * @param limitType - Tipo do limite (maxMesas, maxFuncionarios, etc)
+   * @param currentCount - Quantidade atual de itens
+   * @throws ForbiddenException se o limite foi atingido
+   */
+  async requireLimitForTenant(
+    tenantId: string,
+    limitType: keyof PlanLimits,
+    currentCount: number,
+  ): Promise<void> {
+    const tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+      select: ['id', 'plano', 'nome'],
+    });
+
+    if (!tenant) {
+      this.logger.warn(`Tenant ${tenantId} não encontrado para verificação de limite`);
+      return; // Se não achar tenant, não bloqueia (segurança: fail-open)
+    }
+
+    const limits = await this.getLimitsFromDb(tenant.plano);
+    const limit = limits[limitType];
+
+    if (limit === -1) return; // Ilimitado
+
+    if (currentCount >= limit) {
+      const LIMIT_LABELS: Record<string, string> = {
+        maxMesas: 'mesas',
+        maxFuncionarios: 'funcionários',
+        maxProdutos: 'produtos',
+        maxAmbientes: 'ambientes',
+        maxEventos: 'eventos',
+        storageGB: 'armazenamento (GB)',
+      };
+      const label = LIMIT_LABELS[limitType] || limitType;
+
+      this.logger.warn(
+        `🚫 Limite de ${label} atingido para tenant "${tenant.nome}" (plano: ${tenant.plano}): ${currentCount}/${limit}`,
+      );
+
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'PLAN_LIMIT_REACHED',
+        message: `Você atingiu o limite de ${limit} ${label} do plano ${tenant.plano}. Faça upgrade para aumentar o limite.`,
+        limit,
+        current: currentCount,
+        limitType,
+        plano: tenant.plano,
+      });
+    }
   }
 }

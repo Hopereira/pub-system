@@ -61,7 +61,7 @@ const PLAN_CACHE_TTL = 60000; // 60 segundos
 const PLAN_FALLBACK: PlanInfo = {
   plano: 'FREE',
   features: { pedidos: true, comandas: true, mesas: true, produtos: true, funcionarios: true },
-  limits: { maxMesas: 10, maxFuncionarios: 5, maxProdutos: 50, maxAmbientes: 3, maxEventos: 0, storageGB: 1 },
+  limits: { maxMesas: 5, maxFuncionarios: 2, maxProdutos: 30, maxAmbientes: 1, maxEventos: 0, storageGB: 1 },
   allFeatures: ['pedidos', 'comandas', 'mesas', 'produtos', 'funcionarios'],
 };
 

@@ -18,6 +18,7 @@ import { CreateAmbienteDto } from './dto/create-ambiente.dto';
 import { UpdateAmbienteDto } from './dto/update-ambiente.dto';
 import { Ambiente } from './entities/ambiente.entity';
 import { AmbienteRepository } from './ambiente.repository';
+import { PlanFeaturesService } from '../../common/tenant/services/plan-features.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class AmbienteService {
@@ -30,6 +31,7 @@ export class AmbienteService {
     private readonly cacheInvalidationService: CacheInvalidationService,
     @Optional() private readonly tenantContext?: TenantContextService,
     @Optional() @Inject(REQUEST) private readonly request?: any,
+    @Optional() private readonly planFeaturesService?: PlanFeaturesService,
   ) {}
 
   /**
@@ -61,8 +63,14 @@ export class AmbienteService {
     this.logger.log(`📝 Criando ambiente: ${createAmbienteDto.nome}`);
     
     try {
-      // Verificar se já existe ambiente com mesmo nome no mesmo tenant
+      // Verificar limite do plano
       const tenantId = this.getTenantId();
+      if (tenantId && this.planFeaturesService) {
+        const currentCount = await this.ambienteRepository.count();
+        await this.planFeaturesService.requireLimitForTenant(tenantId, 'maxAmbientes', currentCount);
+      }
+
+      // Verificar se já existe ambiente com mesmo nome no mesmo tenant
       if (tenantId) {
         const existing = await this.ambienteRepository
           .createQueryBuilder('ambiente')

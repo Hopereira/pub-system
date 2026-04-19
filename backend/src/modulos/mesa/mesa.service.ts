@@ -30,6 +30,7 @@ import { PontoEntrega } from '../ponto-entrega/entities/ponto-entrega.entity';
 import { PontoEntregaRepository } from '../ponto-entrega/ponto-entrega.repository';
 import { Pedido } from '../pedido/entities/pedido.entity';
 import { PedidoStatus } from '../pedido/enums/pedido-status.enum';
+import { PlanFeaturesService } from '../../common/tenant/services/plan-features.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class MesaService {
@@ -45,6 +46,7 @@ export class MesaService {
     @Optional() private readonly tenantContext?: TenantContextService,
     @Optional() @Inject(REQUEST) private readonly request?: any,
     @Optional() private readonly tenantResolver?: TenantResolverService,
+    @Optional() private readonly planFeaturesService?: PlanFeaturesService,
   ) {}
 
   /**
@@ -75,6 +77,13 @@ export class MesaService {
   // --- MÉTODO ATUALIZADO: Aceita posição, tamanho e rotação opcionais ---
   async create(createMesaDto: CreateMesaDto): Promise<Mesa> {
     const { numero, ambienteId, posicao, tamanho, rotacao } = createMesaDto;
+
+    // Verificar limite do plano
+    const tenantId = this.getTenantId();
+    if (tenantId && this.planFeaturesService) {
+      const currentCount = await this.mesaRepository.count();
+      await this.planFeaturesService.requireLimitForTenant(tenantId, 'maxMesas', currentCount);
+    }
 
     // Valida se ambiente existe
     const ambiente = await this.ambienteRepository.findOne({

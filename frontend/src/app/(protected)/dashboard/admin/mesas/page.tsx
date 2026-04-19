@@ -87,8 +87,17 @@ const GestaoMesasPage = () => {
       setIsModalOpen(false);
       await loadData();
     } catch (err: any) { 
-      const errorMessage = err.message || (editingMesa ? 'Falha ao atualizar a mesa.' : 'Falha ao criar a mesa.');
-      toast.error(errorMessage);
+      const serverMsg = err.response?.data?.message;
+      const isPlanLimit = err.response?.data?.error === 'PLAN_LIMIT_REACHED';
+      if (isPlanLimit && serverMsg) {
+        toast.error(serverMsg, {
+          duration: 8000,
+          action: { label: 'Ver planos', onClick: () => router.push('/dashboard/configuracoes/plano') },
+        });
+      } else {
+        const errorMessage = serverMsg || err.message || (editingMesa ? 'Falha ao atualizar a mesa.' : 'Falha ao criar a mesa.');
+        toast.error(errorMessage);
+      }
     }
   };
   

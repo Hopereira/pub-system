@@ -12,6 +12,7 @@ import { Express } from 'express';
 import { PaginationDto, PaginatedResponse, createPaginatedResponse } from 'src/common/dto/pagination.dto';
 import { ProdutoRepository } from './produto.repository';
 import { AmbienteRepository } from '../ambiente/ambiente.repository';
+import { PlanFeaturesService } from '../../common/tenant/services/plan-features.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class ProdutoService {
@@ -26,6 +27,7 @@ export class ProdutoService {
     private readonly cacheInvalidationService: CacheInvalidationService,
     @Optional() private readonly tenantContext?: TenantContextService,
     @Optional() @Inject(REQUEST) private readonly request?: any,
+    @Optional() private readonly planFeaturesService?: PlanFeaturesService,
   ) {}
 
   /**
@@ -58,6 +60,13 @@ export class ProdutoService {
     createProdutoDto: CreateProdutoDto,
     imagemFile?: Express.Multer.File,
   ): Promise<Produto> {
+    // Verificar limite do plano
+    const tenantId = this.getTenantId();
+    if (tenantId && this.planFeaturesService) {
+      const currentCount = await this.produtoRepository.count();
+      await this.planFeaturesService.requireLimitForTenant(tenantId, 'maxProdutos', currentCount);
+    }
+
     const { ambienteId, ...restoDoDto } = createProdutoDto;
     const ambiente = await this.ambienteRepository.findOne({
       where: { id: ambienteId },

@@ -360,6 +360,13 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
               } else {
                 throw error; // Usuário cancelou
               }
+            } else if (axiosError.response?.status === 403 && (axiosError.response?.data as any)?.error === 'PLAN_LIMIT_REACHED') {
+              const msg = (axiosError.response?.data as any)?.message || 'Limite do plano atingido.';
+              toast.error(msg, {
+                duration: 8000,
+                action: { label: 'Ver planos', onClick: () => window.location.href = '/dashboard/configuracoes/plano' },
+              });
+              throw error;
             } else {
               toast.error(`Erro ao criar mesa ${mesa.numero}`);
               throw error;
@@ -401,7 +408,12 @@ export function ConfiguradorMapa({ ambienteId }: ConfiguradorMapaProps) {
       toast.success('Layout salvo com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar layout:', error);
-      toast.error('Erro ao salvar layout');
+      const axErr = error as { response?: { data?: any } };
+      if (axErr.response?.data?.error === 'PLAN_LIMIT_REACHED') {
+        // Toast já foi exibido no catch interno
+      } else {
+        toast.error('Erro ao salvar layout');
+      }
     } finally {
       setSalvando(false);
     }

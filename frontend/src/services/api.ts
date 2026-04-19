@@ -205,7 +205,16 @@ api.interceptors.response.use(
           window.location.href = '/login';
         }
       } else if (error.response.status === 403) {
-        logger.warn('Acesso negado - Permissão insuficiente', { module: 'API' });
+        const data = error.response.data as any;
+        if (data?.error === 'PLAN_LIMIT_REACHED') {
+          logger.warn(`Limite do plano atingido: ${data.limitType} (${data.current}/${data.limit})`, { module: 'API' });
+          // Emite evento global para que componentes possam mostrar modal de upgrade
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('plan-limit-reached', { detail: data }));
+          }
+        } else {
+          logger.warn('Acesso negado - Permissão insuficiente', { module: 'API' });
+        }
       } else if (error.response.status >= 500) {
         logger.error('Erro interno do servidor', { 
           module: 'API', 

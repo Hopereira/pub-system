@@ -59,12 +59,13 @@ export class PlanFeaturesController {
     }
 
     const planInfo = this.planFeaturesService.getPlanInfo(tenant.plano);
+    const dbLimits = await this.planFeaturesService.getLimitsFromDb(tenant.plano);
 
     return {
       ...planInfo,
+      limits: dbLimits,
       tenantId: tenant.id,
       tenantNome: tenant.nome,
-      // Limites customizados do tenant (se houver)
       customLimits: tenant.config || {},
     };
   }
