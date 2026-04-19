@@ -1,5 +1,6 @@
 import AgendaEventosClientPage from "./AgendaEventosClientPage";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { FeatureGate, Feature } from "@/hooks/usePlanFeatures";
 
 // Esta página renderiza a estrutura e passa a responsabilidade para o componente cliente.
 export default function AgendaEventosPage() {
@@ -23,8 +24,9 @@ export default function AgendaEventosPage() {
         </BreadcrumbList>
       </Breadcrumb>
       
-      {/* Esta linha renderiza o componente que contém toda a lógica da página */}
-      <AgendaEventosClientPage />
+      <FeatureGate feature={Feature.EVENTOS}>
+        <AgendaEventosClientPage />
+      </FeatureGate>
     </div>
   );
 }

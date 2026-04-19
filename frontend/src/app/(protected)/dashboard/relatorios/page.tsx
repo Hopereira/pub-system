@@ -19,8 +19,9 @@ import { getRelatorioGeral } from '@/services/analyticsService';
 import { RelatorioGeral } from '@/types/analytics';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { FeatureGate, Feature } from '@/hooks/usePlanFeatures';
 
-export default function RelatoriosPage() {
+function RelatoriosPageContent() {
   const [relatorio, setRelatorio] = useState<RelatorioGeral | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -326,5 +327,13 @@ export default function RelatoriosPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function RelatoriosPage() {
+  return (
+    <FeatureGate feature={Feature.ANALYTICS}>
+      <RelatoriosPageContent />
+    </FeatureGate>
   );
 }

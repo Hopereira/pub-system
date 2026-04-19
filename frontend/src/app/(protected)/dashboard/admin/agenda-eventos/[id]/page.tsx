@@ -1,6 +1,7 @@
 // Caminho: frontend/src/app/(protected)/dashboard/admin/agenda-eventos/[id]/page.tsx
 
 import EventoFormPage from './EventoFormPage';
+import { FeatureGate, Feature } from '@/hooks/usePlanFeatures';
 
 interface PageProps {
   params: {
@@ -15,5 +16,9 @@ export default async function GerirEventoPage({ params }: PageProps) {
 
   // ...e passar esse ID para o componente de cliente (o formulário),
   // que fará todo o trabalho de busca de dados e renderização.
-  return <EventoFormPage eventoId={id} />;
+  return (
+    <FeatureGate feature={Feature.EVENTOS}>
+      <EventoFormPage eventoId={id} />
+    </FeatureGate>
+  );
 }

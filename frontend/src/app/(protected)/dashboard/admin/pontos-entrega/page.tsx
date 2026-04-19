@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { FeatureGate, Feature } from '@/hooks/usePlanFeatures';
 
 const formSchema = z.object({
   nome: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
@@ -55,7 +56,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const GestaoPontosEntregaPage = () => {
+const GestaoPontosEntregaPageContent = () => {
   const [pontos, setPontos] = useState<PontoEntrega[]>([]);
   const [ambientes, setAmbientes] = useState<AmbienteData[]>([]);
   const [mesas, setMesas] = useState<Mesa[]>([]);
@@ -445,5 +446,11 @@ const GestaoPontosEntregaPage = () => {
     </div>
   );
 };
+
+const GestaoPontosEntregaPage = () => (
+  <FeatureGate feature={Feature.PONTOS_ENTREGA}>
+    <GestaoPontosEntregaPageContent />
+  </FeatureGate>
+);
 
 export default GestaoPontosEntregaPage;

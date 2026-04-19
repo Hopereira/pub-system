@@ -115,6 +115,12 @@ Antes de tocar em código, verifique se a mudança afeta estas áreas de RISCO:
 - [ ] Multi-tenant data isolation (`WHERE tenant_id`)
 - [ ] API endpoints públicos
 - [ ] CI/CD pipeline
+- [ ] **Plan Features & Limits** (`PlanFeaturesService`, `FeatureGuard`)
+  - Backend: `@RequireFeature(Feature.X)` nos controllers protegidos
+  - Backend: `requireLimitForTenant()` nos `create()` de services com limite
+  - Frontend: `<FeatureGate feature={Feature.X}>` nas páginas protegidas
+  - Limites vêm do banco (`plans` table), editáveis pelo SUPER_ADMIN
+  - Fallback para `PLAN_LIMITS` hardcoded se banco indisponível
 
 ### 🟡 P2 — MÉDIOS (mudança normal, mas watch)
 

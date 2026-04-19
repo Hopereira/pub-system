@@ -131,3 +131,33 @@ Extraídas de `docs/current/`, `docs/architecture/multi-tenant.md`, `docs/2026-0
 3. **Queries globais:** Usar `rawRepository` para operações sem filtro de tenant (ex: `isFirstAccess`).
 4. **Resolução de slug:** Usar `createQueryBuilder` com `addSelect('empresa.tenant_id')` — não `findOne` com `select` restritivo.
 5. **Subdomínios reservados:** `www`, `api`, `app`, `admin`, `mail`, `smtp` não são slugs de tenant.
+
+## Regras de Plan Features & Limits (atualizado 2026-04-19)
+
+Sistema de controle de funcionalidades e limites por plano SaaS (FREE, BASIC, PRO, ENTERPRISE).
+
+### Arquitetura — 3 camadas de proteção
+
+1. **Backend Controller** — `@RequireFeature(Feature.X)` + `FeatureGuard`
+   - Bloqueia a rota inteira se o plano do tenant não inclui a feature
+   - Controllers protegidos: `EventoController`, `PontoEntregaController`, `ClienteController`, `AvaliacaoController`, `AnalyticsController`, `PedidoAnalyticsController`, `MedalhaController`, `TurnoController`
+   - SUPER_ADMIN bypassa automaticamente
+
+2. **Backend Service** — `requireLimitForTenant(tenantId, limitType, currentCount)`
+   - Verifica limites numéricos antes de `create()` (mesas, produtos, funcionários, ambientes, eventos)
+   - Busca limites do banco (`plans` table) com fallback para `PLAN_LIMITS` hardcoded
+   - Lança `ForbiddenException` com `error: 'PLAN_LIMIT_REACHED'` e payload estruturado
+   - Services protegidos: `MesaService`, `ProdutoService`, `FuncionarioService`, `AmbienteService`, `EventoService`
+
+3. **Frontend Page** — `<FeatureGate feature={Feature.X}>`
+   - Bloqueia renderização da página e mostra prompt de upgrade
+   - Páginas protegidas: `agenda-eventos`, `paginas-evento`, `pontos-entrega`, `relatorios`
+   - Sidebar já mostra cadeado 🔒 em links de features indisponíveis
+
+### Regras importantes
+
+- **Fonte da verdade dos limites:** tabela `plans` no banco (editável pelo SUPER_ADMIN via Gestão de Planos)
+- **Fallback:** constante `PLAN_LIMITS` em `plan-features.service.ts` (sincronizada com seed)
+- **Frontend fallback:** `PLAN_FALLBACK` em `usePlanFeatures.tsx` (FREE: 5 mesas, 2 func, 30 prod, 1 amb)
+- **Erro 403 no frontend:** interceptor em `api.ts` detecta `PLAN_LIMIT_REACHED` e emite evento `plan-limit-reached`; componente `PlanLimitToast` mostra toast com botão "Ver planos"
+- **Novo módulo/feature:** adicionar `@RequireFeature` no controller, `requireLimitForTenant` no service (se tem limite), e `<FeatureGate>` na página frontend
