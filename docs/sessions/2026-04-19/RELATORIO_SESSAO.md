@@ -203,6 +203,7 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 | `f75c9dab` | fix: usar banco de dados para features do plano em vez de hardcoded |
 | `d595d422` | fix(tenant-provisioning): respeitar limites do plano ao criar tenant |
 | `15e301c` | fix(cache): adicionar trackKey faltante em AmbienteService, MesaService, ProdutoService, ComandaService |
+| `6e0db2bd` | fix(features): separar CARDAPIO_DIGITAL de EVENTOS como feature básica (FREE) |
 
 ---
 
@@ -216,6 +217,9 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 - ✅ `PlanFeaturesController` e `FeatureGuard` usam lógica consistente de resolução de tenant
 - ✅ Provisionamento de tenant respeita limites do plano (mesas e ambientes)
 - ✅ Cache de ambientes, mesas, produtos e comandas é invalidado corretamente após CRUD
+- ✅ "Páginas de Boas-Vindas" (cardápio digital) usa Feature.CARDAPIO_DIGITAL — acessível no plano FREE
+- ✅ "Agenda de Eventos" (couvert artístico) usa Feature.EVENTOS — acessível a partir de BASIC
+- ✅ Super Admin vê labels diferenciadas: "Cardápio Digital (QR Code)" vs "Eventos (Couvert/Agenda)"
 
 **Arquitetura corrigida:**
 - Features agora são gerenciadas no banco (tabela `plans`)
@@ -223,6 +227,7 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 - Backend lê do banco com fallback para hardcoded
 - Frontend recebe lista correta de features disponíveis
 - Cache backend usa `trackKey` para rastrear chaves e `invalidatePattern` para limpar
+- Feature `cardapio_digital` separada de `eventos` — duas funcionalidades distintas
 
 ---
 
@@ -236,6 +241,9 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 - ✅ Diagnóstico executado em produção — 3 tenants FREE excedem limites
 - ✅ Fix de cache: `trackKey` adicionado em 4 services (bug de invalidação corrigido)
 - ✅ Deploy em produção confirmado (container com código novo + healthy)
+- ✅ Feature CARDAPIO_DIGITAL separada de EVENTOS — "Páginas de Boas-Vindas" agora acessível no FREE
+- ✅ SQL executado em produção: `cardapio_digital` adicionado aos 4 planos existentes
+- ✅ Labels diferenciadas no Super Admin: "Cardápio Digital (QR Code)" vs "Eventos (Couvert/Agenda)"
 
 ### 8.2 Diagnóstico de Tenants Excedentes (Produção)
 

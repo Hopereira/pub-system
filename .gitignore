@@ -6,6 +6,8 @@
 /dist
 /build
 /.next
+*.bundle
+**/dist_patch
 
 # Arquivos de ambiente - NUNCA ENVIE SENHAS PARA O GITHUB
 .env
