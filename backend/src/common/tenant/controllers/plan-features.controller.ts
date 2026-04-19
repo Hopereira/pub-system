@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -35,17 +35,34 @@ export class PlanFeaturesController {
   @Get('features')
   @ApiOperation({ summary: 'Obtém features disponíveis no plano atual' })
   @ApiResponse({ status: 200, description: 'Features retornadas com sucesso' })
-  async getFeatures() {
-    const tenantId = this.tenantContext.getTenantIdOrNull();
-    
+  async getFeatures(@Req() request: any) {
+    // Obter tenantId do contexto OU do JWT (mesmo fallback usado pelo FeatureGuard)
+    let tenantId = this.tenantContext.getTenantIdOrNull();
+    if (!tenantId && request?.user?.tenantId) {
+      tenantId = request.user.tenantId;
+    }
+
+    const user = request?.user;
+    const isSuperAdmin = user?.cargo === 'SUPER_ADMIN';
+
     if (!tenantId) {
-      // SUPER_ADMIN ou sem tenant - retornar plano ENTERPRISE como fallback
+      // Apenas SUPER_ADMIN sem tenant vinculado recebe ENTERPRISE (acesso total)
+      if (isSuperAdmin) {
+        return {
+          ...(await this.planFeaturesService.getPlanInfoFromDb('ENTERPRISE')),
+          tenantId: null,
+          tenantNome: 'Super Admin',
+          customLimits: {},
+          isSuperAdmin: true,
+        };
+      }
+      // Usuário sem tenant e sem ser SUPER_ADMIN → plano FREE (mais restritivo)
       return {
-        ...(await this.planFeaturesService.getPlanInfoFromDb('ENTERPRISE')),
+        ...(await this.planFeaturesService.getPlanInfoFromDb('FREE')),
         tenantId: null,
-        tenantNome: 'Super Admin',
+        tenantNome: null,
         customLimits: {},
-        isSuperAdmin: true,
+        isSuperAdmin: false,
       };
     }
 
