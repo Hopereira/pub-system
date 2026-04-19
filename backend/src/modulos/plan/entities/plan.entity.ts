@@ -17,11 +17,12 @@ export const ALL_FEATURES = [
   { key: 'mesas', label: 'Mesas', description: 'Gestão de mesas' },
   { key: 'produtos', label: 'Produtos', description: 'Cardápio de produtos' },
   { key: 'funcionarios', label: 'Funcionários', description: 'Gestão de funcionários' },
+  { key: 'cardapio_digital', label: 'Cardápio Digital (QR Code)', description: 'Páginas de boas-vindas com QR Code para atendimento automático' },
   
   // Intermediárias
   { key: 'clientes', label: 'Clientes', description: 'Cadastro de clientes' },
   { key: 'avaliacoes', label: 'Avaliações', description: 'Sistema de avaliações' },
-  { key: 'eventos', label: 'Eventos', description: 'Agenda de eventos' },
+  { key: 'eventos', label: 'Eventos (Couvert/Agenda)', description: 'Agenda de eventos pagos com entrada e couvert artístico' },
   { key: 'pontos_entrega', label: 'Pontos de Entrega', description: 'Gestão de pontos de entrega' },
   { key: 'turnos', label: 'Turnos', description: 'Check-in/Check-out de funcionários' },
   
