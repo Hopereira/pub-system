@@ -201,6 +201,8 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 | Hash | Mensagem |
 |------|----------|
 | `f75c9dab` | fix: usar banco de dados para features do plano em vez de hardcoded |
+| `d595d422` | fix(tenant-provisioning): respeitar limites do plano ao criar tenant |
+| `15e301c` | fix(cache): adicionar trackKey faltante em AmbienteService, MesaService, ProdutoService, ComandaService |
 
 ---
 
@@ -212,12 +214,15 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 - ✅ API calls para endpoints restritos são bloqueadas no frontend (não chegam ao backend)
 - ✅ Backend usa configurações do banco de dados (respeita SUPER_ADMIN)
 - ✅ `PlanFeaturesController` e `FeatureGuard` usam lógica consistente de resolução de tenant
+- ✅ Provisionamento de tenant respeita limites do plano (mesas e ambientes)
+- ✅ Cache de ambientes, mesas, produtos e comandas é invalidado corretamente após CRUD
 
 **Arquitetura corrigida:**
 - Features agora são gerenciadas no banco (tabela `plans`)
 - SUPER_ADMIN pode configurar features via interface
 - Backend lê do banco com fallback para hardcoded
 - Frontend recebe lista correta de features disponíveis
+- Cache backend usa `trackKey` para rastrear chaves e `invalidatePattern` para limpar
 
 ---
 
@@ -228,14 +233,25 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 - ✅ Fix do `TenantProvisioningService` para respeitar limites do plano
 - ✅ Validação `requireLimitForTenant` já existia em `MesaService` e `AmbienteService`
 - ✅ Script de diagnóstico criado em `docs/operacao/diagnostico-limites-tenants.md`
+- ✅ Diagnóstico executado em produção — 3 tenants FREE excedem limites
+- ✅ Fix de cache: `trackKey` adicionado em 4 services (bug de invalidação corrigido)
+- ✅ Deploy em produção confirmado (container com código novo + healthy)
 
-### 8.2 Pendente (Operacional — não bloqueante)
+### 8.2 Diagnóstico de Tenants Excedentes (Produção)
+
+| Tenant | Plano | Mesas | Max | Ambientes | Max | Funcionários | Max |
+|--------|-------|-------|-----|-----------|-----|--------------|-----|
+| Bar do Zé | FREE | 9 | 5 | 3 | 2 | 3 | 2 |
+| Hopbar | FREE | 10 | 5 | 3 | 2 | 1 | 2 |
+| teste | FREE | 10 | 5 | 3 | 2 | 1 | 2 |
+| Pub Demo | PRO | 10 | 20 | 3 | 5 | 5 | 10 |
+
+### 8.3 Pendente (Operacional — não bloqueante)
 
 | Prioridade | Ação | Responsável |
 |------------|------|-------------|
-| Média | Rodar Query 2 do diagnóstico em produção para listar tenants excedentes | SUPER_ADMIN |
 | Média | Decidir caso a caso: upgrade de plano ou remoção manual de recursos | SUPER_ADMIN |
-| Baixa | Deploy do fix de provisionamento na VM Oracle (próximo push para main) | CI/CD |
+| Baixa | Atualizar `docs/sessions/CONVENCAO.md` com registro desta sessão | Próxima sessão |
 
 ---
 

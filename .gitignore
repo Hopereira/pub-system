@@ -84,3 +84,5 @@ backups/
 *.tmp
 *.temp
 .cache/
+.vercel
+.env*.local

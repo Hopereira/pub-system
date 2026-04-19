@@ -74,3 +74,4 @@ O que ainda está pendente.
 | 2026-04-07 | `docs/sessions/2026-04-07/RELATORIO_SESSAO.md` | Fix MRR hardcoded no backend (super-admin.service.ts); Fix CVE-2025-66478/55183/55184 next 16.1.7→16.2.2 |
 | 2026-04-08 | `docs/sessions/2026-04-08/RELATORIO.md` | Fix cache invalidatePattern (keyv sem suporte a keys()); Fix CozinhaPageClient não recarregava pedidos ao trocar de aba de ambiente |
 | 2026-04-11 | `docs/sessions/2026-04-11/RELATORIO_SESSAO.md` | Fix redirecionamento pós-login por cargo (COZINHEIRO/BARTENDER→operacional); Fix POST /comandas 400 em evento sem PaginaEvento (fallback tenantId via eventoId) |
+| 2026-04-19 | `docs/sessions/2026-04-19/RELATORIO_SESSAO.md` | Fix feature gating frontend/backend (tenantId inconsistente em PlanFeaturesController); Migrar features para DB; Fix tenant-provisioning respeitar limites; Fix cache invalidation (trackKey faltante em 4 services) |
