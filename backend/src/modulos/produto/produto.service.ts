@@ -231,6 +231,7 @@ export class ProdutoService {
     // Armazenar no cache (apenas se tenant disponível)
     if (cacheKey) {
       await this.cacheManager.set(cacheKey, response, 3600000);
+      CacheInvalidationService.trackKey(cacheKey);
     }
 
     return response;
@@ -259,6 +260,7 @@ export class ProdutoService {
     // Armazenar no cache (apenas se tenant disponível)
     if (cacheKey) {
       await this.cacheManager.set(cacheKey, produtos, 3600000);
+      CacheInvalidationService.trackKey(cacheKey);
     }
     
     return produtos;

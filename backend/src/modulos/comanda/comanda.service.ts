@@ -375,6 +375,7 @@ export class ComandaService {
     // Armazenar no cache por 5 minutos (apenas se tenant disponível)
     if (cacheKey) {
       await this.cacheManager.set(cacheKey, response, 300000);
+      CacheInvalidationService.trackKey(cacheKey);
     }
 
     return response;
