@@ -187,6 +187,7 @@ export class MesaService {
     // Armazenar no cache por 3 minutos (apenas se tenant disponível)
     if (cacheKey) {
       await this.cacheManager.set(cacheKey, result, 180000);
+      CacheInvalidationService.trackKey(cacheKey);
     }
 
     return result;

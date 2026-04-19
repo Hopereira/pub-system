@@ -147,6 +147,7 @@ export class AmbienteService {
     // Armazenar no cache por 10 minutos (apenas se tenant disponível)
     if (cacheKey) {
       await this.cacheManager.set(cacheKey, result, 600000);
+      CacheInvalidationService.trackKey(cacheKey);
     }
 
     return result;
