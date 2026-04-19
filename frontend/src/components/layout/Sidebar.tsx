@@ -131,7 +131,7 @@ const baseNavLinks: NavLink[] = [
   // --- Features BASIC+ (Eventos) ---
   { href: '/dashboard/admin/agenda-eventos', label: 'Agenda de Eventos', icon: Calendar, roles: ['ADMIN'], feature: Feature.EVENTOS, premium: true },
   
-  { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'], feature: Feature.EVENTOS, premium: true },
+  { href: '/dashboard/admin/paginas-evento', label: 'Páginas de Boas-Vindas', icon: Presentation, roles: ['ADMIN'], feature: Feature.CARDAPIO_DIGITAL },
   { href: '/dashboard/admin/empresa', label: 'Empresa', icon: Building2, roles: ['ADMIN'] },
   
   // --- Features PRO+ (Analytics, Relatórios Avançados) ---

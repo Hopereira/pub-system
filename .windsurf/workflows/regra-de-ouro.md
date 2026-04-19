@@ -151,7 +151,8 @@ Sistema de controle de funcionalidades e limites por plano SaaS (FREE, BASIC, PR
 
 3. **Frontend Page** — `<FeatureGate feature={Feature.X}>`
    - Bloqueia renderização da página e mostra prompt de upgrade
-   - Páginas protegidas: `agenda-eventos`, `paginas-evento`, `pontos-entrega`, `relatorios`
+   - Páginas protegidas: `agenda-eventos` (EVENTOS), `pontos-entrega` (PONTOS_ENTREGA), `relatorios` (ANALYTICS)
+   - `paginas-evento` usa `CARDAPIO_DIGITAL` (feature básica, FREE) — é cardápio digital com QR Code, **diferente** de `EVENTOS` (couvert/agenda, BASIC+)
    - Sidebar já mostra cadeado 🔒 em links de features indisponíveis
 
 ### Regras importantes

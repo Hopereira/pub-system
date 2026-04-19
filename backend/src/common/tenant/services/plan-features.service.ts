@@ -14,6 +14,7 @@ export enum Feature {
   MESAS = 'mesas',
   PRODUTOS = 'produtos',
   FUNCIONARIOS = 'funcionarios',
+  CARDAPIO_DIGITAL = 'cardapio_digital',
   
   // Intermediárias (BASIC+)
   CLIENTES = 'clientes',
@@ -58,6 +59,7 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
     Feature.MESAS,
     Feature.PRODUTOS,
     Feature.FUNCIONARIOS,
+    Feature.CARDAPIO_DIGITAL, // Páginas de Boas-Vindas com QR Code (funcionalidade básica)
     Feature.TURNOS, // Turnos é essencial para check-in/check-out de funcionários
     Feature.AVALIACOES, // Avaliações básicas para feedback de clientes
   ],
@@ -67,6 +69,7 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
     Feature.MESAS,
     Feature.PRODUTOS,
     Feature.FUNCIONARIOS,
+    Feature.CARDAPIO_DIGITAL,
     Feature.CLIENTES,
     Feature.AVALIACOES,
     Feature.EVENTOS,
@@ -80,6 +83,7 @@ export const PLAN_FEATURES: Record<TenantPlano, Feature[]> = {
     Feature.MESAS,
     Feature.PRODUTOS,
     Feature.FUNCIONARIOS,
+    Feature.CARDAPIO_DIGITAL,
     Feature.CLIENTES,
     Feature.AVALIACOES,
     Feature.EVENTOS,

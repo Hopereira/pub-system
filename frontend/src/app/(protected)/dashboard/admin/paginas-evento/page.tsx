@@ -6,7 +6,7 @@ import { FeatureGate, Feature } from "@/hooks/usePlanFeatures";
 // Este componente de servidor agora é o mais simples possível.
 export default function PaginaEventoPage() {
   return (
-    <FeatureGate feature={Feature.EVENTOS}>
+    <FeatureGate feature={Feature.CARDAPIO_DIGITAL}>
       <PaginasEventoClientPage />
     </FeatureGate>
   );

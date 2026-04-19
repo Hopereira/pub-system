@@ -13,6 +13,7 @@ export enum Feature {
   MESAS = 'mesas',
   PRODUTOS = 'produtos',
   FUNCIONARIOS = 'funcionarios',
+  CARDAPIO_DIGITAL = 'cardapio_digital',
   
   // Intermediárias (BASIC+)
   CLIENTES = 'clientes',
@@ -60,7 +61,7 @@ const PLAN_CACHE_TTL = 60000; // 60 segundos
 
 const PLAN_FALLBACK: PlanInfo = {
   plano: 'FREE',
-  features: { pedidos: true, comandas: true, mesas: true, produtos: true, funcionarios: true },
+  features: { pedidos: true, comandas: true, mesas: true, produtos: true, funcionarios: true, cardapio_digital: true },
   limits: { maxMesas: 5, maxFuncionarios: 2, maxProdutos: 30, maxAmbientes: 1, maxEventos: 0, storageGB: 1 },
   allFeatures: ['pedidos', 'comandas', 'mesas', 'produtos', 'funcionarios'],
 };
