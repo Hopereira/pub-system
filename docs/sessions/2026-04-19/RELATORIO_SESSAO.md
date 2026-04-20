@@ -204,6 +204,8 @@ Também removido o `config` hardcoded do tenant (`maxMesas: 10, maxFuncionarios:
 | `d595d422` | fix(tenant-provisioning): respeitar limites do plano ao criar tenant |
 | `15e301c` | fix(cache): adicionar trackKey faltante em AmbienteService, MesaService, ProdutoService, ComandaService |
 | `6e0db2bd` | fix(features): separar CARDAPIO_DIGITAL de EVENTOS como feature básica (FREE) |
+| `b234921`  | chore: trigger vercel redeploy for CARDAPIO_DIGITAL feature |
+| `ee921a9`  | fix(paginas-evento): usar string literal cardapio_digital no FeatureGate |
 
 ---
 
@@ -275,3 +277,29 @@ ssh -i "D:\Ficando_rico\Projetos\private Key\ssh-key-2025-12-11.key" ubuntu@134.
 ```
 
 **Método de deploy backend:** Git bundle + SCP + Docker rebuild
+
+---
+
+## Adendo — Fix adicional em 19/04 à noite (CARDAPIO_DIGITAL em produção)
+
+**Sintoma:** Mesmo após o commit `6e0db2bd` e redeploy Vercel, a página `/dashboard/admin/paginas-evento` continuava mostrando "Funcionalidade Premium" no plano FREE (reproduzido em aba anônima).
+
+**Diagnóstico via patch no container + JWT direto:**
+
+1. Backend local (`/app/dist`) estava sem `CARDAPIO_DIGITAL` no enum `Feature` — o deploy anterior tinha patcheado apenas alguns arquivos. Re-patcheados 3 arquivos compilados:
+   - `common/tenant/services/plan-features.service.js` (enum + `PLAN_FEATURES`)
+   - `modulos/plan/plan.service.js` (seed)
+   - `modulos/plan/entities/plan.entity.js` (`ALL_FEATURES` labels)
+2. Teste com JWT válido gerado dentro do container confirmou o endpoint `/plan/features` retornando:
+   ```json
+   { "plano":"FREE", "features":{"cardapio_digital":true, ...} }
+   ```
+3. Frontend Vercel ainda servindo build antigo (sem `Feature.CARDAPIO_DIGITAL` no enum → `feature={undefined}` → `hasFeature(undefined)` retornava `false`).
+
+**Solução aplicada:**
+- `frontend/src/app/(protected)/dashboard/admin/paginas-evento/page.tsx`: trocar `<FeatureGate feature={Feature.CARDAPIO_DIGITAL}>` por `<FeatureGate feature="cardapio_digital">` (string literal, defensivo contra enum desatualizado no build cache).
+- Commit `ee921a9` → push → Vercel fez rebuild → página liberada para tenants FREE.
+
+**Lição aprendida:**
+- Ao introduzir novos valores em enums compartilhados (frontend + backend), usar **string literal** em call sites críticos até o deploy estabilizar — evita casos onde build cache da Vercel ou do container resolve `EnumMember` como `undefined`.
+- Para o backend, sempre conferir se o patch manual incluiu **todos** os JS compilados afetados (enum + seed + entity labels) — rodar `grep <valor_novo>` dentro do container após patch.
