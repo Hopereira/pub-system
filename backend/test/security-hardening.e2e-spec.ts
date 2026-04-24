@@ -61,7 +61,7 @@ describe('Security Hardening Sprint 1 (e2e)', () => {
       .expect(201);
     return {
       accessToken: res.body.access_token,
-      cookies: res.headers['set-cookie'] as string[],
+      cookies: (res.headers['set-cookie'] as unknown) as string[],
     };
   }
 
