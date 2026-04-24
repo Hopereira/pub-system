@@ -8,6 +8,8 @@ import {
   Optional,
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
+import { AlertService } from './alert.service';
+import { ObservabilityEvent } from './events';
 
 /**
  * SentryExceptionFilter — Captura exceções e envia para o Sentry
@@ -24,26 +26,30 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
 
   constructor(
     @Optional() @Inject('SENTRY_INIT') private readonly sentry?: any,
+    @Optional() @Inject(AlertService) private readonly alertService?: AlertService,
   ) {
     super();
   }
 
   catch(exception: unknown, host: ArgumentsHost) {
+    const httpStatus =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
+
     // Reportar ao Sentry (se inicializado)
     if (this.sentry && exception instanceof Error) {
       const ctx = host.switchToHttp();
       const request = ctx.getRequest();
 
-      // Não reportar erros HTTP esperados (4xx)
-      const status =
-        exception instanceof HttpException
-          ? exception.getStatus()
-          : HttpStatus.INTERNAL_SERVER_ERROR;
-
-      if (status >= 500) {
+      // Ignorar erros esperados (4xx + 409 Conflict)
+      const ignoredStatuses = [400, 401, 403, 404, 409, 429];
+      if (ignoredStatuses.includes(httpStatus)) {
+        // Não reportar ao Sentry
+      } else {
         try {
           this.sentry.withScope((scope: any) => {
-            // Adicionar contexto do tenant
+            // Contexto do tenant
             const tenantId =
               request?.tenant?.id ||
               request?.user?.tenantId ||
@@ -52,18 +58,30 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
               scope.setTag('tenantId', tenantId);
             }
 
-            // Adicionar info do usuário
+            // Info do usuário
             if (request?.user) {
               scope.setUser({
                 id: request.user.sub || request.user.id,
                 email: request.user.email,
               });
+              scope.setTag('role', request.user.cargo || request.user.role || 'unknown');
             }
 
-            // Adicionar contexto da requisição
+            // RequestId
+            const requestId = request?.requestId || request?.headers?.['x-request-id'];
+            if (requestId) {
+              scope.setTag('requestId', requestId);
+            }
+
+            // Contexto da requisição
             scope.setTag('method', request?.method);
             scope.setTag('url', request?.url);
+            scope.setTag('statusCode', String(httpStatus));
             scope.setExtra('ip', request?.ip);
+            scope.setTag('version', process.env.npm_package_version || '0.0.1');
+
+            // Nível de severidade
+            scope.setLevel(httpStatus >= 500 ? 'error' : 'warning');
 
             this.sentry.captureException(exception);
           });
@@ -71,6 +89,17 @@ export class SentryExceptionFilter extends BaseExceptionFilter {
           this.logger.debug(`Sentry capture failed: ${sentryError.message}`);
         }
       }
+    }
+
+    // Record event for alert threshold evaluation
+    if (this.alertService && httpStatus >= 500) {
+      const request = host.switchToHttp().getRequest();
+      this.alertService.recordEvent(ObservabilityEvent.INTERNAL_SERVER_ERROR, {
+        status: httpStatus,
+        method: request?.method,
+        url: request?.url,
+        requestId: request?.requestId || request?.headers?.['x-request-id'],
+      });
     }
 
     // Delegar para o filter padrão do NestJS

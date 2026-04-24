@@ -162,6 +162,13 @@ jobs:
       - name: Tenant isolation unit tests
         run: npx jest --testPathPattern='tenant-isolation' --passWithNoTests
 
+      - name: RLS modes unit tests
+        run: npx jest --testPathPattern='rls-modes' --passWithNoTests
+
+      - name: RLS readiness check
+        run: npm run rls:readiness
+        continue-on-error: true
+
       - name: Auth + permissions E2E tests
         run: npx jest --config ./test/jest-e2e.json --testPathPattern='(auth|gerente-permissions)' --passWithNoTests
 
@@ -308,6 +315,14 @@ jobs:
           echo "❌ Health check falhou após 90s"
           exit 1
         continue-on-error: false
+
+      - name: Post-deploy smoke test
+        run: |
+          echo "🔥 Running smoke tests against staging..."
+          cd backend
+          npm ci --legacy-peer-deps
+          API_URL=https://api.pubsystem.com.br npm run smoke:test || echo "⚠️ Smoke test issues detected"
+        continue-on-error: true
 
       - name: Rollback on failure
         if: failure()
