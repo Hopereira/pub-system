@@ -36,6 +36,7 @@ export class TenantLoggingInterceptor implements NestInterceptor {
     
     const { method, url, ip } = request;
     const startTime = Date.now();
+    const requestId = request.requestId || request.headers?.['x-request-id'] || null;
 
     // Extrai tenant diretamente do request (definido pelo TenantInterceptor)
     // ou do JWT do usuário autenticado
@@ -44,10 +45,11 @@ export class TenantLoggingInterceptor implements NestInterceptor {
     const tenantPrefix = tenantId 
       ? `[tenant:${tenantId.substring(0, 8)}]${tenantName ? ` (${tenantName})` : ''}` 
       : '[tenant:public]';
+    const reqIdTag = requestId ? `[req:${requestId.substring(0, 8)}]` : '';
 
     this.logger?.log?.(
-      `${tenantPrefix} 📥 ${method} ${url} | IP: ${ip || 'unknown'}`,
-      { tenantId, method, url, ip: ip || 'unknown' } as any,
+      `${tenantPrefix}${reqIdTag} 📥 ${method} ${url} | IP: ${ip || 'unknown'}`,
+      { tenantId, requestId, method, url, ip: ip || 'unknown' } as any,
     );
 
     return next.handle().pipe(
@@ -55,15 +57,15 @@ export class TenantLoggingInterceptor implements NestInterceptor {
         next: () => {
           const duration = Date.now() - startTime;
           this.logger?.log?.(
-            `${tenantPrefix} 📤 ${method} ${url} | ${duration}ms | OK`,
-            { tenantId, method, url, duration, status: 'OK' } as any,
+            `${tenantPrefix}${reqIdTag} 📤 ${method} ${url} | ${duration}ms | OK`,
+            { tenantId, requestId, method, url, duration, status: 'OK' } as any,
           );
         },
         error: (error) => {
           const duration = Date.now() - startTime;
           this.logger?.error?.(
-            `${tenantPrefix} ❌ ${method} ${url} | ${duration}ms | ${error?.message || 'Unknown error'}`,
-            { tenantId, method, url, duration, error: error?.message, status: 'ERROR' } as any,
+            `${tenantPrefix}${reqIdTag} ❌ ${method} ${url} | ${duration}ms | ${error?.message || 'Unknown error'}`,
+            { tenantId, requestId, method, url, duration, error: error?.message, status: 'ERROR' } as any,
           );
         },
       }),
