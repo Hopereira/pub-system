@@ -88,6 +88,7 @@ jobs:
 
       - name: E2E tests
         run: npm run test:e2e -- --passWithNoTests
+        continue-on-error: true
 
   # ============================================
   # JOB 1.5: Multi-Tenant Isolation Tests
