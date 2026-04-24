@@ -414,6 +414,7 @@ export class CaixaService {
         funcionarioId,
         status: StatusCaixa.ABERTO,
       },
+      relations: ['funcionario'],
       order: {
         dataAbertura: 'DESC',
         horaAbertura: 'DESC',
@@ -429,6 +430,7 @@ export class CaixaService {
       where: {
         status: StatusCaixa.ABERTO,
       },
+      relations: ['funcionario'],
       order: {
         dataAbertura: 'DESC',
         horaAbertura: 'DESC',
@@ -452,6 +454,7 @@ export class CaixaService {
         funcionarioId,
         status: StatusCaixa.ABERTO,
       },
+      relations: ['funcionario'],
       order: {
         dataAbertura: 'DESC',
         horaAbertura: 'DESC',
@@ -469,6 +472,7 @@ export class CaixaService {
     }
     const abertura = await this.aberturaRepository.findOne({
       where: { id: aberturaCaixaId },
+      relations: ['funcionario'],
     });
 
     if (!abertura) {
@@ -477,14 +481,17 @@ export class CaixaService {
 
     const movimentacoes = await this.movimentacaoRepository.find({
       where: { aberturaCaixaId },
+      relations: ['funcionario'],
     });
 
     const sangrias = await this.sangriaRepository.find({
       where: { aberturaCaixaId },
+      relations: ['funcionario'],
     });
 
     const fechamento = await this.fechamentoRepository.findOne({
       where: { aberturaCaixaId },
+      relations: ['funcionario'],
     });
 
     const vendas = movimentacoes.filter(
@@ -542,6 +549,8 @@ export class CaixaService {
       });
     }
 
+    query.leftJoinAndSelect('fechamento.funcionario', 'funcionario');
+    query.leftJoinAndSelect('fechamento.aberturaCaixa', 'abertura');
     query.orderBy('fechamento.dataFechamento', 'DESC');
     query.addOrderBy('fechamento.horaFechamento', 'DESC');
 

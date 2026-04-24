@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Ignorar erros de ESLint durante o build (warnings não bloqueiam)
+  // SECURITY: Erros de ESLint e TypeScript agora bloqueiam o build
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
-  // Ignorar erros de TypeScript durante o build
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   
   // Desabilitar trailing slash para evitar problemas de redirecionamento

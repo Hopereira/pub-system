@@ -88,7 +88,16 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // 5. Remover refresh_token do body retornado
+    // 5. SECURITY: Setar access_token como httpOnly cookie (substitui sessionStorage no frontend)
+    res.cookie('access_token', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 60 * 60 * 1000, // 1h — alinhado com JWT expiresIn
+    });
+
+    // 6. Remover refresh_token do body retornado
     const { refresh_token, ...publicData } = result;
     return publicData;
   }
@@ -141,6 +150,15 @@ export class AuthController {
       });
     }
 
+    // SECURITY: Renovar access_token cookie junto com o JWT
+    res.cookie('access_token', result.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 60 * 60 * 1000, // 1h
+    });
+
     const { refresh_token, ...publicData } = result;
     return publicData;
   }
@@ -160,6 +178,7 @@ export class AuthController {
     const refreshToken = req.cookies?.['refresh_token'];
     await this.authService.logout(refreshToken, ipAddress, user);
     res.clearCookie('refresh_token', { path: '/auth' });
+    res.clearCookie('access_token', { path: '/' });
     return { message: 'Logout realizado com sucesso' };
   }
 

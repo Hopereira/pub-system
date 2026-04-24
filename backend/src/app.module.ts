@@ -35,6 +35,8 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 import { PaymentModule } from './modulos/payment/payment.module';
 import { PlanModule } from './modulos/plan/plan.module';
+import { QueuesModule } from './queues/queues.module';
+import { SentryModule } from './common/monitoring/sentry.module';
 
 @Module({
   imports: [
@@ -111,6 +113,13 @@ import { PlanModule } from './modulos/plan/plan.module';
         // Backup (opcional)
         BACKUP_DIR: Joi.string().optional(),
         BACKUP_MAX_AGE_HOURS: Joi.number().default(24),
+
+        // RLS - Row Level Security (opcional, desabilitado por padrão)
+        RLS_ENABLED: Joi.string().valid('true', 'false').default('false'),
+
+        // Sentry (opcional - error tracking)
+        SENTRY_DSN: Joi.string().uri().optional(),
+        SENTRY_TRACES_SAMPLE_RATE: Joi.number().min(0).max(1).default(0.1),
       }),
       validationOptions: {
         abortEarly: false, // Mostra todos os erros de uma vez
@@ -199,6 +208,8 @@ import { PlanModule } from './modulos/plan/plan.module';
     TenantModule, // 🏢 Multi-tenancy: Contexto, Interceptor, Guard, Resolver
     PaymentModule, // 💳 Pagamentos: Mercado Pago, PagSeguro, PicPay
     PlanModule, // 📋 Gestão de Planos dinâmicos
+    QueuesModule, // 📬 Filas BullMQ (audit, notifications)
+    SentryModule, // 🔍 Error tracking (Sentry)
   ],
   controllers: [],
   providers: [

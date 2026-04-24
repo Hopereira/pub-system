@@ -41,13 +41,11 @@ export class Comanda extends TenantAwareEntity {
 
   @ManyToOne(() => Mesa, (mesa) => mesa.comandas, {
     nullable: true,
-    eager: true,
   })
   mesa: Mesa;
 
   @ManyToOne(() => Cliente, (cliente) => cliente.comandas, {
     nullable: true,
-    eager: true,
   })
   cliente: Cliente;
 
@@ -57,7 +55,6 @@ export class Comanda extends TenantAwareEntity {
 
   @ManyToOne(() => PontoEntrega, (ponto) => ponto.comandas, {
     nullable: true,
-    eager: true,
   })
   @JoinColumn({ name: 'ponto_entrega_id' })
   pontoEntrega: PontoEntrega;
@@ -71,7 +68,7 @@ export class Comanda extends TenantAwareEntity {
   @OneToMany(() => Pedido, (pedido) => pedido.comanda)
   pedidos: Pedido[];
 
-  @ManyToOne(() => PaginaEvento, { nullable: true, eager: true })
+  @ManyToOne(() => PaginaEvento, { nullable: true })
   paginaEvento: PaginaEvento;
 
   // Rastreamento: Quem criou a comanda

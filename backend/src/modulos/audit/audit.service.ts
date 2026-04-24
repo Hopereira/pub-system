@@ -1,7 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { AuditLog, AuditAction } from './entities/audit-log.entity';
 import { Funcionario } from '../funcionario/entities/funcionario.entity';
 import { AuditLogRepository } from './audit.repository';
+import { AUDIT_QUEUE } from '../../queues/queues.module';
+import { AuditJobData } from '../../queues/processors/audit.processor';
 
 export interface CreateAuditLogDto {
   funcionario?: Funcionario;
@@ -33,21 +37,27 @@ export interface AuditLogFilters {
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
+  private readonly useQueue: boolean;
 
   constructor(
     private readonly auditLogRepository: AuditLogRepository,
-  ) {}
+    @Optional() @InjectQueue(AUDIT_QUEUE) private readonly auditQueue?: Queue<AuditJobData>,
+  ) {
+    this.useQueue = !!this.auditQueue;
+    if (this.useQueue) {
+      this.logger.log('📬 AuditService usando fila BullMQ (async)');
+    } else {
+      this.logger.log('📝 AuditService usando escrita direta (sync fallback)');
+    }
+  }
 
   /**
    * Cria um registro de auditoria
    */
   async log(dto: CreateAuditLogDto): Promise<AuditLog | null> {
     try {
-      // Obter tenantId do DTO, do funcionário ou usar um valor padrão
       const tenantId = dto.tenantId || dto.funcionario?.tenantId || null;
-      
-      // Usar rawRepository para evitar dependência do TenantContext (ex: durante login)
-      const auditLog = this.auditLogRepository.rawRepository.create({
+      const jobData: AuditJobData = {
         funcionarioEmail: dto.funcionario?.email || dto.funcionarioEmail,
         action: dto.action,
         entityName: dto.entityName,
@@ -60,12 +70,33 @@ export class AuditService {
         method: dto.method,
         description: dto.description,
         tenantId,
-      } as any);
+      };
 
+      // ⚡ Tentar despachar para fila (async, não-bloqueante)
+      if (this.useQueue) {
+        try {
+          await this.auditQueue.add('audit-log', jobData, {
+            removeOnComplete: 100,
+            removeOnFail: 500,
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 1000 },
+          });
+          this.logger.debug(
+            `📬 Auditoria enfileirada: ${dto.action} em ${dto.entityName} por ${jobData.funcionarioEmail || 'Sistema'}`,
+          );
+          return null; // job processado async
+        } catch (queueError) {
+          this.logger.warn(`⚠️ Fila indisponível, fallback sync: ${queueError.message}`);
+          // Fallback para escrita direta
+        }
+      }
+
+      // Fallback: escrita direta (sync)
+      const auditLog = this.auditLogRepository.rawRepository.create(jobData as any);
       const saved = await this.auditLogRepository.rawRepository.save(auditLog) as unknown as AuditLog;
 
       this.logger.debug(
-        `📝 Auditoria: ${dto.action} em ${dto.entityName} por ${dto.funcionarioEmail || 'Sistema'}`,
+        `📝 Auditoria: ${dto.action} em ${dto.entityName} por ${jobData.funcionarioEmail || 'Sistema'}`,
       );
 
       return saved;

@@ -46,7 +46,8 @@ export class TenantLoggingInterceptor implements NestInterceptor {
       : '[tenant:public]';
 
     this.logger?.log?.(
-      `${tenantPrefix} 📥 ${method} ${url} | IP: ${ip || 'unknown'}`
+      `${tenantPrefix} 📥 ${method} ${url} | IP: ${ip || 'unknown'}`,
+      { tenantId, method, url, ip: ip || 'unknown' } as any,
     );
 
     return next.handle().pipe(
@@ -54,13 +55,15 @@ export class TenantLoggingInterceptor implements NestInterceptor {
         next: () => {
           const duration = Date.now() - startTime;
           this.logger?.log?.(
-            `${tenantPrefix} 📤 ${method} ${url} | ${duration}ms | OK`
+            `${tenantPrefix} 📤 ${method} ${url} | ${duration}ms | OK`,
+            { tenantId, method, url, duration, status: 'OK' } as any,
           );
         },
         error: (error) => {
           const duration = Date.now() - startTime;
           this.logger?.error?.(
-            `${tenantPrefix} ❌ ${method} ${url} | ${duration}ms | ${error?.message || 'Unknown error'}`
+            `${tenantPrefix} ❌ ${method} ${url} | ${duration}ms | ${error?.message || 'Unknown error'}`,
+            { tenantId, method, url, duration, error: error?.message, status: 'ERROR' } as any,
           );
         },
       }),

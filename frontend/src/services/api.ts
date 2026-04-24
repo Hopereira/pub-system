@@ -85,11 +85,8 @@ api.interceptors.request.use(
     (config as any).metadata = { startTime: Date.now() };
     
     if (!isServer) {
-      // TODO: Migrar para memória (ler do AuthContext via ref compartilhado)
-      const token = sessionStorage.getItem('authToken');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      // SECURITY: O access_token é enviado automaticamente como httpOnly cookie
+      // via withCredentials:true — NÃO lemos mais do sessionStorage.
 
       // Envia o slug do tenant via header para garantir resolução correta no backend
       // (necessário porque api.pubsystem.com.br não tem subdomínio de tenant)
@@ -158,7 +155,6 @@ api.interceptors.response.use(
             return new Promise((resolve, reject) => {
               failedQueue.push({
                 resolve: (newToken: string) => {
-                  originalRequest.headers.Authorization = `Bearer ${newToken}`;
                   resolve(api(originalRequest));
                 },
                 reject,
@@ -170,7 +166,7 @@ api.interceptors.response.use(
           isRefreshing = true;
 
           try {
-            // Tenta renovar via httpOnly cookie
+            // Tenta renovar via httpOnly cookie (refresh_token + access_token são cookies)
             const refreshRes = await axios.post(
               `${getApiBaseUrl()}/auth/refresh`,
               {},
@@ -178,19 +174,17 @@ api.interceptors.response.use(
             );
             const newToken = refreshRes.data.access_token || refreshRes.data.accessToken;
 
-            // TODO: Migrar para memória (notificar AuthContext via ref compartilhado)
-            sessionStorage.setItem('authToken', newToken);
+            // SECURITY: Notifica AuthContext para sincronizar estado em memória.
+            // O novo access_token já foi setado como httpOnly cookie pelo backend.
             window.dispatchEvent(new CustomEvent('authTokenRefreshed', { detail: { token: newToken } }));
 
             processQueue(null, newToken);
 
-            // Retry da request original com novo token
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            // Retry da request original — o cookie httpOnly já está atualizado
             return api(originalRequest);
           } catch (refreshError) {
             processQueue(refreshError, null);
             logger.warn('Refresh token expirado — redirecionando para login', { module: 'API' });
-            sessionStorage.removeItem('authToken');
             window.location.href = '/login';
             return Promise.reject(refreshError);
           } finally {
@@ -201,7 +195,6 @@ api.interceptors.response.use(
         // Fallback: se é rota de auth ou já tentou retry
         logger.warn('Sessão expirada - Token inválido', { module: 'API' });
         if (!isServer) {
-          sessionStorage.removeItem('authToken');
           window.location.href = '/login';
         }
       } else if (error.response.status === 403) {

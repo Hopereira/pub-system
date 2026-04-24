@@ -17,6 +17,7 @@ import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('pedidos')
+@Index('idx_pedido_status', ['status'])
 export class Pedido extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -45,7 +46,6 @@ export class Pedido extends TenantAwareEntity {
 
   @OneToMany(() => ItemPedido, (item) => item.pedido, {
     cascade: true,
-    eager: true, // Adicionado para carregar os itens junto com o pedido
   })
   itens: ItemPedido[];
 

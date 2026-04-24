@@ -109,7 +109,6 @@ export default function GarcomPage() {
         </div>
         <button
           onClick={() => {
-            sessionStorage.removeItem('authToken');
             window.location.href = '/login';
           }}
           className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"

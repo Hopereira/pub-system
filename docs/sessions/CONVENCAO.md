@@ -1,6 +1,6 @@
 # Convenção de Sessões — Pub System
 
-**Última atualização:** 2026-04-14
+**Última atualização:** 2026-04-24
 
 ---
 
@@ -75,3 +75,7 @@ O que ainda está pendente.
 | 2026-04-08 | `docs/sessions/2026-04-08/RELATORIO.md` | Fix cache invalidatePattern (keyv sem suporte a keys()); Fix CozinhaPageClient não recarregava pedidos ao trocar de aba de ambiente |
 | 2026-04-11 | `docs/sessions/2026-04-11/RELATORIO_SESSAO.md` | Fix redirecionamento pós-login por cargo (COZINHEIRO/BARTENDER→operacional); Fix POST /comandas 400 em evento sem PaginaEvento (fallback tenantId via eventoId) |
 | 2026-04-19 | `docs/sessions/2026-04-19/RELATORIO_SESSAO.md` | Fix feature gating frontend/backend (tenantId inconsistente em PlanFeaturesController); Migrar features para DB; Fix tenant-provisioning respeitar limites; Fix cache invalidation (trackKey faltante em 4 services) |
+| 2026-04-24 | `docs/security-hardening.md` | Sprint 1 Security Hardening: JWT verify() no TenantInterceptor; access_token httpOnly cookie; remoção sessionStorage; middleware JWT real (jose); /health/metrics protegido; ignoreBuildErrors removido |
+| 2026-04-24 | `docs/performance.md` | Sprint 2 Performance: Remoção de eager:true (21 JOINs implícitos eliminados em 10 entidades); explicit relations em CaixaService; cache in-memory FeatureGuard (TTL 5min); 7 índices adicionados (caixa, pedido); audit REQUEST scope (todos justificados para multi-tenancy) |
+| 2026-04-24 | `docs/scalability.md` | Sprint 3 Escalabilidade: BullMQ para audit logs (async com sync fallback); LoggerService com tenantId estruturado + JSON em prod; TenantLoggingInterceptor enriquecido; Redis e rate limit por tenant já implementados anteriormente |
+| 2026-04-24 | `docs/enterprise.md` | Sprint 4 Enterprise: RLS (Row Level Security) com migration + subscriber + middleware feature-flagged; Sentry error tracking com tenant context; CI/CD com job dedicado tenant-isolation; testes E2E reais de isolamento multi-tenant; health check Redis; métricas com feature flags |

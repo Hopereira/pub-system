@@ -21,7 +21,7 @@ export class TurnoFuncionario extends TenantAwareEntity {
   @Column({ name: 'funcionario_id' })
   funcionarioId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Funcionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionario_id' })
   funcionario: Funcionario;
 
@@ -44,7 +44,7 @@ export class TurnoFuncionario extends TenantAwareEntity {
   @Column({ name: 'evento_id', nullable: true })
   eventoId: string;
 
-  @ManyToOne(() => Evento, { nullable: true, eager: true })
+  @ManyToOne(() => Evento, { nullable: true })
   @JoinColumn({ name: 'evento_id' })
   evento: Evento;
 

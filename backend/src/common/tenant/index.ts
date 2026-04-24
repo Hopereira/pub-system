@@ -32,3 +32,7 @@ export { BaseTenantGateway } from './gateways/base-tenant.gateway';
 
 // Services
 export { TenantProvisioningService, CreateTenantDto, ProvisioningResult } from './services/tenant-provisioning.service';
+
+// RLS (Row Level Security)
+export { TenantRlsSubscriber } from './tenant-rls.subscriber';
+export { TenantRlsMiddleware } from './tenant-rls.middleware';
