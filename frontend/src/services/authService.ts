@@ -64,13 +64,15 @@ export const refreshToken = async (): Promise<{ access_token: string; tenant_id?
 };
 
 /**
- * Faz logout no backend — revoga refresh token e limpa cookie httpOnly.
+ * Faz logout no backend — revoga refresh token e limpa cookies httpOnly.
+ * O access_token cookie é enviado automaticamente via withCredentials.
+ * O parâmetro accessToken é opcional (fallback legado via Bearer header).
  */
-export const logoutApi = async (accessToken: string): Promise<void> => {
+export const logoutApi = async (accessToken?: string): Promise<void> => {
   try {
     await publicApi.post('/auth/logout', {}, {
       withCredentials: true,
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
     });
   } catch {
     // Ignora erro no logout (token pode já estar expirado)

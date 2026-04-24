@@ -10,6 +10,7 @@ import * as cookieParser from 'cookie-parser';
 import { SeederService } from './database/seeder.service';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 // TenantInterceptor e TenantGuard são registrados via APP_INTERCEPTOR/APP_GUARD no TenantModule
 
 // Configura timezone para São Paulo (UTC-3)
@@ -159,6 +160,14 @@ Todas as rotas protegidas requerem token JWT no header:
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api', app, document);
     logger.log('📚 Swagger disponível em /api');
+  }
+
+  // 🔌 Multi-node WebSocket: Redis adapter para Socket.IO
+  if (process.env.SOCKET_IO_REDIS_ENABLED === 'true') {
+    const redisIoAdapter = new RedisIoAdapter(app);
+    await redisIoAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisIoAdapter);
+    logger.log('🔌 Socket.IO Redis adapter habilitado (multi-node)');
   }
 
   const seeder = app.get(SeederService);

@@ -15,6 +15,9 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 import { SuperAdminService } from '../services/super-admin.service';
 import { TenantProvisioningService, CreateTenantDto } from '../services/tenant-provisioning.service';
+import { PasswordResetService } from '../../../auth/password-reset.service';
+import { EmailService } from '../../../common/email/email.service';
+import { PasswordResetType } from '../../../auth/entities/password-reset.entity';
 import { SkipThrottle } from '@nestjs/throttler';
 import { SkipTenantGuard } from '../guards/tenant.guard';
 import { SkipRateLimit } from '../guards/tenant-rate-limit.guard';
@@ -39,6 +42,8 @@ export class SuperAdminController {
   constructor(
     private readonly superAdminService: SuperAdminService,
     private readonly provisioningService: TenantProvisioningService,
+    private readonly passwordResetService: PasswordResetService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -216,6 +221,60 @@ export class SuperAdminController {
   async deleteTenant(@CurrentUser() user: any, @Param('id') id: string) {
     this.checkSuperAdmin(user);
     return this.superAdminService.deleteTenant(id);
+  }
+
+  /**
+   * Reenvia email de boas-vindas para o admin de um tenant
+   */
+  @Post('tenants/:id/resend-welcome-email')
+  @ApiOperation({ summary: 'Reenvia email de boas-vindas' })
+  @ApiResponse({ status: 200, description: 'Email reenviado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  @ApiResponse({ status: 404, description: 'Tenant não encontrado' })
+  async resendWelcomeEmail(@CurrentUser() user: any, @Param('id') id: string) {
+    this.checkSuperAdmin(user);
+    const details = await this.superAdminService.getTenantDetails(id);
+    if (!details.admin) {
+      return { success: false, error: 'Admin não encontrado para este tenant' };
+    }
+    const result = await this.emailService.sendWelcomeEmail({
+      to: details.admin.email,
+      nomeEstabelecimento: details.nome,
+      slug: details.slug,
+      nomeAdmin: details.admin.nome,
+    });
+    return { success: true, emailStatus: result.status };
+  }
+
+  /**
+   * Gera link de definição de senha para um funcionário de um tenant
+   */
+  @Post('tenants/:id/generate-password-link')
+  @ApiOperation({ summary: 'Gera link de definição de senha para o admin' })
+  @ApiResponse({ status: 200, description: 'Link gerado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
+  @ApiResponse({ status: 404, description: 'Tenant não encontrado' })
+  async generatePasswordLink(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body('funcionarioId') funcionarioId?: string,
+  ) {
+    this.checkSuperAdmin(user);
+    const details = await this.superAdminService.getTenantDetails(id);
+
+    let targetId = funcionarioId;
+    if (!targetId) {
+      if (!details.admin) {
+        return { success: false, error: 'Admin não encontrado' };
+      }
+      targetId = details.admin.id;
+    }
+
+    const { url, emailSent } = await this.passwordResetService.sendResetEmail(
+      targetId,
+      PasswordResetType.SETUP,
+    );
+    return { success: true, url, emailSent };
   }
 
   /**

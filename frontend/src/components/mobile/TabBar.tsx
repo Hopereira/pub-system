@@ -77,7 +77,6 @@ export function TabBar() {
         return garcomTabs;
       case 'CAIXA':
         return caixaTabs;
-      case 'COZINHA':
       case 'COZINHEIRO':
       case 'BARTENDER':
         return preparoTabs;

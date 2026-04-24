@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -35,6 +35,13 @@ import { CustomThrottlerGuard } from './common/guards/custom-throttler.guard';
 import { RateLimitMonitorService } from './common/monitoring/rate-limit-monitor.service';
 import { PaymentModule } from './modulos/payment/payment.module';
 import { PlanModule } from './modulos/plan/plan.module';
+import { QueuesModule } from './queues/queues.module';
+import { SentryModule } from './common/monitoring/sentry.module';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { TenantRlsMiddleware } from './common/tenant/tenant-rls.middleware';
+import { getSlowQueryLogger } from './common/monitoring/slow-query.logger';
+import { AlertService } from './common/monitoring/alert.service';
+import { EmailModule } from './common/email/email.module';
 
 @Module({
   imports: [
@@ -111,6 +118,34 @@ import { PlanModule } from './modulos/plan/plan.module';
         // Backup (opcional)
         BACKUP_DIR: Joi.string().optional(),
         BACKUP_MAX_AGE_HOURS: Joi.number().default(24),
+
+        // RLS - Row Level Security (opcional, desabilitado por padrão)
+        RLS_ENABLED: Joi.string().valid('true', 'false').default('false'),
+        RLS_DRY_RUN: Joi.string().valid('true', 'false').default('false'),
+
+        // Socket.IO Redis adapter (multi-node WebSocket)
+        SOCKET_IO_REDIS_ENABLED: Joi.string().valid('true', 'false').default('false'),
+
+        // Sentry (opcional - error tracking)
+        SENTRY_DSN: Joi.string().uri().optional(),
+        SENTRY_TRACES_SAMPLE_RATE: Joi.number().min(0).max(1).default(0.1),
+
+        // Slow query monitoring
+        SLOW_QUERY_THRESHOLD_MS: Joi.number().default(200),
+
+        // Alert system
+        ALERT_ENABLED: Joi.string().valid('true', 'false').default('true'),
+
+        // Email (opcional)
+        EMAIL_ENABLED: Joi.string().valid('true', 'false').default('false'),
+        SMTP_HOST: Joi.string().optional(),
+        SMTP_PORT: Joi.number().default(587),
+        SMTP_USER: Joi.string().optional(),
+        SMTP_PASS: Joi.string().optional(),
+        SMTP_FROM: Joi.string().optional(),
+
+        // Tenant Onboarding V2 (feature flag)
+        TENANT_ONBOARDING_V2_ENABLED: Joi.string().valid('true', 'false').default('false'),
       }),
       validationOptions: {
         abortEarly: false, // Mostra todos os erros de uma vez
@@ -169,7 +204,9 @@ import { PlanModule } from './modulos/plan/plan.module';
         },
         retryAttempts: 5,
         retryDelay: 3000,
-        logging: process.env.DB_LOGGING === 'true' ? ['error', 'warn', 'query'] : ['error', 'warn'],
+        logging: true,
+        logger: getSlowQueryLogger(),
+        maxQueryExecutionTime: parseInt(process.env.SLOW_QUERY_THRESHOLD_MS || '200'),
       }),
     }),
     // Módulos de funcionalidades da aplicação
@@ -199,6 +236,9 @@ import { PlanModule } from './modulos/plan/plan.module';
     TenantModule, // 🏢 Multi-tenancy: Contexto, Interceptor, Guard, Resolver
     PaymentModule, // 💳 Pagamentos: Mercado Pago, PagSeguro, PicPay
     PlanModule, // 📋 Gestão de Planos dinâmicos
+    QueuesModule, // 📬 Filas BullMQ (audit, notifications)
+    SentryModule, // 🔍 Error tracking (Sentry)
+    EmailModule, // 📧 Email service (Nodemailer)
   ],
   controllers: [],
   providers: [
@@ -210,8 +250,16 @@ import { PlanModule } from './modulos/plan/plan.module';
     // TenantRateLimitGuard é registrado como APP_GUARD dentro do TenantModule
     // (onde tem acesso correto a CACHE_MANAGER e TenantContextService via DI)
     RateLimitMonitorService,
+    AlertService,
     // Monitor de conexão com banco de dados
     DatabaseConnectionMonitor,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // RequestId first — available for all downstream middleware and handlers
+    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    // RLS middleware after RequestId — uses requestId for logging
+    consumer.apply(TenantRlsMiddleware).forRoutes('*');
+  }
+}

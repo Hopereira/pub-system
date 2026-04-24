@@ -83,6 +83,15 @@ export class Tenant {
   @Column({ type: 'jsonb', nullable: true })
   config: TenantConfig;
 
+  @Column({ name: 'onboarding_step', nullable: true, length: 30 })
+  onboardingStep: string;
+
+  @Column({ name: 'email_status', nullable: true, length: 30, default: 'PENDING' })
+  emailStatus: string;
+
+  @Column({ name: 'email_sent_at', type: 'timestamp', nullable: true })
+  emailSentAt: Date;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

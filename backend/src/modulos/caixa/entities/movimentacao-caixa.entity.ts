@@ -29,6 +29,7 @@ export enum FormaPagamento {
 }
 
 @Entity('movimentacoes_caixa')
+@Index('idx_movimentacao_abertura_tipo', ['aberturaCaixaId', 'tipo'])
 export class MovimentacaoCaixa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -39,7 +40,6 @@ export class MovimentacaoCaixa extends TenantAwareEntity {
   @ManyToOne(
     () => AberturaCaixa,
     (aberturaCaixa) => aberturaCaixa.movimentacoes,
-    { eager: true },
   )
   @JoinColumn({ name: 'abertura_caixa_id' })
   aberturaCaixa: AberturaCaixa;
@@ -74,7 +74,7 @@ export class MovimentacaoCaixa extends TenantAwareEntity {
   @Column({ name: 'funcionario_id' })
   funcionarioId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Funcionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionario_id' })
   funcionario: Funcionario;
 

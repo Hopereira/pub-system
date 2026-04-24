@@ -110,6 +110,7 @@ services:
     environment:
       - API_URL_SERVER=http://backend:3000
       - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - JWT_SECRET=${JWT_SECRET}
       - NODE_OPTIONS=--max-old-space-size=2048
       - WATCHPACK_POLLING=true
     stdin_open: true

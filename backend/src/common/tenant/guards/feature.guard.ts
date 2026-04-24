@@ -32,10 +32,22 @@ export const RequireFeature = (...features: Feature[]) =>
  * 
  * Usado em conjunto com o decorator @RequireFeature()
  * Bloqueia acesso se o plano do tenant não inclui a feature
+ * 
+ * ⚡ PERFORMANCE: Cache in-memory com TTL de 5 min para evitar
+ *    lookups repetidos no banco a cada request.
  */
 @Injectable()
 export class FeatureGuard implements CanActivate {
   private readonly logger = new Logger(FeatureGuard.name);
+
+  // ⚡ Cache: tenantId → { plano, nome, features[], cachedAt }
+  private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+  private static tenantPlanCache = new Map<string, {
+    plano: string;
+    nome: string;
+    features: Feature[];
+    cachedAt: number;
+  }>();
 
   constructor(
     private readonly reflector: Reflector,
@@ -47,6 +59,18 @@ export class FeatureGuard implements CanActivate {
     private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
+  /**
+   * Invalida cache de um tenant específico ou de todos.
+   * Útil ao alterar plano de um tenant via SUPER_ADMIN.
+   */
+  static invalidateCache(tenantId?: string): void {
+    if (tenantId) {
+      FeatureGuard.tenantPlanCache.delete(tenantId);
+    } else {
+      FeatureGuard.tenantPlanCache.clear();
+    }
+  }
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     // Verificar se a rota é pública - rotas públicas não precisam de verificação de feature
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -54,7 +78,6 @@ export class FeatureGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) {
-      this.logger.debug('FeatureGuard: Rota pública, permitindo acesso');
       return true;
     }
 
@@ -82,7 +105,6 @@ export class FeatureGuard implements CanActivate {
     // Se não há tenant no contexto, tentar obter do JWT
     if (!tenantId && user?.tenantId) {
       tenantId = user.tenantId;
-      this.logger.debug(`FeatureGuard: Usando tenantId do JWT: ${tenantId}`);
     }
 
     if (!tenantId) {
@@ -92,65 +114,100 @@ export class FeatureGuard implements CanActivate {
         throw new ForbiddenException('Tenant não identificado');
       }
       // Usuário autenticado sem tenant (pode ser SUPER_ADMIN que já foi verificado acima)
-      this.logger.debug('FeatureGuard: Usuário autenticado sem tenant, permitindo acesso');
       return true;
     }
 
-    // Buscar plano do tenant
-    let tenant = await this.tenantRepository.findOne({
-      where: { id: tenantId },
-      select: ['id', 'plano', 'nome'],
-    });
-
-    // Fallback: se não encontrou na tabela tenants, buscar empresa pelo tenantId
-    if (!tenant) {
-      const empresa = await this.empresaRepository.findOne({
-        where: { tenantId },
-        select: ['tenantId'],
-      });
-      
-      if (empresa?.tenantId) {
-        tenant = await this.tenantRepository.findOne({
-          where: { id: empresa.tenantId },
-          select: ['id', 'plano', 'nome'],
-        });
+    // ⚡ Tentar buscar do cache
+    const cached = FeatureGuard.tenantPlanCache.get(tenantId);
+    if (cached && (Date.now() - cached.cachedAt) < FeatureGuard.CACHE_TTL_MS) {
+      // Cache hit — verificar features direto na memória
+      for (const feature of requiredFeatures) {
+        if (!cached.features.includes(feature)) {
+          this.logger.warn(
+            `🚫 Feature "${feature}" bloqueada para tenant "${cached.nome}" (plano: ${cached.plano}) [cached]`,
+          );
+          throw new ForbiddenException(
+            `A funcionalidade "${feature}" não está disponível no plano ${cached.plano}. ` +
+            `Faça upgrade para ter acesso.`,
+          );
+        }
       }
+      return true;
     }
 
-    // Fallback: buscar empresa pelo id (caso tenantId seja empresaId)
-    if (!tenant) {
-      const empresa = await this.empresaRepository.findOne({
-        where: { id: tenantId },
-        select: ['tenantId'],
-      });
-      
-      if (empresa?.tenantId) {
-        tenant = await this.tenantRepository.findOne({
-          where: { id: empresa.tenantId },
-          select: ['id', 'plano', 'nome'],
-        });
-      }
-    }
+    // Cache miss — buscar do banco
+    const tenantData = await this.resolveTenantPlan(tenantId);
 
-    if (!tenant) {
+    if (!tenantData) {
       this.logger.warn(`🚫 FeatureGuard: Tenant não encontrado para id: ${tenantId}`);
       throw new ForbiddenException('Tenant não encontrado');
     }
 
-    // Verificar cada feature requerida (usando features do banco de dados)
+    // Buscar features do plano (banco → fallback hardcoded)
+    const features = await this.planFeaturesService.getFeaturesFromDb(tenantData.plano);
+
+    // Salvar no cache
+    FeatureGuard.tenantPlanCache.set(tenantId, {
+      plano: tenantData.plano,
+      nome: tenantData.nome,
+      features,
+      cachedAt: Date.now(),
+    });
+
+    // Verificar cada feature requerida
     for (const feature of requiredFeatures) {
-      const allowed = await this.planFeaturesService.hasFeatureFromDb(tenant.plano, feature);
-      if (!allowed) {
+      if (!features.includes(feature)) {
         this.logger.warn(
-          `🚫 Feature "${feature}" bloqueada para tenant "${tenant.nome}" (plano: ${tenant.plano})`,
+          `🚫 Feature "${feature}" bloqueada para tenant "${tenantData.nome}" (plano: ${tenantData.plano})`,
         );
         throw new ForbiddenException(
-          `A funcionalidade "${feature}" não está disponível no plano ${tenant.plano}. ` +
+          `A funcionalidade "${feature}" não está disponível no plano ${tenantData.plano}. ` +
           `Faça upgrade para ter acesso.`,
         );
       }
     }
 
     return true;
+  }
+
+  /**
+   * Resolve plano do tenant com fallbacks (empresa → empresaId).
+   * Retorna { plano, nome } ou null.
+   */
+  private async resolveTenantPlan(tenantId: string): Promise<{ plano: string; nome: string } | null> {
+    // Tentativa 1: buscar direto na tabela tenants
+    let tenant = await this.tenantRepository.findOne({
+      where: { id: tenantId },
+      select: ['id', 'plano', 'nome'],
+    });
+    if (tenant) return { plano: tenant.plano, nome: tenant.nome };
+
+    // Fallback 2: buscar empresa pelo tenantId
+    const empresa = await this.empresaRepository.findOne({
+      where: { tenantId },
+      select: ['tenantId'],
+    });
+    if (empresa?.tenantId) {
+      tenant = await this.tenantRepository.findOne({
+        where: { id: empresa.tenantId },
+        select: ['id', 'plano', 'nome'],
+      });
+      if (tenant) return { plano: tenant.plano, nome: tenant.nome };
+    }
+
+    // Fallback 3: buscar empresa pelo id (caso tenantId seja empresaId)
+    const empresa2 = await this.empresaRepository.findOne({
+      where: { id: tenantId },
+      select: ['tenantId'],
+    });
+    if (empresa2?.tenantId) {
+      tenant = await this.tenantRepository.findOne({
+        where: { id: empresa2.tenantId },
+        select: ['id', 'plano', 'nome'],
+      });
+      if (tenant) return { plano: tenant.plano, nome: tenant.nome };
+    }
+
+    return null;
   }
 }

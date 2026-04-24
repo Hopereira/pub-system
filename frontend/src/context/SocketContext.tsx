@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { logger } from '@/lib/logger';
+import { useAuth } from '@/context/AuthContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SocketCallback = (data: any) => void;
@@ -38,13 +39,14 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const socketRef = useRef<Socket | null>(null);
   const listenersRef = useRef<Map<string, Set<SocketCallback>>>(new Map());
   const [tokenVersion, setTokenVersion] = useState(0);
+  const { tokenRef } = useAuth();
 
   // ✅ Função para criar conexão WebSocket
   const createConnection = useCallback(() => {
     const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
-    // ✅ Obtém o token JWT para enviar no handshake
-    const token = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
+    // SECURITY: Obtém token da memória React (não mais do sessionStorage)
+    const token = tokenRef.current;
 
     // ✅ Não conectar em páginas públicas sem JWT — o useComandaSubscription
     // cria seu próprio socket para páginas de cliente público.
@@ -79,8 +81,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     // ✅ Atualiza o token antes de cada tentativa de reconexão
     // Necessário pois socket.io não atualiza auth automaticamente em reconnects
     newSocket.io.on('reconnect_attempt', () => {
-      const freshToken = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
-      newSocket.auth = { token: freshToken };
+      newSocket.auth = { token: tokenRef.current };
     });
 
     newSocket.on('connect', () => {
@@ -115,7 +116,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
     });
 
     return newSocket as Socket;
-  }, []);
+  }, [tokenRef]);
 
   // ✅ Função para reconectar com novo token
   const reconnect = useCallback(() => {
@@ -142,11 +143,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
   useEffect(() => {
     socketRef.current = createConnection();
 
-    // ✅ Se conectou sem token mas há um token no localStorage (reload de página
+    // ✅ Se conectou sem token mas o AuthContext tem um (reload de página
     // com usuário já logado), reconectar com o token correto após breve delay
-    // O delay permite que o AuthContext termine de ler o token do localStorage
+    // O delay permite que o AuthContext termine de restaurar a sessão
     const initialTokenCheck = setTimeout(() => {
-      const currentToken = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
+      const currentToken = tokenRef.current;
       const socketConnectedWithToken = socketRef.current?.auth && (socketRef.current.auth as any).token;
       // Só reconecta se há token E o socket atual não tem token (evita loop em páginas públicas)
       if (currentToken && !socketConnectedWithToken && !socketRef.current?.connected) {
@@ -157,16 +158,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
       }
     }, 500);
 
-    // ✅ Escuta mudanças no localStorage (login/logout em outras abas)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'authToken') {
-        logger.log('🔄 Token alterado em outra aba, reconectando WebSocket', {
-          module: 'SocketContext',
-        });
-        setTokenVersion((v) => v + 1);
-      }
-    };
-    
     // ✅ Escuta evento customizado (login/logout na mesma aba)
     const handleAuthTokenChanged = () => {
       logger.log('🔄 Token alterado na mesma aba, reconectando WebSocket', {
@@ -175,13 +166,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
       setTokenVersion((v) => v + 1);
     };
     
-    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('authTokenChanged', handleAuthTokenChanged);
 
     // Cleanup ao desmontar
     return () => {
       clearTimeout(initialTokenCheck);
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('authTokenChanged', handleAuthTokenChanged);
       if (socketRef.current) {
         logger.log('🔌 Desconectando WebSocket', {

@@ -90,6 +90,89 @@ jobs:
         run: npm run test:e2e -- --passWithNoTests
 
   # ============================================
+  # JOB 1.5: Multi-Tenant Isolation Tests
+  # ============================================
+  tenant-isolation:
+    name: Multi-Tenant Isolation Tests
+    runs-on: ubuntu-latest
+    needs: [backend]
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: pub_system_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: testpass
+      DB_DATABASE: pub_system_test
+      JWT_SECRET: ci-test-secret-minimum-32-characters-long
+      FRONTEND_URL: http://localhost:3001
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      RLS_ENABLED: true
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
+        run: npm run build
+
+      - name: Sync schema
+        run: npm run typeorm -- schema:sync
+
+      - name: Run migrations (including RLS)
+        run: npm run typeorm:migration:run
+        continue-on-error: true
+
+      - name: Tenant isolation unit tests
+        run: npx jest --testPathPattern='tenant-isolation' --passWithNoTests
+
+      - name: RLS modes unit tests
+        run: npx jest --testPathPattern='rls-modes' --passWithNoTests
+
+      - name: RLS readiness check
+        run: npm run rls:readiness
+        continue-on-error: true
+
+      - name: Auth + permissions E2E tests
+        run: npx jest --config ./test/jest-e2e.json --testPathPattern='(auth|gerente-permissions)' --passWithNoTests
+
+  # ============================================
   # JOB 2: Frontend - Lint, Build
   # ============================================
   frontend:
@@ -146,7 +229,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [backend, frontend, security]
+    needs: [backend, frontend, security, tenant-isolation]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: staging
     
@@ -232,6 +315,14 @@ jobs:
           echo "❌ Health check falhou após 90s"
           exit 1
         continue-on-error: false
+
+      - name: Post-deploy smoke test
+        run: |
+          echo "🔥 Running smoke tests against staging..."
+          cd backend
+          npm ci --legacy-peer-deps
+          API_URL=https://api.pubsystem.com.br npm run smoke:test || echo "⚠️ Smoke test issues detected"
+        continue-on-error: true
 
       - name: Rollback on failure
         if: failure()

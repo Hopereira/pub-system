@@ -42,7 +42,7 @@ export class Evento extends TenantAwareEntity {
   @UpdateDateColumn({ name: 'atualizado_em' })
   atualizadoEm: Date;
 
-  @ManyToOne(() => PaginaEvento, { eager: true, nullable: true })
+  @ManyToOne(() => PaginaEvento, { nullable: true })
   paginaEvento: PaginaEvento;
 
 }

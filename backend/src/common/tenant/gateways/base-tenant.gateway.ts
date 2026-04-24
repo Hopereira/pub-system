@@ -19,6 +19,27 @@ export abstract class BaseTenantGateway {
   protected abstract server: Server;
   protected jwtService: JwtService;
 
+  // WebSocket metrics
+  private static _totalConnections = 0;
+  private static _activeConnections = 0;
+  private static _authFailures = 0;
+  private static _totalEvents = 0;
+
+  static getMetrics() {
+    return {
+      totalConnections: BaseTenantGateway._totalConnections,
+      activeConnections: BaseTenantGateway._activeConnections,
+      authFailures: BaseTenantGateway._authFailures,
+      totalEvents: BaseTenantGateway._totalEvents,
+    };
+  }
+
+  static resetMetrics() {
+    BaseTenantGateway._totalConnections = 0;
+    BaseTenantGateway._authFailures = 0;
+    BaseTenantGateway._totalEvents = 0;
+  }
+
   /**
    * Extrai tenant_id do handshake do cliente
    */
@@ -36,6 +57,7 @@ export abstract class BaseTenantGateway {
 
       return null;
     } catch (error) {
+      BaseTenantGateway._authFailures++;
       this.logger.warn(`Erro ao extrair tenant_id do JWT: ${error.message}`);
       return null;
     }
@@ -48,6 +70,9 @@ export abstract class BaseTenantGateway {
   protected joinTenantRoom(client: Socket): string | null {
     const tenantId = this.extractTenantId(client);
     
+    BaseTenantGateway._totalConnections++;
+    BaseTenantGateway._activeConnections++;
+
     if (tenantId) {
       const roomName = `tenant_${tenantId}`;
       client.join(roomName);
@@ -68,6 +93,7 @@ export abstract class BaseTenantGateway {
    * Deve ser chamado no handleDisconnect
    */
   protected leaveTenantRoom(client: Socket): void {
+    BaseTenantGateway._activeConnections = Math.max(0, BaseTenantGateway._activeConnections - 1);
     const tenantId = client.data.tenantId;
     if (tenantId) {
       const roomName = `tenant_${tenantId}`;
@@ -81,6 +107,7 @@ export abstract class BaseTenantGateway {
    */
   protected emitToTenant(tenantId: string, event: string, data: any): void {
     const roomName = `tenant_${tenantId}`;
+    BaseTenantGateway._totalEvents++;
     this.server.to(roomName).emit(event, data);
     this.logger.debug(`📤 Evento '${event}' emitido para ${roomName}`);
   }

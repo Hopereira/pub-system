@@ -9,7 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
-import { IsString, IsEmail, MinLength, IsOptional, Matches, IsEnum } from 'class-validator';
+import { IsString, IsEmail, MinLength, IsOptional, Matches, IsEnum, MaxLength } from 'class-validator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantProvisioningService } from '../services/tenant-provisioning.service';
@@ -53,6 +53,44 @@ export class PublicRegistrationDto {
   @IsEnum(TenantPlano)
   @IsOptional()
   plano?: TenantPlano;
+
+  @IsString()
+  @IsOptional()
+  razaoSocial?: string;
+
+  // Endereço detalhado (V2)
+  @IsString()
+  @IsOptional()
+  cep?: string;
+
+  @IsString()
+  @IsOptional()
+  rua?: string;
+
+  @IsString()
+  @IsOptional()
+  numero?: string;
+
+  @IsString()
+  @IsOptional()
+  complemento?: string;
+
+  @IsString()
+  @IsOptional()
+  bairro?: string;
+
+  @IsString()
+  @IsOptional()
+  cidade?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(2)
+  estado?: string;
+
+  @IsString()
+  @IsOptional()
+  endereco?: string;
 }
 
 /**
@@ -126,6 +164,19 @@ export class PublicRegistrationController {
     // Gerar slug se não fornecido
     const slug = dto.slug || this.provisioningService.generateSlug(dto.nomeEstabelecimento);
 
+    // Montar endereço completo se campos V2 fornecidos
+    let endereco = dto.endereco;
+    if (!endereco && dto.rua) {
+      const parts = [dto.rua];
+      if (dto.numero) parts[0] += `, ${dto.numero}`;
+      if (dto.complemento) parts.push(dto.complemento);
+      if (dto.bairro) parts.push(dto.bairro);
+      if (dto.cidade) parts.push(dto.cidade);
+      if (dto.estado) parts.push(dto.estado);
+      if (dto.cep) parts.push(`CEP: ${dto.cep}`);
+      endereco = parts.join(' - ');
+    }
+
     // Provisionar tenant completo
     const result = await this.provisioningService.provisionTenant({
       nome: dto.nomeEstabelecimento,
@@ -133,8 +184,17 @@ export class PublicRegistrationController {
       cnpj: dto.cnpj,
       plano: dto.plano,
       nomeFantasia: dto.nomeEstabelecimento,
+      razaoSocial: dto.razaoSocial,
       telefone: dto.telefone,
       email: dto.emailAdmin,
+      endereco,
+      cep: dto.cep,
+      rua: dto.rua,
+      numero: dto.numero,
+      complemento: dto.complemento,
+      bairro: dto.bairro,
+      cidade: dto.cidade,
+      estado: dto.estado,
       adminNome: dto.nomeAdmin,
       adminEmail: dto.emailAdmin,
       adminSenha: dto.senhaAdmin,
@@ -154,6 +214,7 @@ export class PublicRegistrationController {
         plano: result.tenant.plano,
         ambientesCriados: result.ambientes.map(a => a.nome),
         mesasCriadas: result.mesas.length,
+        emailStatus: result.emailStatus,
       },
     };
   }

@@ -68,7 +68,8 @@ export class TenantInterceptor implements NestInterceptor {
     }
 
     try {
-      const resolved = await this.resolveTenant(hostname, path, user, headers);
+      const cookies = request?.cookies ?? {};
+      const resolved = await this.resolveTenant(hostname, path, user, headers, cookies);
       
       if (resolved) {
         const { tenant, source } = resolved;
@@ -131,6 +132,7 @@ export class TenantInterceptor implements NestInterceptor {
     path: string,
     user: any,
     headers: Record<string, string>,
+    cookies: Record<string, string>,
   ): Promise<{ tenant: any; source: TenantSource } | null> {
     
     // 1. Tentar subdomínio primeiro (staff)
@@ -152,10 +154,18 @@ export class TenantInterceptor implements NestInterceptor {
     // 3. Tentar JWT (rotas protegidas) - usar apenas tenantId
     let jwtTenantId = user?.tenantId;
     
-    // Se user não estiver disponível, decodificar JWT diretamente do header
-    if (!jwtTenantId && headers?.authorization) {
-      const decoded = this.decodeJwtFromHeader(headers.authorization);
-      jwtTenantId = decoded?.tenantId;
+    // Se user não estiver disponível, verificar JWT do header ou cookie
+    if (!jwtTenantId) {
+      // Tentar Bearer header primeiro
+      if (headers?.authorization) {
+        const decoded = this.decodeJwtFromHeader(headers.authorization);
+        jwtTenantId = decoded?.tenantId;
+      }
+      // Fallback: tentar access_token cookie (httpOnly)
+      if (!jwtTenantId && cookies?.['access_token']) {
+        const decoded = this.verifyJwt(cookies['access_token']);
+        jwtTenantId = decoded?.tenantId;
+      }
     }
     
     if (jwtTenantId) {
@@ -185,8 +195,20 @@ export class TenantInterceptor implements NestInterceptor {
   }
 
   /**
-   * Decodifica JWT diretamente do header Authorization
-   * Usado quando o interceptor roda ANTES do JwtAuthGuard
+   * Verifica JWT de qualquer fonte (cookie ou header) usando jwtService.verify().
+   */
+  private verifyJwt(token: string): any | null {
+    try {
+      return this.jwtService?.verify?.(token) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Verifica e decodifica JWT diretamente do header Authorization.
+   * Usa verify() (não decode()) para validar assinatura e expiração.
+   * Se a verificação falhar, retorna null — o JwtAuthGuard tratará o 401 downstream.
    */
   private decodeJwtFromHeader(authHeader: string): any | null {
     try {
@@ -194,11 +216,13 @@ export class TenantInterceptor implements NestInterceptor {
         return null;
       }
       const token = authHeader.substring(7); // Remove 'Bearer '
-      // Decodifica sem verificar (a verificação será feita pelo JwtAuthGuard)
-      const decoded = this.jwtService?.decode?.(token);
-      return decoded;
+      // SECURITY: verify() valida assinatura + expiração (decode() não fazia isso)
+      const verified = this.jwtService?.verify?.(token);
+      return verified ?? null;
     } catch (error) {
-      this.logger?.debug?.(`Erro ao decodificar JWT: ${error?.message}`);
+      // Token expirado, assinatura inválida, etc. — não é crítico aqui,
+      // o JwtAuthGuard retornará 401 se a rota exigir autenticação.
+      this.logger?.debug?.(`JWT não verificado no interceptor (esperado para tokens expirados): ${error?.message}`);
       return null;
     }
   }

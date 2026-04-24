@@ -14,6 +14,8 @@ import { Funcionario } from '../../funcionario/entities/funcionario.entity';
 import { TenantAwareEntity } from '../../../common/tenant/entities/tenant-aware.entity';
 
 @Entity('fechamentos_caixa')
+@Index('idx_fechamento_abertura_caixa', ['aberturaCaixaId'])
+@Index('idx_fechamento_data', ['dataFechamento'])
 export class FechamentoCaixa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -21,21 +23,21 @@ export class FechamentoCaixa extends TenantAwareEntity {
   @Column({ name: 'abertura_caixa_id' })
   aberturaCaixaId: string;
 
-  @OneToOne(() => AberturaCaixa, { eager: true })
+  @OneToOne(() => AberturaCaixa)
   @JoinColumn({ name: 'abertura_caixa_id' })
   aberturaCaixa: AberturaCaixa;
 
   @Column({ name: 'turno_funcionario_id' })
   turnoFuncionarioId: string;
 
-  @ManyToOne(() => TurnoFuncionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => TurnoFuncionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'turno_funcionario_id' })
   turnoFuncionario: TurnoFuncionario;
 
   @Column({ name: 'funcionario_id' })
   funcionarioId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Funcionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionario_id' })
   funcionario: Funcionario;
 

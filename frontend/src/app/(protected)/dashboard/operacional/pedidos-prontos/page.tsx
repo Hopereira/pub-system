@@ -126,7 +126,7 @@ const PedidosProntosPage = () => {
         getPedidosProntos(),
         getAmbientes(),
       ]);
-      setPedidos(pedidosData || []);
+      setPedidos((pedidosData as unknown as PedidoPronto[]) || []);
       // Filtrar apenas ambientes de preparo
       const ambientesPreparo = ambientesData?.filter((amb) => amb.tipo === 'PREPARO') || [];
       setAmbientes(ambientesPreparo);
@@ -146,7 +146,7 @@ const PedidosProntosPage = () => {
       setIsRefreshing(true);
       const ambienteId = ambienteSelecionado === 'todos' ? undefined : ambienteSelecionado;
       const data = await getPedidosProntos(ambienteId);
-      setPedidos(data || []);
+      setPedidos((data as unknown as PedidoPronto[]) || []);
       logger.log(`✅ ${data.length} pedidos prontos carregados`, {
         module: 'PedidosProntosPage',
       });

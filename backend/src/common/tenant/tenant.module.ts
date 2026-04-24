@@ -9,6 +9,8 @@ import { TenantInterceptor } from './tenant.interceptor';
 import { TenantLoggingInterceptor } from './tenant-logging.interceptor';
 import { TenantGuard } from './guards/tenant.guard';
 import { TenantRateLimitGuard } from './guards/tenant-rate-limit.guard';
+import { TenantRlsSubscriber } from './tenant-rls.subscriber';
+import { TenantRlsMiddleware } from './tenant-rls.middleware';
 import { FeatureGuard } from './guards/feature.guard';
 import { TenantProvisioningService } from './services/tenant-provisioning.service';
 import { SuperAdminService } from './services/super-admin.service';
@@ -65,6 +67,8 @@ import { Plan } from '../../modulos/plan/entities/plan.entity';
     SuperAdminService,
     PlanFeaturesService,
     CloudflareDnsService,
+    TenantRlsSubscriber,
+    TenantRlsMiddleware,
     // 🏢 Interceptor Global: Captura tenant de subdomínio/URL/JWT
     {
       provide: APP_INTERCEPTOR,
@@ -99,6 +103,8 @@ import { Plan } from '../../modulos/plan/entities/plan.entity';
     SuperAdminService,
     PlanFeaturesService,
     CloudflareDnsService,
+    TenantRlsSubscriber,
+    TenantRlsMiddleware,
   ],
 })
 export class TenantModule {}

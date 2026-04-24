@@ -33,7 +33,7 @@ export class RetiradaItem extends TenantAwareEntity {
   @Column({ name: 'garcom_id', type: 'uuid' })
   garcomId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Funcionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'garcom_id' })
   garcom: Funcionario;
 
@@ -41,7 +41,7 @@ export class RetiradaItem extends TenantAwareEntity {
   @Column({ name: 'ambiente_id', type: 'uuid' })
   ambienteId: string;
 
-  @ManyToOne(() => Ambiente, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Ambiente, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'ambiente_id' })
   ambiente: Ambiente;
 

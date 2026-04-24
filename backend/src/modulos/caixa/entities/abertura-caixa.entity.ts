@@ -22,6 +22,8 @@ export enum StatusCaixa {
 }
 
 @Entity('aberturas_caixa')
+@Index('idx_abertura_caixa_status', ['status'])
+@Index('idx_abertura_caixa_funcionario_status', ['funcionarioId', 'status'])
 export class AberturaCaixa extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,14 +31,14 @@ export class AberturaCaixa extends TenantAwareEntity {
   @Column({ name: 'turno_funcionario_id' })
   turnoFuncionarioId: string;
 
-  @ManyToOne(() => TurnoFuncionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => TurnoFuncionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'turno_funcionario_id' })
   turnoFuncionario: TurnoFuncionario;
 
   @Column({ name: 'funcionario_id' })
   funcionarioId: string;
 
-  @ManyToOne(() => Funcionario, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => Funcionario, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'funcionario_id' })
   funcionario: Funcionario;
 

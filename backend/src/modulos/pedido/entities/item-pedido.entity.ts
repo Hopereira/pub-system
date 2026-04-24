@@ -26,7 +26,7 @@ export class ItemPedido extends TenantAwareEntity {
   @JoinColumn({ name: 'pedidoId' })
   pedido: Pedido;
 
-  @ManyToOne(() => Produto, { eager: true, onDelete: 'SET NULL' }) // onDelete SET NULL para não dar erro ao apagar produto
+  @ManyToOne(() => Produto, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'produtoId' })
   produto: Produto;
 

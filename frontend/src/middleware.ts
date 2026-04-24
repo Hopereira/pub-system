@@ -1,15 +1,48 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
-export function middleware(request: NextRequest) {
+/**
+ * SECURITY: Valida o access_token JWT no Edge Runtime.
+ * Retorna o payload se válido, null caso contrário.
+ */
+async function verifyAccessToken(token: string): Promise<any | null> {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
+  try {
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(secret),
+    );
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl;
 
-  // Proteção básica de rotas autenticadas
+  // SECURITY: Proteção de rotas autenticadas via JWT real (não mais authSession=1)
   if (url.pathname.startsWith('/dashboard')) {
-    const authSession = request.cookies.get('authSession');
-    // Nota: só verifica presença do cookie, não valida JWT (sem acesso ao secret no Edge)
-    // A validação real do token ocorre no AuthContext e nas chamadas à API
-    if (!authSession) {
+    const accessToken = request.cookies.get('access_token')?.value;
+    // MIGRATION FALLBACK: Aceitar authSession legado enquanto frontend migra
+    const legacySession = request.cookies.get('authSession')?.value;
+
+    if (accessToken) {
+      // Validar JWT real no Edge
+      const payload = await verifyAccessToken(accessToken);
+      if (!payload) {
+        // Token expirado ou inválido — redirecionar para login
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('access_token');
+        return response;
+      }
+      // Token válido — continuar
+    } else if (legacySession) {
+      // MIGRATION: Aceitar cookie legado temporariamente
+      // O AuthContext vai fazer refresh e migrar para o novo cookie
+    } else {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
