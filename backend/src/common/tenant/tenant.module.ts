@@ -27,6 +27,8 @@ import { Funcionario } from '../../modulos/funcionario/entities/funcionario.enti
 import { Pedido } from '../../modulos/pedido/entities/pedido.entity';
 import { Comanda } from '../../modulos/comanda/entities/comanda.entity';
 import { Plan } from '../../modulos/plan/entities/plan.entity';
+import { PasswordReset } from '../../auth/entities/password-reset.entity';
+import { PasswordResetService } from '../../auth/password-reset.service';
 
 /**
  * TenantModule - Módulo global para Multi-tenancy
@@ -44,7 +46,7 @@ import { Plan } from '../../modulos/plan/entities/plan.entity';
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario, Pedido, Comanda, Plan]),
+    TypeOrmModule.forFeature([Empresa, Tenant, Ambiente, Mesa, Funcionario, Pedido, Comanda, Plan, PasswordReset]),
     // JwtModule para decodificar tokens no TenantInterceptor
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -69,6 +71,7 @@ import { Plan } from '../../modulos/plan/entities/plan.entity';
     CloudflareDnsService,
     TenantRlsSubscriber,
     TenantRlsMiddleware,
+    PasswordResetService,
     // 🏢 Interceptor Global: Captura tenant de subdomínio/URL/JWT
     {
       provide: APP_INTERCEPTOR,
@@ -105,6 +108,7 @@ import { Plan } from '../../modulos/plan/entities/plan.entity';
     CloudflareDnsService,
     TenantRlsSubscriber,
     TenantRlsMiddleware,
+    PasswordResetService,
   ],
 })
 export class TenantModule {}
