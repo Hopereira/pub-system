@@ -18,6 +18,9 @@ export class Empresa extends TenantAwareEntity {
   @Column({ nullable: true })
   telefone: string;
 
+  @Column({ nullable: true, length: 255 })
+  email: string;
+
   @Column({ nullable: true })
   endereco: string;
 

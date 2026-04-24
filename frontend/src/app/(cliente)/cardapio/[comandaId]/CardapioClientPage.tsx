@@ -90,7 +90,7 @@ export default function CardapioClientPage({ comanda }: CardapioClientPageProps)
         preco: produtoSelecionado.preco, 
         quantidade, 
         observacao,
-        urlImagem: produtoSelecionado.urlImagem 
+        urlImagem: produtoSelecionado.urlImagem ?? undefined 
       }
     ]);
     setProdutoSelecionado(null);

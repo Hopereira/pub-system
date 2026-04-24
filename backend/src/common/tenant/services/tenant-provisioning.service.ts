@@ -8,6 +8,8 @@ import { Mesa, MesaStatus } from '../../../modulos/mesa/entities/mesa.entity';
 import { Funcionario } from '../../../modulos/funcionario/entities/funcionario.entity';
 import * as bcrypt from 'bcrypt';
 import { PlanFeaturesService } from './plan-features.service';
+import { EmailService, EmailStatus } from '../../../common/email/email.service';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * DTO para criação de novo tenant
@@ -24,6 +26,15 @@ export interface CreateTenantDto {
   telefone?: string;
   email?: string;
   endereco?: string;
+  
+  // Endereço detalhado (V2 — todos opcionais)
+  cep?: string;
+  rua?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
   
   // Dados do admin inicial
   adminNome: string;
@@ -44,6 +55,7 @@ export interface ProvisioningResult {
     email: string;
     senhaTemporaria: string;
   };
+  emailStatus?: string;
 }
 
 /**
@@ -76,6 +88,8 @@ export class TenantProvisioningService {
     private readonly funcionarioRepository: Repository<Funcionario>,
     private readonly dataSource: DataSource,
     private readonly planFeaturesService: PlanFeaturesService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -223,9 +237,37 @@ export class TenantProvisioningService {
       await queryRunner.manager.save(admin);
       this.logger.log(`✅ Admin criado: ${admin.email}`);
 
-      // Commit da transação
+      // 6. Atualizar onboarding step
+      tenant.onboardingStep = 'COMPLETO';
+      await queryRunner.manager.save(tenant);
+
       await queryRunner.commitTransaction();
       this.logger.log(`🎉 Provisionamento concluído com sucesso para: ${dto.slug}`);
+
+      // 7. Enviar email de boas-vindas (pós-commit, não bloqueia cadastro)
+      let emailStatus = EmailStatus.PENDING;
+      try {
+        const emailResult = await this.emailService.sendWelcomeEmail({
+          to: dto.adminEmail,
+          nomeEstabelecimento: dto.nomeFantasia,
+          slug: dto.slug,
+          nomeAdmin: dto.adminNome,
+        });
+        emailStatus = emailResult.status as EmailStatus;
+      } catch (emailError: any) {
+        this.logger.warn(`⚠️ Email de boas-vindas falhou (não bloqueia): ${emailError.message}`);
+        emailStatus = EmailStatus.FAILED;
+      }
+
+      // Atualizar status do email no tenant (sem transação — best effort)
+      try {
+        await this.tenantRepository.update(tenant.id, {
+          emailStatus,
+          emailSentAt: emailStatus === EmailStatus.SENT ? new Date() : undefined,
+        } as any);
+      } catch (e) {
+        this.logger.warn(`⚠️ Falha ao atualizar emailStatus: ${e.message}`);
+      }
 
       return {
         tenant,
@@ -237,6 +279,7 @@ export class TenantProvisioningService {
           email: dto.adminEmail,
           senhaTemporaria: dto.adminSenha,
         },
+        emailStatus,
       };
     } catch (error) {
       // Rollback em caso de erro
