@@ -102,6 +102,43 @@ export class AuthController {
     return publicData;
   }
 
+  // TEMPORARY: Diagnostic endpoint to debug login timeout
+  @Get('debug-login')
+  async debugLogin(@Headers('host') host?: string) {
+    const steps: Record<string, any> = {};
+    const start = Date.now();
+
+    // Step 1: Tenant resolution
+    try {
+      const t0 = Date.now();
+      const tenantId = await this.authService.resolveTenantFromRequestOptional(host);
+      steps.tenantResolution = { ok: true, tenantId, ms: Date.now() - t0 };
+    } catch (e) {
+      steps.tenantResolution = { ok: false, error: e.message, ms: Date.now() - start };
+    }
+
+    // Step 2: DB query (findSuperAdminByEmail)
+    try {
+      const t0 = Date.now();
+      const user = await this.authService.debugFindSuperAdmin('superadmin@pubsystem.com.br');
+      steps.dbQuery = { ok: true, found: !!user, ms: Date.now() - t0 };
+    } catch (e) {
+      steps.dbQuery = { ok: false, error: e.message, ms: Date.now() - start };
+    }
+
+    // Step 3: Simple DB count
+    try {
+      const t0 = Date.now();
+      const count = await this.authService.debugDbCount();
+      steps.dbCount = { ok: true, count, ms: Date.now() - t0 };
+    } catch (e) {
+      steps.dbCount = { ok: false, error: e.message, ms: Date.now() - start };
+    }
+
+    steps.totalMs = Date.now() - start;
+    return steps;
+  }
+
   @ThrottleAPI()
   @Post('refresh')
   @ApiOperation({ summary: 'Renovar access token usando refresh token' })

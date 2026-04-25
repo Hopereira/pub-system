@@ -171,6 +171,11 @@ export class FuncionarioService implements OnModuleInit {
     return this.funcionarioRepository.findByEmailAndTenantForAuth(email, tenantId);
   }
 
+  // TEMPORARY: Debug method for login timeout investigation
+  async countAll(): Promise<number> {
+    return this.funcionarioRepository.rawRepository.count();
+  }
+
   /**
    * Busca SUPER_ADMIN por email (tenantId IS NULL).
    */

@@ -88,6 +88,15 @@ export class AuthService {
     return null;
   }
 
+  // TEMPORARY: Debug methods for login timeout investigation
+  async debugFindSuperAdmin(email: string): Promise<any> {
+    return this.funcionarioService.findSuperAdminByEmail(email);
+  }
+
+  async debugDbCount(): Promise<number> {
+    return this.funcionarioService.countAll();
+  }
+
   /**
    * Seta o tenant resolvido no contexto da requisição
    */
