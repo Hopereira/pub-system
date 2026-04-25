@@ -2,10 +2,6 @@
 
 import { publicApi } from './api';
 
-const getApiBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
-};
-
 /**
  * Extrai o slug do tenant do hostname
  * Ex: casarao-pub-423.pubsystem.com.br -> casarao-pub-423
@@ -31,6 +27,11 @@ const extractTenantSlug = (): string | null => {
   return null;
 };
 
+/**
+ * Login via BFF proxy route (/api/auth/login).
+ * The request goes to the same-origin Next.js server, which proxies to the backend.
+ * This avoids CORS and Cloudflare proxy issues.
+ */
 export const login = async (email: string, senha: string, explicitTenantSlug?: string) => {
   const tenantSlug = explicitTenantSlug || extractTenantSlug();
   
@@ -41,11 +42,10 @@ export const login = async (email: string, senha: string, explicitTenantSlug?: s
     headers['x-tenant-slug'] = tenantSlug;
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
+  const response = await fetch('/api/auth/login', {
     method: 'POST',
     headers,
     body: JSON.stringify({ email, senha }),
-    credentials: 'include',
   });
 
   const data = await response.json();

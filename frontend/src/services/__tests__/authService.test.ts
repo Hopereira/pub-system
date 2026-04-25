@@ -19,10 +19,9 @@ describe('authService', () => {
       const result = await login('admin@admin.com', 'admin123');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/auth/login'),
+        '/api/auth/login',
         expect.objectContaining({
           method: 'POST',
-          credentials: 'include',
           body: JSON.stringify({ email: 'admin@admin.com', senha: 'admin123' }),
         }),
       );
