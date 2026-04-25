@@ -5,12 +5,16 @@ import { logger } from '@/lib/logger';
 
 const isServer = typeof window === 'undefined';
 
-// URL da API - usa API_URL_SERVER no servidor, ou fallback para NEXT_PUBLIC_API_URL
+// URL da API - BFF Proxy para evitar CORS/Cloudflare issues
+// No browser: usa /api/proxy (same-origin BFF)
+// No servidor: usa IP direto do backend
 const getApiBaseUrl = () => {
   if (isServer) {
-    return process.env.API_URL_SERVER || process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
+    // Server-side: chama backend direto (mesma rede ou IP interno)
+    return 'http://134.65.248.235:3000';
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
+  // Browser: usa BFF proxy (same-origin) para evitar CORS
+  return '/api/proxy';
 };
 
 /**
