@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL_SERVER || 'https://api.pubsystem.com.br';
+// HARDCODE: URL do backend em produção (evita problemas com env vars no Vercel)
+const API_URL = 'https://api.pubsystem.com.br';
 
 /**
  * BFF Proxy for POST /auth/login
@@ -40,13 +41,18 @@ export async function POST(request: NextRequest) {
       headers['user-agent'] = userAgent;
     }
 
+    console.log('[BFF] Calling backend:', `${API_URL}/auth/login`);
+    
     const backendResponse = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
     });
 
+    console.log('[BFF] Backend response status:', backendResponse.status);
+    
     const data = await backendResponse.json();
+    console.log('[BFF] Backend response data:', { status: backendResponse.status, hasAccessToken: !!data.access_token });
 
     // Create response with the same status
     const response = NextResponse.json(data, { status: backendResponse.status });
@@ -71,10 +77,10 @@ export async function POST(request: NextRequest) {
     }
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('[BFF /api/auth/login] Proxy error:', error);
     return NextResponse.json(
-      { statusCode: 500, message: 'Erro interno ao processar login.' },
+      { statusCode: 500, message: 'Erro interno ao processar login.', error: error.message },
       { status: 500 },
     );
   }

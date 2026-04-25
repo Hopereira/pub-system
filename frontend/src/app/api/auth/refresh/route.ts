@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL_SERVER || 'https://api.pubsystem.com.br';
+// HARDCODE: URL do backend em produção
+const API_URL = 'https://api.pubsystem.com.br';
 
 /**
  * BFF Proxy for POST /auth/refresh
@@ -13,6 +14,8 @@ export async function POST(request: NextRequest) {
     // Get cookies from the browser request
     const cookieHeader = request.headers.get('cookie') || '';
 
+    console.log('[BFF Refresh] Calling backend:', `${API_URL}/auth/refresh`);
+    
     const backendResponse = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
@@ -22,6 +25,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({}),
     });
 
+    console.log('[BFF Refresh] Backend status:', backendResponse.status);
+    
     const data = await backendResponse.json();
 
     // Create response with the same status
@@ -43,10 +48,10 @@ export async function POST(request: NextRequest) {
     }
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('[BFF /api/auth/refresh] Proxy error:', error);
     return NextResponse.json(
-      { statusCode: 500, message: 'Erro interno ao processar refresh.' },
+      { statusCode: 500, message: 'Erro interno ao processar refresh.', error: error.message },
       { status: 500 },
     );
   }
