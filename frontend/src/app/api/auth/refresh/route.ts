@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // HARDCODE: URL do backend em produção
-const API_URL = 'https://api.pubsystem.com.br';
+// Usando IP direto do Oracle VM para evitar problemas de DNS/Cloudflare
+const API_URL = 'http://134.65.248.235:3000';
 
 /**
  * BFF Proxy for POST /auth/refresh

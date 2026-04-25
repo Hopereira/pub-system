@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// HARDCODE: URL do backend em produção (evita problemas com env vars no Vercel)
-const API_URL = 'https://api.pubsystem.com.br';
+// HARDCODE: URL do backend em produção
+// Usando IP direto do Oracle VM para evitar problemas de DNS/Cloudflare no Vercel
+const API_URL = 'http://134.65.248.235:3000';
 
 /**
  * BFF Proxy for POST /auth/login
