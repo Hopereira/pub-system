@@ -21,6 +21,42 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const isProduction = process.env.NODE_ENV === 'production';
 
+  // CORS: Permitir múltiplas origens (Vercel, localhost, domínio próprio, etc)
+  // MUST be before Helmet to ensure preflight OPTIONS is handled correctly
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:3001',
+    'https://pub-system.vercel.app',
+    'https://pub-system-git-main-hopereiras-projects.vercel.app',
+    'https://pubsystem.com.br',
+    'https://www.pubsystem.com.br',
+  ].filter(Boolean);
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Permitir requisições sem origin (ex: mobile apps, Postman)
+      if (!origin) return callback(null, true);
+      
+      // Verificar se a origem está na lista ou é um subdomínio permitido
+      if (
+        allowedOrigins.includes(origin) || 
+        origin.endsWith('.vercel.app') || 
+        origin.endsWith('.pubsystem.com.br') ||
+        origin.endsWith('.pubsystem.test') ||  // Multi-tenancy local
+        origin.includes('pubsystem.test')      // pubsystem.test:3001
+      ) {
+        return callback(null, true);
+      }
+      
+      callback(null, false);
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID', 'X-Tenant-Slug', 'X-Request-Id', 'x-tenant-id', 'x-tenant-slug'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
+
   // ✅ SEGURANÇA: Helmet para headers HTTP seguros
   app.use(
     helmet({
@@ -64,37 +100,7 @@ async function bootstrap() {
     prefix: '/public/',
   });
 
-  // CORS: Permitir múltiplas origens (Vercel, localhost, domínio próprio, etc)
-  const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'http://localhost:3001',
-    'https://pub-system.vercel.app',
-    'https://pub-system-git-main-hopereiras-projects.vercel.app',
-    'https://pubsystem.com.br',
-    'https://www.pubsystem.com.br',
-  ].filter(Boolean);
-
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Permitir requisições sem origin (ex: mobile apps, Postman)
-      if (!origin) return callback(null, true);
-      
-      // Verificar se a origem está na lista ou é um subdomínio permitido
-      if (
-        allowedOrigins.includes(origin) || 
-        origin.endsWith('.vercel.app') || 
-        origin.endsWith('.pubsystem.com.br') ||
-        origin.endsWith('.pubsystem.test') ||  // Multi-tenancy local
-        origin.includes('pubsystem.test')      // pubsystem.test:3001
-      ) {
-        return callback(null, true);
-      }
-      
-      callback(null, false);
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  // CORS is configured above (before Helmet)
 
   // ✅ SEGURANÇA: Limite de JSON reduzido (era 50mb)
   app.use(json({ limit: '10mb' }));
