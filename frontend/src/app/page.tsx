@@ -80,8 +80,8 @@ export default function LandingPage() {
     // Carregar planos da API
     const loadPlans = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
-        const response = await fetch(`${apiUrl}/plans/public`);
+        // Usa BFF proxy (same-origin) para evitar CORS
+        const response = await fetch('/api/proxy/plans/public');
         if (response.ok) {
           const data = await response.json();
           setApiPlans(data);
