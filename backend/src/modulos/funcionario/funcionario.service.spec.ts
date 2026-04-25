@@ -93,6 +93,8 @@ describe('FuncionarioService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Reset static flag for onModuleInit tests
+    (FuncionarioService as any).seedExecuted = false;
   });
 
   it('deve estar definido', () => {

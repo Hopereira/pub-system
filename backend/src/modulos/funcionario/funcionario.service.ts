@@ -26,6 +26,7 @@ import { TenantContextService } from '../../common/tenant/tenant-context.service
 @Injectable()
 export class FuncionarioService implements OnModuleInit {
   private readonly logger = new Logger(FuncionarioService.name);
+  private static seedExecuted = false;
 
   constructor(
     private readonly funcionarioRepository: FuncionarioRepository,
@@ -36,6 +37,10 @@ export class FuncionarioService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    // Guard: request-scoped services get onModuleInit called per request
+    if (FuncionarioService.seedExecuted) return;
+    FuncionarioService.seedExecuted = true;
+
     const contador = await this.funcionarioRepository.rawRepository.count();
     if (contador === 0) {
       const tenantId = this.configService.get<string>('DEFAULT_TENANT_ID');
