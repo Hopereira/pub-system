@@ -166,9 +166,10 @@ api.interceptors.response.use(
           isRefreshing = true;
 
           try {
-            // Tenta renovar via httpOnly cookie (refresh_token + access_token são cookies)
+            // BFF Proxy: chama mesma-origem (/api/auth/refresh) que faz proxy para backend
+            // Isso evita CORS/Cloudflare issues
             const refreshRes = await axios.post(
-              `${getApiBaseUrl()}/auth/refresh`,
+              '/api/auth/refresh',
               {},
               { withCredentials: true },
             );

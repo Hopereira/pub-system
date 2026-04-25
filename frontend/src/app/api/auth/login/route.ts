@@ -63,6 +63,13 @@ export async function POST(request: NextRequest) {
       response.headers.append('Set-Cookie', rewritten);
     }
 
+    // SECURITY: Ensure access_token is set as httpOnly cookie for middleware
+    // This is needed for the Edge middleware to validate the session
+    if (data.access_token && !setCookieHeaders.some(c => c.includes('access_token'))) {
+      // Backend didn't set the cookie, set it manually
+      response.headers.append('Set-Cookie', `access_token=${data.access_token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=3600`);
+    }
+
     return response;
   } catch (error) {
     console.error('[BFF /api/auth/login] Proxy error:', error);
