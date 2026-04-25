@@ -2,6 +2,10 @@
 
 import { publicApi } from './api';
 
+const getApiBaseUrl = () => {
+  return process.env.NEXT_PUBLIC_API_URL || 'https://api.pubsystem.com.br';
+};
+
 /**
  * Extrai o slug do tenant do hostname
  * Ex: casarao-pub-423.pubsystem.com.br -> casarao-pub-423
@@ -28,30 +32,32 @@ const extractTenantSlug = (): string | null => {
 };
 
 export const login = async (email: string, senha: string, explicitTenantSlug?: string) => {
-  try {
-    const tenantSlug = explicitTenantSlug || extractTenantSlug();
-    
-    const response = await publicApi.post('/auth/login', {
-      email,
-      senha,
-    }, { 
-      withCredentials: true,
-      headers: tenantSlug ? {
-        'x-tenant-slug': tenantSlug, // Envia slug do tenant
-      } : {},
-    });
-
-    return response.data;
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
-    if (err.response) {
-      const errorMessage = Array.isArray(err.response.data?.message)
-        ? err.response.data.message.join(', ')
-        : err.response.data?.message;
-      throw new Error(errorMessage || 'Credenciais inválidas');
-    }
-    throw new Error('Não foi possível conectar ao servidor.');
+  const tenantSlug = explicitTenantSlug || extractTenantSlug();
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (tenantSlug) {
+    headers['x-tenant-slug'] = tenantSlug;
   }
+
+  const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ email, senha }),
+    credentials: 'include',
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorMessage = Array.isArray(data?.message)
+      ? data.message.join(', ')
+      : data?.message;
+    throw new Error(errorMessage || 'Credenciais inválidas');
+  }
+
+  return data;
 };
 
 /**
